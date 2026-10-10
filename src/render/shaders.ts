@@ -30,7 +30,9 @@ varying vec3 vNormal;
 void main() {
   float id = floor(vNode + 0.5);
   vec2 uv = vec2((mod(id, uTexSize.x) + 0.5) / uTexSize.x, (floor(id / uTexSize.x) + 0.5) / uTexSize.y);
-  float on = step(0.5, texture2D(uState, uv).r);
+  vec4 st = texture2D(uState, uv);
+  float on = step(0.5, st.r);
+  float changed = st.g;
 
   vec3 L = normalize(vec3(0.35, 0.9, 0.45));
   float diffuse = 0.38 + 0.62 * max(dot(normalize(vNormal), L), 0.0);
@@ -42,6 +44,9 @@ void main() {
     color = mix(color, uHighColor * (1.15 + uGlow) * diffuse, 0.68);
     alpha = min(1.0, uOpacity + 0.3);
   }
+  // az önce 0->1 ya da 1->0 olan teller kısa bir an parlar
+  color += vec3(1.0, 0.85, 0.4) * changed * 0.6;
+  alpha = max(alpha, changed);
   if (abs(id - uHovered) < 0.5) {
     color = mix(color, vec3(0.55, 1.0, 1.0) * 1.3, 0.55);
     alpha = 1.0;

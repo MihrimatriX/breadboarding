@@ -83,8 +83,7 @@ export function DieModel() {
     shared.uGlow.value = bloom ? 0.9 : 0.15;
     if (live.nodeState && live.version !== seenVersion) {
       seenVersion = live.version;
-      state.data.set(live.nodeState.subarray(0, state.data.length));
-      state.tex.needsUpdate = true;
+      state.write(live.nodeState);
     }
   });
 
