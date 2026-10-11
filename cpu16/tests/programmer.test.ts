@@ -3,14 +3,14 @@
 // + SST39SF010A) bağlanır; seri girişe yaz.py'nin göndereceği komutlar verilir.
 
 import { execFileSync, spawn } from "node:child_process";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
+import { toIntelHex } from "../asm/hex.ts";
 import { ARDUINO_NETS, buildProgrammerBoard } from "../board/programmer-card.ts";
-import { romImages } from "../board/roms.ts";
 import { LogicSim } from "../chips/logic.ts";
 import type { MemoryHandle } from "../chips/parts/memory.ts";
 
@@ -26,7 +26,16 @@ const has = (cmd: string, args: string[]) => {
 const hasGpp = has("g++", ["--version"]);
 const hasPython = has("python3", ["--version"]);
 
-const ucode = readFileSync(join(root, "micro/cpu16.ucode"), "utf8");
+/** Örnek imaj (BIOS Flash'ına yazılacak bir dosya gibi): 384 bayt sözde rastgele */
+const ornekImaj = (() => {
+  const d = new Uint8Array(384);
+  let x = 0x1234;
+  for (let i = 0; i < d.length; i++) {
+    x = (x * 1103515245 + 12345) >>> 0;
+    d[i] = x >>> 24;
+  }
+  return d;
+})();
 
 interface Run {
   serial: string;
@@ -86,8 +95,9 @@ describe.skipIf(!hasGpp)("Faz 9: Flash programlayıcı (Arduino yazılımı + ka
     });
   }
 
-  it.skipIf(!hasPython)("yaz.py komutlarıyla ALU ROM'unu siler, yazar ve SUM ile doğrular", async () => {
-    const hex = join(root, "roms/alu-1.hex");
+  it.skipIf(!hasPython)("yaz.py komutlarıyla bir imajı siler, yazar ve SUM ile doğrular", async () => {
+    const hex = join(dir, "ornek.hex");
+    writeFileSync(hex, toIntelHex(ornekImaj, [[0, ornekImaj.length]]));
     const cmds = execFileSync("python3", [join(root, "programlayici/yaz.py"), "--kuru", hex, "--sil", "--dogrula"], { encoding: "utf8" });
     // çipte eski bir içerik var: önce silinmeli
     const r = await run(cmds, (f) => f.fill(0x00, 0, 300));
@@ -95,7 +105,7 @@ describe.skipIf(!hasGpp)("Faz 9: Flash programlayıcı (Arduino yazılımı + ka
     expect(lines[0]).toBe("CPU16 programlayici v1 hazir");
     expect(lines[1]).toBe("OK ID BF B5");
     expect(r.serial).not.toContain("ERR");
-    const want = romImages(ucode).find((x) => x.name === "alu-1")!.data;
+    const want = ornekImaj;
     expect(Array.from(r.flash.subarray(0, want.length))).toEqual(Array.from(want));
     expect(r.flash[want.length]).toBe(0xff); // silinmiş
     const sum = want.reduce((a, b) => a + b, 0) & 0xffff;
@@ -119,16 +129,5 @@ describe.skipIf(!hasGpp)("Faz 9: Flash programlayıcı (Arduino yazılımı + ka
     expect(r.flash[0x1fff1]).toBe(0x55);
     expect(r.flash[0xfff0]).toBe(0xff);
     expect(r.serial).toContain("ERR HEX saglama toplami");
-  });
-});
-
-describe("Faz 9: ROM imajları", () => {
-  it("depodaki cpu16/roms dosyaları güncel (npm run cpu16 -- roms)", async () => {
-    const { romFiles } = await import("../board/roms.ts");
-    for (const f of romFiles(ucode)) {
-      const committed = readFileSync(join(root, "..", f.path));
-      const want = typeof f.content === "string" ? Buffer.from(f.content, "utf8") : Buffer.from(f.content);
-      expect(committed.equals(want), f.path).toBe(true);
-    }
   });
 });

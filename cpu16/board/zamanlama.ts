@@ -55,6 +55,7 @@ const rng = (p: string, n: number, from = 0) => Array.from({ length: n }, (_, i)
 export const GECIKME = {
   "74HC00": [7, 18], "74HC02": [7, 18], "74HC04": [7, 17], "74HC08": [7, 18], "74HC10": [8, 20],
   "74HC14": [12, 27], "74HC32": [8, 20], "74HC86": [11, 24],
+  "74HC11": [9, 20], "74HC20": [9, 20], "74HC21": [10, 22], "74HC27": [9, 20], "74HC30": [12, 25],
   "74HC125.A": [9, 22], "74HC125.OE": [11, 28],
   "74HC138.A": [15, 36], "74HC138.E": [14, 36], "74HC139": [14, 36], "74HC148": [18, 45],
   "74HC151.I": [19, 40], "74HC151.S": [22, 45], "74HC151.E": [15, 33],
@@ -108,6 +109,14 @@ function model(part: string): Model | null {
     case "74HC32": return quad("74HC32", 1, ["A", "B"], 4, 1);
     case "74HC86": return quad("74HC86", 0, ["A", "B"], 4);
     case "74HC10": return quad("74HC10", -1, ["A", "B", "C"], 3, 0);
+    case "74HC11": return quad("74HC11", 1, ["A", "B", "C"], 3, 0);
+    case "74HC27": return quad("74HC27", -1, ["A", "B", "C"], 3, 1);
+    case "74HC20": return quad("74HC20", -1, ["A", "B", "C", "D"], 2, 0);
+    case "74HC21": return quad("74HC21", 1, ["A", "B", "C", "D"], 2, 0);
+    case "74HC30": {
+      const ins = ["A", "B", "C", "D", "E", "F", "G", "H"];
+      return { arcs: cross(ins, ["Y"], g("74HC30"), -1), seq: [], gates: [{ ins, out: "Y", kontrol: 0 }] };
+    }
     case "74HC04": return quad("74HC04", -1, ["A"], 6);
     case "74HC05": return quad("74HC05", -1, ["A"], 6);
     case "74HC14": return quad("74HC14", -1, ["A"], 6);

@@ -32,7 +32,7 @@ export const DENEYLER: Deney[] = [
   { no: 2, kisa: "kapilar", baslik: "Kapılar ve CMOS transistörler", cip: "74HC00" },
   { no: 3, kisa: "programlayici", baslik: "Flash programlayıcı", kartlar: [{ board: "programlayici", card: "prog" }] },
   { no: 4, kisa: "register", baslik: "Register dosyası ve veriyolu", kartlar: [{ board: "bilgisayar", card: "cpu", blocks: ["Register dosyası"] }] },
-  { no: 5, kisa: "alu", baslik: "ALU ve bayraklar", kartlar: [{ board: "bilgisayar", card: "cpu", blocks: ["Geçici register'lar", "ALU", "Bayraklar ve koşul"] }] },
+  { no: 5, kisa: "alu", baslik: "ALU ve bayraklar", kartlar: [{ board: "bilgisayar", card: "cpu", blocks: ["Geçici register'lar", "ALU", "ALU kod çözücü", "Bayraklar ve koşul"] }] },
   {
     no: 6, kisa: "komut-cekme", baslik: "Program sayacı ve komut çekme",
     kartlar: [{ board: "bilgisayar", card: "cpu", blocks: ["Program sayacı", "MAR ve IR", "Bellek arayüzü"] }],

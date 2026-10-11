@@ -1,4 +1,6 @@
-// Mikrokod derleyicisi: cpu16.ucode metnini 8192 × 32 bit kontrol ROM'una çevirir.
+// Mikrokod derleyicisi: cpu16.ucode metnini 8192 × 32 bit kontrol tablosuna çevirir. Saat döngüsü
+// modeli (datapath.ts) tabloyu doğrudan okur; kart tablodan üretilen kapı devresini kullanır
+// (board/kontrol.ts).
 
 import { ALUOP, BUS, IMM, RSEL, ROM_WORDS, encodeControl, romAddress, type Control, type Signal } from "./control.ts";
 
@@ -202,7 +204,3 @@ function stripComment(line: string): string {
   return line.slice(0, first);
 }
 
-/** ROM'u 4 adet 8 bitlik Flash imajına böler (çip 0 = bit 7..0). */
-export function splitRom(rom: Uint32Array): Uint8Array[] {
-  return [0, 1, 2, 3].map((chip) => Uint8Array.from(rom, (w) => (w >>> (chip * 8)) & 0xff));
-}
