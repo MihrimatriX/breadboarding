@@ -848,6 +848,22 @@ describe("derleme hataları", () => {
     expect(first("int f(int a, int b); int main(void) { return f(1); }").message.length).toBeGreaterThan(0);
   });
 
+  it("yeniden tanımlama, çakışan bildirimler, boyut sınırları, sabit olmayan global başlatıcı", () => {
+    const msg = (src: string) => first(src)?.message ?? "(hata yok)";
+    expect(msg("int main(void) { int a; int a; return 0; }")).toMatch(/zaten tanımlı/);
+    expect(msg("enum E { A, A }; int main(void) { return 0; }")).toMatch(/yeniden tanımlandı/);
+    expect(msg("int f(int); long f(int); int main(void) { return 0; }")).toMatch(/çakışan/);
+    expect(msg("int f(void) { return 1; } int f(void) { return 2; } int main(void) { return 0; }")).toMatch(/yeniden tanımlandı/);
+    expect(msg("char big[70000]; int main(void) { return 0; }")).toMatch(/Dizi çok büyük/);
+    expect(msg("int main(void) { char a[20000]; return a[0]; }")).toMatch(/yerel değişkenleri çok büyük/);
+    expect(msg("struct S { int a; }; struct S g(void); struct S s = g(); int main(void) { return 0; }")).toMatch(/sabit bir ifade/);
+    expect(msg("int main(void) { switch (1) { case 1: case 1: break; } return 0; }")).toMatch(/iki kez/);
+    expect(msg("int main(void) { break; }")).toMatch(/break/);
+    expect(msg("int main(void) { goto yok; }")).toMatch(/Tanımsız etiket/);
+    expect(msg("int main(void) { struct S { int b : 3; } s; return 0; }")).toMatch(/Bit alanları desteklenmiyor/);
+    expect(msg("int main(void) { int n = 3; int a[n]; return 0; }")).toMatch(/VLA desteklenmiyor/);
+  });
+
   it("bağlayıcı: tanımsız sembol", () => {
     const e = errorsOf("int ext(void); int main(void) { return ext(); }");
     expect(e.map((x) => x.message).join()).toMatch(/Tanımsız sembol: 'ext'/);

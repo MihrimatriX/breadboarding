@@ -202,7 +202,7 @@ _asm_val:
   it("ROM taşması ve RAM taşması raporlanır", () => {
     const rom = errorsOf(`const char big[17000] = {1}; int main(void) { return big[0]; }`);
     expect(rom.map((e) => e.message).join()).toMatch(/ROM taştı/);
-    const ram = errorsOf(`char big[48000]; int main(void) { return big[0]; }`);
+    const ram = errorsOf(`char a[30000], b[18000]; int main(void) { return a[0] + b[0]; }`);
     expect(ram.map((e) => e.message).join()).toMatch(/RAM taştı/);
   });
 

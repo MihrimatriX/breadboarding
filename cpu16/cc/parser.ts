@@ -327,6 +327,7 @@ class Parser {
       if (v.ty.proto && ty.proto && (v.ty.params!.length !== ty.params!.length || v.ty.variadic !== ty.variadic)) {
         throw this.err(name, `'${name.text}' için çakışan bildirimler`);
       }
+      if (!sameType(v.ty.ret!, ty.ret!)) throw this.err(name, `'${name.text}' için çakışan dönüş tipleri`);
       if (ty.proto || !v.ty.proto) v.ty = ty;
     } else {
       v = this.mkVar(name.text, ty, name, false, attr.isStatic ? `_${name.text}.${this.tag}` : `_${name.text}`);
@@ -624,6 +625,7 @@ class Parser {
     const inner = this.typeSuffix(base);
     if (inner.kind === "array" && inner.len! < 0) throw this.err(t, "İç dizi boyutu belirsiz");
     if (isStructLike(inner) && !inner.complete) throw this.err(t, "Tamamlanmamış tipte dizi");
+    if (inner.size * c.val > 0x7fff) throw this.err(t, `Dizi çok büyük (${inner.size * c.val} bayt, sınır 32767)`);
     return arrayOf(inner, c.val);
   }
 
@@ -724,6 +726,7 @@ class Parser {
     while (!this.consume("}")) {
       const name = this.ident();
       if (this.consume("=")) val = this.constExpr();
+      if (this.scope().vars.has(name.text)) throw this.err(name, `'${name.text}' yeniden tanımlandı`);
       this.scope().vars.set(name.text, { enumVal: val });
       val++;
       if (this.consume("}")) break;
@@ -1118,6 +1121,8 @@ class Parser {
         v.isConst = constObj(v.ty);
         continue;
       }
+      const prev = this.scope().vars.get(name.text);
+      if (prev?.v?.isLocal) throw this.err(name, `'${name.text}' bu blokta zaten tanımlı`);
       const v = this.newLocal(name.text, ty, name);
       if (this.consume("=")) stmts.push(this.localInit(v, name));
       if (v.ty.kind === "array" && v.ty.len! < 0) throw this.err(name, `'${name.text}' dizisinin boyutu belirsiz`);
@@ -1720,7 +1725,7 @@ class Parser {
       return this.newCast(a, vt(a.ty), a.tok);
     });
     const node = this.mk("call", tok, fty.ret!, { fn, args: conv, fty });
-    if (isStructLike(fty.ret!)) node.retBuf = this.newLocal("", fty.ret!, tok, false);
+    if (isStructLike(fty.ret!) && this.fn) node.retBuf = this.newLocal("", fty.ret!, tok, false);
     return node;
   }
 
