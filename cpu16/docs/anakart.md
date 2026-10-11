@@ -131,6 +131,9 @@ giriş 8 döngü sürer (PC ve bayraklar yığına, I = 0, `0x0002` vektörü), 
 (74HC193 ×4) azaltır. Sayaç 0 olunca RELOAD'dan yeniden yüklenir ve EXPIRED kurulur; IRQ_EN
 açıksa kesme ister. Periyot = RELOAD ms (RELOAD = 0 → 65 536 ms). BIOS 10 yükler: 100 Hz
 (`TICKS` sayacı, bkz. bios.md).
+Tık TCLK / 4000'dir (TCLK = CPU saati, bekleme turlarında da sayar): 4 MHz'te 1 kHz, 1 MHz'lik
+ilk kartta 250 Hz. BIOS'un 100 Hz'i de aynı oranda yavaşlar; gerçek zaman gereken programlar
+RELOAD'ı CPU hızına göre seçmelidir.
 
 ## Önbellek kartı
 
@@ -259,7 +262,9 @@ Web IDE ve CLI tarayıcının `KeyboardEvent.code` adlarından set 2 kodu üreti
 
 ## UART
 
-115200 baud 8N1 (bayt 10 bit = 86,8 µs = **347 CPU döngüsü**). Bilgisayar tarafında CH340
+115200 baud 8N1 (bayt 10 bit = 86,8 µs = **347 CPU döngüsü**). Hız CPU saatine bağlıdır: kapı
+seviyesi G/Ç kartı bit süresini TCLK'den böler, bu yüzden 1 MHz'lik ilk kartta **28 800 baud** olur
+(bkz. [uretim.md](uretim.md)). Aşağıdaki osilatörlü tasarım ilk tahmindir. Bilgisayar tarafında CH340
 USB-UART köprüsü. 1,8432 MHz osilatör + 74HC4040 baud saati (16×), gönderici 74HC165 +
 74HC161 bit sayacı, alıcı 74HC595 + 74HC161 ×2 (16× örnekleme ve bit sayacı) + 74HC74.
 (İstenirse yerine tek bir TL16C550 takılabilir; register haritası aynı kalacak şekilde
@@ -299,10 +304,12 @@ yakalarsa çip okuma moduna ancak `F0` (çıkış) komutuyla ya da güç kesilin
 
 ## Çip listesi (blok başına, tahmini)
 
-Kesin liste KiCad şemalarıyla (Faz 4 / 9) çıkacak; buradaki sayılar tasarımın büyüklüğünü
-göstermek içindir. Saat, bellek (adres çözme + bank register'ları + ana bellek) ve önbellek
-kartları artık kapı seviyesinde kurulu ve kesin: saat 10, bellek 31, önbellek 37 entegre
-(blok → çip eşlemesi ve farkları: [anakart-kartlari.md](anakart-kartlari.md)).
+Aşağıdaki tablo tasarımın başındaki tahmindir. Bütün kartlar artık kapı seviyesinde kurulu ve
+KiCad'de; kesin sayılar: CPU 146, saat 10, bellek 31, önbellek 37, G/Ç 65, video 69 entegre
+(blok → çip eşlemesi ve tahminden farkları: [anakart-kartlari.md](anakart-kartlari.md),
+[anakart-gc-video.md](anakart-gc-video.md); güncel liste `npm run cpu16 -- board`). En büyük fark
+G/Ç tarafındadır: UART ayrı osilatör kullanmaz, bit süresini TCLK'den böler; zamanlayıcının ön
+bölücüsü de TCLK'yi sayar.
 
 | Blok | Çipler | ≈ adet |
 |---|---|---|

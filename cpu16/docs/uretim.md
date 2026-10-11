@@ -49,6 +49,36 @@ U104  74HC541      ALU → veriyolu                                      +33
                    + kurulum, − yakalayan saatin gecikmesi   ≈ 430 ns ≤ T/2
 ```
 
+### Sonuç: bütün anakart
+
+```
+npm run cpu16 -- zamanlama --anakart [--tip]   # CPU + saat + bellek + önbellek + G/Ç + video, 5 saat alanı
+```
+
+| Saat alanı | En kötü (maks) | Tipik | Gereken |
+|---|---|---|---|
+| CPU saati (CLK) | 950 ns → **1,05 MHz** | 470 ns → 2,13 MHz | 1 MHz |
+| TCLK (bekleme turları, önbellek ve G/Ç kartları) | 758 ns → 1,32 MHz | 302 ns → 3,31 MHz | 1 MHz |
+| Osilatör (OSC, önbellek temizleme sayacı) | 87 ns → 11,5 MHz | 37 ns → 27 MHz | 8 MHz |
+| PS/2 saati (klavye) | 150 ns → 6,7 MHz | 60 ns → 16,7 MHz | 16,7 kHz |
+| Piksel saati (VID_OSC) | VIDEO_MAKS | VIDEO_TIP | 25,175 MHz |
+
+Anakartta CPU'nun kritik yolu ALU değil, önbellek isabetidir: kontrol register'ı → `~MRD` →
+etiket karşılaştırması (74HC688) → `C_HIT` → veri SRAM'i `DE`/`DO`'yu sürer → CPU veriyolu, yine
+yarım periyotta (475 ns). 1 MHz'de pay %5'tir: en kötü durum değerleri 25 °C içindir ve bu yol
+mantıksal olarak her döngüde koşulmaz (araç kapıların koşullarını değil, en uzun bağlantıyı sayar),
+ama ilk kurulumda 1 MHz'in üstüne çıkmadan önce kart testi koşulmalı.
+
+Araç, veriyolu üzerinden giden yanlış yolları (bir kartın okuma sürücüsünden başka bir kartın
+yazma girişine: aynı döngüde okuma ve yazma olmaz) ve G/Ç kartının zamanlayıcı yükleme
+darbesindeki bir yayı adlı istisnalarla analiz dışı bırakır; rapor her istisnayı sayısıyla yazar.
+Kapılı saatlerin izinlerinden saat açıkken değişebilenler test edilir ve listelenir:
+`~WSEL` ve `C_MEMACC` (CLK), `C_CB`, `C_INVL`, `C_RAMHIT` (TCLK). Bunlar mantık olarak güvenlidir:
+`~WSEL` aşağıdaki mikrokod kuralıyla; `C_MEMACC`'ın kapıladığı bekleme isteği saat değildir,
+yalnızca s7'nin ortasında örneklenir; TCLK tarafındakiler yazma evresi boyunca sabittir ya da
+değiştikleri kenarda kapı zaten kapalıdır (gerekçeleri `tests/zamanlama.test.ts`'te). Test listeyi sabit
+tutar; yeni bir giriş eklenirse kırılır.
+
 **Neden yarım periyot?** Kontrol register'ı (CR) mikrokodu saatin düşen kenarında alır, durum
 register'ları yükselen kenarda yüklenir (mikromimari.md). Bir mikro adımın kontrol kelimesi düşen
 kenarda gelir, sonucu yarım periyot sonra yükselen kenarda yazılır: ALU'nun bütün yolu T/2'ye

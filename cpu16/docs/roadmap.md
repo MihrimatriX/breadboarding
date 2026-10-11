@@ -1,6 +1,6 @@
 # CPU16 — Yol Haritası
 
-> **Şu an:** Faz 2 bitti (mikrokod + saat döngüsü modeli, emülatörle lockstep). **Sıradaki:** Faz 3, 74HC parça kütüphanesi. Paralel iz: Faz 8 (C derleyicisi).
+> **Şu an:** Fazların simülasyon tarafı bitti (2026-10-11): altı kartlı anakart kapı seviyesinde BIOS'u açıyor ve emülatörle komut komut aynı; KiCad şemaları, zamanlama analizi, C derleyicisi ve 13 deneyin rehberi hazır. **Sıradaki:** gerçek kartlar, Deney 1'den başlayarak (Faz 9'un bitti ölçütü kart testi). Açık soru: işlemcinin kalıcı adı.
 > Bu satır her faz bittiğinde güncellenir. Kaybolursan önce buraya bak.
 
 ## Kaybolmamak için 5 kural
@@ -42,56 +42,73 @@ Faz 0 Spec ─▶ Faz 1 Emülatör+as16 ─▶ Faz 2 Mikromimari ─▶ Faz 3 74
 - Video: "Mikrokod nedir? CPU'nun içindeki küçük program".
 - Sonuç: `micro/control.ts` (32 bit kontrol kelimesi), `micro/cpu16.ucode` + `micro/microasm.ts` (4 Flash imajı: `npm run cpu16 -- ucode`), `micro/datapath.ts` (ROM bitlerini çalıştıran saat döngüsü modeli). Lockstep: 5 program + 60 000 rastgele komut. Ortalama ≈5 döngü/komut. Ayrıntı: `docs/mikromimari.md`. Spec değişikliği: `cond = 15` artık NV (asla), yasadışı değil.
 
-### Faz 3 — 74HC parça kütüphanesi
+### Faz 3 — 74HC parça kütüphanesi ✅ 2026-10-11
 - Çıktı: kullanılan her çip (≈25 tip: 74HC00/04/08/32/86/74/138/148/157/161/175/245/283/574/595/688, SRAM, Flash…) için kapı seviyesi model + doğruluk tablosu testleri; her kapı için CMOS transistör açılımı; KiCad sembol/footprint eşlemesi.
 - Bitti ölçütü: her çip modeli datasheet doğruluk tablosunu geçer; transistör açılımı Silikon3D motorunda kapıyla aynı sonucu verir.
 - Video: "74HC283'ün içine giriyoruz: toplayıcıdan transistöre".
+- Sonuç: `chips/` (35 çip: kapı modeli + veri sayfası tablosu + CMOS transistör açılımı + KiCad sembolü), `chips/logic.ts` kapı seviyesi simülatörü (0/1/Z/X, gecikmeli), `kicad/cpu16.kicad_sym`. Her çip tablosunu kapı ve transistör seviyesinde geçer. Ayrıntı: `docs/parcalar.md`.
 
-### Faz 4 — KiCad şemaları (kart kart)
+### Faz 4 — KiCad şemaları (kart kart) ✅ 2026-10-11
 - Sıra: saat/reset → CPU (register, ALU, PC, IR, bayraklar, mikrokod) → bellek + bank → backplane.
 - Çıktı: her kart için `.kicad_sch`, netlist → simülatör içe aktarıcı.
 - Bitti ölçütü: şemadan üretilen **kapı seviyesi** bilgisayar Faz 1 test programlarını emülatörle lockstep çalıştırır. (Şema değişirse simülasyon da kendiliğinden değişir.)
 - Video: kart başına bir bölüm.
+- Sonuç: şema = kod (`board/*.ts`): CPU kartı, saat kartı, test bellek kartı; aynı tanımdan kapı seviyesi simülasyon, KiCad 7 şemaları (`kicad/<kart>/`), BOM ve ERC. Kapı seviyesi bilgisayar 5 programı her saat döngüsünde mikrokod modeliyle aynı çalıştırır. Ayrıntı: `docs/kartlar.md`.
 
-### Faz 5 — 3D görünüm (Silikon3D ile birlikte)
+### Faz 5 — 3D görünüm (Silikon3D ile birlikte) ✅ 2026-10-11
 - Çıktı: kart → çip → kapı → transistör yakınlaştırma; tıklanan çipin içi açılır; canlı sinyaller.
 - Not: Silikon3D kodu "3D 16-bit CPU simülasyonu" konuşmasının sorumluluğunda; bu faz orada koordineli yürür.
 - Bitti ölçütü: çalışan programda bir çipe tıklanıp transistör seviyesine kadar canlı sinyal izlenebilir.
+- Sonuç: Silikon3D'de **CPU16 kartı 3D** bölümü (`#kart`): kapı seviyesi bilgisayar bir Web Worker'da çalışır; kart → çip (kalıp ve kapı şeması) → transistör yakınlaştırması, her seviyede canlı sinyaller, konsoldan `kart.*` API'si. Ayrıntı: `docs/3d-gorunum.md`.
 
-### Faz 6 — Çevre birimleri ve anakart
+### Faz 6 — Çevre birimleri ve anakart ✅ 2026-10-11
 - Çıktı: VGA metin kartı, PS/2 klavye, UART, zamanlayıcı, kesme denetleyicisi (74HC148), cache kartı (+ hit/miss sayaçları), bank register'ları. Hepsi şema + simülasyon.
 - Bitti ölçütü: simülasyonda klavyeden basılan tuş ekranda görünür; cache hit oranı ölçülür; 1 MB bellek testi geçer.
+- Sonuç: davranış modeli `emu/machine.ts` (bank'lı 1 MB bellek, önbellek, UART, PS/2, zamanlayıcı, kesmeler, VGA metin) ve aynı anakartın kapı seviyesi kartları: saat (bekleme durumlu), bellek, önbellek, G/Ç, video. CPU + beş kart birlikte BIOS'u reset'ten monitör istemine kadar açar ve `Machine` ile komut komut, zamanlayıcı kesmesi dahil aynıdır. Bütün anakart KiCad'de. Ayrıntı: `docs/anakart.md`, `docs/anakart-kartlari.md`, `docs/anakart-gc-video.md`.
 
-### Faz 7 — Yazılım tabanı ve Web IDE
+### Faz 7 — Yazılım tabanı ve Web IDE ✅ 2026-10-11
 - Çıktı: BIOS/monitör (bellek göster/düzenle, programı çalıştır), UART bootloader, Web IDE (editör + derle + simülatörde çalıştır + Web Serial ile karta gönder).
 - Bitti ölçütü: tarayıcıda yazılan program tek tuşla simülatörde ve (Faz 9 sonrası) gerçek kartta çalışır.
+- Sonuç: `bios/bios.s` (atlama tablosu, kesme işleyici, VGA ve UART sürücüleri, monitör, RAM'e ve Flash'a Intel HEX önyükleyici), Silikon3D'de CPU16 Web IDE'si (editör, C ve assembly, simülatörde çalıştır, Web Serial ile karta yükle). Ayrıntı: `docs/bios.md`.
 
-### Faz 8 — C derleyicisi cc16 ⇄ (Faz 1'den sonra paralel)
+### Faz 8 — C derleyicisi cc16 ⇄ (Faz 1'den sonra paralel) ✅ 2026-10-11
 - Aşamalar: (1) int/char/pointer/dizi/kontrol akışı/fonksiyon → (2) struct/union/enum/string/switch → (3) typedef + önişlemci + linker (ld16) → (4) long, register ayırma, optimizasyon → (5) soft-float, self-host denemesi.
 - Çıktı: `cpu16/cc`, `cpu16/libc` (crt0, printf, malloc, soft MUL/DIV, string).
 - Bitti ölçütü (her aşama): o aşamanın C test paketi emülatörde geçer. Final: C ile yazılmış yılan oyunu ekranda oynanır.
+- Sonuç: `cc/` (önişlemci, tipli ayrıştırıcı, kod üreteci, bağlayıcı; struct, union, enum, switch, long, göstergeler), `lib/` (crt0, rt, libc16: printf, malloc, string, yazılım çarpma/bölme). `cc --hedef bios` ile BIOS üzerinde çalışan programlar; `yilan.c` VGA ekranda klavyeyle oynanır. Soft-float ve self-host yok. Ayrıntı: `docs/cc16.md`.
 
-### Faz 9 — Gerçek kartlar
+### Faz 9 — Gerçek kartlar 🔧 araçlar hazır, kartlar kurulacak
 - Sıra Faz 4 ile aynı; her kart önce breadboard, sonra PCB. Kendi EEPROM programlayıcımız (Arduino + 74HC595) ilk iş.
 - Bitti ölçütü: gerçek kart, simülasyonun geçtiği aynı test programlarını geçer (UART üzerinden sonuç karşılaştırması).
+- Sonuç: Flash programlayıcı (Arduino Nano + 2 × 74HC595, `programlayici/`, `yaz.py`), mikrokod ve ALU ROM imajları (`roms/`), şemadan statik zamanlama analizi (`npm run cpu16 -- zamanlama [--anakart]`: ilk hedef **1 MHz CPU**, 8 MHz osilatör, UART 28 800 baud; video kartının piksel yolunda birkaç 74AC), kart testi (`npm run cpu16 -- kart-testi`: gerçek kart UART üzerinden simülatörle karşılaştırılır). Bitti ölçütü kartlar kurulup kart testi geçince sağlanır. Ayrıntı: `docs/uretim.md`.
 
-### Faz 10 — Deney seti paketi
+### Faz 10 — Deney seti paketi ✅ 2026-10-11 (rehberler)
 - Çıktı: deney başına rehber (malzeme listesi, şema, adımlar, beklenen sonuç, simülatör sahnesi), BOM, sorun giderme.
 - Bitti ölçütü: biri sıfırdan rehberi takip edip 1. deneyden yılan oyununa ulaşabilir.
+- Sonuç: `kit/` 13 deney rehberi; malzeme ve bacak bacak bağlantı tabloları kart tanımlarından üretilir (`npm run cpu16 -- kit`, testler güncelliğini denetler). BIOS'tan önceki deneylerin deneme programları (`kit/programlar/`) Flash'tan çalışır ve simülatörde `machine --rom [--led]` ile denenir. Bitti ölçütünün ikinci yarısı (biri sıfırdan kurup yılana ulaşır) gerçek kurulumla sınanacak.
 
 ## Depo düzeni
 
 ```
 cpu16/
-  docs/       spec.md, roadmap.md, kararlar
-  emu/        referans emülatör (Faz 1)
-  asm/        as16 (Faz 1)
-  microcode/  mikrokod kaynakları + derleyici (Faz 2)
-  parts/      74HC kapı/transistör modelleri (Faz 3)
-  hw/         KiCad projeleri, kart başına klasör (Faz 4, 6, 9)
-  firmware/   BIOS, bootloader (Faz 7)
-  cc/ libc/   C derleyicisi ve kütüphane (Faz 8)
-  kit/        deney rehberleri (Faz 10)
+  docs/          spec, yol haritası, mikromimari, parçalar, kartlar, anakart, BIOS, cc16, üretim
+  emu/           referans emülatör (Faz 1) ve anakart modeli Machine (Faz 6)
+  asm/           as16 assembler (Faz 1)
+  micro/         mikrokod kaynağı, mikrokod derleyicisi, saat döngüsü modeli (Faz 2)
+  chips/         74HC parça kütüphanesi: kapı modeli, transistör açılımı, KiCad sembolü (Faz 3)
+  board/         kartlar kod olarak: CPU, saat, bellek, önbellek, G/Ç, video, programlayıcı;
+                 ERC, zamanlama analizi, KiCad çıktısı (Faz 4, 6, 9)
+  kicad/         üretilen KiCad şemaları ve BOM'lar, kart başına klasör
+  roms/          mikrokod ve ALU Flash imajları
+  bios/          BIOS, önyükleyici, kart testi, örnek programlar (Faz 7)
+  video/         karakter ROM'u (8 × 16 font)
+  cc/ lib/       cc16 C derleyicisi; crt0, rt, libc16 (Faz 8)
+  programlayici/ Arduino Flash programlayıcısı ve yaz.py (Faz 9)
+  kit/           deney rehberleri ve deneme programları (Faz 10)
+  programs/      örnek assembly programları
+  tools/         npm run cpu16 komutları
+  tests/         vitest testleri
+src/cpu16/       Silikon3D içindeki CPU16 bölümleri: tezgâh, Web IDE (anakart + BIOS), Web Serial
 ```
 
-Silikon3D uygulama kodu (`src/`) bu klasörden ayrıdır; 3D entegrasyonu Faz 5'te yapılır.
+Silikon3D'nin 3D kart görünümü `src/board3d/` altındadır; CPU16 kodunu (`cpu16/`) doğrudan kullanır.
