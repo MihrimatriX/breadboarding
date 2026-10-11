@@ -1,6 +1,6 @@
-# Silikon3D
+# breadboarding
 
-Tarayıcıda çalışan, **transistör seviyesinde** ve **3D** bir CPU die simülatörü.
+**Silikon3D**: tarayıcıda çalışan, **transistör seviyesinde** ve **3D** bir CPU die simülatörü.
 [visual6502.org](http://www.visual6502.org/JSSim/expert.html)'un yaptığını yapar
 (gerçek çip yerleşimi, canlı akan sinyaller, tıklayıp ölçme), ama katmanları
 üç boyutta, ayrılabilir ve gezilebilir şekilde gösterir.
@@ -11,13 +11,15 @@ işlemcimizi koymak (bkz. [Yol haritası](#yol-haritası)).
 ## Çalıştırma
 
 ```bash
+git clone https://github.com/MihrimatriX/breadboarding
+cd breadboarding
 npm install
 npm run dev        # http://localhost:5173
 npm test           # simülasyon + assembler testleri
 npm run build      # dist/ altına statik site
 ```
 
-Node 20+ gerekir. `public/chips/mos6502/chip.json` depoda hazır gelir;
+Node 22 önerilir (`.nvmrc`), 20+ çalışır. Her push ve PR'da GitHub Actions testleri ve derlemeyi koşar. `public/chips/mos6502/chip.json` depoda hazır gelir;
 yeniden üretmek için `npm run import:6502`.
 
 ## Neler var
@@ -99,6 +101,11 @@ olduğunu kontrol eder. Motor Node'da saniyede yaklaşık 12.000 yarım çevrim 
 5. **Performans.** Büyük çiplerde motoru Rust + WASM'a taşı, geometriyi LOD ile böl.
 6. **Video modu.** Kamera yolu kaydı ve sabit FPS ile kare kare dışa aktarma
    (kanal için 21:9 çekimler).
+
+## Katkı ve istekler
+
+Yeni özellik ya da hata için GitHub'da **Issues > New issue** altındaki
+"Özellik isteği" veya "Hata bildirimi" şablonunu kullan.
 
 ## Lisans notu
 
