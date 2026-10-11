@@ -18,14 +18,16 @@ akım çekmez. 74HC00 dört NAND = 16 transistördür (aşağıdaki tablo kütü
 ## Kurulum adımları
 
 1. 74HC00'ü tak, VCC (14) ve GND (7), 100 nF.
-2. 1A ve 1B'yi iki anahtara (10 kΩ çekme direnciyle), 1Y'yi gösterge modülünün bir LED'ine bağla.
+2. 1A ve 1B'yi iki anahtara (10 kΩ çekme direnciyle, bkz. [çekme dirençleri](led-ve-direnc.md#çekme-dirençleri-pull-up-pull-down)),
+   1Y'yi gösterge modülünün bir LED'ine bağla.
    Doğruluk tablosunu doldur.
 3. Kalan üç kapıyla NOT (iki girişi birleştir), AND (NAND + NOT) ve OR (girişleri ters çevrilmiş NAND)
    kur. Kullanmadığın girişleri GND'ye bağla.
 4. İsteğe bağlı, transistörle NAND: 2 × BS250 (P-MOSFET) paralel VCC'den çıkışa, 2 × 2N7000
    (N-MOSFET) seri çıkıştan GND'ye; kapılar girişlere, çıkışa 100 kΩ yük ve LED sürmek için 74HC04.
 5. Yüzen giriş deneyi: 1A'yı boşta bırak, parmağını yaklaştır; çıkışın rastgele değiştiğini ve
-   entegrenin akımının arttığını multimetreyle gör. Sonra girişi bağla.
+   entegrenin akımının arttığını multimetreyle gör. Sonra girişi bağla
+   ([neden olur](led-ve-direnc.md#çekme-dirençleri-pull-up-pull-down)).
 
 ## Test: beklenen sonuç
 
