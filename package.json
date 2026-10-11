@@ -11,7 +11,8 @@
     "test": "vitest run",
     "typecheck": "tsc -b --noEmit",
     "import:6502": "node scripts/import-visual6502.mjs",
-    "cpu16": "node --experimental-strip-types --no-warnings cpu16/tools/cli.ts"
+    "cpu16": "node --experimental-strip-types --no-warnings cpu16/tools/cli.ts",
+    "hesap8": "node --experimental-strip-types --no-warnings hesap8/arac.ts"
   },
   "dependencies": {
     "@react-three/drei": "9.114.0",

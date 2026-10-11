@@ -3,6 +3,9 @@
 
 export type IslemKodu = 0 | 1 | 2 | 3;
 
+/** Bir deneme: A, B ve işlem anahtarlarının konumu */
+export type Durum = [a: number, b: number, op: IslemKodu];
+
 export interface Gorunum {
   /** göstergelerde görünen metin: sönük hane boşluk, eksi işareti "-" */
   a: string;
@@ -32,4 +35,11 @@ export function beklenen(a: number, b: number, op: IslemKodu): Gorunum {
     kalan: r.kalan === null ? "   " : hane(r.kalan, 3),
     hata: r.hata,
   };
+}
+
+/** Uç durumlar + yayılmış 2000 örnek */
+export function* ornekDurumlar(): Generator<Durum> {
+  const uc = [0, 1, 2, 7, 9, 10, 15, 16, 99, 100, 127, 128, 199, 200, 254, 255];
+  for (const op of [0, 1, 2, 3] as IslemKodu[]) for (const a of uc) for (const b of uc) yield [a, b, op];
+  for (let i = 0; i < 2000; i++) yield [(i * 97 + 13) & 255, (i * 31 + 7) & 255, (i & 3) as IslemKodu];
 }

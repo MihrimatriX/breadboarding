@@ -319,3 +319,17 @@ function gosterge(b: Board, ad: GrupAdi, baslik: string, ag: BcdAgi, ltN: Net, s
 export function hesapErc(k: HesapKarti): string[] {
   return erc(k.board);
 }
+
+/** KiCad şemasının sayfaları (tek sayfaya sığmaz): her sayfa bir ya da iki blok */
+export const HESAP_SAYFALARI: { name: string; file: string; blocks: string[] }[] = [
+  { name: "Anahtarlar, işlem seçimi, besleme", file: "hesap-anahtarlar.kicad_sch", blocks: ["Anahtarlar", "Besleme ve arka panel"] },
+  { name: "Toplama ve çıkarma", file: "hesap-toplama.kicad_sch", blocks: ["Toplama ve çıkarma"] },
+  { name: "Çarpma (8 × 8 dizi çarpıcı)", file: "hesap-carpma.kicad_sch", blocks: ["Çarpma"] },
+  { name: "Bölme (geri yüklemeli, 8 basamak)", file: "hesap-bolme.kicad_sch", blocks: ["Bölme"] },
+  { name: "Sonuç seçici", file: "hesap-secici.kicad_sch", blocks: ["Sonuç seçici"] },
+  { name: "Onluğa çevirme: A ve B", file: "hesap-onluk-ab.kicad_sch", blocks: ["Onluğa çevirme: A", "Onluğa çevirme: B"] },
+  { name: "Onluğa çevirme: sonuç (16 bit)", file: "hesap-onluk-sonuc.kicad_sch", blocks: ["Onluğa çevirme: sonuç"] },
+  { name: "Onluğa çevirme: kalan", file: "hesap-onluk-kalan.kicad_sch", blocks: ["Onluğa çevirme: kalan"] },
+  { name: "Göstergeler: A ve B", file: "hesap-gosterge-ab.kicad_sch", blocks: ["Gösterge: A", "Gösterge: B"] },
+  { name: "Göstergeler: sonuç ve kalan", file: "hesap-gosterge-sonuc.kicad_sch", blocks: ["Gösterge: Sonuç", "Gösterge: Kalan"] },
+];
