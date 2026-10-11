@@ -5,6 +5,7 @@
 //   board kicad                 cpu16/kicad/<kart>/ şemaları + BOM'ları yeniden üret
 //   roms                        cpu16/roms/ altındaki Flash imajlarını (mikrokod, ALU) yeniden üret
 //   zamanlama [--tip] [--yol N] şemadan statik zamanlama analizi: en uzun yollar, en yüksek saat hızı
+//   zamanlama --anakart [--tip] bütün anakart (6 kart, 5 saat alanı)
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { romFiles } from "../board/roms.ts";
@@ -13,7 +14,7 @@ import { CLOCK_INPUTS } from "../board/clock-card.ts";
 import { buildComputerBoard } from "../board/computer.ts";
 import { KICAD_CARDS, writeKicadFiles } from "../board/kicad-files.ts";
 import { raporMetni, zamanlamaAnalizi } from "../board/zamanlama.ts";
-import { buildFullMachineBoard } from "../board/machine-board.ts";
+import { anakartZamanlamasi, buildFullMachineBoard } from "../board/machine-board.ts";
 import { ChipBench } from "../chips/bench.ts";
 import { toTransistors } from "../chips/cmos.ts";
 import { PASSIVES } from "../board/passives.ts";
@@ -69,6 +70,10 @@ else if (cmd === "roms") {
     writeFileSync(f.path, f.content);
     console.log(f.path);
   }
+}
+else if (cmd === "zamanlama" && rest.includes("--anakart")) {
+  const kose = rest.includes("--tip") ? "tip" : "maks";
+  console.log(raporMetni(anakartZamanlamasi(kose), Number(opt("--yol") ?? 3)));
 }
 else if (cmd === "zamanlama") {
   const { board } = buildComputerBoard();

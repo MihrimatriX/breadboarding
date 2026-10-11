@@ -79,6 +79,13 @@ export const GECIKME = {
   "AS6C4008.A": [55, 55], "AS6C4008.OE": [25, 25],
 } satisfies Record<string, D>;
 type GKey = keyof typeof GECIKME;
+
+/**
+ * 74AC ailesi (aynı bacak düzeni, 5 V): gecikmeler 74HC'ninkinin [tipik × 0,7, en kötü × 0,5]'i
+ * alınır. Veri sayfalarındaki AC değerlerinden (ör. 74AC08 en kötü 8,5 ns, 74AC161 CP→Q 9,5 ns)
+ * daha kötümserdir; analiz bu yüzden güvenli taraftadır.
+ */
+export const AC_ORANI: D = [0.7, 0.5];
 const g = (k: GKey): D => GECIKME[k];
 
 function quad(part: GKey, yon: Yon, ins: string[], units: number, kontrol?: 0 | 1): Model {
@@ -330,6 +337,19 @@ export function okumaSuruculeri(b: Board, kartlar: string[]): KapaliYay {
   };
 }
 
+/**
+ * Veriyolundan (DE / DO) kartın birleşimsel mantığına giren yaylar. Çevre kartlarında veriyolu
+ * verisi yalnızca yazma darbesinde bir register'a ya da sayaca alınır (asenkron yükleme dahil);
+ * okuma döngüsünde bu yollar duyarsızdır, çünkü okuma ile yazma aynı döngüde olmaz. Register'ın
+ * kendi kurulum denetimi (yazma darbesinin sonu) ardışık eleman olarak kalır.
+ */
+export function veriyoluGirisleri(b: Board, kartlar: string[]): KapaliYay {
+  return {
+    neden: `${kartlar.join(", ")} ${kartlar.length > 1 ? "kartlarında" : "kartında"} veriyolundan giren yollar: veri yalnızca yazma darbesinde alınır`,
+    yay: (ch, from) => kartlar.includes(ch.card) && ch.nets[from] !== undefined && /^D[EO]\d+$/.test(b.netName(ch.nets[from])),
+  };
+}
+
 export interface ZamanlamaRaporu {
   kose: Kose;
   kokler: KokRaporu[];
@@ -374,6 +394,7 @@ export function zamanlamaAnalizi(
   const seqs: { ch: ChipInstance; s: Ardisik }[] = [];
   const gates: { ch: ChipInstance; ins: string[]; out: string; kontrol: 0 | 1 }[] = [];
   const kapali = (opts.kapali ?? []).map((k) => ({ neden: k.neden, sayi: 0 }));
+  const aile = (ch: ChipInstance, d: D): D => (ch.aile === "AC" ? [d[0] * AC_ORANI[0], d[1] * AC_ORANI[1]] : d);
   for (const ch of b.chips) {
     const m = model(ch.def.part);
     if (!m) {
@@ -390,9 +411,10 @@ export function zamanlamaAnalizi(
         continue;
       }
       if (!out.has(src)) out.set(src, []);
-      out.get(src)!.push({ ch, from: a.from, to: a.to, src, dst, d: a.d, yon: a.yon });
+      out.get(src)!.push({ ch, from: a.from, to: a.to, src, dst, d: aile(ch, a.d), yon: a.yon });
     }
-    for (const s of m.seq) {
+    for (const s0 of m.seq) {
+      const s = ch.aile === "AC" ? { ...s0, clkq: aile(ch, s0.clkq), setup: aile(ch, s0.setup) } : s0;
       // kapatılan saat → Q yayları (ör. okuma sırasında veriyolunu süren çıkış register'ı)
       const q = s.q.filter((qp) => {
         const kp = (opts.kapali ?? []).findIndex((k) => k.yay(ch, s.clock, qp));

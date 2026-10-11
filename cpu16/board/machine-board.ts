@@ -12,9 +12,10 @@ import { buildCacheCard, type CacheCard } from "./cache-card.ts";
 import { buildClockCard, type ClockCard } from "./clock-card.ts";
 import type { GateState } from "./computer.ts";
 import { buildCpuCard, type CpuCard } from "./cpu-card.ts";
-import { buildIoCard } from "./io-card.ts";
+import { buildIoCard, ioCardYanlisYollar } from "./io-card.ts";
 import { buildMemCard, type MemCard } from "./mem-card.ts";
 import { buildVideoCard } from "./video-card.ts";
+import { veriyoluGirisleri, zamanlamaAnalizi, type KapaliYay, type Kose, type SaatKoku } from "./zamanlama.ts";
 
 /** Ek kart kurucusu (ör. G/Ç kartı, video kartı): aynı Board'a kendi kartını ekler */
 export type CardBuilder = (b: Board) => unknown;
@@ -39,6 +40,26 @@ export function buildMachineBoard(o: MachineBoardOptions = {}) {
 /** Bütün anakart: CPU, saat, bellek, önbellek, G/Ç ve video kartları (şema, BOM, KiCad, zamanlama) */
 export function buildFullMachineBoard() {
   return buildMachineBoard({ cards: [buildIoCard, buildVideoCard] });
+}
+
+/** Anakartın saat kökleri (zamanlama analizi) */
+export const ANAKART_SAATLERI: SaatKoku[] = [
+  { net: "CLK", ad: "CPU saati" },
+  { net: "OSC", ad: "osilatör (CPU × 8)" },
+  { net: "TCLK", ad: "TCLK (bekleme turları dahil CPU zamanı)" },
+  { net: "PS2_CLK", ad: "PS/2 saati (klavye, ≤ 16,7 kHz)" },
+  { net: "VID_OSC", ad: "piksel saati (25,175 MHz)" },
+];
+
+/** Anakartta mantıksal olarak duyarsız yollar (bkz. zamanlama.ts KapaliYay) */
+export function anakartYanlisYollar(b: Board): KapaliYay[] {
+  return [...ioCardYanlisYollar(b), veriyoluGirisleri(b, ["gc", "video"])];
+}
+
+/** Bütün anakartın statik zamanlama analizi */
+export function anakartZamanlamasi(kose: Kose = "maks") {
+  const { board } = buildFullMachineBoard();
+  return zamanlamaAnalizi(board, { kokler: ANAKART_SAATLERI, kose, kapali: anakartYanlisYollar(board) });
 }
 
 /** Reset sırasında osilatör periyodu: önbellek etiket temizleme sayacı 1024 satırı dolaşmalı */

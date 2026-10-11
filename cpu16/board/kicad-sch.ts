@@ -5,7 +5,7 @@
 
 import { kicadPinName, symbolDef, symbolLayout } from "../chips/kicad.ts";
 import type { ChipDef, PinDef } from "../chips/types.ts";
-import type { Board } from "./board.ts";
+import { partValue, type Board } from "./board.ts";
 import { BACKPLANE, PASSIVES, type SymbolOnly } from "./passives.ts";
 
 const G = 2.54;
@@ -36,6 +36,8 @@ export function kicadNetName(name: string): string {
 interface Placed {
   ref: string;
   def: SymbolOnly;
+  /** şemadaki değer (74AC ailesi için farklı) */
+  value?: string;
   footprint: string;
   nets: Record<string, number>; // pin numarası → net
   role: string;
@@ -57,7 +59,7 @@ export function cardSchematic(board: Board, card: string, o: SchematicOptions): 
   for (const ci of board.chips.filter((c) => c.card === card)) {
     const nets: Record<string, number> = {};
     for (const p of ci.def.pins) if (ci.nets[p.name] !== undefined) nets[String(p.num)] = ci.nets[p.name];
-    placed.push({ ref: ci.ref, def: ci.def, footprint: ci.footprint, nets, role: ci.role });
+    placed.push({ ref: ci.ref, def: ci.def, value: partValue(ci), footprint: ci.footprint, nets, role: ci.role });
   }
   for (const p of board.passives.filter((x) => x.card === card)) {
     placed.push({ ref: p.ref, def: PASSIVES[p.part], footprint: PASSIVES[p.part].footprint, nets: p.pins, role: p.role });
@@ -151,7 +153,7 @@ function symbolInstance(p: Placed, x: number, y: number, h: number, uuid: () => 
     `  (symbol (lib_id ${q(`cpu16:${def.part}`)}) (at ${mm(x)} ${mm(y)} 0) (unit 1)`,
     `    (in_bom yes) (on_board yes) (dnp no) (uuid ${uuid()})`,
     `    (property "Reference" ${q(p.ref)} (at ${mm(x)} ${mm(y - h - 1.27)} 0) (effects (font (size 1.27 1.27))))`,
-    `    (property "Value" ${q(def.part)} (at ${mm(x)} ${mm(y + h + 1.27)} 0) (effects (font (size 1.27 1.27))))`,
+    `    (property "Value" ${q(p.value ?? def.part)} (at ${mm(x)} ${mm(y + h + 1.27)} 0) (effects (font (size 1.27 1.27))))`,
     `    (property "Footprint" ${q(p.footprint)} (at ${mm(x)} ${mm(y)} 0) (effects (font (size 1.27 1.27)) hide))`,
     `    (property "Datasheet" "" (at ${mm(x)} ${mm(y)} 0) (effects (font (size 1.27 1.27)) hide))`,
     `    (property "Gorev" ${q(p.role)} (at ${mm(x)} ${mm(y)} 0) (effects (font (size 1.27 1.27)) hide))`,
@@ -182,7 +184,7 @@ export function bomCsv(board: Board, cards: string[]): string {
     r.cards.add(card);
     rows.set(part, r);
   };
-  for (const ci of board.chips) if (cards.includes(ci.card)) add(ci.def.part, ci.def.title, ci.footprint, ci.ref, ci.card);
+  for (const ci of board.chips) if (cards.includes(ci.card)) add(partValue(ci), ci.def.title, ci.footprint, ci.ref, ci.card);
   for (const p of board.passives) if (cards.includes(p.card)) add(p.part, PASSIVES[p.part].title, PASSIVES[p.part].footprint, p.ref, p.card);
   const lines = ["Parça;Adet;Açıklama;Footprint;Kart;Referanslar"];
   for (const r of [...rows.values()].sort((a, b) => a.part.localeCompare(b.part))) {
