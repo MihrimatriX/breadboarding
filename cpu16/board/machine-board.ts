@@ -49,6 +49,7 @@ export const ANAKART_SAATLERI: SaatKoku[] = [
   { net: "TCLK", ad: "TCLK (bekleme turları dahil CPU zamanı)" },
   { net: "PS2_CLK", ad: "PS/2 saati (klavye, ≤ 16,7 kHz)" },
   { net: "VID_OSC", ad: "piksel saati (25,175 MHz)" },
+  { net: "V_H2", ad: "karakter saati (piksel / 8)" },
 ];
 
 /** Anakartta mantıksal olarak duyarsız yollar (bkz. zamanlama.ts KapaliYay) */

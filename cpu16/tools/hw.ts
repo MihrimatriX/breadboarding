@@ -5,7 +5,7 @@
 //   board kicad                 cpu16/kicad/<kart>/ şemaları + BOM'ları yeniden üret
 //   roms                        cpu16/roms/ altındaki Flash imajlarını (mikrokod, ALU) yeniden üret
 //   zamanlama [--tip] [--yol N] şemadan statik zamanlama analizi: en uzun yollar, en yüksek saat hızı
-//   zamanlama --anakart [--tip] bütün anakart (6 kart, 5 saat alanı)
+//   zamanlama --anakart [--tip] bütün anakart (6 kart, 6 saat kökü)
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { romFiles } from "../board/roms.ts";

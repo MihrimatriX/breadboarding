@@ -143,8 +143,8 @@ değişen bir durum k ≥ E döngüsündeki okumada (veri k + 1'de alınır) ve 
 
 ### Statik zamanlama (piksel saati 25,175 MHz)
 
-`npm run cpu16 -- zamanlama --anakart` (en kötü) ve `... --anakart --tip`; kök VID_OSC, hedef
-periyot 39,7 ns. Önceki tasarımda yatay ve dikey sayaçlar, çözümleme ve karakter sınırı saati
+`npm run cpu16 -- zamanlama --anakart` (en kötü) ve `... --anakart --tip`; kökler VID_OSC (hedef
+periyot 39,7 ns) ve karakter saati V_H2 (aşağıda). Önceki tasarımda yatay ve dikey sayaçlar, çözümleme ve karakter sınırı saati
 piksel saatindeydi; en uzun yol yatay sayaçtan satır sonu çözümüyle dikey sayacın ~PE'sine
 gidiyordu (74HC161 → 74HC08 → 74HC10 → 74HC04 → 74HC10 → kurulum).
 
@@ -171,7 +171,7 @@ gider (register'a girmez). Piksel çıkışı (Q7, en geç 35 ns) ile renk / kar
 çıkışı (~LD7 + 74HC175 / 74HC574, en geç 52 ns) arasında karakter sınırında ≤ 17 ns kayma kalır;
 eski tasarımdaki gibi.
 
-**Karakter saati** (kök H2, `tests/anakart-gc.test.ts` aynı analizle denetler; hedef 317,8 ns =
+**Karakter saati** (kök V_H2; `tests/anakart-gc.test.ts` ve `tests/zamanlama.test.ts` denetler; hedef 317,8 ns =
 3,15 MHz): en kötü 262 ns → 3,82 MHz, tipik 104 ns → 9,62 MHz. En uzun yol satır başı saatinin
 kapılamasıdır (dikey sayaç → VBL → ~ENRS, H2'nin yarım periyodunda: 131 ns ≤ 159 ns); tutma payı
 (tipik) 36 ns. Açıkken değişen izin yalnızca OPW'dir: VRAM ~OE'sini (H2 ∧ OPW) ve ~WE'yi kapılar,
