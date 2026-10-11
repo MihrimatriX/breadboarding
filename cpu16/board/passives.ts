@@ -182,7 +182,14 @@ export const PASSIVES: Record<string, SymbolOnly> = {
     title: "7 segment gösterge, 0,56\" tek hane, ortak katot (ör. 5161AS)",
     pins: "e d CC c DP b a CC2 f g".split(" ").map((name, i) => pas(i + 1, name)),
     footprint: "Display_7Segment:7SegmentLED_LTS6760_LTS6780",
-    usage: "Hesap makinesinin onluk haneleri; ortak katot (3 ve 8) GND'ye, segmentler 330 Ω üzerinden 74HC4511'e",
+    usage: "Hesap makinesinin onluk haneleri; ortak katot (3 ve 8) GND'ye, segmentler 470 Ω dizi üzerinden 74HC4511'e",
+  },
+  CONN_5V: {
+    part: "CONN_5V",
+    title: "5 V besleme girişi (2 pin başlık: 1 = +5 V, 2 = GND)",
+    pins: [pas(1, "+5V"), pas(2, "GND")],
+    footprint: "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
+    usage: "Tek başına çalışan kartın beslemesi (ör. 5 V 1 A USB adaptörü ya da laboratuvar güç kaynağı)",
   },
   RN_470_ISO_8: {
     part: "RN_470_ISO_8",

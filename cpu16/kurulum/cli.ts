@@ -131,7 +131,9 @@ export async function kurulumMain(args: string[]): Promise<number> {
     return 1;
   }
   const secim = args.find((a, k) => !a.startsWith("-") && args[k - 1] !== "-o") ?? "hepsi";
-  const kartlar = secim === "hepsi" ? KURULUM_KARTLARI : KURULUM_KARTLARI.filter((k) => k.kart === secim);
+  // "hepsi" = bilgisayarın kartları; bağımsız aletler (8 bit hesap makinesi) adıyla istenir
+  const bilgisayar = KURULUM_KARTLARI.filter((k) => !k.urun);
+  const kartlar = secim === "hepsi" ? bilgisayar : KURULUM_KARTLARI.filter((k) => k.kart === secim);
   if (!kartlar.length) {
     console.error(`bilinmeyen kart: ${secim} (kartlar: ${KURULUM_KARTLARI.map((k) => k.kart).join(", ")}, hepsi)`);
     return 1;
@@ -155,7 +157,7 @@ export async function kurulumMain(args: string[]): Promise<number> {
     const u: Uretilen = { kart: kk.kart, baslik: plan.baslik, plan, html };
     if (!args.includes("--html")) {
       u.pdf = join(dir, `${kk.kart}-kurulum.pdf`);
-      pdfIs.push({ html, pdf: u.pdf, altbilgi: `CPU16 · ${plan.baslik} · kurulum belgesi · ${tarih}` });
+      pdfIs.push({ html, pdf: u.pdf, altbilgi: `${kk.urun ? "" : "CPU16 · "}${plan.baslik} · kurulum belgesi · ${tarih}` });
     }
     if (sema) {
       execFileSync("kicad-cli", ["sch", "export", "pdf", "-o", sema, sch], { stdio: ["ignore", "ignore", "inherit"] });
@@ -168,7 +170,7 @@ export async function kurulumMain(args: string[]): Promise<number> {
   const kitap: { html: string; pdf?: string } = { html: join(out, "kurulum-el-kitabi.html") };
   if (secim === "hepsi") {
     mkdirSync(out, { recursive: true });
-    const planlar = KURULUM_KARTLARI.map((k) => ({ kk: k, plan: veri.plan(k.kart) }));
+    const planlar = bilgisayar.map((k) => ({ kk: k, plan: veri.plan(k.kart) }));
     writeFileSync(kitap.html, elKitabi(planlar, { tarih }));
     console.log(`${kitap.html}: kurulum el kitabı`);
     if (!args.includes("--html")) {
