@@ -1,0 +1,17 @@
+Parça;Adet;Açıklama;Footprint;Kart;Referanslar
+62256;4;32 KB statik RAM (32K × 8);Package_DIP:DIP-28_W15.24mm;onbellek;U155 U156 U161 U162
+74HC00;1;4 × 2 girişli NAND;Package_DIP:DIP-14_W7.62mm;onbellek;U202
+74HC02;2;4 × 2 girişli NOR;Package_DIP:DIP-14_W7.62mm;onbellek;U207 U208
+74HC04;1;6 × NOT (evirici);Package_DIP:DIP-14_W7.62mm;onbellek;U224
+74HC08;5;4 × 2 girişli AND;Package_DIP:DIP-14_W7.62mm;onbellek;U183 U184 U185 U186 U187
+74HC139;1;2 × (2'den 4'e kod çözücü);Package_DIP:DIP-16_W7.62mm;onbellek;U144
+74HC157;3;4 × (2'den 1'e seçici);Package_DIP:DIP-16_W7.62mm;onbellek;U152 U153 U154
+74HC161;3;4 bit senkron ikili sayıcı (asenkron reset);Package_DIP:DIP-16_W7.62mm;onbellek;U149 U150 U151
+74HC32;3;4 × 2 girişli OR;Package_DIP:DIP-14_W7.62mm;onbellek;U194 U195 U196
+74HC541;3;8 bit üç durumlu tampon (iki aktif düşük OE);Package_DIP:DIP-20_W7.62mm;onbellek;U157 U158 U167
+74HC590;4;8 bit ikili sayıcı + çıkış register'ı (üç durumlu çıkış);Package_DIP:DIP-16_W7.62mm;onbellek;U163 U164 U165 U166
+74HC688;3;8 bit eşitlik karşılaştırıcı;Package_DIP:DIP-20_W7.62mm;onbellek;U143 U159 U160
+74HC74;4;2 × D flip-flop (asenkron preset ve clear);Package_DIP:DIP-14_W7.62mm;onbellek;U145 U146 U147 U148
+BACKPLANE_2x32;1;Arka panel konnektörü 2 × 32 (2,54 mm);Connector_PinHeader_2.54mm:PinHeader_2x32_P2.54mm_Vertical;onbellek;J4
+C_100N;37;100 nF seramik kondansatör (dekuplaj);Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm;onbellek;C195 C196 C197 C198 C199 C200 C201 C202 C203 C204 C205 C206 C207 C208 C209 C210 C211 C212 C213 C214 C215 C216 C217 C218 C219 C220 C221 C222 C223 C224 C225 C226 C227 C228 C229 C230 C231
+C_100U;1;100 µF elektrolitik kondansatör (kart girişi);Capacitor_THT:CP_Radial_D6.3mm_P2.50mm;onbellek;C194
