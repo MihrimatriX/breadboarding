@@ -15,12 +15,15 @@ import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { chipInside, type ChipInside } from "../../cpu16/board/inside";
-import type { ChipPlace, PassiveKind, PassivePlace } from "../../cpu16/board/layout";
+import type { ChipPlace } from "../../cpu16/board/layout";
 import { BACKPLANE } from "../../cpu16/board/passives";
 import type { Gate } from "../../cpu16/chips/logic";
 import { LEVEL_COLOR } from "./levels";
+import { KameraApi } from "./KameraApi";
+import { Passives3D } from "./Passives3D";
 import { updateScreenCanvas, screenCanvas } from "./screenCanvas";
 import { boardLayoutData, boardModel, findPart, liveNets, netEnds, useKart } from "./store";
+import { KurulumSahne } from "./KurulumSahne";
 import { allWires, busRouter, netWires, partWires, wireGeometry, type Endpoint, type WireEdge } from "./wires";
 
 /** 1 dünya birimi = 10 mm */
@@ -348,149 +351,16 @@ function Chips() {
 
 // ---------------------------------------------------------------- pasif elemanlar
 
-const PASSIVE_COLOR: Record<PassiveKind, string> = {
-  direnc: "#c9b48c", kondansator: "#c98a3a", elektrolitik: "#22406e", led: "#3a2a2a", dizi: "#202226",
-  konnektor: "#17191c", osilator: "#a7b0ba", buton: "#2a2d33", anahtar: "#2b5fb0", pot: "#2f68c2", modul: "#1f4f6b",
-};
-const ROUND = new Set<PassiveKind>(["elektrolitik", "led"]);
-
-/** LED'in yandığı net: anot netini süren çip yoksa, anoda bağlı direncin öbür ucu (sinyal → R → LED) */
-function ledSignal(p: PassivePlace, ends: Map<number, Endpoint[]>): number {
-  const anode = p.pins.find((q) => q.num === 1)?.net ?? -1;
-  if (anode < 0) return -1;
-  const list = ends.get(anode) ?? [];
-  if (list.some((e) => e.kind === "chip")) return anode;
-  for (const e of list) {
-    if (e.kind !== "passive" || e.ref === p.ref) continue;
-    const r = findPart(e.ref)?.passive;
-    if (r && r.pins.length === 2) return r.pins.find((q) => q.num !== e.num)?.net ?? -1;
-  }
-  return anode;
-}
-
+/** Pasifler (Passives3D.tsx: gövdeler, bantlar, LED ışığı, seçim) ve kartın üstündeki referans yazıları */
 function Passives() {
   const { lay, w } = useLayoutWorld();
-  const all = lay.passives;
-  const boxes = useMemo(() => all.filter((p) => !ROUND.has(p.kind)), [all]);
-  const rounds = useMemo(() => all.filter((p) => ROUND.has(p.kind)), [all]);
-  const flatPins = useMemo(() => all.flatMap((p) => p.pins.map((pin) => ({ p, pin }))), [all]);
-  const boxRef = useRef<InstancedMesh>(null);
-  const roundRef = useRef<InstancedMesh>(null);
-  const pinRef = useRef<InstancedMesh>(null);
-  const selected = useKart((s) => s.chip);
-  const version = useRef(-1);
-  const leds = useMemo(() => {
-    const ends = netEnds();
-    return rounds.map((p, i) => (p.kind === "led" ? { i, net: ledSignal(p, ends), on: /fault|hata/i.test(p.role) ? "#ff3b3b" : "#4dff6a" } : null)).filter((x) => x !== null);
-  }, [rounds]);
-
-  /** gövdenin dikdörtgeni: eksenel elemanlarda pinler gövdenin dışında */
-  const bodyRect = (p: PassivePlace) => {
-    const inset = p.kind === "direnc" || p.kind === "kondansator" ? 1.1 : 0;
-    return p.vertical ? { x: p.x, y: p.y + inset, w: p.w, h: p.h - 2 * inset } : { x: p.x + inset, y: p.y, w: p.w - 2 * inset, h: p.h };
-  };
-
-  useLayoutEffect(() => {
-    boxes.forEach((p, i) => {
-      const r = bodyRect(p);
-      const [x, z] = w(r.x + r.w / 2, r.y + r.h / 2);
-      const hgt = Math.max(0.12, p.height * S * (p.kind === "konnektor" ? 0.35 : 1));
-      tmpO.position.set(x, hgt / 2 + 0.01, z);
-      tmpO.scale.set(r.w * S, hgt, r.h * S);
-      tmpO.updateMatrix();
-      boxRef.current!.setMatrixAt(i, tmpO.matrix);
-    });
-    rounds.forEach((p, i) => {
-      const [x, z] = w(p.x + p.w / 2, p.y + p.h / 2);
-      const hgt = p.height * S;
-      tmpO.position.set(x, hgt / 2 + 0.01, z);
-      tmpO.scale.set(p.w * S, hgt, p.h * S);
-      tmpO.updateMatrix();
-      roundRef.current!.setMatrixAt(i, tmpO.matrix);
-      roundRef.current!.setColorAt(i, tmpC.set(PASSIVE_COLOR[p.kind]));
-    });
-    flatPins.forEach(({ p, pin }, i) => {
-      const [x, z] = w(pin.x, pin.y);
-      const tall = p.kind === "konnektor" ? p.height * S : 0.16;
-      tmpO.position.set(x, tall / 2, z);
-      tmpO.scale.set(0.07, tall, 0.07);
-      tmpO.updateMatrix();
-      pinRef.current!.setMatrixAt(i, tmpO.matrix);
-      pinRef.current!.setColorAt(i, PIN_COLORS[0]);
-    });
-    for (const m of [boxRef.current, roundRef.current, pinRef.current]) {
-      if (!m) continue;
-      m.instanceMatrix.needsUpdate = true;
-      if (m.instanceColor) m.instanceColor.needsUpdate = true;
-      m.computeBoundingSphere();
-    }
-    version.current = -1;
-  }, [boxes, rounds, flatPins, w]);
-
-  useLayoutEffect(() => {
-    boxes.forEach((p, i) => boxRef.current!.setColorAt(i, tmpC.set(p.ref === selected ? "#5f7bb0" : PASSIVE_COLOR[p.kind])));
-    if (boxRef.current?.instanceColor) boxRef.current.instanceColor.needsUpdate = true;
-  }, [boxes, selected]);
-
-  useFrame(() => {
-    if (version.current === liveNets.version || !liveNets.values) return;
-    version.current = liveNets.version;
-    const v = liveNets.values;
-    flatPins.forEach(({ pin }, i) => pinRef.current!.setColorAt(i, PIN_COLORS[level(v, pin.net)] ?? PIN_COLORS[3]));
-    if (pinRef.current?.instanceColor) pinRef.current.instanceColor.needsUpdate = true;
-    if (roundRef.current && leds.length) {
-      for (const l of leds) roundRef.current.setColorAt(l.i, tmpC.set(level(v, l.net) === 1 ? l.on : "#3a2a2a"));
-      roundRef.current.instanceColor!.needsUpdate = true;
-    }
-  });
-
-  const labels = useMemo<TextItem[]>(() => all.filter((p) => !p.chip && p.kind !== "kondansator").map((p) => {
+  const labels = useMemo<TextItem[]>(() => lay.passives.filter((p) => !p.chip && p.kind !== "kondansator").map((p) => {
     const [x, z] = w(p.x, p.y + p.h + 0.4);
     return { text: p.ref, x, z, w: Math.max(4, p.w) * S, d: 2.6 * S, y: 0.004, color: "#b8c8bd", align: "left" as const };
-  }), [all, w]);
-
-  const pick = (list: PassivePlace[]) => ({
-    onClick: (e: ThreeEvent<MouseEvent>) => {
-      e.stopPropagation();
-      const p = list[e.instanceId ?? -1];
-      if (p) useKart.getState().selectChip(p.ref);
-    },
-    onPointerMove: (e: ThreeEvent<PointerEvent>) => {
-      e.stopPropagation();
-      const p = list[e.instanceId ?? -1];
-      if (p) useKart.setState({ hover: { ref: p.ref, x: e.nativeEvent.clientX, y: e.nativeEvent.clientY } });
-    },
-    onPointerOut: () => useKart.setState({ hover: null }),
-  });
-
+  }), [lay, w]);
   return (
     <group>
-      {boxes.length > 0 && (
-        <instancedMesh ref={boxRef} args={[undefined, undefined, boxes.length]} {...pick(boxes)}>
-          <boxGeometry />
-          <meshStandardMaterial color="#ffffff" roughness={0.6} metalness={0.1} />
-        </instancedMesh>
-      )}
-      {rounds.length > 0 && (
-        <instancedMesh ref={roundRef} args={[undefined, undefined, rounds.length]} {...pick(rounds)}>
-          <cylinderGeometry args={[0.5, 0.5, 1, 18]} />
-          <meshStandardMaterial color="#ffffff" roughness={0.45} metalness={0.15} />
-        </instancedMesh>
-      )}
-      {flatPins.length > 0 && (
-        <instancedMesh
-          ref={pinRef}
-          args={[undefined, undefined, flatPins.length]}
-          onClick={(e) => {
-            e.stopPropagation();
-            const p = flatPins[e.instanceId ?? -1];
-            if (p && p.pin.net > 1) useKart.getState().selectNet(p.pin.net);
-          }}
-        >
-          <boxGeometry />
-          <meshStandardMaterial color="#ffffff" roughness={0.35} metalness={0.6} />
-        </instancedMesh>
-      )}
+      <Passives3D />
       <TextQuads items={labels} cellW={256} cellH={64} font={34} />
     </group>
   );
@@ -822,7 +692,8 @@ function SelectedDie() {
 
 export function BoardScene() {
   const lay = boardLayoutData();
-  const o = overview(lay.width, lay.height);
+  // aynı nesne kalmalı: her yeniden çizimde yeni bir hedef OrbitControls'un hedefini genel bakışa sıfırlardı
+  const o = useMemo(() => overview(lay.width, lay.height), [lay]);
   return (
     <Canvas
       camera={{ position: o.cam.toArray(), fov: 40, near: 0.2, far: 800 }}
@@ -840,10 +711,12 @@ export function BoardScene() {
       <Chips />
       <Passives />
       <Wires />
+      <KurulumSahne />
       <SelectedDie />
       <Monitor />
       <OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI * 0.48} minDistance={1.5} maxDistance={260} target={o.target} />
       <CameraFly />
+      <KameraApi />
     </Canvas>
   );
 }

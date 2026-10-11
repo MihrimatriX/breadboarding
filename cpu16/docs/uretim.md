@@ -206,6 +206,10 @@ osilatörün kenarlarında rastgele hatalar yapar. Uzun breadboard dizilerinde b
 
 ## 5. Kurulum sırası ve her adımın testi
 
+Hangi bacağın nereye gideceği kart başına kurulum belgelerindedir (`npm run cpu16 -- kurulum hepsi`,
+[kurulum.md](kurulum.md)): blok blok numaralı tel listesi, besleme tablosu, çip kartları; PCB'de
+aynı liste bip testi listesidir.
+
 | Adım | Kurulan | Test | Geçti sayılır |
 |---|---|---|---|
 | Deney 1 | Saat ve reset kartı | LED, osiloskop / mantık analizörü | YAVAŞ'ta LED yanıp söner; ADIM'da her basışta tek CPU döngüsü; CLK %50 görev oranlı ve osilatör / 8 |

@@ -3,20 +3,38 @@ import { useApp } from "../state/store";
 import { sim } from "../sim/SimClient";
 import { disassemble } from "../sim/asm6502";
 import { flags, h2, h4 } from "./format";
+import { Tabs, type TabDef } from "./Shell";
+
+type AnalyzerTab = "wave" | "trace";
+const TABS: TabDef<AnalyzerTab>[] = [
+  { id: "wave", label: "Dalga formu" },
+  { id: "trace", label: "İz tablosu" },
+];
 
 /** visual6502 expert'teki iz tablosu + seçilen sinyallerin dalga formu */
 export function LogicAnalyzer() {
-  const [tab, setTab] = useState<"trace" | "wave">("wave");
+  const [tab, setTab] = useState<AnalyzerTab>("wave");
   return (
     <div className="analyzer">
-      <div className="row between">
-        <div className="seg">
-          <button className={tab === "wave" ? "on" : ""} onClick={() => setTab("wave")}>Dalga formu</button>
-          <button className={tab === "trace" ? "on" : ""} onClick={() => setTab("trace")}>İz tablosu</button>
-        </div>
-        <span className="muted small">Ölçtüğün sinyali "Analizöre ekle" ile buraya al.</span>
-      </div>
-      {tab === "wave" ? <Waveforms /> : <TraceTable />}
+      <Tabs tabs={TABS} value={tab} onChange={setTab} label="Mantık analizörü" actions={<Watched />} />
+      <div className="analyzer-body" role="tabpanel">{tab === "wave" ? <Waveforms /> : <TraceTable />}</div>
+    </div>
+  );
+}
+
+/** İzlenen sinyaller: sekme çubuğunun sağında, tıklayınca analizörden çıkar */
+function Watched() {
+  const watch = useApp((s) => s.watch);
+  const index = useApp((s) => s.index);
+  if (watch.length === 0) return <span className="hint-text">Ölçtüğün sinyali "Analizöre ekle" ile buraya al.</span>;
+  return (
+    <div className="row chips" aria-label="İzlenen sinyaller">
+      <span className="hint-text">İzlenen</span>
+      {watch.map((w) => (
+        <button key={w.node} className="chip" onClick={() => { useApp.getState().toggleWatch(w.node); sim.syncWatch(); }} title="Analizörden çıkar">
+          {index?.namesByNode.get(w.node)?.[0] ?? `#${w.node}`} <span aria-hidden="true">✕</span>
+        </button>
+      ))}
     </div>
   );
 }
@@ -55,6 +73,15 @@ function Waveforms() {
   const watch = useApp((s) => s.watch);
   const index = useApp((s) => s.index);
   const canvas = useRef<HTMLCanvasElement>(null);
+  // panel genişliği değişince (yan panel açılıp kapanınca) yeniden çiz
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    const c = canvas.current;
+    if (!c) return;
+    const ro = new ResizeObserver(() => setWidth(c.clientWidth));
+    ro.observe(c);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     const c = canvas.current;
@@ -66,21 +93,21 @@ function Waveforms() {
     g.scale(dpr, dpr);
     g.clearRect(0, 0, w, h);
     const css = getComputedStyle(c);
-    const lane = 26, labelW = 92, n = 128;
+    const lane = 26, labelW = 96, n = 128;
     const step = (w - labelW - 8) / n;
     g.font = `12px ${css.getPropertyValue("--mono")}`;
     // ızgara: her tam çevrim
-    g.strokeStyle = css.getPropertyValue("--grid");
+    g.strokeStyle = css.getPropertyValue("--wave-grid");
     for (let i = 0; i <= n; i += 2) {
       g.beginPath(); g.moveTo(labelW + i * step, 0); g.lineTo(labelW + i * step, h); g.stroke();
     }
     watch.forEach((tr, li) => {
       const y0 = 8 + li * lane, hi = y0 + 2, lo = y0 + lane - 8;
-      g.fillStyle = css.getPropertyValue("--fg");
+      g.fillStyle = css.getPropertyValue("--text");
       g.fillText(index?.namesByNode.get(tr.node)?.[0] ?? `#${tr.node}`, 8, lo);
       const s = tr.samples.slice(-n);
       const x0 = labelW + (n - s.length) * step;
-      g.strokeStyle = css.getPropertyValue("--high");
+      g.strokeStyle = css.getPropertyValue("--accent");
       g.lineWidth = 1.6;
       g.beginPath();
       s.forEach((v, i) => {
@@ -93,23 +120,14 @@ function Waveforms() {
       g.lineWidth = 1;
     });
     if (watch.length === 0) {
-      g.fillStyle = css.getPropertyValue("--muted");
+      g.fillStyle = css.getPropertyValue("--text-muted");
       g.fillText("İzlenen sinyal yok. Die üzerinde bir düğüm seçip \"Analizöre ekle\"ye bas.", 12, 24);
     }
-  }, [watch, index]);
+  }, [watch, index, width]);
 
   return (
     <div className="wave">
       <canvas ref={canvas} style={{ height: Math.max(60, watch.length * 26 + 16) }} />
-      {watch.length > 0 && (
-        <div className="row wrap">
-          {watch.map((w) => (
-            <button key={w.node} className="chip" onClick={() => { useApp.getState().toggleWatch(w.node); sim.syncWatch(); }}>
-              {index?.namesByNode.get(w.node)?.[0] ?? `#${w.node}`} ✕
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

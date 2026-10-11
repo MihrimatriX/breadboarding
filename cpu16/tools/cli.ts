@@ -12,6 +12,7 @@
 //                                               (--rom: BIOS'suz, program EEPROM bank 0'da)
 //   cc   dosya.c [...] [-o x.hex|.bin|.s] [--run] C derle (cc16, ayrıntılar: tools/cc.ts)
 //   kart-testi [--port /dev/ttyUSB0] [--baud N]  gerçek kartı UART üzerinden simülatörle karşılaştır
+//   kurulum [kart|hepsi] [-o dizin] [--html]     kurulum belgeleri: tel listesi, çip kartları, el kitabı (HTML + PDF)
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { assemble } from "../asm/assembler.ts";
@@ -46,6 +47,10 @@ if (cmd === "kit") {
   await import("../kit/cli.ts");
   process.exit(0);
 }
+if (cmd === "kurulum") {
+  const { kurulumMain } = await import("../kurulum/cli.ts");
+  process.exit(await kurulumMain(process.argv.slice(3)));
+}
 if (cmd === "kart-testi") {
   const { kartTestiMain } = await import("./kart-testi.ts");
   process.exit(await kartTestiMain(process.argv.slice(3)));
@@ -58,7 +63,7 @@ const machineCmds: Record<string, (args: string[]) => void | Promise<void>> = {
 if (cmd && cmd in machineCmds) {
   await machineCmds[cmd](process.argv.slice(3));
 } else if (!cmd || !file) {
-  console.log("kullanım: npm run cpu16 -- asm|run|dis|ucode|cc <dosya> [seçenekler]  ·  bios|charrom|machine|kit|kart-testi|zamanlama [seçenekler]");
+  console.log("kullanım: npm run cpu16 -- asm|run|dis|ucode|cc <dosya> [seçenekler]  ·  bios|charrom|machine|kit|kurulum|kart-testi|zamanlama [seçenekler]");
   process.exit(cmd ? 1 : 0);
 } else if (cmd === "cc") {
   process.exitCode = ccMain([file, ...rest]);

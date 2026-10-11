@@ -1,0 +1,347 @@
+/* Kurulum modu paneli. Renkler, aralıklar ve yazı boyları styles.css'teki tasarım belirteçlerinden. */
+
+.kur {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  font-family: var(--body);
+  color: var(--text);
+  min-width: 0;
+}
+
+.kur-ust {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--sp-3);
+}
+.kur-kart {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.kur-kart > span {
+  font-size: var(--fs-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.kur-kart select {
+  width: 100%;
+}
+.kur-izle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-md);
+  color: var(--text-muted);
+}
+
+.kur-not {
+  margin: 0;
+  font-size: var(--fs-md);
+  color: var(--text-muted);
+}
+.kur-not.hata {
+  color: var(--danger);
+}
+
+.kur-ilerleme {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.kur-bar,
+.kur-mini-bar {
+  position: relative;
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.kur-bar > span,
+.kur-mini-bar > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--ok);
+  border-radius: inherit;
+  transition: width 0.25s ease;
+}
+.kur-ilerleme-yazi {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  font-size: var(--fs-md);
+  font-variant-numeric: tabular-nums;
+}
+.kur-ilerleme-ek {
+  color: var(--text-muted);
+}
+
+/* odaktaki tel */
+.kur-tel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+}
+.kur-tel.takildi {
+  border-color: color-mix(in srgb, var(--ok) 55%, transparent);
+}
+.kur-tel-bas {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.kur-tel-id {
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.kur-renk {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  flex: none;
+}
+.kur-renk.kucuk {
+  width: 11px;
+  height: 11px;
+}
+.kur-tel-renk {
+  font-size: var(--fs-md);
+  color: var(--text-muted);
+}
+.kur-rozet {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  background: color-mix(in srgb, var(--ok) 22%, transparent);
+  color: var(--ok);
+}
+.kur-tel-net {
+  font-size: var(--fs-md);
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.kur-tel-net b {
+  font-family: var(--mono);
+  color: var(--text);
+}
+.kur-tel-uclar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: var(--sp-3);
+  align-items: start;
+}
+.kur-ok {
+  align-self: center;
+  font-size: 22px;
+  color: var(--text-muted);
+}
+.kur-uc {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.kur-uc-yon {
+  font-size: var(--fs-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.kur-uc-ref {
+  font-family: var(--mono);
+  font-size: 18px;
+  font-weight: 600;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.kur-uc-deger {
+  font-size: var(--fs-md);
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.kur-uc-pin {
+  font-size: 15px;
+}
+.kur-uc-pin b {
+  font-family: var(--mono);
+}
+.kur-uc-yer {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.kur-dip {
+  margin-top: 4px;
+  max-width: 100%;
+  height: auto;
+}
+.kur-dip-govde {
+  fill: #23272d;
+  stroke: #4a525c;
+  stroke-width: 0.6;
+}
+.kur-dip-centik {
+  fill: none;
+  stroke: #6b7480;
+  stroke-width: 0.8;
+}
+.kur-dip-nokta {
+  fill: #9aa3ad;
+}
+.kur-dip-bacak {
+  fill: #b9c0c8;
+}
+.kur-dip-yazi {
+  fill: #c9d0d8;
+  font: 600 6px var(--mono);
+}
+
+.kur-dugmeler {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.kur-dugmeler button {
+  flex: 1 1 auto;
+  min-height: 36px;
+}
+.kur-ipucu {
+  margin: 0;
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* bloklar */
+.kur-bloklar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.kur-blok {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--surface-1);
+  overflow: hidden;
+}
+.kur-blok-bas {
+  all: unset;
+  box-sizing: border-box;
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.kur-blok-bas:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+.kur-blok-renk {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+.kur-blok-ad {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.kur-blok-deney {
+  margin-left: 8px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.kur-blok-sayi {
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.kur-blok-bas .kur-mini-bar {
+  grid-column: 1 / -1;
+  height: 4px;
+}
+.kur-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 6px;
+  max-height: 320px;
+  overflow-y: auto;
+  border-top: 1px solid var(--border-strong);
+}
+.kur-liste li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+}
+.kur-liste li.secili {
+  background: color-mix(in srgb, var(--focus) 16%, transparent);
+}
+.kur-liste li.takildi .kur-li-uc,
+.kur-liste li.takildi .kur-li-id {
+  color: var(--text-muted);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--text-muted) 60%, transparent);
+}
+.kur-liste li > button {
+  all: unset;
+  box-sizing: border-box;
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 56px 12px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  cursor: pointer;
+  font-size: var(--fs-xs);
+}
+.kur-liste li > button:focus-visible {
+  outline: 2px solid var(--focus);
+}
+.kur-li-id,
+.kur-li-uc {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.kur-li-net {
+  font-family: var(--mono);
+  color: var(--text-muted);
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kur-alt {
+  display: flex;
+  justify-content: flex-end;
+}
+.kur-sifirla.soruyor {
+  border-color: var(--danger);
+  color: var(--danger);
+}

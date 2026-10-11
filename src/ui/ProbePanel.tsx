@@ -1,6 +1,7 @@
 import { useApp } from "../state/store";
 import { sim } from "../sim/SimClient";
 import { live } from "../state/live";
+import { Section } from "./Shell";
 
 const liveBit = (node: number) => (live.nodeState ? live.nodeState[node] === 1 : false);
 
@@ -22,56 +23,63 @@ export function ProbePanel() {
   const chip = useApp((s) => s.chip);
   const index = useApp((s) => s.index);
   const watching = useApp((s) => (node !== null ? s.watch.some((w) => w.node === node) : false));
-  // durum her karede değişebilir; yalnızca bu düğümün bitine abone ol
   // her karede yeni snapshot gelir; seçici o anda canlı diziden bu düğümün bitini okur
   const high = useApp((s) => s.snapshot !== null && node !== null && liveBit(node));
   if (!chip || !index) return null;
   if (node === null)
     return (
-      <section>
-        <h2>Ölçülen sinyal</h2>
-        <p className="muted">Die üzerinde bir metal tele, poliye ya da difüzyona tıkla. Seçilen düğüm beyaz yanıp söner; transistörlerine buradan gezinebilirsin.</p>
-      </section>
+      <Section title="Ölçülen sinyal">
+        <p className="muted empty">
+          Die üzerinde bir metal tele, poliye ya da difüzyona tıkla. Seçilen düğüm beyaz yanıp söner; transistörlerine buradan gezinebilirsin.
+        </p>
+      </Section>
     );
   const names = index.namesByNode.get(node) ?? [];
   const gates = index.gatesByNode.get(node) ?? [];
   const chans = index.channelsByNode.get(node) ?? [];
   const pullup = chip.pullups.includes(node);
   return (
-    <section>
-      <h2>Ölçülen sinyal</h2>
+    <Section title="Ölçülen sinyal" actions={<button className="link" onClick={() => useApp.getState().select(null)} title="Kısayol: Esc">kapat</button>}>
       <div className="probe">
         <div className="probe-head">
           <span className="big">{names[0] ?? "isimsiz düğüm"}</span>
           <span className={`level ${high ? "on" : ""}`}>{high ? "1 · YÜKSEK" : "0 · ALÇAK"}</span>
         </div>
-        <span className="muted">
-          Düğüm #{node}{names.length > 1 ? ` · diğer adlar: ${names.slice(1).join(", ")}` : ""} · {index.segmentCount.get(node) ?? 0} poligon{pullup ? " · pull-up yüklü" : ""}
-        </span>
-        <div className="row">
+        <dl className="kv">
+          <dt>Düğüm</dt>
+          <dd>#{node}</dd>
+          {names.length > 1 && (
+            <>
+              <dt>Diğer adlar</dt>
+              <dd>{names.slice(1).join(", ")}</dd>
+            </>
+          )}
+          <dt>Poligon</dt>
+          <dd>{index.segmentCount.get(node) ?? 0}{pullup ? " · pull-up yüklü" : ""}</dd>
+        </dl>
+        <div className="row wrap">
           <button onClick={() => { useApp.getState().toggleWatch(node); sim.syncWatch(); }}>
             {watching ? "Analizörden çıkar" : "Analizöre ekle"}
           </button>
           <button onClick={() => useApp.getState().select(node, true)}>Kamerayı götür</button>
         </div>
-        <h3>Kapısını sürdüğü transistörler ({gates.length})</h3>
-        <ul className="tlist">
-          {gates.slice(0, 40).map((ti) => {
-            const t = chip.transistors[ti];
-            return <li key={ti}><code>{t.name}</code> <NodeLink node={t.c1} /> ↔ <NodeLink node={t.c2} /></li>;
-          })}
-          {gates.length > 40 && <li className="muted">… ve {gates.length - 40} tane daha</li>}
-        </ul>
-        <h3>Kanalına bağlı transistörler ({chans.length})</h3>
-        <ul className="tlist">
-          {chans.slice(0, 40).map((ti) => {
-            const t = chip.transistors[ti];
-            return <li key={ti}><code>{t.name}</code> kapı: <NodeLink node={t.gate} /></li>;
-          })}
-          {chans.length > 40 && <li className="muted">… ve {chans.length - 40} tane daha</li>}
-        </ul>
       </div>
-    </section>
+      <h3>Kapısını sürdüğü transistörler <span className="count">{gates.length}</span></h3>
+      <ul className="tlist">
+        {gates.slice(0, 40).map((ti) => {
+          const t = chip.transistors[ti];
+          return <li key={ti}><code>{t.name}</code> <NodeLink node={t.c1} /> ↔ <NodeLink node={t.c2} /></li>;
+        })}
+        {gates.length > 40 && <li className="muted">… ve {gates.length - 40} tane daha</li>}
+      </ul>
+      <h3>Kanalına bağlı transistörler <span className="count">{chans.length}</span></h3>
+      <ul className="tlist">
+        {chans.slice(0, 40).map((ti) => {
+          const t = chip.transistors[ti];
+          return <li key={ti}><code>{t.name}</code> kapı: <NodeLink node={t.gate} /></li>;
+        })}
+        {chans.length > 40 && <li className="muted">… ve {chans.length - 40} tane daha</li>}
+      </ul>
+    </Section>
   );
 }
-
