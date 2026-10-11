@@ -5,3 +5,6 @@ dist
 *.tsbuildinfo
 coverage
 .vite
+
+# cpu16 kurulum belgeleri (npm run cpu16 -- kurulum): üretilen HTML/PDF
+cpu16/kurulum/cikti/
