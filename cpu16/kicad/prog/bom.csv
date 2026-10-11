@@ -1,0 +1,6 @@
+Parça;Adet;Açıklama;Footprint;Kart;Referanslar
+28C256;1;32 KB paralel EEPROM (32K × 8, 5 V, bayt/sayfa yazma; 62256 ile aynı bacak düzeni);Package_DIP:DIP-28_W15.24mm_Socket;prog;U3
+74HC595;2;8 bit seri giriş / paralel çıkış kaydırmalı register (çıkış mandallı);Package_DIP:DIP-16_W7.62mm;prog;U1 U2
+ARDUINO_NANO;1;Arduino Nano (ATmega328P, USB seri);Module:Arduino_Nano;prog;A1
+C_100N;3;100 nF seramik kondansatör (dekuplaj);Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm;prog;C2 C3 C4
+C_100U;1;100 µF elektrolitik kondansatör (kart girişi);Capacitor_THT:CP_Radial_D6.3mm_P2.50mm;prog;C1
