@@ -117,6 +117,51 @@ export const PASSIVES: Record<string, SymbolOnly> = {
     footprint: "Connector_PinHeader_2.54mm:PinHeader_2x32_P2.54mm_Vertical",
     usage: "Her kart arka panele bununla takılır",
   },
+  // ---- Faz 6: G/Ç kartı ve video kartı (anakart-gc-video.md)
+  OSC_25M175: {
+    part: "OSC_25M175",
+    title: "25,175 MHz kristal osilatör modülü (DIP-14 kılıf, 5 V)",
+    pins: [pas(1, "EN"), pas(7, "GND"), pas(8, "OUT"), pas(14, "VCC")],
+    footprint: "Oscillator:Oscillator_DIP-14",
+    usage: "Video kartının piksel saati (640×480 @ 60 Hz), CPU saatinden bağımsız",
+  },
+  R_680: {
+    part: "R_680",
+    title: "680 Ω direnç",
+    pins: [pas(1, "1"), pas(2, "2")],
+    footprint: "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal",
+    usage: "VGA renk DAC'ı: renk bitinin 2/3 ağırlığı (75 Ω monitör girişiyle)",
+  },
+  R_1K3: {
+    part: "R_1K3",
+    title: "1,3 kΩ direnç",
+    pins: [pas(1, "1"), pas(2, "2")],
+    footprint: "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal",
+    usage: "VGA renk DAC'ı: parlaklık (I) bitinin 1/3 ağırlığı",
+  },
+  CONN_VGA: {
+    part: "CONN_VGA",
+    title: "VGA konnektörü (DE-15 HD, dişi)",
+    pins: "RED GREEN BLUE ID2 GND RED_RTN GREEN_RTN BLUE_RTN KEY SYNC_GND ID0 ID1 HSYNC VSYNC ID3"
+      .split(" ")
+      .map((name, i) => pas(i + 1, name)),
+    footprint: "Connector_Dsub:DSUB-15-HD_Female_Horizontal_P2.29x1.98mm_EdgePinOffset3.03mm_Housed_MountingHolesOffset4.94mm",
+    usage: "Monitör çıkışı: R, G, B (0–0,7 V), HSYNC ve VSYNC (negatif)",
+  },
+  CONN_PS2: {
+    part: "CONN_PS2",
+    title: "PS/2 klavye konnektörü (6 pin mini-DIN, dişi)",
+    pins: "DATA NC2 GND VCC CLK NC6".split(" ").map((name, i) => pas(i + 1, name)),
+    footprint: "Connector_Dsub:MiniDIN-6_Female_Horizontal",
+    usage: "PS/2 klavye: açık-kollektör saat ve veri hatları, 5 V besleme",
+  },
+  CONN_CH340: {
+    part: "CONN_CH340",
+    title: "CH340 USB-UART modülü yuvası (6 pin, FTDI düzeni)",
+    pins: "GND ~CTS VCC TXD RXD ~DTR".split(" ").map((name, i) => pas(i + 1, name)),
+    footprint: "Connector_PinSocket_2.54mm:PinSocket_1x06_P2.54mm_Vertical",
+    usage: "Bilgisayara USB seri bağlantı (115200 8N1, RTS/CTS akış denetimi)",
+  },
 };
 
 /**
