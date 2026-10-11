@@ -43,7 +43,17 @@ export interface CompileOptions {
   optimize?: boolean;
   /** bellek yerleşimi (varsayılan: ROM 0x0000–0x3FFF, RAM 0x4000–, yığın tepesi 0xFF00) */
   layout?: Partial<Layout>;
+  /**
+   * Hedef: "rom" (varsayılan) program 0x0000'dan, kendi vektörleriyle çalışır (Flash'a yazılır);
+   * "bios" program RAM'e 0x4000'dan yüklenir, BIOS monitöründen G 4000 ile çalışır ve döner
+   * (lib/hedef/bios/: crt0 ve BIOS çağrıları; putchar VGA + UART'a yazar).
+   */
+  target?: "rom" | "bios";
 }
+
+/** BIOS hedefinin bellek yerleşimi: kod 0x4000–0x9FFF (RAM, pencere 1–2), veri 0xA000–, yığın tepesi
+ * 0xF800 (BIOS değişkenleri ve yığını 0xF800–0xFEFF'tedir, bkz. docs/bios.md) */
+export const BIOS_LAYOUT: Layout = { romStart: 0x4000, romEnd: 0xa000, ramStart: 0xa000, stackTop: 0xf800, minStack: 0x400 };
 
 export interface CompileResult {
   /** bağlanmış, as16 ile derlenebilir assembly (hata varsa boş olabilir) */
@@ -166,6 +176,14 @@ export function compile(files: Record<string, string>, entry: string[], opts: Co
       if (r.error) errors.push(r.error);
     }
   });
+  if (opts.target === "bios" && !opts.nostdlib && opts.lib) {
+    // hedef dosyaları kullanıcı nesnesi gibi bağlanır: tanımları kütüphanedekilerin (crt0, putchar …) yerine geçer
+    Object.keys(opts.lib).filter((k) => /^hedef\/bios\/[^/]+\.s$/.test(k)).sort().forEach((k, j) => {
+      const r = compileAsm(`lib/${k}`, opts.lib![k], `h${j}`, false);
+      objs.push(r.obj);
+      errors.push(...r.errors);
+    });
+  }
   if (!opts.nostdlib) {
     if (!opts.lib) {
       errors.push({ file: "", line: 0, col: 0, message: "Çalışma zamanı kütüphanesi verilmedi (opts.lib ya da nostdlib)" });
@@ -176,7 +194,7 @@ export function compile(files: Record<string, string>, entry: string[], opts: Co
     }
   }
   if (errors.length) return { asm: "", errors };
-  const layout: Layout = { ...DEFAULT_LAYOUT, ...opts.layout };
+  const layout: Layout = { ...(opts.target === "bios" ? BIOS_LAYOUT : DEFAULT_LAYOUT), ...opts.layout };
   const res = link(objs, "__reset", layout);
   return { asm: res.asm, errors: res.errors.map((e) => ({ ...e })), link: res };
 }
