@@ -172,11 +172,6 @@ function malzeme(mine: Elem[], all: Elem[]): string[] {
     for (const [part, list] of group(passives)) out.push(`| ${part} | ${list.length} | ${list.map((e) => e.ref).sort(natural).join(" ")} | ${list[0].title} |`);
     out.push("");
   }
-  const roms = chips.flatMap((e) => {
-    const m = /mikrokod ROM (\d)|ALU kod çözme ROM'u (\d)/.exec(e.role);
-    return m ? [`${e.ref} ← \`cpu16/roms/${m[1] !== undefined ? `mikrokod-${m[1]}` : `alu-${m[2]}`}.hex\``] : [];
-  });
-  if (roms.length) out.push(`**Programlanacak Flash'lar** (Deney 3'teki programlayıcıyla, üzerine etiket yapıştır): ${roms.sort(natural).join(", ")}`, "");
   const shared = [...new Set(units.map((u) => u.ref))].sort(natural);
   if (shared.length) {
     out.push("Yapıştırıcı lojik çiplerinin kapıları bloklara dağılmıştır; bu deneyde kullanılan kapılar:", "");

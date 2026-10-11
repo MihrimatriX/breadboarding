@@ -32,14 +32,15 @@ describe("Faz 9: statik zamanlama analizi", () => {
     expect(cpu(tip).fmaxMHz).toBeGreaterThanOrEqual(2);
   });
 
-  it("kritik yol: kontrol register'ı (düşen kenar) → ALU ROM'u → toplayıcı zinciri → veriyolu (yarım periyot)", () => {
+  it("kritik yol: kontrol register'ı (düşen kenar) → ALU kod çözücü kapıları → toplayıcı zinciri → veriyolu (yarım periyot)", () => {
     const y = cpu(maks).yollar[0];
     expect(y.baslat).toBe("düşen");
     expect(y.yakala).toBe("yükselen");
     expect(y.pay).toBe(0.5);
     const parts = y.adimlar.map((a) => a.part);
     expect(parts[0]).toBe("74HC574");
-    expect(parts).toContain("SST39SF010A");
+    expect(parts).toContain("74HC138"); // ALU işlem çözücü (board/kontrol.ts)
+    expect(y.adimlar.some((a) => /^AD\d+$/.test(a.net))).toBe(true); // bir ALU kontrol biti
     expect(parts.filter((p) => p === "74HC283").length).toBe(4);
   });
 

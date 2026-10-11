@@ -1,6 +1,6 @@
-// CPU16 kontrol kelimesi: mikrokod ROM'undaki her 32 bitlik kelime bir saat döngüsünde
-// hangi sinyallerin aktif olduğunu söyler. Donanımda 4 adet 8 bit Flash çipine bölünür.
-// Ayrıntılı açıklama: cpu16/docs/mikromimari.md
+// CPU16 kontrol kelimesi: mikrokod tablosundaki her 32 bitlik kelime bir saat döngüsünde
+// hangi sinyallerin aktif olduğunu söyler. Donanımda ROM yok: tablo board/kontrol.ts'de 74HC kapı
+// devresine çevrilir (kontrol birimi). Ayrıntılı açıklama: cpu16/docs/mikromimari.md
 
 /** Veriyoluna kim yazar (aynı anda tek sürücü). */
 export const BUS = { NONE: 0, REG: 1, ALU: 2, PC: 3, MEM: 4, IMM: 5, FLAGS: 6 } as const;
@@ -51,7 +51,7 @@ export function decodeControl(w: number): Control {
   };
 }
 
-/** Mikrokod ROM adresi: [12] INT, [11:8] op, [7:5] f3, [4] COND, [3:0] adım → 8192 kelime */
+/** Mikrokod tablosunun adresi (kontrol biriminin girişleri): [12] INT, [11:8] op, [7:5] f3, [4] COND, [3:0] adım → 8192 kelime */
 export const ROM_WORDS = 1 << 13;
 export function romAddress(int: boolean, op: number, f3: number, cond: boolean, step: number): number {
   return ((int ? 1 : 0) << 12) | (op << 8) | (f3 << 5) | ((cond ? 1 : 0) << 4) | step;

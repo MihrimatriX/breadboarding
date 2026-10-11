@@ -80,13 +80,13 @@ Yapıştırıcı lojik çiplerinin kapıları bloklara dağılmıştır; bu dene
 
 - **U119** (74HC08, Deney 5'de takıldı): 2. kapı (MAR saati); 3. kapı (IR saati); 4. kapı (PC += 2). Diğerleri: 1. kapı → Deney 5
 - **U125** (74HC08, Deney 5'de takıldı): 4. kapı (bellek yazma). Diğerleri: 1. kapı → Deney 5, 2. kapı → Deney 5, 3. kapı → Deney 5
-- **U126** (74HC08, bu deneyde takılır): 1. kapı (tek adresli bayt); 2. kapı (yazma darbesi); 3. kapı (yazma darbesi)
-- **U129** (74HC32, Deney 5'de takıldı): 2. kapı (bellek erişimi); 3. kapı (yazma darbesi). Diğerleri: 1. kapı → Deney 5
+- **U126** (74HC08, bu deneyde takılır): 1. kapı (tek adresli bayt); 2. kapı (yazma darbesi); 3. kapı (yazma darbesi). Diğerleri: 4. kapı → Deney 7
+- **U129** (74HC32, Deney 5'de takıldı): 2. kapı (bellek erişimi); 3. kapı (yazma darbesi). Diğerleri: 1. kapı → Deney 5, 4. kapı → Deney 7
 - **U130** (74HC00, bu deneyde takılır): 3. kapı (PC yükle); 4. kapı (çift bayt hattı kullanılıyor). Diğerleri: 1. kapı → Deney 7, 2. kapı → Deney 7
 - **U131** (74HC00, bu deneyde takılır): 1. kapı (hat seçimi); 2. kapı (hat seçimi); 3. kapı (hat seçimi); 4. kapı (bayt okuma)
-- **U132** (74HC00, bu deneyde takılır): 1. kapı (çift bayt yazma darbesi); 2. kapı (tek bayt yazma darbesi)
+- **U132** (74HC00, bu deneyde takılır): 1. kapı (çift bayt yazma darbesi); 2. kapı (tek bayt yazma darbesi). Diğerleri: 3. kapı → Deney 7, 4. kapı → Deney 7
 - **U145** (74HC04, Deney 5'de takıldı): 6. kapı (bellek okuma). Diğerleri: 1. kapı → Deney 7, 2. kapı → Deney 7, 3. kapı → Deney 7, 4. kapı → Deney 7, 5. kapı → Deney 5
-- **U146** (74HC04, bu deneyde takılır): 1. kapı (kelime erişimi); 2. kapı (bellek okuma (aktif düşük))
+- **U146** (74HC04, bu deneyde takılır): 1. kapı (kelime erişimi); 2. kapı (bellek okuma (aktif düşük)). Diğerleri: 3. kapı → Deney 7, 4. kapı → Deney 7, 5. kapı → Deney 7, 6. kapı → Deney 7
 
 #### Bağlantılar (113 net)
 
@@ -97,7 +97,7 @@ elle sür (DIP anahtar + 10 kΩ çekme direnci); ◀ = alıcısı sonraki deneyl
 
 | Net | Pinler | Not |
 |---|---|---|
-| **GND** | U39-1 ~OE, U40-1 ~OE, U41-1 ~OE, U42-1 ~OE, U46-6 D3, U47-2 A0, U47-19 ~OE2, U48-19 ~OE2, U115-2 A0, U115-3 A1, U115-4 A2, U115-5 A3, U115-6 A4, U115-7 A5, U115-8 A6, U115-9 A7, U115-19 ~OE2, U126-12 4A, U126-13 4B, U132-9 3A, U132-10 3B, U132-12 4A, U132-13 4B, U146-5 3A, U146-9 4A, U146-11 5A, U146-13 6A | sabit seviye |
+| **GND** | U39-1 ~OE, U40-1 ~OE, U41-1 ~OE, U42-1 ~OE, U46-6 D3, U47-2 A0, U47-19 ~OE2, U48-19 ~OE2, U115-2 A0, U115-3 A1, U115-4 A2, U115-5 A3, U115-6 A4, U115-7 A5, U115-8 A6, U115-9 A7, U115-19 ~OE2 | sabit seviye |
 | `~BYTE` | U129-9 3A, U131-4 2A, U146-2 1Y |  |
 | `~MWE_E` | U132-3 1Y | arka panel 42 · ◀ LED'le izlenebilir |
 | `~PC_LOAD` | U43-9 ~PE, U44-9 ~PE, U45-9 ~PE, U46-9 ~PE, U130-8 3Y |  |
@@ -212,7 +212,7 @@ elle sür (DIP anahtar + 10 kΩ çekme direnci); ◀ = alıcısı sonraki deneyl
 | `WE_O_EN` | U126-8 3Y, U132-4 2A |  |
 | `WR_WIN` | U132-2 1B, U132-5 2B | arka panel 6 · önceki: Deney 1 |
 
-**Boşta kalan çıkışlar (bağlanmaz):** U46-11 Q3, U46-15 TC, U126-11 4Y, U132-6 2Y, U132-8 3Y, U132-11 4Y, U146-4 2Y, U146-6 3Y, U146-8 4Y, U146-10 5Y, U146-12 6Y
+**Boşta kalan çıkışlar (bağlanmaz):** U46-11 Q3, U46-15 TC, U132-6 2Y, U146-4 2Y
 
 **Elle sürülecek girişler (10):** `~SRC_MEM`, `~SRC_PC`, `CLKR`, `CW19`, `CW20`, `CW21`, `CW22`, `CW23`, `CW28`, `RUN_R`
 

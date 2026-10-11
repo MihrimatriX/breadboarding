@@ -48,6 +48,11 @@ export interface SchematicOptions {
   title: string;
   paper: "A4" | "A3" | "A2" | "A1" | "A0";
   date: string;
+  /**
+   * İki uçlu pasifler (dekuplaj kondansatörleri …) dar sütunlarda: etiketleri dikey olduğu için
+   * yanlarında etiket payı gerekmez. Çok çipli kartın (CPU) A0'a sığması için.
+   */
+  densePassives?: boolean;
 }
 
 const PAPER = { A4: [297, 210], A3: [420, 297], A2: [594, 420], A1: [841, 594], A0: [1189, 841] } as const;
@@ -94,7 +99,8 @@ export function cardSchematic(board: Board, card: string, o: SchematicOptions): 
   for (const p of sorted) {
     const lay = symbolLayout(p.def);
     const height = 2 * lay.h + 4 * G + 8;
-    const width = 2 * lay.w + 2 * G + 50; // etiketler için iki yanda pay
+    const twoPin = p.def.pins.length === 2;
+    const width = 2 * lay.w + 2 * G + (o.densePassives && twoPin ? 15 : 50); // etiketler için iki yanda pay
     if (y + height > ph - margin) {
       x += colW;
       y = margin + 20;

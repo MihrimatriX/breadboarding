@@ -45,7 +45,7 @@ describe("Faz 4: kapı seviyesi bilgisayar (şema = kod)", () => {
   for (const name of ["hello", "fib", "add32", "bubble"]) {
     it(`${name}.s: her saat döngüsünde mikrokod modeliyle, sonunda emülatörle aynı`, () => {
       const image = program(name);
-      const g = new GateComputer(micro.rom);
+      const g = new GateComputer();
       g.load(image);
       const db = new SimpleBus();
       db.load(image);
@@ -69,7 +69,7 @@ describe("Faz 4: kapı seviyesi bilgisayar (şema = kod)", () => {
 
   it("irq.s: HALT'tan kesmeyle uyanma, işleyici, RETI", () => {
     const image = program("irq");
-    const g = new GateComputer(micro.rom);
+    const g = new GateComputer();
     g.load(image);
     const db = new SimpleBus();
     db.load(image);
@@ -95,7 +95,7 @@ describe("Faz 4: kapı seviyesi bilgisayar (şema = kod)", () => {
 
   it("saat kartı: ADIM kipinde saat durur, her basış tam bir CPU döngüsü ilerletir", () => {
     const image = program("fib");
-    const g = new GateComputer(micro.rom);
+    const g = new GateComputer();
     g.load(image);
     const db = new SimpleBus();
     db.load(image);
@@ -130,7 +130,7 @@ describe("Faz 4: kapı seviyesi bilgisayar (şema = kod)", () => {
   it("rastgele komut akışları: rastgele bellek, register ve bayraklar (yasadışı komutlar dahil)", () => {
     let seed = 777;
     const rnd = () => ((seed = (seed * 1103515245 + 12345) >>> 0) >>> 8) & 0xffff;
-    const g = new GateComputer(micro.rom);
+    const g = new GateComputer();
     let total = 0;
     for (let run = 0; run < 150; run++) {
       const image = new Uint8Array(0x10000);

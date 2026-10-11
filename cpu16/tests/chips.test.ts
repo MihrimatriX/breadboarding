@@ -130,8 +130,8 @@ describe("parça kütüphanesi: pin düzenleri", () => {
     expect(def.pins.filter((p) => p.dir === "power")).toHaveLength(2);
   });
 
-  it("kütüphanede 35 çip var", () => {
-    expect(CHIPS).toHaveLength(35);
+  it("kütüphanede 40 çip var", () => {
+    expect(CHIPS).toHaveLength(40);
   });
 });
 
