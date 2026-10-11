@@ -114,6 +114,7 @@ __udiv32:
         PUSH lr
         OR   r7, r1, r3          ; iki üst kelime de 0 ise 16 bitlik hızlı yol
         BNE  .ud32f
+        MOV  r1, r2              ; r0 / r2 (16 bit)
         CALL __udiv16
         MOV  r2, r1
         LI   r1, 0
