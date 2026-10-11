@@ -119,6 +119,9 @@ export class Machine implements Bus {
   /** UART'tan çıkan baytlar (her karakter bir bayt). Çok uzarsa baştan kırpılır. */
   uartOutput = "";
   uartOnOutput?: (byte: number) => void;
+  /** Veriyolu izi: CPU'nun her read8/write8 çağrısı (kapı seviyesi kart testleri bu izi tekrar oynatır).
+   * `cycle` komutun başladığı döngüdür; kelime erişimi art arda iki çağrıdır (çift, sonra tek adres). */
+  onAccess?: (write: boolean, addr: number, value: number, cycle: number) => void;
 
   private wait = 0;
   private pairAddr = -1;
@@ -149,7 +152,12 @@ export class Machine implements Bus {
   // ------------------------------------------------------------ Bus arayüzü
 
   read8(addr: number): number {
-    addr &= 0xffff;
+    const v = this.busRead(addr & 0xffff);
+    this.onAccess?.(false, addr & 0xffff, v, this.cycles);
+    return v;
+  }
+
+  private busRead(addr: number): number {
     if (addr >= 0xff00) {
       this.pairAddr = -1;
       return this.ioRead(addr & 0xff);
@@ -185,6 +193,7 @@ export class Machine implements Bus {
   write8(addr: number, value: number): void {
     addr &= 0xffff;
     value &= 0xff;
+    this.onAccess?.(true, addr, value, this.cycles);
     if (addr >= 0xff00) {
       this.pairAddr = -1;
       this.ioWrite(addr & 0xff, value);
@@ -347,6 +356,11 @@ export class Machine implements Bus {
     if (!u.rxReady && u.rxQueue.length) next = Math.min(next, Math.max(u.nextRxAt, now + 1));
     if (!k.ready && k.queue.length) next = Math.min(next, Math.max(k.nextAt, now + 1));
     this.nextEvent = next;
+  }
+
+  /** CPU komut çalıştırmadan zamanı `n` döngü ilerletir (cihaz testleri için). */
+  idle(n: number): void {
+    this.advance(n);
   }
 
   /** Bir komut çalıştırır (CPU durmuşsa bir sonraki olaya kadar bekler). */
