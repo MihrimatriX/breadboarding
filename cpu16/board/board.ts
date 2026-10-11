@@ -28,7 +28,15 @@ export interface ChipInstance {
   footprint: string;
   /** Yapıştırıcı lojik çipinde her birimin (kapının) ait olduğu blok ve pinleri (deney rehberi için) */
   glueUnits?: { block: string; pins: string[]; role: string }[];
+  /**
+   * Lojik ailesi: "AC" = aynı bacak düzenli 74AC (hızlı yollar, ör. 25 MHz piksel saati). Simülasyon
+   * aynıdır; şemada / BOM'da değer 74ACxxx yazılır, zamanlama analizi AC gecikmeleriyle hesaplar.
+   */
+  aile?: "AC";
 }
+
+/** Çipin şemadaki / BOM'daki değeri (aile 74AC ise 74HC yerine 74AC) */
+export const partValue = (ci: Pick<ChipInstance, "def" | "aile">): string => (ci.aile === "AC" ? ci.def.part.replace(/^74HC/, "74AC") : ci.def.part);
 
 export interface Passive {
   ref: string;
@@ -135,7 +143,7 @@ export class Board {
   }
 
   /** Bir çip yerleştir. Bağlanmamış giriş pini hata verir (CMOS girişi boşta bırakılmaz). */
-  place(part: string, conn: Record<string, Net>, role = "", opts: { footprint?: string } = {}): ChipInstance {
+  place(part: string, conn: Record<string, Net>, role = "", opts: { footprint?: string; aile?: "AC" } = {}): ChipInstance {
     if (this.finished) throw new Error("Kart tamamlandıktan sonra çip eklenemez");
     const def = chip(part);
     const ref = `U${this.refNumber(this.chips.filter((c) => c.card === this.card).length + 1)}`;
@@ -162,6 +170,10 @@ export class Board {
       ref, def, card: this.card, role, block: this.block, nets, gates: [start, this.c.gates.length], handle,
       footprint: opts.footprint ?? def.footprint,
     };
+    if (opts.aile) {
+      if (!/^74HC/.test(part)) throw new Error(`${ref} (${part}): yalnızca 74HC çipleri 74AC olarak yerleştirilebilir`);
+      inst.aile = opts.aile;
+    }
     this.chips.push(inst);
     return inst;
   }
