@@ -1,6 +1,7 @@
 import { useApp } from "../state/store";
 import { sim } from "../sim/SimClient";
 import { hzLabel } from "./format";
+import { ModeSwitch } from "./ModeSwitch";
 
 // kaydırıcı logaritmik: 1 Hz .. 4 kHz (yarım çevrim/sn)
 const toHz = (v: number) => Math.round(Math.pow(10, v / 25));
@@ -18,6 +19,7 @@ export function Toolbar() {
         <h1>Silikon3D</h1>
         <span>{chip ? `${chip.name} · ${chip.transistors.length.toLocaleString("tr-TR")} transistör` : "yükleniyor"}</span>
       </div>
+      <ModeSwitch mode="6502" />
       <div className="clock">
         <button onClick={() => sim.halfStep(1)} title="Kısayol: .">½ çevrim</button>
         <button onClick={() => sim.halfStep(2)}>Tam çevrim</button>
