@@ -1,4 +1,4 @@
-// Anakart G/Ç kartı (gc) ve video kartı: kapı seviyesi testler.
+// Anakart G/Ç kartı (gc), video kartı ve kendin yap bellek kartı (kyb): kapı seviyesi testler.
 // Kartlar tek başına (bellek / CPU kartı olmadan) bir test tezgâhında çalışır: tezgâh arka paneli
 // (CLK, TCLK, ~IO, ~MRD, ~MWE_E/O, A0..A7, DE/DO) CPU'nun veriyolu döngüleri gibi sürer, bellek
 // kartının DE/DO çekme dirençlerini yerine koyar; CH340 ve PS/2 klavye seri dalga biçimi üretir.
@@ -14,6 +14,7 @@ import { buildBios } from "../bios/build.ts";
 import { Board, erc, type ChipInstance } from "../board/board.ts";
 import { IO_CARD_INPUTS, buildIoCard } from "../board/io-card.ts";
 import { SYM_LIB_TABLE, cardSchematic, kicadProject } from "../board/kicad-sch.ts";
+import { KYB_CARD_INPUTS, buildKybCard } from "../board/kyb-card.ts";
 import { anakartYanlisYollar, buildFullMachineBoard } from "../board/machine-board.ts";
 import { BACKPLANE, PASSIVES } from "../board/passives.ts";
 import { VIDEO_CARD_INPUTS, buildVideoCard, type VideoCard } from "../board/video-card.ts";
@@ -23,7 +24,7 @@ import { CHIPS } from "../chips/library.ts";
 import { L0, L1, LogicSim, type Level } from "../chips/logic.ts";
 import type { MemoryHandle } from "../chips/parts/memory.ts";
 import { textToScancodes } from "../emu/devices/keyboard.ts";
-import { FRAME_CYCLES, IO, Machine, TICK_CYCLES, UART_BYTE_CYCLES, VBLANK_START } from "../emu/machine.ts";
+import { FRAME_CYCLES, IO, KYB_SIZE, Machine, TICK_CYCLES, UART_BYTE_CYCLES, VBLANK_START } from "../emu/machine.ts";
 import { FONT_8X16 } from "../video/font.ts";
 import { CGA_PALETTE } from "../../src/cpu16/vga.ts";
 
@@ -92,19 +93,19 @@ class Bench {
     this.clk = ["CLK", "TCLK"].filter((x) => this.b.has(x)).map((x) => this.n(x));
     // IRQ hattı (G/Ç kartı) ya da yalnız video kartında VSYNC_REQ
     this.irqNet = this.b.has("IRQ") ? this.n("IRQ") : this.b.has("VSYNC_REQ") ? this.n("VSYNC_REQ") : -1;
-    for (const [name, v] of [["~RESET", 0], ["~IO", 1], ["~MRD", 1], ["~MWE_E", 1], ["~MWE_O", 1]] as const) this.drive(name, v);
+    for (const [name, v] of [["~RESET", 0], ["~IO", 1], ["~MRD", 1], ["~MWE_E", 1], ["~MWE_O", 1]] as const) if (this.b.has(name)) this.drive(name, v);
     for (const net of this.clk) this.sim.drive(net, L0);
-    for (let i = 0; i < 8; i++) this.drive(`A${i}`, 0);
+    for (let i = 0; i < 8; i++) if (this.b.has(`A${i}`)) this.drive(`A${i}`, 0); // kyb kartı A0 kullanmaz
     if (this.b.has("UART_RXD")) this.drive("UART_RXD", 1);
     if (this.b.has("VID_OSC")) this.drive("VID_OSC", 0);
-    if (!this.b.chips.some((c) => c.card === "video")) this.drive("VSYNC_REQ", 0);
+    if (this.b.has("VSYNC_REQ") && !this.b.chips.some((c) => c.card === "video")) this.drive("VSYNC_REQ", 0);
     this.sim.settle();
     // güç açılışı: flip-flop'lar 0 (GateComputer gibi; gerçekte rastgele, reset tanımlı olanları düzeltir).
     this.setFlipFlops(range(this.b.c.gates.length).filter((i) => ["DFF", "LATCH"].includes(this.b.c.gates[i].kind)), () => L0);
     // reset −1. döngüde bırakılır: resetten sonraki ilk TCLK kenarı 0. kenardır, ön bölücü orada 96
     // yükler (GC_RSTD; gerçek saat kartında TCLK reset boyunca durur ve ilk kenarı 0. döngüdedir),
     // tıklar 4000k kenarlarında (Machine: TICK_CYCLES'ın katları)
-    this.at(-0.75, () => this.drive("~RESET", 1));
+    if (this.b.has("~RESET")) this.at(-0.75, () => this.drive("~RESET", 1));
     while (this.cycle < 0) this.step();
   }
 
@@ -227,7 +228,7 @@ class Bench {
       this.driving = false;
     }
     if (acc) {
-      for (let i = 0; i < 8; i++) this.drive(`A${i}`, (acc.addr >> i) & 1);
+      for (let i = 0; i < 8; i++) if (this.b.has(`A${i}`)) this.drive(`A${i}`, (acc.addr >> i) & 1);
       this.drive("~IO", acc.addr >= 0xff00 ? 0 : 1);
       this.drive("~MRD", acc.write ? 1 : 0);
       if (acc.write) {
@@ -456,7 +457,7 @@ function biosTrace(): Trace {
   };
   const prompt = () => m.uartOutput.endsWith("> ");
   run(prompt, 1_000_000);
-  // klavyeden "b" + Enter (bank göster), UART'tan "I" + CR (Flash kimliği); ikisi arasında zamanlayıcı tıkları
+  // klavyeden "b" + Enter (bank göster), UART'tan "I" + CR (EEPROM yazma koruması); ikisi arasında zamanlayıcı tıkları
   let n = m.uartOutput.length;
   m.typeText("b\n");
   run(() => m.uartOutput.length > n + 4 && prompt(), 2_000_000);
@@ -709,7 +710,7 @@ describe("G/Ç kartı: zamanlayıcı ve kesme denetleyicisi (Machine ile döngü
     }
   });
 
-  it("IRQ_PEND, IRQ_MASK (reset 0), IRQ_SRC (74HC148, yoksa 0xFF), IRQ = OR(bekleyen ∧ maske)", () => {
+  it("IRQ_PEND, IRQ_MASK (reset 0), IRQ_SRC (öncelik kapıları, yoksa 0xFF), IRQ = OR(bekleyen ∧ maske)", () => {
     const g = ioBench();
     expect(g.rd8(IO.IRQ_SRC)).toBe(0xff);
     expect(g.rd8(IO.IRQ_MASK)).toBe(0);
@@ -781,7 +782,7 @@ describe("G/Ç kartı: BIOS izinin kapı seviyesinde tekrarı", () => {
   it("açılış + klavye + UART + zamanlayıcı: her G/Ç okuması ve IRQ hattı Machine ile aynı", { timeout: 60_000 }, () => {
     const tr = biosTrace();
     expect(tr.screen).toContain("CPU16 BIOS v1");
-    expect(tr.uart).toContain("SST39SF010");
+    expect(tr.uart).toContain("EEPROM 28C256");
     expect(tr.rx.length).toBeGreaterThanOrEqual(8);
     expect(tr.kbd.length).toBeGreaterThanOrEqual(10);
 
@@ -842,6 +843,72 @@ describe("G/Ç kartı: BIOS izinin kapı seviyesinde tekrarı", () => {
   });
 });
 
+// =============================================================================== kendin yap bellek
+
+describe("kendin yap bellek kartı (kyb): 16 bayt, her bayt bir 74HC574", () => {
+  it("yapı: ERC temiz; 4 × 74HC138, 2 × 74HC245, 16 × 74HC574; adres çözme yalnız FF40–FF4F", () => {
+    const b = new Board();
+    const card = buildKybCard(b);
+    b.finish();
+    expect(erc(b, KYB_CARD_INPUTS)).toEqual([]);
+    expect(b.summary().kyb).toEqual({ "74HC138": 4, "74HC245": 2, "74HC574": 16 });
+    expect(card.bytes.map((c) => c.def.part)).toEqual(Array(16).fill("74HC574"));
+    // tek başına kart: FF4x dışında veriyoluna hiç sürmez (çekme dirençleri: 0xFF)
+    const g = new Bench((x) => buildKybCard(x));
+    for (let a = 0; a < 16; a++) g.wr8(0xff40 + a, 0x10 + a);
+    for (const a of [0xff00, 0xff20, 0xff30, 0xff3f, 0xff50, 0xff5f, 0xffc0, 0xffcf]) {
+      g.wr8(a, 0);
+      expect(g.rd16(a & ~1), a.toString(16)).toBe(0xffff);
+    }
+    for (let a = 0; a < 16; a++) expect(g.rd8(0xff40 + a), `bayt ${a}`).toBe(0x10 + a);
+  });
+
+  it("G/Ç kartıyla birlikte, Machine ile döngü döngüsüne: kelime/bayt yazma ve okuma, geri okuma", () => {
+    const s = new Lockstep(new Bench((b) => {
+      buildIoCard(b);
+      buildKybCard(b);
+    }));
+    const gap = () => s.idle(5); // G/Ç komutu 6 döngü
+    // kelime yazması: iki bayt birlikte (çift DE, tek DO)
+    for (let k = 0; k < 8; k++) {
+      s.wr16(IO.KYB + 2 * k, 0x0101 * (k + 1) ^ 0xa55a);
+      gap();
+    }
+    for (let a = 0; a < KYB_SIZE; a += 2) {
+      s.rd16(IO.KYB + a);
+      gap();
+    }
+    for (let a = 0; a < KYB_SIZE; a++) {
+      s.rd8(IO.KYB + a);
+      gap();
+    }
+    // bayt yazması yalnız kendi şeridini değiştirir
+    s.wr8(IO.KYB + 5, 0x3c);
+    gap();
+    s.wr8(IO.KYB + 10, 0xc3);
+    gap();
+    for (let a = 0; a < KYB_SIZE; a += 2) {
+      s.rd16(IO.KYB + a);
+      gap();
+    }
+    // rastgele erişimler (sabit tohum)
+    let seed = 12345;
+    const rnd = (n: number) => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) >> 8) % n;
+    for (let i = 0; i < 300; i++) {
+      const a = IO.KYB + rnd(KYB_SIZE);
+      switch (rnd(4)) {
+        case 0: s.wr8(a, rnd(256)); break;
+        case 1: s.wr16(a & ~1, rnd(65536)); break;
+        case 2: s.rd8(a); break;
+        default: s.rd16(a & ~1);
+      }
+      s.idle(rnd(3) ? 5 : 5 + rnd(20));
+    }
+    // sonda bütün içerik Machine'deki kopya ile aynı
+    for (let a = 0; a < KYB_SIZE; a += 2) expect(s.rd16(IO.KYB + a)).toBe(s.m.kyb[a] | (s.m.kyb[a + 1] << 8));
+  });
+});
+
 // =============================================================================== video kartı
 
 /** Piksel saati periyodu (CPU döngüsü): bir kare = 420 000 piksel saati = FRAME_CYCLES (Machine) */
@@ -863,12 +930,13 @@ interface VideoBench {
 const PIXEL_PHASE = 0.4;
 
 /**
- * Tezgâhın sayımıyla (n = k + 1, hc = n mod 800) görünür piksel x, hc = x + 9'da çıkar. Kartın
- * kendi sayacında x, hc = x + 8'dedir (karakter j, j + 1 boyunca gösterilir; video-card.ts); açılışta
- * faz sayacı p7'de olduğundan kartın hc'si tezgâhınkinden bir eksiktir. Senkronlar da aynı kenardan
- * geçtiği için VGA zamanlaması görünür alana göre standarttır.
+ * Tezgâhın sayımıyla (n = k + 1, hc = n mod 800) görünür piksel x, hc = x + 17'de çıkar. Kartın
+ * kendi sayacında x, hc = x + 16'dadır (karakter j, j + 2 boyunca gösterilir: karakter ROM'undan
+ * sonra font register'ı; video-card.ts); açılışta faz sayacı p7'de olduğundan kartın hc'si
+ * tezgâhınkinden bir eksiktir. Senkronlar da aynı kenardan geçtiği için VGA zamanlaması görünür
+ * alana göre standarttır.
  */
-const GOSTERIM = 9;
+const GOSTERIM = 17;
 
 /**
  * Video kartı tezgâhı. Piksel saatinin k. yükselen kenarı PIXEL_PHASE + k · FRAME_CYCLES / 420 000
@@ -1134,17 +1202,19 @@ describe("video kartı: statik zamanlama (bütün anakartta)", () => {
 
 // =============================================================================== KiCad
 
-/** Tek başına anakart G/Ç + video kartları (arka panel konnektörüyle) */
+/** Tek başına anakart G/Ç + video + kendin yap bellek kartları (arka panel konnektörüyle) */
 function standaloneBoard(): Board {
   const b = new Board();
   buildIoCard(b);
   buildVideoCard(b);
+  buildKybCard(b);
   b.finish();
   return b;
 }
 const KICAD_CARDS = [
   { card: "gc", title: "CPU16 — Anakart G/Ç kartı (UART, PS/2, zamanlayıcı, kesme)" },
   { card: "video", title: "CPU16 — Anakart video kartı (80 × 30 metin, VGA 640 × 480)" },
+  { card: "kyb", title: "CPU16 — Kendin yap bellek kartı (16 bayt, 74HC574)" },
 ];
 
 // KiCad kuruluysa (CI'da değil): şemayı geçici bir dizine yaz, kicad-cli'ye netlist'ini çıkart, kartın netleriyle karşılaştır
@@ -1159,11 +1229,11 @@ const hasKicad = (() => {
 
 describe("anakart kartları: KiCad şeması", () => {
   const board = standaloneBoard();
-  it("iki kart birlikte: elektriksel kural denetimi temiz (VSYNC_REQ video kartından)", () => {
-    const ext = [...IO_CARD_INPUTS, ...VIDEO_CARD_INPUTS].filter((x) => x !== "VSYNC_REQ");
+  it("üç kart birlikte: elektriksel kural denetimi temiz (VSYNC_REQ video kartından)", () => {
+    const ext = [...IO_CARD_INPUTS, ...VIDEO_CARD_INPUTS, ...KYB_CARD_INPUTS].filter((x) => x !== "VSYNC_REQ");
     expect(erc(board, ext)).toEqual([]);
     const counts = board.summary();
-    expect(Object.keys(counts).sort()).toEqual(["gc", "video"]);
+    expect(Object.keys(counts).sort()).toEqual(["gc", "kyb", "video"]);
   });
 
   it("şema her çipi ve pasifi içerir; arka panel konnektörü paylaşılan pinlerde", () => {

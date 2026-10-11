@@ -1,7 +1,7 @@
 // Faz 6 anakart: saat kartının bekleme turları ve tam sistem, kapı seviyesinde.
 //  1. Saat kartı tek başına: ~WAIT'i bir bellek kartı gibi süren düzenekle her bekleme turunun CPU
 //     döngüsünü tam 8 osilatör periyodu uzattığı; CLK, WR_WIN ve TCLK kenarlarının yeri; kenar
-//     sayısı 74HC590 sayaçlarıyla da sayılır (dalga içinde bir parazit olsaydı sayaç fazla sayardı);
+//     sayısı 74HC161 sayaçlarıyla da sayılır (dalga içinde bir parazit olsaydı sayaç fazla sayardı);
 //     ADIM kipinde bir basış = bekleme turları dahil tam bir CPU döngüsü.
 //  2. GateMachine (CPU + saat + bellek + önbellek kartları) Machine ile komut komut: register'lar,
 //     PC, bayraklar, döngü ve bekleme sayısı; sonda bellek, etiketler ve sayaçlar. RAM'den çalışan
@@ -56,7 +56,7 @@ function expectedEdges(f: number, w: number): Edge[] {
 class ClockBench {
   readonly board = new Board();
   readonly sim: LogicSim;
-  readonly counters: Record<Sig, ChipInstance>;
+  readonly counters: Record<Sig, ChipInstance[]>;
   readonly edges: Edge[] = [];
   t = 0;
   private readonly net: (name: string) => number;
@@ -70,7 +70,11 @@ class ClockBench {
     buildClockCard(b);
     b.card = "sınama";
     b.block = "Kenar sayaçları";
-    const counter = (sig: Sig) => b.place("74HC590", { CPC: sig, "~CEC": "GND", "~MRC": "~RESET", CPR: "GND", "~OE": "VCC" }, `${sig} yükselen kenar sayacı`);
+    // 8 bit kenar sayacı: 2 × 74HC161 (eşzamanlı, taşma zinciri TC → CET)
+    const counter = (sig: Sig) => [0, 1].map((k) => b.place("74HC161", {
+      CP: sig, "~MR": "~RESET", "~PE": "VCC", CEP: "VCC", CET: k ? `${sig}_TC` : "VCC", ...(k ? {} : { TC: `${sig}_TC` }),
+      D0: "GND", D1: "GND", D2: "GND", D3: "GND",
+    }, `${sig} yükselen kenar sayacı bit ${4 * k}–${4 * k + 3}`));
     this.counters = { CLK: counter("CLK"), WR_WIN: counter("WR_WIN"), TCLK: counter("TCLK") };
     b.finish({ backplane: false });
     this.net = (name) => b.n(name);
@@ -161,11 +165,13 @@ class ClockBench {
     }
   }
 
-  /** 74HC590 kenar sayacının değeri */
+  /** Kenar sayacının (2 × 74HC161) değeri */
   count(sig: Sig): number {
-    const ff = chipDffs(this.board, this.counters[sig]);
     let v = 0;
-    for (let i = 0; i < 8; i++) v |= (this.sim.stateOf(ff[i]) === L1 ? 1 : 0) << i;
+    this.counters[sig].forEach((ci, k) => {
+      const ff = chipDffs(this.board, ci);
+      for (let i = 0; i < 4; i++) v |= (this.sim.stateOf(ff[i]) === L1 ? 1 : 0) << (4 * k + i);
+    });
     return v;
   }
 
@@ -190,7 +196,7 @@ function checkCycles(bench: ClockBench, waits: number[], from = 0): void {
 
 const RAM_BANK = 33; // pencere 2'nin reset değeri: CPU 0x8000 = fiziksel 0x84000
 
-/** Flash'taki tek komutluk başlangıç: pencere 2'deki programa atla */
+/** EEPROM'daki tek komutluk başlangıç: pencere 2'deki programa atla */
 const STUB = assembleOrThrow(".org 0\n        LI   r6, 0x8000\n        JALR r6, r6, 0\n").image.subarray(0, 16);
 
 /** Örnek programı pencere 2'de (RAM) çalışacak şekilde derle */
@@ -256,8 +262,9 @@ function ramMachines(prog: Uint8Array) {
 
 /**
  * CPU'nun kendi erişimleriyle bellek kartı ve önbellek: 64 bankta pencere 1'den yaz/oku, bank
- * register'larını kelime olarak oku, önbelleği kapat/aç, Flash kimliği (SST komut dizisi; kod RAM'de
- * olduğu için mümkün), Flash yazmasının önbellek satırını geçersiz kılması, sayaçlar ve FF30 yazması.
+ * register'larını kelime olarak oku, önbelleği kapat/aç, EEPROM'a korumalı bayt yazması (komut dizisi;
+ * kod RAM'de olduğu için mümkün), yazma sürerken durum okuması (D7 ters, D6 toggle) ve DATA yoklaması,
+ * EEPROM yazmasının önbellek satırını geçersiz kılması, sayaçlar ve FF30 yazması.
  */
 const SISTEM_S = `
 IOB   = 0xFF20
@@ -274,7 +281,7 @@ bnk:    SB   r1, [r5-15]    ; pencere 1 = bank r1
         LW   r0, [r3]
         ADD  r2, r2, r0
         ADD  r0, r1, r2
-        SW   r0, [r3]       ; Flash'ta komut baytı, boş bölgede yok sayılır
+        SW   r0, [r3]       ; EEPROM'da (korumalı) ve boş bölgede yok sayılır
         LW   r0, [r3]
         XOR  r2, r2, r0
         LBU  r0, [r5-15]
@@ -300,7 +307,7 @@ bnk:    SB   r1, [r5-15]    ; pencere 1 = bank r1
         LW   r0, [r3]       ; ıskalama
         LW   r0, [r3]       ; isabet
         SW   r0, [r3+2]
-        ; Flash kimliği: önbellek kapalı, pencere 1 = bank 1 (5555), pencere 0 = bank 0 (2AAA)
+        ; EEPROM'a korumalı bayt yazması: önbellek kapalı, pencere 1 = bank 1 (5555), pencere 0 = bank 0 (2AAA)
         LI   r0, 0
         SB   r0, [r5+20]
         LI   r0, 1
@@ -311,15 +318,18 @@ bnk:    SB   r1, [r5-15]    ; pencere 1 = bank r1
         SB   r0, [r1]
         LI   r0, 0x55
         SB   r0, [r2]
-        LI   r0, 0x90
+        LI   r0, 0xA0
         SB   r0, [r1]
         LI   r3, 0
-        LBU  r0, [r3]
+        LI   r0, 0x5A
+        SB   r0, [r3]       ; fiziksel 0 (önbellekteki satır 0 geçersiz olur)
+        LBU  r0, [r3]       ; yazma sürüyor: durum
         SB   r0, [r4+4]
-        LBU  r0, [r3+1]
+        LBU  r0, [r3]
         SB   r0, [r4+5]
-        LI   r0, 0xF0       ; kimlik kipinden çık (önbellekteki satır 0 geçersiz olur)
-        SB   r0, [r3]
+ypoll:  LBU  r0, [r3]       ; DATA yoklaması: yazılan bayt okunana kadar
+        CMPI r0, 0x5A
+        BNE  ypoll
         LBU  r0, [r3+2]
         SB   r0, [r4+6]
         LI   r0, 32
@@ -399,13 +409,18 @@ describe("Faz 6 anakart: tam sistem (CPU + saat + bellek + önbellek kartları) 
     });
   }
 
-  it("sınama programı RAM'den: 64 bank, bank okuma, önbellek kapalı/açık, Flash kimliği, gözetleme, sayaçlar", { timeout: 30_000 }, () => {
+  it("sınama programı RAM'den: 64 bank, bank okuma, önbellek kapalı/açık, EEPROM yazması ve yoklaması, gözetleme, sayaçlar", { timeout: 30_000 }, () => {
     const { m, g } = ramMachines(assembleOrThrow(SISTEM_S).image.slice(0x8000));
+    // yazma döngüsü (10 ms = 40 000 döngü) bu testte 100 µs'ye kısaltılır: iki model aynı süreyi görür
+    m.flash.writeCycleNs = g.probe.eeprom.writeCycleNs = 100_000;
     const r = lockstep(g, m, 20_000);
     expect(m.cpu.halted).toBe(true);
     expect(r.instructions).toBeGreaterThan(900);
     const res = (o: number) => m.peekPhys(34 * 0x4000 + o);
-    expect([res(4), res(5)]).toEqual([0xbf, 0xb5]); // SST39SF010A kimliği
+    expect(res(4) & 0x80).toBe(0x80); // yazma sürerken D7 = yazılan baytın D7'sinin tersi
+    expect((res(4) ^ res(5)) & 0x40).toBe(0x40); // D6 her okumada değişir
+    expect(m.peekPhys(0)).toBe(0x5a);
+    expect([m.flash.writeCycles, m.flash.bytesWritten]).toEqual([1, 1]);
     expect(res(2)).toBe(0); // CACHE_CTRL okuması (kapalı)
     expect(m.cpu.regs[1] + m.cpu.regs[2]).toBeLessThanOrEqual(2); // FF30 yazmasından sonra yalnız iki komut getirme
     expect(res(14) | (res(15) << 8)).toBeGreaterThan(500); // isabetler
@@ -421,7 +436,7 @@ describe("Faz 6 anakart: tam sistem (CPU + saat + bellek + önbellek kartları) 
     const r = lockstep(g, m, 100_000);
     expect(r.foreignRead).toBeGreaterThanOrEqual(0xff00); // UART durumu yoklanana kadar
     expect(r.cycles).toBeGreaterThan(50_000);
-    // açılış: bank register'ları, önbellek açık, değişkenler sıfır, Flash rutinleri RAM'e kopyalandı
+    // açılış: bank register'ları, önbellek açık, değişkenler sıfır, EEPROM yazma rutinleri RAM'e kopyalandı
     expect(expectSameMemory(g.probe, m)).toBeGreaterThan(100);
     expect(g.probe.hits).toBeGreaterThan(10_000);
   });
@@ -434,7 +449,7 @@ describe("Faz 6 anakart: tam sistem (CPU + saat + bellek + önbellek kartları) 
     g.loadFlash(bios.flash);
     const r = lockstep(g, m, 40_000, { io: true, until: () => m.uartOutput.endsWith("> ") });
     expect(r.foreignRead).toBe(-1); // açılışta video register'ı okunmaz
-    expect(m.uartOutput).toMatch(/^ CPU16 BIOS v1 .*\r\n512 KB RAM.*\r\nKomutlar icin \? yazin\.\r\n> $/s);
+    expect(m.uartOutput).toMatch(/^ CPU16 BIOS v1 .*\r\n128 KB RAM.*\r\nKomutlar icin \? yazin\.\r\n> $/s);
     expect(g.output).toBe(m.uartOutput); // FF00'a yazılan baytlar
     expect(r.irqs).toBeGreaterThan(0);
     expect(r.cycles).toBeGreaterThan(100_000);

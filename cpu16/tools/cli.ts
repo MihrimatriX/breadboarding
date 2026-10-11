@@ -5,11 +5,11 @@
 //   ucode dosya.ucode                           mikrokodu derle ve denetle (yordamlar ve döngü sayıları)
 //   chips | kicad-sym | board | kontrol | zamanlama  donanım komutları (tools/hw.ts)
 //   kit                                         deney rehberlerinin otomatik bölümlerini üret (kit/)
-//   bios [-o bios.hex|.bin]                     BIOS'u derle (.bin: 128 KB Flash imajı)
+//   bios [-o bios.hex|.bin]                     BIOS'u derle (.bin: 32 KB EEPROM imajı)
 //   charrom [-o charrom.bin]                    video kartının karakter ROM'u
 //   machine [dosya.s] [--flash|--rom [--led]] [--cycles N] [--screen]
 //                                               anakart: BIOS + önyükleyici, UART stdin/stdout'ta
-//                                               (--rom: BIOS'suz, program Flash bank 0'da)
+//                                               (--rom: BIOS'suz, program EEPROM bank 0'da)
 //   cc   dosya.c [...] [-o x.hex|.bin|.s] [--run] C derle (cc16, ayrıntılar: tools/cc.ts)
 //   kart-testi [--port /dev/ttyUSB0] [--baud N]  gerçek kartı UART üzerinden simülatörle karşılaştır
 

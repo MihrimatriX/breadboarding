@@ -111,7 +111,7 @@ export interface BoardLayout {
 /** Kart başlıkları; tabloda olmayan kart "<ad> kartı" olur */
 export const CARD_TITLES: Record<string, string> = {
   cpu: "CPU kartı", mem: "Test bellek kartı", clk: "Saat ve reset kartı", bellek: "Bellek kartı", onbellek: "Önbellek kartı",
-  gc: "G/Ç kartı", video: "Video kartı", prog: "Programlayıcı kartı",
+  gc: "G/Ç kartı", video: "Video kartı", kyb: "Kendin yap bellek kartı", prog: "Programlayıcı kartı",
 };
 
 export const cardTitle = (card: string): string =>

@@ -8,7 +8,7 @@
 ## Kısaca
 
 - **İlk hedef 1 MHz CPU saati** (8 MHz kristal osilatör). Şemadan yapılan zamanlama analizi en
-  kötü durumda 1,21 MHz, tipik değerlerle 2,7 MHz veriyor (anakartta 1,05 / 2,25 MHz); plandaki 4 MHz bu tasarımla 74HC
+  kötü durumda 1,21 MHz, tipik değerlerle 2,7 MHz veriyor (anakartta 1,05 / 2,23 MHz); plandaki 4 MHz bu tasarımla 74HC
   ailesinde garanti edilemez. Neden ve 4 MHz'e giden yol aşağıda.
 - **UART hızı CPU saatine bağlı**: 1 MHz'de kart 28 800 baud konuşur (4 MHz'de 115 200).
 - **Kurulum sırası** deney sırasıdır: saat → programlayıcı → CPU blokları → bellek → önbellek →
@@ -58,23 +58,32 @@ U116, U105 74HC157 C/V tutma, bayrak girişi (→ U107)                   +48
 ### Sonuç: bütün anakart
 
 ```
-npm run cpu16 -- zamanlama --anakart [--tip]   # CPU + saat + bellek + önbellek + G/Ç + video, 6 saat kökü
+npm run cpu16 -- zamanlama --anakart [--tip]   # CPU + saat + bellek + önbellek + G/Ç + video + kendin yap bellek, 6 saat kökü
 ```
 
 | Saat alanı | En kötü (maks) | Tipik | Gereken |
 |---|---|---|---|
-| CPU saati (CLK) | 950 ns → **1,05 MHz** | 444 ns → 2,25 MHz | 1 MHz |
-| TCLK (bekleme turları, önbellek ve G/Ç kartları) | 758 ns → 1,32 MHz | 302 ns → 3,31 MHz | 1 MHz |
+| CPU saati (CLK) | 956 ns → **1,05 MHz** | 448 ns → 2,23 MHz | 1 MHz |
+| TCLK (bekleme turları, önbellek ve G/Ç kartları) | 758 ns → 1,32 MHz | 338 ns → 2,96 MHz | 1 MHz |
 | Osilatör (OSC, önbellek temizleme sayacı) | 87 ns → 11,5 MHz | 37 ns → 27 MHz | 8 MHz |
 | PS/2 saati (klavye) | 150 ns → 6,7 MHz | 60 ns → 16,7 MHz | 16,7 kHz |
 | Piksel saati (VID_OSC: 74AC161, 74AC74, 74HC166) | 31 ns → **32,8 MHz** | 17 ns → 59,5 MHz | 25,175 MHz |
-| Karakter saati (piksel / 8, video kartının kalanı) | 262 ns → 3,82 MHz | 104 ns → 9,6 MHz | 3,15 MHz |
+| Karakter saati (piksel / 8, video kartının kalanı) | 262 ns → 3,82 MHz | 170 ns → 5,88 MHz | 3,15 MHz |
 
 Anakartta CPU'nun kritik yolu ALU değil, önbellek isabetidir: kontrol register'ı → `~MRD` →
 etiket karşılaştırması (74HC688) → `C_HIT` → veri SRAM'i `DE`/`DO`'yu sürer → CPU veriyolu, yine
-yarım periyotta (475 ns). 1 MHz'de pay %5'tir: en kötü durum değerleri 25 °C içindir ve bu yol
+yarım periyotta (478 ns). 1 MHz'de pay %4'tür: en kötü durum değerleri 25 °C içindir ve bu yol
 mantıksal olarak her döngüde koşulmaz (araç kapıların koşullarını değil, en uzun bağlantıyı sayar),
 ama ilk kurulumda 1 MHz'in üstüne çıkmadan önce kart testi koşulmalı.
+
+Bellek çipleri 28C256 (EEPROM, 150 ns) ve 62256 (70 ns) olunca en kötü durum neredeyse değişmedi
+(CLK 950 → 951 ns, TCLK ve karakter saati aynı); tipik değerlerde TCLK'yi artık EEPROM okuması
+belirler (bayt seçimi `BSEL` → 28C256 A0 → `MD`, 150 ns), karakter saatini de karakter ROM'u
+(28C256) → font register'ı yolu. İkisi de gereken hızın çok üstünde. Video kartında 28C256'nın
+yavaşlığı bir boru hattı aşamasıyla (font register'ı, bir karakter süresi) karşılanır; bu olmasaydı
+font yolu yarım karakter süresine (158,9 ns) sığmazdı ([anakart-gc-video.md](anakart-gc-video.md)).
+Kendin yap bellek kartının (Deney 14) 574'leri veri yoluna doğrudan bağlansaydı her hatta 16 bacak
+eklenir ve CPU yolu 972 ns olurdu; iki 74HC245 tamponla her hatta bir bacak kalır: 956 ns.
 
 Video kartında piksel saatiyle yalnızca üç çip çalışır: faz sayacı (74AC161), karakter saatini
 üreten 74AC74 ve kaydırma register'ı (74HC166); kartın geri kalanı piksel / 8 karakter saatindedir.
@@ -155,25 +164,30 @@ süresi ve zamanlayıcının 1 kHz ön bölücüsü TCLK döngüsü sayar. Bu y�
 - Web IDE'de **Kartın UART hızı** seçimini, komut satırında `--baud 28800` seçeneğini kullan.
 - Tık sayan programlar (yılan oyunu, saat örneği) gerçek zamanda 4 kat yavaş çalışır; davranış
   değişmez. Kart testi programları süre yazdırmaz, her hızda aynı çıktıyı verir.
-- Flash programlayıcı (Arduino) bundan bağımsızdır, kendi hızıyla çalışır.
+- EEPROM programlayıcı (Arduino) bundan bağımsızdır, kendi hızıyla çalışır.
 
 ## 3. Programlanacak çipler
 
 | Çip | Dosya | Nasıl üretilir |
 |---|---|---|
-| BIOS Flash (bellek kartı) | `bios.hex` | `npm run cpu16 -- bios -o bios.hex` |
+| BIOS EEPROM (bellek kartı, U420) | `bios.hex` | `npm run cpu16 -- bios -o bios.hex` |
 | Karakter ROM'u (video kartı) | `charrom.hex` | `npm run cpu16 -- charrom -o charrom.hex` |
 
-İkisi de SST39SF010A'dır ve deney setinin programlayıcısıyla yazılır (Deney 3):
+İkisi de 28C256'dır ve deney setinin programlayıcısıyla yazılır (Deney 3). Programlayıcı yazılım
+veri korumasını (SDP) kullanır: her sayfa korumalı yazılır, çip korumalı kalır.
 
 ```
-python3 cpu16/programlayici/yaz.py PORT --id                                    # OK ID BF B5
-python3 cpu16/programlayici/yaz.py PORT bios.hex --sil --dogrula
+python3 cpu16/programlayici/yaz.py PORT --koruma                    # yazma koruması: açık / kapalı
+python3 cpu16/programlayici/yaz.py PORT bios.hex --dogrula          # sil komutu gerekmez
+python3 cpu16/programlayici/yaz.py PORT --koruma-kapat              # gerekirse (başka programlayıcı için)
 ```
 
 CPU kartında programlanacak çip yok: mikrokod ve ALU kod çözme tablosu 74HC kapılarıyla kurulu
 (mikromimari.md). Mikrokod değişirse kart da değişir (`npm run cpu16 -- kontrol`, sonra
-`npm run cpu16 -- board kicad`); bir Flash'ı yeniden yazmak yetmez.
+`npm run cpu16 -- board kicad`); bir EEPROM'u yeniden yazmak yetmez.
+
+Programlanmış iki çipi etiketle (BIOS, karakter ROM'u): aynı kılıftalar, yer değiştirirlerse
+bilgisayar açılışta ekrana anlamsız karakterler basar ya da hiç açılmaz.
 
 ## 4. Besleme
 
@@ -181,8 +195,8 @@ Kaba hesap (5 V):
 
 | Tüketici | Adet | Akım |
 |---|---|---|
-| 74HC çipleri (1 MHz'de dinamik akım) | ≈390 | ≈1 mA her biri → 0,4 A |
-| Bellek, önbellek ve video SRAM / Flash | ≈6 | ≤30 mA → 0,2 A |
+| 74HC çipleri (1 MHz'de dinamik akım) | ≈430 | ≈1 mA her biri → 0,4 A |
+| Bellek, önbellek ve video SRAM / EEPROM (yalnız seçili olan akım çeker) | ≈12 | ≤30 mA → 0,2 A |
 | LED'ler (330 Ω, durum ve veriyolu göstergeleri) | ≈40 | ≈8 mA → 0,3 A |
 | **Toplam** | | **≈1 A** |
 
@@ -196,14 +210,15 @@ osilatörün kenarlarında rastgele hatalar yapar. Uzun breadboard dizilerinde b
 |---|---|---|---|
 | Deney 1 | Saat ve reset kartı | LED, osiloskop / mantık analizörü | YAVAŞ'ta LED yanıp söner; ADIM'da her basışta tek CPU döngüsü; CLK %50 görev oranlı ve osilatör / 8 |
 | Deney 2 | (kapılar, tek çip) | doğruluk tablosu | 74HC00'ün dört kapısı tabloya uyar |
-| Deney 3 | Flash programlayıcı | `yaz.py --id`, `--dogrula` | kimlik BF B5; yazılan imaj geri okunduğunda aynı |
+| Deney 3 | EEPROM programlayıcı | `yaz.py --koruma`, `--dogrula` | yeni çipte koruma kapalı, yazınca açık; yazılan imaj geri okunduğunda aynı |
 | Deney 4–7 | CPU kartı, blok blok | rehberdeki elle adımlar (DIP anahtar + LED) | her blok rehberdeki tabloyu verir; Deney 7 sonunda CPU, sahte bellekle komut çeker |
-| Deney 8 | Bellek kartı | `kit/programlar/bellek-deneme.s` Flash'ta, FF00 mandalında 8 LED | LED'ler bank 32–63'ü dört kez sayar, ≈ 46 s sonra `0xA5` ve kayan ışık |
+| Deney 8 | Bellek kartı | `kit/programlar/bellek-deneme.s` EEPROM'da, FF00 mandalında 8 LED | LED'ler bank 32–39'u dört kez sayar, boş bölgeler `0xFF` okunur, ≈ 11,5 s sonra `0x5A` ve kayan ışık |
 | Deney 9 | Önbellek kartı | `kit/programlar/onbellek-deneme.s` | bit 7 yanıkken (önbellek açık) kayan ışığın adımı ≈ 0,16 s, sönükken ≈ 0,23 s |
-| Deney 10 | G/Ç kartı | `kit/programlar/gc-deneme.s` Flash'ta, USB-UART (CH340, 28 800 baud), PS/2 klavye | terminalde başlık, saniyede bir nokta, yazılanların yankısı, tuşların tarama kodu |
+| Deney 10 | G/Ç kartı | `kit/programlar/gc-deneme.s` EEPROM'da, USB-UART (CH340, 28 800 baud), PS/2 klavye | terminalde başlık, saniyede bir nokta, yazılanların yankısı, tuşların tarama kodu |
 | Deney 11 | Video kartı | `kit/programlar/video-deneme.s`, VGA monitör | mavi zeminde "Merhaba, CPU16!", 16 renk çubuğu, saniyede 60 artan kare sayacı |
 | Deney 12 | BIOS + önyükleyici | **`kart-testi`** | **4/4 geçti** |
 | Deney 13 | C | `yilan.c` | ekranda oyun |
+| Deney 14 | Kendin yap bellek kartı (isteğe bağlı) | `kit/programlar/kyb-deneme.s` EEPROM'da, terminal | dört desen geçer, `TAMAM` ve `FF40:` dökümü; yazılan karakterler kartta görünür |
 
 ### Kart testi
 

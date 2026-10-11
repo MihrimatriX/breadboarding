@@ -172,7 +172,7 @@ erişimi yerine üç-dört kapı gecikmesi:
 | en kötü (CPU kartı) | 860 ns · 1,16 MHz | 824 ns · 1,21 MHz |
 | tipik (CPU kartı) | 470 ns · 2,13 MHz | 369 ns · 2,71 MHz |
 
-Anakartta en kötü durumu önbellek kartının yolu belirler (950 ns, değişmedi). Ayrıntı: `uretim.md`.
+Anakartta en kötü durumu önbellek kartının yolu belirler (956 ns). Ayrıntı: `uretim.md`.
 
 ### Denklik kanıtı
 

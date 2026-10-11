@@ -1,6 +1,6 @@
 # Deney 12: BIOS, önyükleyici ve Web Serial
 
-> **Video:** "Kendi BIOS'umuz: ilk açılış ve kablosuz program yükleme" · **Önce:** Deney 8–11 (bellek, önbellek, G/Ç, video) · **Kart:** yeni donanım yok; BIOS Flash'a yazılır, USB-UART bağlanır
+> **Video:** "Kendi BIOS'umuz: ilk açılış ve kablosuz program yükleme" · **Önce:** Deney 8–11 (bellek, önbellek, G/Ç, video) · **Kart:** yeni donanım yok; BIOS EEPROM'a yazılır, USB-UART bağlanır
 
 Bu deneyin sonunda bilgisayar kendi başına açılır, ekranda ve terminalde monitörün istemi `> `
 görünür; programlar artık çip sökmeden, USB kablosundan yüklenir. Deneyin sonunda kartı
@@ -17,11 +17,15 @@ davrandığının kanıtıdır.
 
 ## Nasıl çalışır
 
-- BIOS (`cpu16/bios/bios.s`) Flash bank 0'dadır ve CPU adresinde `0x0000–0x3FFF` penceresinde görünür.
+- BIOS (`cpu16/bios/bios.s`) EEPROM bank 0'dadır ve CPU adresinde `0x0000–0x3FFF` penceresinde görünür.
   Reset vektörü açılış koduna gider; açılış RAM'i, bank register'larını, kesme maskesini, ekranı
   hazırlar ve monitöre geçer. Ayrıntılar: `cpu16/docs/bios.md`.
-- Monitör komutları: `D` bellek dökümü, `W` yaz, `G` çalıştır, `B` bank, `L` HEX → RAM, `F` HEX → Flash,
-  `I` Flash kimliği, `C` önbellek sayaçları, `T` RAM testi, `?` yardım.
+- Monitör komutları: `D` bellek dökümü, `W` yaz, `G` çalıştır, `B` bank, `L` HEX → RAM, `F` HEX →
+  EEPROM (bank 1, `0x4000–0x7FFF`; bank 0 BIOS'undur), `I` EEPROM'un yazma koruması, `C` önbellek
+  sayaçları, `T` RAM testi, `?` yardım.
+- `F` EEPROM'a Deney 3'teki programlayıcı gibi yazar: her 64 baytlık sayfa korumalı yazılır
+  (`AA 55 A0` + baytlar), BIOS DATA yoklamasıyla bitmesini bekler. Yazma sürerken EEPROM'dan komut
+  okunamaz; bu yüzden yazma rutinleri açılışta RAM'e kopyalanır ve oradan çalışır.
 - Program yükleme: `L` komutundan sonra her Intel HEX satırı gönderilir; BIOS sağlamayı denetler,
   baytları RAM'e yazar ve tek karakterle yanıt verir. Web IDE ve `kart-testi` bu protokolü konuşur
   (`cpu16/bios/uploader.ts`).
@@ -30,12 +34,12 @@ davrandığının kanıtıdır.
 
 ## Kurulum adımları
 
-1. BIOS imajını üret ve bellek kartının Flash'ına yaz (Deney 3'teki programlayıcıyla):
+1. BIOS imajını üret ve bir 28C256'ya yaz (Deney 3'teki programlayıcıyla), çipi U420'ye tak:
    ```
    npm run cpu16 -- bios -o bios.hex
-   python3 cpu16/programlayici/yaz.py PORT bios.hex --sil --dogrula
+   python3 cpu16/programlayici/yaz.py PORT bios.hex --dogrula
    ```
-   Deney 8–11'in deneme programları bu Flash'taydı; artık yerini BIOS alır.
+   Deney 8–11'in deneme programları bu sokette çalışıyordu; artık yerini BIOS alır.
 2. USB-UART modülü (CH340, 5 V) Deney 10'daki gibi G/Ç kartının 6 pinli UART yuvasında kalır:
    1 GND, 2 CTS#, 4 TXD, 5 RXD. Yuvanın 3. pini (VCC) boştur: modülün 5 V'u karta **bağlanmaz**
    (kart kendi adaptöründen beslenir).
@@ -46,9 +50,9 @@ davrandığının kanıtıdır.
 
 | Adım | Beklenen |
 |---|---|
-| RESET | ekranda ve terminalde `CPU16 BIOS v1`, bellek / Flash satırı, `Komutlar icin ? yazin.` ve `> ` |
-| `I` | `BF B5 (SST39SF010)` |
-| `T` | RAM testi bütün bankları geçer |
+| RESET | ekranda ve terminalde `CPU16 BIOS v1`, `128 KB RAM, 32 KB EEPROM, …` satırı, `Komutlar icin ? yazin.` ve `> ` |
+| `I` | `EEPROM 28C256, yazma korumasi: acik` |
+| `T` | RAM testi bütün bankları (32–39, BIOS'un kullandığı 34 hariç) geçer |
 | `D 0` | BIOS'un ilk baytları: vektörler |
 | Web IDE → `merhaba.s` → **Karta gönder (Web Serial)** | ekranda sarı-mavi "Merhaba, CPU16!" ve `1+2+...+10 = 0x0037` |
 | `npm run cpu16 -- kart-testi --port /dev/ttyUSB0 --baud 28800` | **4/4 test geçti: kart simülatörle aynı davranıyor** |

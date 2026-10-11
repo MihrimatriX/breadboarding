@@ -76,8 +76,7 @@ describe("Faz 9: G/Ç kartının zamanlaması (TCLK ve PS/2 saat alanları)", ()
   it("her parçanın modeli var; okuma sürücüleri TCLK mantığına giden yollardan çıkarılır", () => {
     expect(m.bilinmeyen).toEqual([]);
     expect(m.uyarilar).toEqual([]);
-    expect(m.kapali[0].sayi).toBeGreaterThan(100);
-    expect(m.kapali[1].sayi).toBe(1);
+    expect(m.kapali.map((k) => k.sayi > 100)).toEqual([true]); // zamanlayıcıda yanlış yol kalmadı (74HC161, eşzamanlı yükleme)
   });
 
   it("zamanlayıcı ve UART en kötü durumda 1 MHz TCLK'de çalışır; PS/2 saati (≤ 17 kHz) için bol pay", () => {
@@ -91,7 +90,7 @@ describe("Faz 9: G/Ç kartının zamanlaması (TCLK ve PS/2 saat alanları)", ()
   });
 });
 
-describe("Faz 9: bütün anakartın zamanlaması (6 kart, 5 saat alanı)", () => {
+describe("Faz 9: bütün anakartın zamanlaması (7 kart, 6 saat kökü)", () => {
   const m = anakartZamanlamasi("maks");
   const t = anakartZamanlamasi("tip");
   const kok = (r: typeof m, net: string) => r.kokler.find((k) => k.kok === net)!;

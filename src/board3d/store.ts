@@ -29,11 +29,12 @@ const EXAMPLE_LABELS: Record<string, string> = {
   "video-deneme.s": "video-deneme.s · VGA: Merhaba, 16 renk, kare sayacı",
   "merhaba-vga.c": "merhaba-vga.c · C: printf (UART) ve VGA",
   "gc-deneme.s": "gc-deneme.s · UART, zamanlayıcı, klavye kesmeleri",
-  "bellek-deneme.s": "bellek-deneme.s · 512 KB RAM sınaması",
+  "bellek-deneme.s": "bellek-deneme.s · 128 KB RAM sınaması",
   "onbellek-deneme.s": "onbellek-deneme.s · önbellek açık / kapalı",
+  "kyb-deneme.s": "kyb-deneme.s · kendin yap bellek kartı (16 × 74HC574)",
   "hello.s": "hello.s · UART'a merhaba",
 };
-const ORDER = ["video-deneme.s", "merhaba-vga.c", "gc-deneme.s", "hello.s", "bellek-deneme.s", "onbellek-deneme.s"];
+const ORDER = ["video-deneme.s", "merhaba-vga.c", "gc-deneme.s", "hello.s", "bellek-deneme.s", "onbellek-deneme.s", "kyb-deneme.s"];
 
 export const EXAMPLES: Example[] = Object.entries({ ...kit, ...progs, ...own })
   .map(([p, source]) => ({ name: fileName(p), label: EXAMPLE_LABELS[fileName(p)] ?? fileName(p), source }))
@@ -128,7 +129,7 @@ interface KartState {
   langMode: LangMode;
   errors: ProgramError[];
   info: string;
-  /** Flash'taki programın adı */
+  /** EEPROM'daki programın adı */
   loaded: string;
   run(): void;
   pause(): void;
@@ -146,7 +147,7 @@ interface KartState {
   loadExample(name: string): void;
   /** yalnızca derle (hataları göster) */
   check(): boolean;
-  /** derle; başarılıysa Flash'a yaz ve RESET (run: çalıştır) */
+  /** derle; başarılıysa EEPROM'a yaz ve RESET (run: çalıştır) */
   compileAndLoad(run?: boolean): boolean;
   sendKeys(codes: number[]): void;
   sendUart(text: string): void;
@@ -259,7 +260,7 @@ export const useKart = create<KartState>((set, get) => ({
     }
     terminal.clear();
     const name = s.example && EXAMPLES.find((e) => e.name === s.example)?.source === s.source ? s.example : `düzenlenmiş program (${lang === "c" ? "C" : "assembly"})`;
-    set({ errors: [], info: `${r.info} · Flash bank 0'a yazıldı, RESET`, uart: "", loaded: name, running: run });
+    set({ errors: [], info: `${r.info} · EEPROM bank 0'a yazıldı, RESET`, uart: "", loaded: name, running: run });
     send({ type: "load", flash: r.flash, run: false }, [r.flash.buffer]);
     if (run) send({ type: "run", hz: get().hz });
     return true;
@@ -291,7 +292,7 @@ export function startBoardWorker() {
     worker = new Worker(new URL("./board.worker.ts", import.meta.url), { type: "module" });
     worker.onmessage = (e: MessageEvent<FromWorker>) => onWorker(e.data);
     worker.onerror = (e) => useKart.setState({ error: e.message || "Simülasyon başlatılamadı" });
-    useKart.setState({ loaded: s.example, info: `${first.info} · Flash bank 0'da` });
+    useKart.setState({ loaded: s.example, info: `${first.info} · EEPROM bank 0'da` });
     send({ type: "init", flash: first.flash }, [first.flash.buffer]);
   } catch (err) {
     useKart.setState({ error: String((err as Error).message ?? err) });

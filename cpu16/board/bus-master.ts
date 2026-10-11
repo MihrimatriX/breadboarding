@@ -9,6 +9,7 @@
 // Emülatörün veri yolu izi (Machine.onAccess) bununla kartlarda yeniden oynatılır.
 
 import { L0, L1, LogicSim, type Level } from "../chips/logic.ts";
+import { CYCLE_NS } from "../emu/machine.ts";
 import { Board } from "./board.ts";
 import { buildCacheCard, type CacheCard } from "./cache-card.ts";
 import { buildClockCard } from "./clock-card.ts";
@@ -55,6 +56,11 @@ export class BusMaster {
   readonly probe: MemoryProbe;
   /** toplam CPU saat döngüsü (boş adımlar dahil) */
   cycles = 0;
+  /**
+   * EEPROM'un saati (CPU döngüsü). Bir izi yeniden oynatırken her erişimden önce izdeki komut başı
+   * döngüsüne ayarlanır (Machine erişimleri öyle damgalar); ayarlanmazsa `cycles` kullanılır.
+   */
+  time: number | undefined;
   private readonly osc: number;
   private readonly clk: number;
   private readonly a: number[];
@@ -69,6 +75,7 @@ export class BusMaster {
     this.sim = new LogicSim(board.c);
     for (const p of board.pulls) this.sim.pull(p.net, p.level);
     this.probe = new MemoryProbe(this.sim, board, mem, cache);
+    this.probe.setClock(() => (this.time ?? this.cycles) * CYCLE_NS);
     const net = (name: string) => board.n(name);
     driveClockInputs(this.sim, net);
     this.osc = net("OSC_XTAL");
