@@ -1,0 +1,347 @@
+/* Kurulum modu paneli. Renkler ve aralıklar uygulamanın tasarım değişkenlerinden; yoksa yedek değerler. */
+
+.kur {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+  font-family: var(--font-sans, "IBM Plex Sans", system-ui, sans-serif);
+  color: var(--text, #d8dee6);
+  min-width: 0;
+}
+
+.kur-ust {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-3, 12px);
+}
+.kur-kart {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.kur-kart > span {
+  font-size: var(--text-xs, 11px);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted, #8b96a3);
+}
+.kur-kart select {
+  width: 100%;
+}
+.kur-izle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-sm, 13px);
+  color: var(--text-muted, #8b96a3);
+}
+
+.kur-not {
+  margin: 0;
+  font-size: var(--text-sm, 13px);
+  color: var(--text-muted, #8b96a3);
+}
+.kur-not.hata {
+  color: var(--danger, #ff6b7a);
+}
+
+.kur-ilerleme {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.kur-bar,
+.kur-mini-bar {
+  position: relative;
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--surface-3, #1e252e);
+  overflow: hidden;
+}
+.kur-bar > span,
+.kur-mini-bar > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--success, #3ecf8e);
+  border-radius: inherit;
+  transition: width 0.25s ease;
+}
+.kur-ilerleme-yazi {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  font-size: var(--text-sm, 13px);
+  font-variant-numeric: tabular-nums;
+}
+.kur-ilerleme-ek {
+  color: var(--text-muted, #8b96a3);
+}
+
+/* odaktaki tel */
+.kur-tel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+  padding: var(--space-4, 16px);
+  border: 1px solid var(--border, #2a323c);
+  border-radius: var(--radius-lg, 10px);
+  background: var(--surface-2, #12171d);
+}
+.kur-tel.takildi {
+  border-color: color-mix(in srgb, var(--success, #3ecf8e) 55%, transparent);
+}
+.kur-tel-bas {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.kur-tel-id {
+  font-family: var(--font-mono, "IBM Plex Mono", ui-monospace, monospace);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.kur-renk {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  flex: none;
+}
+.kur-renk.kucuk {
+  width: 11px;
+  height: 11px;
+}
+.kur-tel-renk {
+  font-size: var(--text-sm, 13px);
+  color: var(--text-muted, #8b96a3);
+}
+.kur-rozet {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: var(--text-xs, 11px);
+  background: color-mix(in srgb, var(--success, #3ecf8e) 22%, transparent);
+  color: var(--success, #3ecf8e);
+}
+.kur-tel-net {
+  font-size: var(--text-sm, 13px);
+  color: var(--text-muted, #8b96a3);
+  overflow-wrap: anywhere;
+}
+.kur-tel-net b {
+  font-family: var(--font-mono, "IBM Plex Mono", ui-monospace, monospace);
+  color: var(--text, #d8dee6);
+}
+.kur-tel-uclar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: var(--space-3, 12px);
+  align-items: start;
+}
+.kur-ok {
+  align-self: center;
+  font-size: 22px;
+  color: var(--text-muted, #8b96a3);
+}
+.kur-uc {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.kur-uc-yon {
+  font-size: var(--text-xs, 11px);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted, #8b96a3);
+}
+.kur-uc-ref {
+  font-family: var(--font-mono, "IBM Plex Mono", ui-monospace, monospace);
+  font-size: 18px;
+  font-weight: 600;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.kur-uc-deger {
+  font-size: var(--text-sm, 13px);
+  font-weight: 400;
+  color: var(--text-muted, #8b96a3);
+}
+.kur-uc-pin {
+  font-size: 15px;
+}
+.kur-uc-pin b {
+  font-family: var(--font-mono, "IBM Plex Mono", ui-monospace, monospace);
+}
+.kur-uc-yer {
+  font-size: var(--text-xs, 12px);
+  color: var(--text-muted, #8b96a3);
+}
+.kur-dip {
+  margin-top: 4px;
+  max-width: 100%;
+  height: auto;
+}
+.kur-dip-govde {
+  fill: #23272d;
+  stroke: #4a525c;
+  stroke-width: 0.6;
+}
+.kur-dip-centik {
+  fill: none;
+  stroke: #6b7480;
+  stroke-width: 0.8;
+}
+.kur-dip-nokta {
+  fill: #9aa3ad;
+}
+.kur-dip-bacak {
+  fill: #b9c0c8;
+}
+.kur-dip-yazi {
+  fill: #c9d0d8;
+  font: 600 6px var(--font-mono, "IBM Plex Mono", ui-monospace, monospace);
+}
+
+.kur-dugmeler {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+}
+.kur-dugmeler button {
+  flex: 1 1 auto;
+  min-height: 36px;
+}
+.kur-ipucu {
+  margin: 0;
+  font-size: var(--text-xs, 12px);
+  line-height: 1.5;
+  color: var(--text-muted, #8b96a3);
+}
+
+/* bloklar */
+.kur-bloklar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+}
+.kur-blok {
+  border: 1px solid var(--border, #2a323c);
+  border-radius: var(--radius-md, 8px);
+  background: var(--surface-1, #0e1217);
+  overflow: hidden;
+}
+.kur-blok-bas {
+  all: unset;
+  box-sizing: border-box;
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.kur-blok-bas:focus-visible {
+  outline: 2px solid var(--accent, #6aa9ff);
+  outline-offset: -2px;
+}
+.kur-blok-renk {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+.kur-blok-ad {
+  font-size: var(--text-sm, 13px);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.kur-blok-deney {
+  margin-left: 8px;
+  font-weight: 400;
+  color: var(--text-muted, #8b96a3);
+}
+.kur-blok-sayi {
+  font-size: var(--text-xs, 12px);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted, #8b96a3);
+}
+.kur-blok-bas .kur-mini-bar {
+  grid-column: 1 / -1;
+  height: 4px;
+}
+.kur-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 6px;
+  max-height: 320px;
+  overflow-y: auto;
+  border-top: 1px solid var(--border, #2a323c);
+}
+.kur-liste li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+}
+.kur-liste li.secili {
+  background: color-mix(in srgb, var(--accent, #6aa9ff) 16%, transparent);
+}
+.kur-liste li.takildi .kur-li-uc,
+.kur-liste li.takildi .kur-li-id {
+  color: var(--text-muted, #8b96a3);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--text-muted, #8b96a3) 60%, transparent);
+}
+.kur-liste li > button {
+  all: unset;
+  box-sizing: border-box;
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 56px 12px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  cursor: pointer;
+  font-size: var(--text-xs, 12px);
+}
+.kur-liste li > button:focus-visible {
+  outline: 2px solid var(--accent, #6aa9ff);
+}
+.kur-li-id,
+.kur-li-uc {
+  font-family: var(--font-mono, "IBM Plex Mono", ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.kur-li-net {
+  font-family: var(--font-mono, "IBM Plex Mono", ui-monospace, monospace);
+  color: var(--text-muted, #8b96a3);
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kur-alt {
+  display: flex;
+  justify-content: flex-end;
+}
+.kur-sifirla.soruyor {
+  border-color: var(--danger, #ff6b7a);
+  color: var(--danger, #ff6b7a);
+}
