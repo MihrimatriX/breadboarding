@@ -1,6 +1,11 @@
 // cc16 önişlemci ve bağlayıcı testleri: makrolar, koşullu derleme, #include (bellek içi dosya
 // sistemi), çoklu çeviri birimi, static, sembol hataları, dallanma uzatma, ROM/RAM taşması.
 
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { compile } from "../cc/index.ts";
 import { build, errorsOf, exitOf, LIB, out, runC } from "./cc-helpers.ts";
@@ -207,5 +212,45 @@ _asm_val:
     expect(c.asm).toMatch(/__data_load:/);
     expect(c.asm).toMatch(/_v = 0x4000/);
     expect(c.asm).toMatch(/\.byte 52, 18/);
+  });
+});
+
+describe("komut satırı: npm run cpu16 -- cc", () => {
+  // --experimental-strip-types Node 22.6+ ister
+  const [maj, min] = process.versions.node.split(".").map(Number);
+  const ok = maj > 22 || (maj === 22 && min >= 6);
+  const cli = fileURLToPath(new URL("../tools/cli.ts", import.meta.url));
+  const prog = (n: string) => fileURLToPath(new URL(`../programs/c/${n}`, import.meta.url));
+  const cc = (...args: string[]) =>
+    execFileSync(process.execPath, ["--experimental-strip-types", "--no-warnings", cli, "cc", ...args], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+  it.skipIf(!ok)("--run UART çıktısını yazar; -o ile .s, .hex, .bin üretir", () => {
+    expect(cc(prog("hello.c"), "--run")).toBe("Merhaba, CPU16! (cc16)\n");
+    expect(cc(prog("multi/main.c"), prog("multi/util.c"), "--run")).toContain("gcd(84, -36)=12");
+    const dir = mkdtempSync(join(tmpdir(), "cc16-"));
+    for (const ext of ["s", "hex", "bin"]) {
+      cc(prog("fib.c"), "-o", join(dir, `fib.${ext}`));
+      expect(existsSync(join(dir, `fib.${ext}`))).toBe(true);
+    }
+    expect(readFileSync(join(dir, "fib.s"), "utf8")).toMatch(/^_fib_rec:/m);
+    expect(readFileSync(join(dir, "fib.hex"), "utf8")).toMatch(/^:10000000/);
+    expect(readFileSync(join(dir, "fib.bin")).length).toBeLessThan(0x4000);
+  });
+
+  it.skipIf(!ok)("derleme hatası: dosya:satır:sütun mesajı ve sıfır olmayan çıkış kodu", () => {
+    const dir = mkdtempSync(join(tmpdir(), "cc16-"));
+    const bad = join(dir, "bad.c");
+    writeFileSync(bad, "int main(void) {\n  return x;\n}\n");
+    let err: { status?: number; stderr?: string } = {};
+    try {
+      cc(bad);
+    } catch (e) {
+      err = e as typeof err;
+    }
+    expect(err.status).toBe(1);
+    expect(err.stderr).toMatch(/bad\.c:2:\d+: .*'x'/);
   });
 });
