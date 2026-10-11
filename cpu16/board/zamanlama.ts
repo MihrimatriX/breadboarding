@@ -32,8 +32,10 @@ interface Ark {
   yon: Yon;
 }
 interface Ardisik {
-  /** saat pini (yükselen kenarda tetikler) */
+  /** saat pini */
   clock: string;
+  /** -1: saat pininin düşen kenarında tetikler (ör. 74HC393); varsayılan yükselen */
+  kenar?: -1;
   q: string[];
   clkq: D;
   data: string[];
@@ -67,6 +69,10 @@ export const GECIKME = {
   "74HC161.CP": [15, 37], "74HC161.TC": [19, 42], "74HC161.CET": [13, 30], "74HC161.SU": [5, 15],
   "74HC165.CP": [17, 38], "74HC165.PL": [18, 40], "74HC165.D": [15, 35], "74HC165.SU": [4, 12],
   "74HC595.CP": [16, 35], "74HC595.OE": [15, 35], "74HC595.SU": [4, 12],
+  "74HC05": [8, 20], "74HC166.CP": [16, 35], "74HC166.SU": [4, 12],
+  "74HC193.CP": [20, 43], "74HC193.TC": [14, 33], "74HC193.PL": [22, 50], "74HC193.D": [20, 45],
+  "74HC393.CP": [28, 60], "74HC273.CP": [15, 35], "74HC273.SU": [4, 12],
+  "74HC590.CP": [20, 45], "74HC590.RCO": [14, 33], "74HC590.OE": [15, 35], "74HC590.SU": [5, 15],
   // bellekler: hız sınıfının garanti değeri (tip = maks)
   "SST39SF010A.A": [70, 70], "SST39SF010A.OE": [35, 35],
   "62256.A": [70, 70], "62256.OE": [35, 35],
@@ -96,6 +102,7 @@ function model(part: string): Model | null {
     case "74HC86": return quad("74HC86", 0, ["A", "B"], 4);
     case "74HC10": return quad("74HC10", -1, ["A", "B", "C"], 3, 0);
     case "74HC04": return quad("74HC04", -1, ["A"], 6);
+    case "74HC05": return quad("74HC05", -1, ["A"], 6);
     case "74HC14": return quad("74HC14", -1, ["A"], 6);
     case "74HC125": {
       const arcs: Ark[] = [];
@@ -191,6 +198,35 @@ function model(part: string): Model | null {
         seq: [
           { clock: "SHCP", q: ["Q7S"], clkq: g("74HC595.CP"), data: ["DS"], setup: g("74HC595.SU") },
           { clock: "STCP", q: rng("Q", 8), clkq: g("74HC595.CP"), data: [], setup: g("74HC595.SU") },
+        ],
+      };
+    case "74HC166":
+      return { arcs: [], seq: [{ clock: "CP", q: ["Q7"], clkq: g("74HC166.CP"), data: ["DS", ...rng("D", 8), "~CE", "~PE"], setup: g("74HC166.SU") }] };
+    case "74HC193":
+      // sayma saatleri CPU / CPD; ~TCU / ~TCD saat düşükken birleşimsel (zincirleme sayaçların saati)
+      return {
+        arcs: [
+          ...cross(["CPU"], ["~TCU"], g("74HC193.TC"), 1),
+          ...cross(["CPD"], ["~TCD"], g("74HC193.TC"), 1),
+          ...cross(["~PL"], rng("Q", 4), g("74HC193.PL"), 0),
+          ...rng("D", 4).map((x, i) => ({ from: x, to: `Q${i}`, d: g("74HC193.D"), yon: 1 as Yon })),
+        ],
+        seq: [
+          { clock: "CPU", q: [...rng("Q", 4), "~TCU", "~TCD"], clkq: g("74HC193.CP"), data: [], setup: g("74HC193.D") },
+          { clock: "CPD", q: [...rng("Q", 4), "~TCU", "~TCD"], clkq: g("74HC193.CP"), data: [], setup: g("74HC193.D") },
+        ],
+      };
+    case "74HC393":
+      // dalgalı sayıcı: ~nCP'nin düşen kenarı; Q3'e kadar en kötü gecikme
+      return { arcs: [], seq: [1, 2].map((h) => ({ clock: `~${h}CP`, kenar: -1 as const, q: rng(`${h}Q`, 4), clkq: g("74HC393.CP"), data: [], setup: g("74HC393.CP") })) };
+    case "74HC273":
+      return { arcs: [], seq: [{ clock: "CP", q: rng("Q", 8), clkq: g("74HC273.CP"), data: rng("D", 8), setup: g("74HC273.SU") }] };
+    case "74HC590":
+      return {
+        arcs: [...cross(["~OE"], rng("Q", 8), g("74HC590.OE"), 0), ...cross(["~CEC"], ["~RCO"], g("74HC590.RCO"), 1)],
+        seq: [
+          { clock: "CPC", q: ["~RCO"], clkq: g("74HC590.CP"), data: ["~CEC"], setup: g("74HC590.SU") },
+          { clock: "CPR", q: rng("Q", 8), clkq: g("74HC590.CP"), data: [], setup: g("74HC590.SU") },
         ],
       };
     case "SST39SF010A":
@@ -388,7 +424,11 @@ export function zamanlamaAnalizi(b: Board, opts: { kokler: SaatKoku[]; kose?: Ko
     // ardışık elemanlar: bu köke bağlı olanlar
     type Sinif = 1 | -1; // başlatan kenar: 1 yükselen, -1 düşen
     const elems = seqs
-      .map(({ ch, s }) => ({ ch, s, c: saat.get(ch.nets[s.clock]) }))
+      .map(({ ch, s }) => {
+        const c = saat.get(ch.nets[s.clock]);
+        // kökün hangi kenarında tetiklendiği: pinin yönü × elemanın tetiklendiği kenar
+        return { ch, s, c: c && { ...c, yon: (c.yon * (s.kenar ?? 1)) as 1 | -1 } };
+      })
       .filter((x): x is { ch: ChipInstance; s: Ardisik; c: { t: number; tTip: number; yon: 1 | -1 } } => !!x.c);
 
     // saat kapılama: bir girişi saat ağacında, çıkışı saat ağacında olan kapılar
