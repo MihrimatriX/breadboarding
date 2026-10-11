@@ -1,11 +1,12 @@
-// Anakart bellek kartı ("bellek", Faz 6): bank register'ları, G/Ç alanı çözümü, 128 KB Flash
-// (SST39SF010A) ve 512 KB RAM (AS6C4008). Ayrıntı ve zamanlama çizimi: cpu16/docs/anakart-kartlari.md
+// Anakart bellek kartı ("bellek", Faz 6): bank register'ları, G/Ç alanı çözümü, 32 KB EEPROM
+// (28C256) ve 128 KB RAM (4 × 62256). Ayrıntı ve zamanlama çizimi: cpu16/docs/anakart-kartlari.md
 //
 // Adres çevirme (emülatördeki Machine.physAddr ile aynı):
 //   A15..A8 = 0xFF          → G/Ç alanı: ~IO = 0 (74HC688), bellek çipleri seçilmez
 //   fiziksel = BANKn · 0x4000 + A13..A0, n = A15..A14 (74HC153 ile seçilir → PA14..PA19)
-//   PA19..PA17 = 000        → Flash (0x00000–0x1FFFF)
-//   PA19 = 1                → RAM   (0x80000–0xFFFFF)
+//   tek bir 74HC138 (C B A = PA19 PA16 PA15, PA18 = PA17 = 0 ve ~IO = 1 iken):
+//   Y0: PA19..PA15 = 00000  → EEPROM (0x00000–0x07FFF, bank 0–1)
+//   Y4..Y7: 100xx           → RAM 0..3 (0x80000–0x9FFFF, bank 32–39; her 62256 iki bank)
 //   diğerleri               → boş: veri yolu dirençlerle 0xFF okunur, yazmalar kaybolur
 // Bank register'ları FF10..FF13 (74HC273, reset'te 0/32/33/34; 1 olması gereken bitler register'da
 // ters saklanır: girişte ve çıkışta birer evirici). Okumada üst iki bit 0.
@@ -29,12 +30,17 @@
 // Yazma: CPU'nun ~MWE_E/~MWE_O darbesi yalnızca WEL_E/WEL_O bayraklarını kurar (R'de silinir);
 // asıl bellek darbeleri yukarıdaki pencerelerdedir.
 
-import { RESET_BANKS } from "../emu/machine.ts";
+import type { MemoryHandle } from "../chips/parts/memory.ts";
+import { RAM_SIZE, RESET_BANKS } from "../emu/machine.ts";
 import type { Board, ChipInstance } from "./board.ts";
 
 export interface MemCard {
-  flash: ChipInstance;
-  ram: ChipInstance;
+  /** 28C256: BIOS EEPROM'u */
+  eeprom: ChipInstance;
+  /** 4 × 62256: RAM 0..3 (her biri 32 KB = iki bank) */
+  ram: ChipInstance[];
+  /** RAM çiplerinin içeriği tek dizide (fiziksel 0x80000'den; çiplerin tutamaçları bunun dilimleridir) */
+  ramData: Uint8Array;
   /** 74HC273 × 4: BANK0..BANK3 */
   banks: ChipInstance[];
 }
@@ -58,13 +64,10 @@ export function buildMemCard(b: Board): MemCard {
     bank[`Q${i}`] = i === 2 ? "VCC" : "GND"; // A7..A2 = 000100 → FF10..FF13
   });
   b.place("74HC688", bank, "bank register'ları: FF10..FF13");
-  b.not("PA19", "~PA19", "Flash bölgesi (PA19 = 0)");
-  b.nand("~IO", "~PA19", "~LOWSEL", "bellek erişimi ve PA19 = 0");
   b.place("74HC139", {
     "~1E": "~BANKSEL", "1A0": "A1", "1A1": "GND", "~1Y0": "~BSEL01", "~1Y1": "~BSEL23",
-    "~2E": "~LOWSEL", "2A0": "PA17", "2A1": "PA18", "~2Y0": "~CE_FLASH",
-  }, "bank register seçimi (FF10/11, FF12/13); Flash seçimi (PA19..PA17 = 000)");
-  b.nand("PA19", "~IO", "~CE_RAM", "RAM seçimi (PA19 = 1)");
+    "~2E": "VCC", "2A0": "GND", "2A1": "GND",
+  }, "bank register seçimi (FF10/11, FF12/13)");
 
   // ---- bank register'ları
   b.block = "Bank register'ları";
@@ -150,22 +153,31 @@ export function buildMemCard(b: Board): MemCard {
   b.place("74HC245", even, "yazma: DE → MD (çift bayt)");
   b.place("74HC245", odd, "tek bayt: MD ↔ DO");
 
-  // ---- bellek çipleri
-  b.block = "Flash ve RAM";
-  const memConn = (addrBits: number, ce: string, dataPrefix: string) => {
-    const conn: Record<string, string> = { "~CE": ce, "~OE": "~MRD", "~WE": "~MWR", A0: "BSEL" };
-    for (let i = 1; i < addrBits; i++) conn[`A${i}`] = i < 14 ? `A${i}` : `PA${i}`;
-    range(8).forEach((i) => (conn[`${dataPrefix}${i}`] = `MD${i}`));
+  // ---- bellek çipleri: hepsi 32 K × 8, aynı bacak düzeni (A0 = bayt seçimi, A14 = PA14)
+  b.block = "EEPROM ve RAM";
+  const memConn = (ce: string) => {
+    const conn: Record<string, string> = { "~CE": ce, "~OE": "~MRD", "~WE": "~MWR", A0: "BSEL", A14: "PA14" };
+    for (let i = 1; i < 14; i++) conn[`A${i}`] = `A${i}`;
+    range(8).forEach((i) => (conn[`IO${i}`] = `MD${i}`));
     return conn;
   };
-  const flash = b.place("SST39SF010A", memConn(17, "~CE_FLASH", "DQ"), "Flash 128 KB: fiziksel 0x00000–0x1FFFF (BIOS)", { footprint: "Package_DIP:DIP-32_W15.24mm_Socket" });
-  const ram = b.place("AS6C4008", memConn(19, "~CE_RAM", "DQ"), "RAM 512 KB: fiziksel 0x80000–0xFFFFF");
+  const eeprom = b.place("28C256", memConn("~CE_ROM"), "EEPROM 32 KB: fiziksel 0x00000–0x07FFF (BIOS: bank 0, kullanıcı: bank 1)", { footprint: "Package_DIP:DIP-28_W15.24mm_Socket" });
+  const ram = range(4).map((k) => b.place("62256", memConn(`~CE_RAM${k}`),
+    `RAM ${k}: fiziksel 0x${(0x80000 + k * 0x8000).toString(16).toUpperCase()}–0x${(0x87fff + k * 0x8000).toString(16).toUpperCase()} (bank ${32 + 2 * k}–${33 + 2 * k})`));
   b.pullUp(range(8).map((i) => `MD${i}`), "bellek veri yolu: boş bölge 0xFF okunur");
+  const ramData = new Uint8Array(RAM_SIZE);
+  ram.forEach((ci, k) => ((ci.handle as MemoryHandle).data = ramData.subarray(k * 0x8000, (k + 1) * 0x8000)));
+
+  b.block = "Adres çözme";
+  b.place("74HC138", {
+    A0: "PA15", A1: "PA16", A2: "PA19", "~E1": "PA17", "~E2": "PA18", E3: "~IO",
+    "~Y0": "~CE_ROM", "~Y4": "~CE_RAM0", "~Y5": "~CE_RAM1", "~Y6": "~CE_RAM2", "~Y7": "~CE_RAM3",
+  }, "çip seçimi: EEPROM (PA19..PA15 = 00000), RAM 0..3 (100xx); diğerleri boş");
 
   // ---- arka panel veri yolu çekme dirençleri (sürülmeyen G/Ç adresi 0xFF okunur)
   b.block = "Veri yolu";
   b.pullUp(range(8).map((i) => `DE${i}`), "DE çekme dirençleri");
   b.pullUp(range(8).map((i) => `DO${i}`), "DO çekme dirençleri");
 
-  return { flash, ram, banks };
+  return { eeprom, ram, ramData, banks };
 }

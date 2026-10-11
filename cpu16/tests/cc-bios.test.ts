@@ -102,6 +102,8 @@ describe("cc --hedef bios", () => {
       m.run(40_000);
     }
     expect(screen(m)).toContain("Skor: 40");
+    m.run(100_000); // durum satırı printf'in ortasında olabilir: satırın bitmesini bekle (bir adımdan kısa)
+    expect(screen(m)).toContain("Rekor: 40");
     expect(screen(m)).toContain("Uzunluk: 7");
     expect(screen(m)).not.toContain("OYUN BITTI");
   }, 60_000);

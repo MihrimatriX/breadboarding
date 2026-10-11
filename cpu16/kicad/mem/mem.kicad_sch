@@ -9,7 +9,7 @@
       (property "Footprint" "Package_DIP:DIP-28_W15.24mm" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
       (property "Datasheet" "" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
       (property "ki_description" "32 KB statik RAM (32K × 8)" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
-      (property "CPU16_Kullanim" "Cache veri ve etiket belleği (hızlı SRAM), video karakter belleği (VRAM)" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+      (property "CPU16_Kullanim" "Ana bellek (4 adet, 128 KB), önbellek veri ve etiket belleği, video karakter belleği (VRAM)" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
       (symbol "62256_0_1"
         (rectangle (start -7.62 25.4) (end 7.62 -25.4) (stroke (width 0.254) (type default)) (fill (type background)))
       )

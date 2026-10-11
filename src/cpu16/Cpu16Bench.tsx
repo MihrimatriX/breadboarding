@@ -1,5 +1,5 @@
 // CPU16 tezgâhı: iki kip arasında seçim.
-//   Anakart + BIOS (Faz 6–7): bank'lı 1 MB bellek, Flash, VGA, PS/2, UART, BIOS ve önyükleyici.
+//   Anakart + BIOS (Faz 6–7): bank'lı bellek (32 KB EEPROM + 128 KB RAM), VGA, PS/2, UART, BIOS ve önyükleyici.
 //   Düz bellek (Faz 1): 64 KB düz RAM'li referans emülatör; Faz 1 örnek programları bunda çalışır.
 
 import { useState } from "react";
@@ -30,7 +30,7 @@ export function Cpu16Bench() {
   const switcher = (
     <div className="seg" role="group" aria-label="CPU16 kipi">
       <button className={kind === "machine" ? "on" : ""} aria-pressed={kind === "machine"} onClick={() => pick("machine")}
-        title="BIOS'lu tam makine: VGA, klavye, UART, Flash, önbellek">Anakart + BIOS</button>
+        title="BIOS'lu tam makine: VGA, klavye, UART, EEPROM, önbellek">Anakart + BIOS</button>
       <button className={kind === "flat" ? "on" : ""} aria-pressed={kind === "flat"} onClick={() => pick("flat")}
         title="64 KB düz RAM, Faz 1 örnek programları">Düz bellek</button>
     </div>

@@ -1,7 +1,7 @@
 // Önbellek (L1) modeli: 2 KB, doğrudan eşlemeli, satır = 1 kelime (2 bayt) → 1024 satır.
 // Fiziksel adres (20 bit): [19:11] etiket (9 bit) · [10:1] satır indeksi (10 bit) · [0] bayt seçimi.
 // Yazma: write-through, yazma-ayırmasız (no-write-allocate). RAM'e yazmada isabet eden satır
-// güncellenir; Flash bölgesine (A19 = 0) yazmada satır geçersiz kılınır, çünkü Flash'a yapılan
+// güncellenir; EEPROM / boş bölgeye (A19 = 0) yazmada satır geçersiz kılınır, çünkü EEPROM'a yapılan
 // yazma bir komut baytıdır, içerik değil.
 // Ayrıntı: cpu16/docs/anakart.md, "Önbellek kartı".
 
@@ -50,7 +50,7 @@ export class Cache {
     this.totalMisses++;
   }
 
-  /** Yazma gözetleme: isabet varsa RAM'de satırı güncelle, Flash'ta geçersiz kıl. */
+  /** Yazma gözetleme: isabet varsa RAM'de satırı güncelle, EEPROM / boş bölgede geçersiz kıl. */
   snoopWrite(phys: number, value: number, isRam: boolean): void {
     const i = Cache.index(phys);
     if (this.tags[i] !== Cache.tag(phys)) return;

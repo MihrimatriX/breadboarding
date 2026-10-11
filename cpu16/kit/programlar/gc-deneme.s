@@ -1,4 +1,4 @@
-; gc-deneme.s — Deney 10: G/Ç kartı denemesi (BIOS'suz, Flash bank 0'dan çalışır).
+; gc-deneme.s — Deney 10: G/Ç kartı denemesi (BIOS'suz, EEPROM bank 0'dan çalışır).
 ;
 ; Açılışta UART'a "G/C KARTI" yazar, sonra her şeyi kesmeyle yapar:
 ;   - zamanlayıcı: her RELOAD tıkında bir '.' (1 MHz CPU'da 250 tık = 1 s; 4 MHz'de 0,25 s)

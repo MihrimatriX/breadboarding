@@ -1,4 +1,4 @@
-; video-deneme.s — Deney 11: video kartı denemesi (BIOS'suz, Flash bank 0'dan çalışır).
+; video-deneme.s — Deney 11: video kartı denemesi (BIOS'suz, EEPROM bank 0'dan çalışır).
 ;
 ; Ekranı mavi zeminle temizler, 2. satıra sarı "Merhaba, CPU16!" yazar, 5. satıra 16 rengin
 ; zemin çubuğunu, 6. satıra altlarına renk numaralarını (0–F) koyar. Sonra her VSYNC'te

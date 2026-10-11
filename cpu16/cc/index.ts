@@ -44,7 +44,7 @@ export interface CompileOptions {
   /** bellek yerleşimi (varsayılan: ROM 0x0000–0x3FFF, RAM 0x4000–, yığın tepesi 0xFF00) */
   layout?: Partial<Layout>;
   /**
-   * Hedef: "rom" (varsayılan) program 0x0000'dan, kendi vektörleriyle çalışır (Flash'a yazılır);
+   * Hedef: "rom" (varsayılan) program 0x0000'dan, kendi vektörleriyle çalışır (EEPROM'a yazılır);
    * "bios" program RAM'e 0x4000'dan yüklenir, BIOS monitöründen G 4000 ile çalışır ve döner
    * (lib/hedef/bios/: crt0 ve BIOS çağrıları; putchar VGA + UART'a yazar).
    */

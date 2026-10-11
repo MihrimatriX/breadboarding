@@ -218,7 +218,7 @@ export const HC595: ChipDef = {
       return { s: { sr, st }, out };
     },
   },
-  usage: "EEPROM/Flash programlayıcısı (Arduino + 2 × 595 adres), LED panel sürme, UART verici",
+  usage: "EEPROM programlayıcısı (Arduino + 2 × 595 adres), LED panel sürme, UART verici",
 };
 
 export const HC245: ChipDef = {

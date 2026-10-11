@@ -51,33 +51,6 @@ export const HC139: ChipDef = {
   usage: "Bellek pencere seçimi (A15:A14 → 4 pencere)",
 };
 
-export const HC148: ChipDef = {
-  part: "74HC148",
-  title: "8'den 3'e öncelikli kodlayıcı",
-  pkg: "DIP-16",
-  footprint: dipFootprint(16),
-  pins: pinsOf("~I4 ~I5 ~I6 ~I7 ~EI ~A2 ~A1 GND ~A0 ~I0 ~I1 ~I2 ~I3 ~GS ~EO VCC", { out: "~A0 ~A1 ~A2 ~GS ~EO" }),
-  build(c, p) {
-    const en = c.not(p["~EI"]);
-    const i = range("~I", 8).map((n) => c.not(p[n]));
-    const ni = range("~I", 8).map((n) => p[n]); // aktif düşük giriş = "yok" sinyali
-    const any = c.or(i);
-    c.nand([en, any], p["~GS"]);
-    c.nand([en, c.not(any)], p["~EO"]);
-    c.nand([en, c.or([i[4], i[5], i[6], i[7]])], p["~A2"]);
-    c.nand([en, c.or([c.and([i[2], ni[4], ni[5]]), c.and([i[3], ni[4], ni[5]]), i[6], i[7]])], p["~A1"]);
-    c.nand([en, c.or([c.and([i[1], ni[2], ni[4], ni[6]]), c.and([i[3], ni[4], ni[6]]), c.and([i[5], ni[6]]), i[7]])], p["~A0"]);
-  },
-  ref: comb((p): RefOut => {
-    if (p["~EI"]) return { "~A0": 1, "~A1": 1, "~A2": 1, "~GS": 1, "~EO": 1 };
-    let top = -1;
-    for (let k = 7; k >= 0; k--) if (!p[`~I${k}`]) { top = k; break; }
-    if (top < 0) return { "~A0": 1, "~A1": 1, "~A2": 1, "~GS": 1, "~EO": 0 };
-    return { ...busOut(["~A0", "~A1", "~A2"], ~top & 7), "~GS": 0, "~EO": 1 };
-  }),
-  usage: "Kesme denetleyicisi: en yüksek öncelikli kaynağın numarası (IRQ_SRC)",
-};
-
 export const HC151: ChipDef = {
   part: "74HC151",
   title: "8'den 1'e seçici (multiplexer)",
@@ -192,4 +165,4 @@ export const HC688: ChipDef = {
   usage: "Cache etiket karşılaştırması (hit/miss), adres eşleme",
 };
 
-export const MSI_CHIPS = [HC138, HC139, HC148, HC151, HC153, HC157, HC283, HC688];
+export const MSI_CHIPS = [HC138, HC139, HC151, HC153, HC157, HC283, HC688];

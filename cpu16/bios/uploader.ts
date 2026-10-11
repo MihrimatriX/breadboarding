@@ -11,7 +11,7 @@ export interface SerialLink {
 }
 
 export interface UploadOptions {
-  /** "ram": L komutu, "flash": F komutu (SST komut dizisiyle Flash'a). */
+  /** "ram": L komutu, "flash": F komutu (korumalı sayfa yazmasıyla EEPROM'a, yalnız bank 1). */
   mode: "ram" | "flash";
   /** Yükleme bitince G ile çalıştır. */
   run?: boolean;
@@ -40,7 +40,7 @@ function record(type: number, addr: number, data: ArrayLike<number>): string {
 }
 
 export interface HexChunk {
-  /** 32 bit hedef adres (Flash için ofset; 64 KB üstü 04 kaydıyla). */
+  /** 32 bit hedef adres (EEPROM için ofset; 64 KB üstü 04 kaydıyla). */
   addr: number;
   data: ArrayLike<number>;
 }
@@ -69,7 +69,7 @@ export function intelHex(chunks: HexChunk[], entry?: number, perLine = 16): stri
 }
 
 /** Derlenmiş programın HEX'i. Giriş: `main`/`start` etiketi, yoksa ilk bayt. `base` verilirse
- * adresler o fiziksel / Flash ofsetine kaydırılır (ör. Flash bank 5: 0x14000). */
+ * adresler o fiziksel / EEPROM ofsetine kaydırılır (ör. RAM bank 36: 0x90000). */
 export function programHex(asm: AsmResult, base?: number): { hex: string; entry: number; size: number } {
   const first = asm.ranges.length ? asm.ranges[0][0] : 0;
   const entry = asm.symbols.get("main") ?? asm.symbols.get("start") ?? first;
@@ -106,7 +106,7 @@ export async function uploadHex(link: SerialLink, hex: string, opts: UploadOptio
     await expect(link, (g) => g.endsWith("> "), timeout, "monitör istemi (\"> \")");
     await link.write(opts.mode === "flash" ? "F\r" : "L\r");
     await expect(link, (g) => /HEX[^\n]*\n$/.test(g), timeout, "\"HEX bekleniyor\" satırı");
-    log(`${lines.length} kayıt gönderiliyor (${opts.mode === "flash" ? "Flash" : "RAM"})…\n`);
+    log(`${lines.length} kayıt gönderiliyor (${opts.mode === "flash" ? "EEPROM" : "RAM"})…\n`);
     let done = 0;
     for (const line of lines) {
       let reply = "";

@@ -1,0 +1,7 @@
+Parça;Adet;Açıklama;Footprint;Kart;Referanslar
+74HC138;4;3'ten 8'e kod çözücü (aktif düşük çıkış);Package_DIP:DIP-16_W7.62mm;kyb;U801 U802 U803 U804
+74HC245;2;8 bit çift yönlü veriyolu alıcı-vericisi;Package_DIP:DIP-20_W7.62mm;kyb;U805 U806
+74HC574;16;8 bit D flip-flop register (üç durumlu çıkış);Package_DIP:DIP-20_W7.62mm;kyb;U807 U808 U809 U810 U811 U812 U813 U814 U815 U816 U817 U818 U819 U820 U821 U822
+BACKPLANE_2x32;1;Arka panel konnektörü 2 × 32 (2,54 mm);Connector_PinHeader_2.54mm:PinHeader_2x32_P2.54mm_Vertical;kyb;J801
+C_100N;22;100 nF seramik kondansatör (dekuplaj);Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm;kyb;C802 C803 C804 C805 C806 C807 C808 C809 C810 C811 C812 C813 C814 C815 C816 C817 C818 C819 C820 C821 C822 C823
+C_100U;1;100 µF elektrolitik kondansatör (kart girişi);Capacitor_THT:CP_Radial_D6.3mm_P2.50mm;kyb;C801

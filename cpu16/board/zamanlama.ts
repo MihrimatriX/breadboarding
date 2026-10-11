@@ -56,7 +56,7 @@ export const GECIKME = {
   "74HC00": [7, 18], "74HC02": [7, 18], "74HC04": [7, 17], "74HC08": [7, 18], "74HC10": [8, 20],
   "74HC14": [12, 27], "74HC32": [8, 20], "74HC86": [11, 24],
   "74HC125.A": [9, 22], "74HC125.OE": [11, 28],
-  "74HC138.A": [15, 36], "74HC138.E": [14, 36], "74HC139": [14, 36], "74HC148": [18, 45],
+  "74HC138.A": [15, 36], "74HC138.E": [14, 36], "74HC139": [14, 36],
   "74HC151.I": [19, 40], "74HC151.S": [22, 45], "74HC151.E": [15, 33],
   "74HC153.I": [14, 34], "74HC153.S": [17, 38], "74HC153.E": [11, 25],
   "74HC157.I": [11, 24], "74HC157.S": [15, 30], "74HC157.E": [14, 29],
@@ -70,13 +70,11 @@ export const GECIKME = {
   "74HC165.CP": [17, 38], "74HC165.PL": [18, 40], "74HC165.D": [15, 35], "74HC165.SU": [4, 12],
   "74HC595.CP": [16, 35], "74HC595.OE": [15, 35], "74HC595.SU": [4, 12],
   "74HC05": [8, 20], "74HC166.CP": [16, 35], "74HC166.SU": [4, 12],
-  "74HC193.CP": [20, 43], "74HC193.TC": [14, 33], "74HC193.PL": [22, 50], "74HC193.D": [20, 45],
   "74HC393.CP": [28, 60], "74HC273.CP": [15, 35], "74HC273.SU": [4, 12],
-  "74HC590.CP": [20, 45], "74HC590.RCO": [14, 33], "74HC590.OE": [15, 35], "74HC590.SU": [5, 15],
   // bellekler: hız sınıfının garanti değeri (tip = maks)
   "SST39SF010A.A": [70, 70], "SST39SF010A.OE": [35, 35],
   "62256.A": [70, 70], "62256.OE": [35, 35],
-  "AS6C4008.A": [55, 55], "AS6C4008.OE": [25, 25],
+  "28C256.A": [150, 150], "28C256.OE": [70, 70],
 } satisfies Record<string, D>;
 type GKey = keyof typeof GECIKME;
 
@@ -122,8 +120,6 @@ function model(part: string): Model | null {
     }
     case "74HC139":
       return { arcs: [1, 2].flatMap((h) => cross([`~${h}E`, `${h}A0`, `${h}A1`], rng(`~${h}Y`, 4), g("74HC139"), 0)), seq: [] };
-    case "74HC148":
-      return { arcs: cross(["~EI", ...rng("~I", 8)], ["~A0", "~A1", "~A2", "~GS", "~EO"], g("74HC148"), 0), seq: [] };
     case "74HC151":
       return {
         arcs: [...cross(rng("I", 8), ["Y", "~Y"], g("74HC151.I"), 0), ...cross(["S0", "S1", "S2"], ["Y", "~Y"], g("74HC151.S"), 0), ...cross(["~E"], ["Y", "~Y"], g("74HC151.E"), 0)],
@@ -209,38 +205,16 @@ function model(part: string): Model | null {
       };
     case "74HC166":
       return { arcs: [], seq: [{ clock: "CP", q: ["Q7"], clkq: g("74HC166.CP"), data: ["DS", ...rng("D", 8), "~CE", "~PE"], setup: g("74HC166.SU") }] };
-    case "74HC193":
-      // sayma saatleri CPU / CPD; ~TCU / ~TCD saat düşükken birleşimsel (zincirleme sayaçların saati)
-      return {
-        arcs: [
-          ...cross(["CPU"], ["~TCU"], g("74HC193.TC"), 1),
-          ...cross(["CPD"], ["~TCD"], g("74HC193.TC"), 1),
-          ...cross(["~PL"], rng("Q", 4), g("74HC193.PL"), 0),
-          ...rng("D", 4).map((x, i) => ({ from: x, to: `Q${i}`, d: g("74HC193.D"), yon: 1 as Yon })),
-        ],
-        seq: [
-          { clock: "CPU", q: [...rng("Q", 4), "~TCU", "~TCD"], clkq: g("74HC193.CP"), data: [], setup: g("74HC193.D") },
-          { clock: "CPD", q: [...rng("Q", 4), "~TCU", "~TCD"], clkq: g("74HC193.CP"), data: [], setup: g("74HC193.D") },
-        ],
-      };
     case "74HC393":
       // dalgalı sayıcı: ~nCP'nin düşen kenarı; Q3'e kadar en kötü gecikme
       return { arcs: [], seq: [1, 2].map((h) => ({ clock: `~${h}CP`, kenar: -1 as const, q: rng(`${h}Q`, 4), clkq: g("74HC393.CP"), data: [], setup: g("74HC393.CP") })) };
     case "74HC273":
       return { arcs: [], seq: [{ clock: "CP", q: rng("Q", 8), clkq: g("74HC273.CP"), data: rng("D", 8), setup: g("74HC273.SU") }] };
-    case "74HC590":
-      return {
-        arcs: [...cross(["~OE"], rng("Q", 8), g("74HC590.OE"), 0), ...cross(["~CEC"], ["~RCO"], g("74HC590.RCO"), 1)],
-        seq: [
-          { clock: "CPC", q: ["~RCO"], clkq: g("74HC590.CP"), data: ["~CEC"], setup: g("74HC590.SU") },
-          { clock: "CPR", q: rng("Q", 8), clkq: g("74HC590.CP"), data: [], setup: g("74HC590.SU") },
-        ],
-      };
     case "SST39SF010A":
     case "62256":
-    case "AS6C4008": {
-      const bits = part === "62256" ? 15 : part === "AS6C4008" ? 19 : 17;
-      const dq = part === "62256" ? rng("IO", 8) : rng("DQ", 8);
+    case "28C256": {
+      const bits = part === "SST39SF010A" ? 17 : 15;
+      const dq = part === "SST39SF010A" ? rng("DQ", 8) : rng("IO", 8);
       return {
         arcs: [...cross([...rng("A", bits), "~CE"], dq, g(`${part}.A` as GKey), 0), ...cross(["~OE"], dq, g(`${part}.OE` as GKey), 0)],
         seq: [],
