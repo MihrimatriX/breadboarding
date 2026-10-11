@@ -300,10 +300,14 @@ export function buildCpuCard(b: Board): CpuCard {
   b.place("74HC157", {
     S: CW[25], "~E": "GND",
     "1I0": RES[15], "1I1": BUS[3], "1Y": "DN", "2I0": "Z_ALU", "2I1": BUS[2], "2Y": "DZ",
-    "3I0": "C_ALU", "3I1": BUS[1], "3Y": "DC", "4I0": "V_ALU", "4I1": BUS[0], "4Y": "DV",
+    "3I0": "C_NEW", "3I1": BUS[1], "3Y": "DC", "4I0": "V_NEW", "4I1": BUS[0], "4Y": "DV",
   }, "bayrak girişi: ALU ya da veriyolu (RETI)");
+  // Dört bayrak aynı kapılı saatle yüklenir; C ve V'yi değiştirmeyen işlemlerde (SETSCV = 0) eski
+  // değer geri yazılır (çip, kartın sonunda yerleştirilir: C/V tutma seçicisi). SETSCV saat izninde
+  // kullanılmaz: ALU ROM'unun adresinde CFLAG var ve CFLAG tam bu kenarda değişir; ROM çıkışındaki
+  // bir sıçrama kapılı saatte ikinci bir darbe üretebilirdi (docs/uretim.md, zamanlama).
   const clkNZ = gclk(b.or(CW[24], CW[25], "NZ_LD", "N Z yükle"), "NZ");
-  const clkCV = gclk(b.or(b.and(CW[24], ad(ALUROM_BITS.SETSCV), undefined, "C V yükle"), CW[25], "CV_LD", "C V yükle"), "CV");
+  const clkCV = clkNZ;
   const nz = b.place("74HC74", {
     "1D": "DN", "1CLK": clkNZ, "~1PRE": "VCC", "~1CLR": "~RESET", "1Q": "NFLAG", "~1Q": "~NFLAG",
     "2D": "DZ", "2CLK": clkNZ, "~2PRE": "VCC", "~2CLR": "~RESET", "2Q": "ZFLAG", "~2Q": "~ZFLAG",
@@ -364,6 +368,15 @@ export function buildCpuCard(b: Board): CpuCard {
   b.block = "Kontrol";
   b.led("HALTED", "HALTED");
   b.led("FAULT", "FAULT");
+
+  // C/V tutma seçicisi: SETSCV = 0 ise bayrak flip-flop'larına eski C ve V geri yazılır. Diğer
+  // çiplerin referans numaraları değişmesin diye en sonda yerleştirilir.
+  b.block = "Bayraklar ve koşul";
+  b.place("74HC157", {
+    S: ad(ALUROM_BITS.SETSCV), "~E": "GND",
+    "1I0": "CFLAG", "1I1": "C_ALU", "1Y": "C_NEW", "2I0": "VFLAG", "2I1": "V_ALU", "2Y": "V_NEW",
+    "3I0": "GND", "3I1": "GND", "4I0": "GND", "4I1": "GND",
+  }, "C/V tutma seçicisi: ALU C, V'yi değiştirmiyorsa eski değer");
 
   return {
     regs, ir, ta, tb, mar, pc, microcode, aluRom, cr,
