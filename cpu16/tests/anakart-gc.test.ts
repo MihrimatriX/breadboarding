@@ -14,8 +14,10 @@ import { buildBios } from "../bios/build.ts";
 import { Board, erc, type ChipInstance } from "../board/board.ts";
 import { IO_CARD_INPUTS, buildIoCard } from "../board/io-card.ts";
 import { SYM_LIB_TABLE, cardSchematic, kicadProject } from "../board/kicad-sch.ts";
+import { anakartYanlisYollar, buildFullMachineBoard } from "../board/machine-board.ts";
 import { BACKPLANE, PASSIVES } from "../board/passives.ts";
 import { VIDEO_CARD_INPUTS, buildVideoCard, type VideoCard } from "../board/video-card.ts";
+import { zamanlamaAnalizi, type Kose } from "../board/zamanlama.ts";
 import { kicadSymbolLibrary, parseSExpr, type SExpr } from "../chips/kicad.ts";
 import { CHIPS } from "../chips/library.ts";
 import { L0, L1, LogicSim, type Level } from "../chips/logic.ts";
@@ -861,6 +863,14 @@ interface VideoBench {
 const PIXEL_PHASE = 0.4;
 
 /**
+ * Tezgâhın sayımıyla (n = k + 1, hc = n mod 800) görünür piksel x, hc = x + 9'da çıkar. Kartın
+ * kendi sayacında x, hc = x + 8'dedir (karakter j, j + 1 boyunca gösterilir; video-card.ts); açılışta
+ * faz sayacı p7'de olduğundan kartın hc'si tezgâhınkinden bir eksiktir. Senkronlar da aynı kenardan
+ * geçtiği için VGA zamanlaması görünür alana göre standarttır.
+ */
+const GOSTERIM = 9;
+
+/**
  * Video kartı tezgâhı. Piksel saatinin k. yükselen kenarı PIXEL_PHASE + k · FRAME_CYCLES / 420 000
  * anında: kare tam olarak Machine'in 66 667 döngüsü. `onPixel(k)` her yükselen kenardan sonra
  * çağrılır (k + 1 = kenardan sonraki sayaç konumu).
@@ -1016,12 +1026,12 @@ describe("video kartı: CPU portu ve tarama (Machine ile döngü döngüsüne)",
     for (let vc = 0; vc < 525; vc++) {
       for (let hc = 0; hc < 800; hc++) {
         const v = shot[vc * 800 + hc];
-        const x = hc - 8;
+        const x = hc - GOSTERIM;
         const want = x >= 0 && x < 640 && vc < 480 ? refPixel(m.video.vram, cursor, x, vc) : 0;
         if ((v & 15) !== want && bad.length < 5) bad.push(`(${x}, ${vc}): ${v & 15} ≠ ${want}`);
-        const hs = hc >= 664 && hc < 760 ? 0 : 1;
+        const hs = hc >= 656 + GOSTERIM && hc < 752 + GOSTERIM ? 0 : 1;
         const pos = vc * 800 + hc;
-        const vs = pos >= 490 * 800 + 8 && pos < 492 * 800 + 8 ? 0 : 1;
+        const vs = pos >= 490 * 800 + GOSTERIM && pos < 492 * 800 + GOSTERIM ? 0 : 1;
         if (((v >> 4) & 1) !== hs && bad.length < 5) bad.push(`HSYNC (${hc}, ${vc})`);
         if (((v >> 5) & 1) !== vs && bad.length < 5) bad.push(`VSYNC (${hc}, ${vc})`);
       }
@@ -1048,7 +1058,7 @@ describe("video kartı: imleç", () => {
       const n = k + 1;
       const hc = n % 800;
       const vc = Math.floor(n / 800);
-      if (vc < 16 && hc >= 8 && hc < 56) rows[vc][hc - 8] = irgb(g);
+      if (vc < 16 && hc >= GOSTERIM && hc < 48 + GOSTERIM) rows[vc][hc - GOSTERIM] = irgb(g);
 
     });
     const { g, card } = vb;
@@ -1083,6 +1093,42 @@ describe("video kartı: imleç", () => {
     cell(cursorRow({ vctrl: 1, frames: 15 }), true); // 0–15: yanık
     cell(cursorRow({ vctrl: 1, frames: 16 }), false); // 16–31: sönük
     cell(cursorRow({ vctrl: 0, frames: 0 }), false);
+  });
+});
+
+describe("video kartı: statik zamanlama (bütün anakartta)", () => {
+  // Piksel saatinde yalnızca faz sayacı (74AC161), H2 / LD7 register'ı (74AC74) ve kaydırıcı çalışır;
+  // geri kalan her şey karakter saatinde (H2 = piksel / 8). İki alan arasındaki geçişler elle
+  // hesaplanmıştır (cpu16/docs/anakart-gc-video.md, "Statik zamanlama").
+  const { board } = buildFullMachineBoard();
+  const analiz = (kose: Kose) =>
+    zamanlamaAnalizi(board, {
+      kokler: [{ net: "VID_OSC", ad: "piksel saati" }, { net: "V_H2", ad: "karakter saati" }],
+      kose,
+      kapali: anakartYanlisYollar(board),
+    });
+  const m = analiz("maks");
+  const t = analiz("tip");
+  const PIKSEL_MHZ = 25.175;
+
+  it("piksel saati en kötü ve tipik değerlerle 25,175 MHz'e sığar; kapılı saat yok", () => {
+    for (const r of [m, t]) {
+      const k = r.kokler[0];
+      expect(k.fmaxMHz, r.kose).toBeGreaterThanOrEqual(PIKSEL_MHZ);
+      expect(k.aciktaDegisen, r.kose).toEqual([]);
+      expect(k.tutma, r.kose).toEqual([]);
+    }
+    // 74AC olarak yerleştirilen yalnızca bu iki çip
+    const ac = board.chips.filter((c) => c.card === "video" && c.aile === "AC").map((c) => c.def.part);
+    expect(ac.sort()).toEqual(["74HC161", "74HC74"]);
+  });
+
+  it("karakter saati (3,15 MHz) en kötü durumda sığar; satır başı saatinin tutma payı ≥ 5 ns", () => {
+    expect(m.kokler[1].fmaxMHz).toBeGreaterThanOrEqual(PIKSEL_MHZ / 8);
+    for (const x of t.kokler[1].tutma) expect(x.pay, `${x.ref}.${x.pin} ${x.net}`).toBeGreaterThanOrEqual(5);
+    // OPW yalnızca VRAM ~OE'sini (V_SOE) ve ~WE'yi kapılar; ikisi de saat değildir ve ~WE'de
+    // yazma darbesi WRP = H2 ∧ Q1, OPW'nin değiştiği p4'te zaten 0'dır
+    expect(new Set(m.kokler[1].aciktaDegisen.map((x) => x.net))).toEqual(new Set(["V_OPW"]));
   });
 });
 
