@@ -155,9 +155,9 @@ function buildUart(b: Board): void {
 
   b.block = "UART alıcı";
   b.place("74HC74", {
-    "1D": "GC_URX", "1CLK": "TCLK", "~1PRE": "VCC", "~1CLR": "VCC", "1Q": "GC_RXS1",
-    "2D": "GC_RXS1", "2CLK": "TCLK", "~2PRE": "VCC", "~2CLR": "VCC", "2Q": "GC_RXS2", "~2Q": "~GC_RXS2",
-  }, "RX hattı eşzamanlayıcı (iki kademe)");
+    "1D": "GC_URX", "1CLK": "TCLK", "~1PRE": "~RESET", "~1CLR": "VCC", "1Q": "GC_RXS1",
+    "2D": "GC_RXS1", "2CLK": "TCLK", "~2PRE": "~RESET", "~2CLR": "VCC", "2Q": "GC_RXS2", "~2Q": "~GC_RXS2",
+  }, "RX hattı eşzamanlayıcı (iki kademe; resette boşta = 1, sahte başlangıç biti olmasın)");
   b.place("74HC74", {
     "1D": "GC_TXBUSY_D", "1CLK": "TCLK", "~1PRE": "~GC_WE0", "~1CLR": "~RESET", "1Q": "GC_TXBUSY", "~1Q": "GC_TXEMPTY",
     "2D": "GC_RXBUSY_D", "2CLK": "TCLK", "~2PRE": "VCC", "~2CLR": "~RESET", "2Q": "GC_RXBUSY", "~2Q": "~GC_RXBUSY",
@@ -192,6 +192,7 @@ function buildUart(b: Board): void {
   // adaptöründen beslenir, USB'nin 5 V'u kartın 5 V'una bağlanmaz.
   b.passive("CONN_CH340", { "1": "GND", "2": "GC_RXRDY", "4": "UART_RXD", "5": "UART_TXD" },
     "CH340 USB-UART modülü (TXD → kart RX, RXD ← kart TX, CTS# ← RTS# = RX_READY)");
+  b.pullUp(["UART_RXD"], "UART RX boşta 1 (modül takılı değilken alıcı rastgele bayt almasın)");
 }
 
 // ============================================================================= PS/2
@@ -233,8 +234,10 @@ function buildPs2(b: Board): ChipInstance {
 // ============================================================================= zamanlayıcı
 //
 // Ön bölücü: 3 × 74HC161, 96..4095 sayar (4000 durum), uç sayımda (TC) bir döngü boyunca TICKP = 1;
-// bir sonraki TCLK kenarı "tık"tır. Reset süresince her kenarda 96 yüklenir: reset'ten sonraki son
-// yükleme kenarı 0. kenar sayılırsa tıklar 4000, 8000, … kenarlarındadır (Machine: TICK_CYCLES).
+// bir sonraki TCLK kenarı "tık"tır. TCLK reset sırasında durur (saat kartının Johnson sayacı s0'da
+// tutulur); GC_RSTD flip-flop'u resetle 1'e kurulur ve resetten sonraki ilk TCLK kenarında 96
+// yükletip 0'a döner. Bu kenar 0. kenar sayılırsa tıklar 4000, 8000, … kenarlarındadır
+// (Machine: TICK_CYCLES).
 //
 // Sayaç: 4 × 74HC193, gerçek değeri tutar (c). Machine'deki gibi:
 //   - EN 0 → 1 yazılırken (yazma darbesi içinde) c ← RELOAD asenkron yüklenir;
@@ -260,7 +263,7 @@ function buildTimer(b: Board): { timer: ChipInstance[]; prescaler: ChipInstance[
       D0: "GND", D1: "GND", D2: "GND", D3: "GND", TC: "GC_TICKP",
     }, "1 kHz ön bölücü bit 8–11 (TC: sonraki kenar tık)"),
   ];
-  b.nor("GC_TICKP", "GC_RST", "~GC_PLD", "ön bölücü: uç sayımda ya da resette 96 yükle");
+  b.nor("GC_TICKP", "GC_RSTD", "~GC_PLD", "ön bölücü: uç sayımda ya da resetten sonraki ilk kenarda 96 yükle");
 
   const reload = (lane: "DE" | "DO", cp: string, base: number, role: string) => {
     const conn: Conn = { "~OE": "GND", CP: cp };
@@ -301,8 +304,9 @@ function buildTimer(b: Board): { timer: ChipInstance[]; prescaler: ChipInstance[
   }, "yeniden yükleme isteği, EXPIRED (FF07)");
   b.place("74HC74", {
     "1D": "GC_TRL", "1CLK": "GC_TCLKN", "~1PRE": "VCC", "~1CLR": "~RESET", "1Q": "GC_TRL2", "~1Q": "~GC_TRL2",
-    "2D": "GND", "2CLK": "GND", "~2PRE": "VCC", "~2CLR": "VCC",
-  }, "yeniden yükleme darbesinin sonu (TCLK düşen kenarı)");
+    // TCLK reset sırasında durur (saat kartı): ön bölücü 96'yı resetten sonraki ilk kenarda yükler
+    "2D": "GND", "2CLK": "TCLK", "~2PRE": "~RESET", "~2CLR": "VCC", "2Q": "GC_RSTD",
+  }, "yeniden yükleme darbesinin sonu (TCLK düşen kenarı); resetten sonraki ilk TCLK kenarı");
 
   const timer: ChipInstance[] = [];
   for (let k = 0; k < 4; k++) {

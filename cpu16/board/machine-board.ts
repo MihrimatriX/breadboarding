@@ -214,8 +214,10 @@ export class GateMachine {
     for (const p of board.pulls) this.sim.pull(p.net, p.level);
     this.probe = new MemoryProbe(this.sim, board, mem, cache);
     // IRQ'yu süren bir kart (G/Ç kartı) takılı değilse düzenek 0'da tutar
-    const irq = board.n("IRQ");
-    this.ownIrq = !board.chips.some((ci) => ci.def.pins.some((p) => (p.dir === "out" || p.dir === "tri") && ci.nets[p.name] === irq));
+    const driven = (net: number) => board.chips.some((ci) => ci.def.pins.some((p) => (p.dir === "out" || p.dir === "tri") && ci.nets[p.name] === net));
+    this.ownIrq = !driven(board.n("IRQ"));
+    // video kartı yokken G/Ç kartının vsync isteği 0
+    if (board.has("VSYNC_REQ") && !driven(board.n("VSYNC_REQ"))) this.sim.drive(board.n("VSYNC_REQ"), false);
     driveClockInputs(this.sim, this.net);
     this.sim.settle();
     this.reset();

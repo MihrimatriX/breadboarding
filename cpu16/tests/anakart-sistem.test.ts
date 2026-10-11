@@ -6,11 +6,13 @@
 //  2. GateMachine (CPU + saat + bellek + önbellek kartları) Machine ile komut komut: register'lar,
 //     PC, bayraklar, döngü ve bekleme sayısı; sonda bellek, etiketler ve sayaçlar. RAM'den çalışan
 //     programlar ve BIOS açılışı (başka bir kartın G/Ç adresinden ilk okumaya kadar).
+//  3. G/Ç kartı da takılı: BIOS monitör istemine kadar, UART'a yazılanlar ve zamanlayıcı kesmesi dahil.
 
 import { describe, expect, it } from "vitest";
 import { assembleOrThrow } from "../asm/assembler.ts";
 import { Board, type ChipInstance } from "../board/board.ts";
 import { buildClockCard } from "../board/clock-card.ts";
+import { buildIoCard } from "../board/io-card.ts";
 import { chipDffs, driveClockInputs, GateMachine } from "../board/machine-board.ts";
 import { L0, L1, LogicSim } from "../chips/logic.ts";
 import { Machine } from "../emu/machine.ts";
@@ -200,21 +202,30 @@ function ramProgram(src: string): Uint8Array {
  * Machine ve GateMachine'i komut komut çalıştır. Machine'in komutu başka bir kartın G/Ç adresini
  * okuduysa (o kartlar kapı modelinde yok; okunan 0xFF olurdu) karşılaştırma orada biter.
  */
-function lockstep(g: GateMachine, m: Machine, maxInstr: number) {
+function lockstep(g: GateMachine, m: Machine, maxInstr: number, o: { io?: boolean; until?: () => boolean } = {}) {
   let foreignRead = -1;
+  let irqs = 0;
+  // G/Ç kartı takılıysa yalnızca video register'ları "başka kart"tır
+  const foreign = o.io ? (addr: number) => addr >= 0xff20 && addr < 0xff30 : foreignIo;
   m.onAccess = (write, addr) => {
-    if (!write && foreignIo(addr) && foreignRead < 0) foreignRead = addr;
+    if (!write && foreign(addr) && foreignRead < 0) foreignRead = addr;
   };
   const c0 = m.cycles;
   const g0 = g.cycles;
   let n = 0;
   try {
     for (; n < maxInstr; n++) {
-      if (m.cpu.halted) break;
-      expect(m.cpu.irq && m.cpu.i, "kesme (G/Ç kartı yok)").toBe(false);
+      if (m.cpu.halted || o.until?.()) break;
+      const irq = m.cpu.irq && m.cpu.i;
+      if (!o.io) expect(irq, "kesme (G/Ç kartı yok)").toBe(false);
       const pc = m.cpu.pc;
       m.step();
       g.step();
+      // Machine'in bir adımı kesmeye girişi ve vektördeki ilk komutu birlikte yapar
+      if (irq) {
+        g.step();
+        irqs++;
+      }
       // bu komutun okuduğu değer kartlarda 0xFF (kart yok): register'lar artık karşılaştırılamaz,
       // ama bellek tarafı (erişimler, beklemeler, sayaçlar) aynı komutu yaptı
       if (foreignRead >= 0) {
@@ -229,7 +240,7 @@ function lockstep(g: GateMachine, m: Machine, maxInstr: number) {
   } finally {
     m.onAccess = undefined;
   }
-  return { instructions: n, cycles: g.cycles - g0, foreignRead };
+  return { instructions: n, cycles: g.cycles - g0, foreignRead, irqs };
 }
 
 function ramMachines(prog: Uint8Array) {
@@ -413,5 +424,20 @@ describe("Faz 6 anakart: tam sistem (CPU + saat + bellek + önbellek kartları) 
     // açılış: bank register'ları, önbellek açık, değişkenler sıfır, Flash rutinleri RAM'e kopyalandı
     expect(expectSameMemory(g.probe, m)).toBeGreaterThan(100);
     expect(g.probe.hits).toBeGreaterThan(10_000);
+  });
+
+  it("G/Ç kartı da takılı: BIOS reset'ten monitör istemine kadar, zamanlayıcı kesmesi dahil", { timeout: 120_000 }, () => {
+    const m = new Machine();
+    m.loadFlash(bios.flash);
+    m.reset();
+    const g = new GateMachine(micro.rom, { cards: [buildIoCard] });
+    g.loadFlash(bios.flash);
+    const r = lockstep(g, m, 40_000, { io: true, until: () => m.uartOutput.endsWith("> ") });
+    expect(r.foreignRead).toBe(-1); // açılışta video register'ı okunmaz
+    expect(m.uartOutput).toMatch(/^ CPU16 BIOS v1 .*\r\n512 KB RAM.*\r\nKomutlar icin \? yazin\.\r\n> $/s);
+    expect(g.output).toBe(m.uartOutput); // FF00'a yazılan baytlar
+    expect(r.irqs).toBeGreaterThan(0);
+    expect(r.cycles).toBeGreaterThan(100_000);
+    expectSameMemory(g.probe, m);
   });
 });

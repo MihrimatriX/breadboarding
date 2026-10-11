@@ -96,9 +96,10 @@ class Bench {
       if (g.kind === "DFF" || g.kind === "LATCH") this.sim.setState(i, L0);
     });
     this.sim.settle();
-    // reset 0. döngünün başında bırakılır: ön bölücü 0. kenarda son kez 96 yükler, tıklar 4000k
-    // kenarlarında (Machine: TICK_CYCLES'ın katları)
-    this.at(0.25, () => this.drive("~RESET", 1));
+    // reset −1. döngüde bırakılır: resetten sonraki ilk TCLK kenarı 0. kenardır, ön bölücü orada 96
+    // yükler (GC_RSTD; gerçek saat kartında TCLK reset boyunca durur ve ilk kenarı 0. döngüdedir),
+    // tıklar 4000k kenarlarında (Machine: TICK_CYCLES'ın katları)
+    this.at(-0.75, () => this.drive("~RESET", 1));
     while (this.cycle < 0) this.step();
   }
 
