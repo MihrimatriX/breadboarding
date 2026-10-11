@@ -1674,6 +1674,7 @@ class FnGen {
       off += Math.max(2, Math.ceil(v.ty.size / 2) * 2);
     }
     const frameSize = off;
+    if (frameSize > 0x4000) throw new CompileError(fn.tok, `'${fn.name}' yerel değişkenleri çok büyük (${frameSize} bayt, sınır 16384)`);
     const A = frameSize + 2 * saved.length + 2;
     this.homeBase = A;
     for (const p of fn.params) {
