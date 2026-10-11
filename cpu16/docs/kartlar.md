@@ -6,9 +6,9 @@ Aynı tanımdan dört şey üretilir:
 
 | Çıktı | Nereden | Ne işe yarar |
 |---|---|---|
-| Kapı seviyesi simülasyon | `board/computer.ts` → `LogicSim` | Testler, 3D görünümdeki canlı sinyaller |
-| KiCad 7 şemaları | `board/kicad-sch.ts` → `kicad/cpu/`, `kicad/mem/` | KiCad'de açılır, PCB'ye aktarılır |
-| Malzeme listesi | `board/kicad-sch.ts` → `kicad/bom.csv` | Sipariş |
+| Kapı seviyesi simülasyon | `board/computer.ts`, `board/machine-board.ts` → `LogicSim` | Testler, 3D görünümdeki canlı sinyaller |
+| KiCad 7 şemaları | `board/kicad-sch.ts` → `kicad/cpu/`, `kicad/mem/`, `kicad/clk/`, `kicad/bellek/`, `kicad/onbellek/` | KiCad'de açılır, PCB'ye aktarılır |
+| Malzeme listesi | `board/kicad-sch.ts` → `kicad/bom.csv` (CPU, test bellek, saat), `kicad/<kart>/bom.csv` (anakart kartları) | Sipariş |
 | Elektriksel kural denetimi | `board/board.ts` → `erc()` | Çakışan çıkış, sürülmeyen giriş |
 
 Şema değişirse hepsi birlikte değişir; testler KiCad dosyalarının koddan yeniden üretilmiş halleriyle
@@ -17,7 +17,7 @@ birebir aynı olmasını şart koşar (elle düzeltilmiş ama koda işlenmemiş 
 ## Komutlar
 
 ```bash
-npm run cpu16 -- board          # kart özeti (çip sayıları) + ERC
+npm run cpu16 -- board          # kart özeti (çip sayıları) + ERC: test bilgisayarı ve anakart
 npm run cpu16 -- board kicad    # cpu16/kicad/ altındaki şemaları, sembolleri ve BOM'u yeniden üret
 npm run cpu16 -- kicad-sym      # yalnızca sembol kütüphanesi
 ```
@@ -53,6 +53,12 @@ HALTED ve FAULT LED'leri, 2 × 32 arka panel konnektörü.
 **Test bellek kartı: 7 entegre.** 64 KB düz RAM (2 × 62256: çift ve tek baytlar) ve 0xFF00'da UART
 çıkış mandalı (74HC574 + 2 × 74HC688 adres karşılaştırıcı). Emülatördeki `SimpleBus` ile birebir aynı
 davranır; asıl anakart (bank'lı 1 MB bellek, ROM, G/Ç, video) Faz 6'da bunun yerini alır.
+
+**Anakart kartları (Faz 6):** bellek kartı 31 entegre (bank register'ları, Flash + RAM, bayt
+sıralayıcı), önbellek kartı 37 entegre (2 KB, bekleme üreteci, sayaçlar); saat kartı bekleme
+durumuyla 10 entegre. `buildMachineBoard()` / `GateMachine` bunları CPU kartıyla birleştirir; test
+bilgisayarı (`buildComputerBoard`, `GateComputer`) olduğu gibi kalır. Ayrıntı:
+[anakart-kartlari.md](anakart-kartlari.md).
 
 ## Blok → çip eşlemesi (CPU kartı)
 
@@ -108,7 +114,12 @@ WR_WIN   ________/‾‾‾‾‾\_______________________
 | 33..40 | DO0..DO7 (tek bayt) | 41 | ~MRD |
 | 42 | ~MWE_E | 43 | ~MWE_O |
 | 44 | HALTED | 45 | FAULT |
-| 46..61 | Faz 6 kartları için boş (bank, G/Ç seçimleri, video) | | |
+| 46 | ~WAIT (bekleme isteği, saat kartında 10 kΩ ile 1) | 47 | ~IO (A15..A8 = 0xFF) |
+| 48 | TCLK (uzatılmayan OSC/8) | 49 | OSC (tamponlu osilatör) |
+| 50..55 | PA14..PA19 (fiziksel adresin üst bitleri) | 56 | VSYNC_REQ |
+| 57..61 | boş | | |
+
+Faz 6 pinlerini kim sürer, kim kullanır: [anakart-kartlari.md](anakart-kartlari.md).
 
 ## Doğrulama zinciri
 
@@ -121,6 +132,9 @@ Her katman bir öncekine karşı test edilir (`cpu16/tests/board.test.ts`):
 3. **Kapı seviyesi kart** ↔ **emülatör**: program sonunda register'lar, bellek ve UART çıktısı.
 4. **KiCad şeması** ↔ **kart**: gerçek `kicad-cli` (7.x) şemadan netlist çıkarır; her netin pin
    kümesi kartın netleriyle aynı olmalıdır. `kicad-cli` kurulu değilse bu test atlanır.
+5. **Anakart kartları** ↔ **`Machine`**: veri yolu izi bellek ve önbellek kartlarında, tam sistem
+   (CPU dahil) komut komut (`tests/anakart-bellek.test.ts`, `tests/anakart-sistem.test.ts`; bkz.
+   [anakart-kartlari.md](anakart-kartlari.md)).
 
 Kapı seviyesi kart tarayıcı dışında saniyede yaklaşık 7 000 saat döngüsü çalışır (her döngüde
 ~1 800 kapı, 4 fazlı değerlendirme).
