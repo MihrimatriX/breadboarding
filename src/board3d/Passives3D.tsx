@@ -637,6 +637,7 @@ export function Passives3D({ children }: { children?: ReactNode }) {
   const C: Record<PassivePlace["kind"], (props: { list: PassivePlace[]; w: W }) => JSX.Element> = {
     direnc: Resistors, kondansator: DiscCaps, elektrolitik: Electrolytics, led: Leds, dizi: Sips, osilator: Oscillators,
     buton: Buttons, anahtar: Switches, pot: Trimpots, konnektor: Connectors, modul: Modules,
+    dip: Modules, gosterge: Modules, dipdizi: Modules,
   };
   return (
     <group>

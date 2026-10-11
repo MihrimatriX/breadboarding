@@ -69,6 +69,8 @@ export const CARD_REF_BASE: Record<string, [base: number, span: number]> = {
   gc: [600, 100],
   video: [700, 100],
   kyb: [800, 100],
+  // 8 bit hesap makinesi (hesap8/): tek, büyük kart; bilgisayardan bağımsız
+  hesap: [0, 1000],
 };
 
 /** Yapıştırıcı (glue) kapı türleri: hangi çipten, birimde hangi pinler */

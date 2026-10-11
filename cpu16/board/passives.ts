@@ -162,6 +162,35 @@ export const PASSIVES: Record<string, SymbolOnly> = {
     footprint: "Connector_PinSocket_2.54mm:PinSocket_1x06_P2.54mm_Vertical",
     usage: "Bilgisayara USB seri bağlantı (115200 8N1, RTS/CTS akış denetimi)",
   },
+  // ---- 8 bit hesap makinesi (hesap8/): sayı ve işlem anahtarları, 7 segment göstergeler
+  SW_DIP_8: {
+    part: "SW_DIP_8",
+    title: "8'li DIP anahtar (SPST, sürgülü, DIP-16)",
+    pins: Array.from({ length: 16 }, (_, i) => pas(i + 1, i < 8 ? `${i + 1}A` : `${16 - i}B`)),
+    footprint: "Button_Switch_THT:SW_DIP_SPSTx08_Slide_9.78x22.5mm_W7.62mm_P2.54mm",
+    usage: "Hesap makinesinin A ve B sayıları: k. anahtar k. ve (17 − k). pinleri birleştirir (ON = 1)",
+  },
+  SW_DIP_2: {
+    part: "SW_DIP_2",
+    title: "2'li DIP anahtar (SPST, sürgülü, DIP-4)",
+    pins: [pas(1, "1A"), pas(2, "2A"), pas(3, "2B"), pas(4, "1B")],
+    footprint: "Button_Switch_THT:SW_DIP_SPSTx02_Slide_9.78x7.26mm_W7.62mm_P2.54mm",
+    usage: "Hesap makinesinin işlem seçimi: 00 toplama, 01 çıkarma, 10 çarpma, 11 bölme",
+  },
+  DISP_7SEG_CC: {
+    part: "DISP_7SEG_CC",
+    title: "7 segment gösterge, 0,56\" tek hane, ortak katot (ör. 5161AS)",
+    pins: "e d CC c DP b a CC2 f g".split(" ").map((name, i) => pas(i + 1, name)),
+    footprint: "Display_7Segment:7SegmentLED_LTS6760_LTS6780",
+    usage: "Hesap makinesinin onluk haneleri; ortak katot (3 ve 8) GND'ye, segmentler 330 Ω üzerinden 74HC4511'e",
+  },
+  RN_470_ISO_8: {
+    part: "RN_470_ISO_8",
+    title: "8 × 470 Ω yalıtılmış direnç dizisi (DIP-16, ör. 4116R-1-471)",
+    pins: Array.from({ length: 16 }, (_, i) => pas(i + 1, i < 8 ? `R${i + 1}A` : `R${16 - i}B`)),
+    footprint: "Package_DIP:DIP-16_W7.62mm",
+    usage: "7 segment göstergenin segment akımı (≈ 5 mA, 74HC4511 başına en çok ≈ 35 mA): k. direnç k. ve (17 − k). pinler arasında",
+  },
 };
 
 // ---- LED renkleri. Kütüphanede tek bir "LED" parçası var; rengi görevinden seçilir. 3D görünüm,
@@ -203,6 +232,7 @@ export const LED_RENK_KURALLARI: { desen: RegExp; renk: LedRenk; neden: string }
   { desen: /HALT/i, renk: "turuncu", neden: "CPU durdu: uyarı, ama hata değil (trafik lambasının sarısı)" },
   { desen: /\bCLK\b|SAAT/i, renk: "mavi", neden: "saat: durmadan yanıp söner, öteki durum LED'lerinden ayrı dursun" },
   { desen: /VCC|BESLEME|GÜÇ|HAZIR|\bOK\b/i, renk: "yesil", neden: "besleme / her şey yolunda" },
+  { desen: /ISLEM_/, renk: "yesil", neden: "hesap makinesinde seçili işlem: dört LED'den yalnız biri yanar" },
   { desen: /\b(?:A|D|DE|DO|AD|BUS)\d+\b|VERİ|ADRES/i, renk: "sari", neden: "veri ve adres hatlarını izleme" },
 ];
 
