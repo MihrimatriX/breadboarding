@@ -1,14 +1,21 @@
 #!/usr/bin/env python3
-"""CPU16 Flash programlayıcısına Intel HEX dosyası yazar (Arduino Nano + SST39SF010A).
+"""CPU16 EEPROM programlayıcısına Intel HEX dosyası yazar (Arduino Nano + 28C256).
 
 Kullanım:
-  python3 yaz.py PORT dosya.hex [--sil] [--dogrula]
-  python3 yaz.py PORT --id
-  python3 yaz.py --kuru dosya.hex [--sil] [--dogrula]   # gönderilecek komutları yazdır, port açma
+  python3 yaz.py PORT dosya.hex [--dogrula] [--koruma-kapat]
+  python3 yaz.py PORT --koruma           # yazma koruması (SDP) açık mı
+  python3 yaz.py PORT --koruma-ac        # korumayı aç
+  python3 yaz.py PORT --koruma-kapat     # korumayı kapat
+  python3 yaz.py --kuru dosya.hex [--dogrula] [--koruma-kapat]   # gönderilecek komutları yazdır
 
 Örnekler:
-  python3 yaz.py /dev/ttyUSB0 ../roms/mikrokod-0.hex --sil --dogrula
-  python3 yaz.py COM5 ../roms/alu-1.hex --sil
+  python3 yaz.py /dev/ttyUSB0 bellek.hex --dogrula
+  python3 yaz.py COM5 bios.hex --dogrula
+
+28C256 silme istemez: her bayt doğrudan yeni değerini alır (--sil yok sayılır). Programlayıcı her
+sayfayı yazılım korumalı yazar (AA 55 A0 dizisi), çip korumalı da olsa korumasız da olsa yazılır ve
+sonunda korumalı kalır: bilgisayarda yanlışlıkla yapılan bir yazma BIOS'u bozamaz. --koruma-kapat
+yazmadan sonra korumayı kapatır (çipi korumasız bekleyen başka bir programlayıcıda kullanmak için).
 
 Gereken: pip install pyserial  (yalnızca gerçek port için)
 Protokol: cpu16/programlayici/cpu16-programlayici/cpu16-programlayici.ino başındaki açıklama.
@@ -17,9 +24,11 @@ Protokol: cpu16/programlayici/cpu16-programlayici/cpu16-programlayici.ino başı
 import sys
 import time
 
+EEPROM_SIZE = 0x8000
+
 
 def read_hex(path):
-    """Intel HEX satırları ve (adres, bayt) listesi; 04 kayıtlarıyla 64 KB üstü desteklenir."""
+    """Intel HEX satırları ve (adres, bayt) listesi; 04 kayıtları da okunur."""
     lines, data, base = [], {}, 0
     with open(path, encoding="ascii") as f:
         for raw in f:
@@ -54,12 +63,12 @@ def ranges(data, limit=4096):
     return out
 
 
-def commands(path, erase, verify):
+def commands(path, verify, unprotect=False):
     lines, data = read_hex(path)
-    cmds = ["ID"]
-    if erase:
-        cmds.append("ERASE")
-    cmds += lines
+    outside = [a for a in data if a >= EEPROM_SIZE]
+    if outside:
+        raise ValueError(f"{path}: 0x{min(outside):05X} adresi 28C256'nın dışında (32 KB: 0000–7FFF)")
+    cmds = ["SDP"] + lines
     if not any(l[7:9] == "01" for l in lines):
         cmds.append(":00000001FF")
     checks = []
@@ -67,19 +76,37 @@ def commands(path, erase, verify):
         for a, n in ranges(data):
             cmds.append(f"SUM {a:X} {n:X}")
             checks.append(sum(data[a + i] for i in range(n)) & 0xFFFF)
+    if unprotect:
+        cmds.append("SDP 0")
     return cmds, checks
 
 
 def main(argv):
     args = [a for a in argv if not a.startswith("--")]
     flags = {a for a in argv if a.startswith("--")}
+    if "--sil" in flags:
+        print("Not: 28C256 silme gerektirmez, --sil yok sayıldı.", file=sys.stderr)
+    if "--id" in flags:
+        print("Not: 28C256'nın kimliği yazılımla okunamaz (A9'a 12 V ister); --koruma ile çipin yanıt verdiğini görebilirsin.", file=sys.stderr)
+        flags.add("--koruma")
+    verify = "--dogrula" in flags
+    unprotect = "--koruma-kapat" in flags
     if "--kuru" in flags:
-        cmds, _ = commands(args[0], "--sil" in flags, "--dogrula" in flags)
+        cmds, _ = commands(args[0], verify, unprotect)
         print("\n".join(cmds))
         return 0
-    if len(args) < 1 or (len(args) < 2 and "--id" not in flags):
+    only_sdp = len(args) == 1 and flags & {"--koruma", "--koruma-ac", "--koruma-kapat"}
+    if len(args) < 2 and not only_sdp:
         print(__doc__)
         return 1
+    if only_sdp:
+        cmds, checks = ["SDP"], []
+        if "--koruma-ac" in flags:
+            cmds.append("SDP 1")
+        elif "--koruma-kapat" in flags:
+            cmds.append("SDP 0")
+    else:
+        cmds, checks = commands(args[1], verify, unprotect)
     try:
         import serial  # pyserial
     except ImportError:
@@ -99,21 +126,18 @@ def main(argv):
             if reply.startswith("OK") or reply.startswith("ERR"):
                 return reply
 
-    reply = send("ID")
-    print("çip:", reply)
-    if reply != "OK ID BF B5":
-        print("Uyarı: SST39SF010A beklenen kimliği (BF B5) dönmedi. Çip doğru takılı mı?")
-    if "--id" in flags:
-        return 0
-    cmds, checks = commands(args[1], "--sil" in flags, "--dogrula" in flags)
     hex_lines = [c for c in cmds if c.startswith(":")]
     done = 0
-    for cmd in cmds[1:]:
+    for cmd in cmds:
         reply = send(cmd)
         if reply.startswith("ERR"):
             print(f"\nhata: {cmd} → {reply}")
             return 2
-        if cmd.startswith(":"):
+        if cmd == "SDP":
+            print("yazma koruması:", "açık" if reply == "OK SDP 1" else "kapalı")
+        elif cmd.startswith("SDP "):
+            print("yazma koruması", "açıldı" if cmd.endswith("1") else "kapatıldı")
+        elif cmd.startswith(":"):
             done += 1
             print(f"\ryazılıyor: {done}/{len(hex_lines)} satır", end="", flush=True)
         elif cmd.startswith("SUM"):
@@ -122,7 +146,8 @@ def main(argv):
             if got != want:
                 print(f"\ndoğrulama hatası: {cmd}: beklenen {want:04X}, okunan {got:04X}")
                 return 3
-    print("\ntamam" + (", doğrulandı" if "--dogrula" in flags else ""))
+    if hex_lines:
+        print("\ntamam" + (", doğrulandı" if verify else ""))
     return 0
 
 
