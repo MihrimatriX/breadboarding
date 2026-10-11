@@ -1,0 +1,35 @@
+name: Özellik isteği
+description: Simülatöre eklenecek yeni bir özellik
+labels: [özellik]
+body:
+  - type: textarea
+    id: ne
+    attributes:
+      label: Ne istiyorum
+      description: Özelliği bir iki cümleyle anlat.
+    validations:
+      required: true
+  - type: textarea
+    id: neden
+    attributes:
+      label: Neden
+      description: Hangi videoda ya da hangi kullanımda işe yarayacak?
+  - type: dropdown
+    id: alan
+    attributes:
+      label: Alan
+      options:
+        - 3D görünüm
+        - Simülasyon motoru
+        - Paneller / arayüz
+        - Çip verisi / içe aktarma
+        - 16-bit çip
+        - Diğer
+  - type: dropdown
+    id: oncelik
+    attributes:
+      label: Öncelik
+      options:
+        - Yüksek
+        - Orta
+        - Düşük
