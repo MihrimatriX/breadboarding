@@ -55,6 +55,11 @@ export const CARD_REF_BASE: Record<string, [base: number, span: number]> = {
   clk: [200, 100],
   mem: [300, 100],
   prog: [0, 100],
+  // anakart kartları: tek başına kurulsalar da anakartta da aynı referanslar
+  bellek: [400, 100],
+  onbellek: [500, 100],
+  gc: [600, 100],
+  video: [700, 100],
 };
 
 /** Yapıştırıcı (glue) kapı türleri: hangi çipten, birimde hangi pinler */
@@ -182,6 +187,21 @@ export class Board {
       this.passive("RN_10K_8", pins, role);
       for (const net of group) this.pulls.push({ net, level: 0 });
     }
+  }
+
+  /** Netleri VCC'ye çek: tek net için 10 kΩ direnç, fazlası için 8'li SIP dizi (ortak uç VCC) */
+  pullUp(nets: Net[], role: string): void {
+    const ids = nets.map((x) => this.resolve(x));
+    if (ids.length === 1) {
+      this.passive("R_10K", { "1": "VCC", "2": ids[0] }, role);
+    } else {
+      for (let i = 0; i < ids.length; i += 8) {
+        const pins: Record<string, Net> = { "1": "VCC" };
+        ids.slice(i, i + 8).forEach((net, k) => (pins[String(k + 2)] = net));
+        this.passive("RN_10K_8", pins, role);
+      }
+    }
+    for (const net of ids) this.pulls.push({ net, level: 1 });
   }
 
   /** Durum LED'i: sinyal → 330 Ω → LED → GND */
