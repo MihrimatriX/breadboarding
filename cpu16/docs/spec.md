@@ -23,7 +23,7 @@ Ayrık mantıkta her özellik = çip sayısı. Bu yüzden v0.1'den değişenler:
 | Barrel shifter | var | **yok**, 1 bit kaydırma (SHL/SHR/SAR/ROL/ROR ×1) | 16 bit barrel shifter ≈ 8–12 adet 74HC153 |
 | MUL/DIV | donanım (ops.) | **yazılım** (ROM'da kütüphane rutini) | çarpıcı onlarca çip |
 | Kontrol birimi | sabit FSM | **mikrokod (EEPROM/Flash'ta)** | Ben Eater yöntemi; komut seti çip değiştirmeden güncellenir |
-| Saat | — | ~1–4 MHz, adım adım tek saat butonu | 74HC ile güvenli; videoda adım adım izlenir |
+| Saat | — | ~1–4 MHz, adım adım tek saat butonu | 74HC ile güvenli; videoda adım adım izlenir. İlk gerçek kart 1 MHz (8 MHz osilatör / 8): şemadan zamanlama analizi, [uretim.md](uretim.md) |
 
 Kalanlar aynı: load/store, sabit 16 bit komut, 8 register, NZCV, byte adresli 64 KB, bellek eşlemeli G/Ç.
 
