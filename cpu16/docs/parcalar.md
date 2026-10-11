@@ -7,7 +7,7 @@
 | Dosya | İçerik |
 |---|---|
 | `chips/logic.ts` | Kapı seviyesi simülatör: 0/1/Z/X lojiği, çok sürücülü netler (veriyolu), dalga tabanlı zamanlama, DFF / mandal / üç durumlu tampon / davranışsal blok |
-| `chips/parts/*.ts` | 29 çipin tanımı: pinler (veri sayfasındaki numaralarla), kapı devresi, veri sayfası fonksiyon tablosu (referans model) |
+| `chips/parts/*.ts` | 33 çipin tanımı: pinler (veri sayfasındaki numaralarla), kapı devresi, veri sayfası fonksiyon tablosu (referans model) |
 | `chips/cmos.ts` | Kapı → CMOS transistör açılımı; çıktı Silikon3D'nin anahtar seviyesi motorunun okuduğu biçimde |
 | `chips/bench.ts`, `chips/transistor-bench.ts` | Tek çipi kapı veya transistör seviyesinde çalıştıran tezgâhlar |
 | `chips/kicad.ts` → `kicad/cpu16.kicad_sym` | KiCad 7+ sembol kütüphanesi (pin numaraları, footprint, açıklama) |
@@ -35,6 +35,7 @@ Güç verildiğinde flip-flopların değeri **bilinmiyor (X)** kabul edilir; ver
 | 74HC00 | DIP-14 | 4 | 16 | 4 × 2 girişli NAND |
 | 74HC02 | DIP-14 | 4 | 16 | 4 × 2 girişli NOR |
 | 74HC04 | DIP-14 | 6 | 12 | 6 × NOT (evirici) |
+| 74HC05 | DIP-14 | 6 | 48 | 6 × NOT, açık-akaçlı (open-drain) çıkış |
 | 74HC08 | DIP-14 | 4 | 24 | 4 × 2 girişli AND |
 | 74HC10 | DIP-14 | 3 | 18 | 3 × 3 girişli NAND |
 | 74HC14 | DIP-14 | 6 | 12 | 6 × Schmitt tetiklemeli NOT |
@@ -51,7 +52,10 @@ Güç verildiğinde flip-flopların değeri **bilinmiyor (X)** kabul edilir; ver
 | 74HC688 | DIP-20 | 10 | 116 | 8 bit eşitlik karşılaştırıcı |
 | 74HC74 | DIP-14 | 2 | 72 | 2 × D flip-flop (asenkron preset ve clear) |
 | 74HC161 | DIP-16 | 26 | 309 | 4 bit senkron ikili sayıcı (asenkron reset) |
+| 74HC193 | DIP-16 | 36 | 310 | 4 bit senkron ileri/geri ikili sayıcı (asenkron yükleme ve temizleme) |
+| 74HC393 | DIP-14 | 12 | 297 | 2 × 4 bit dalgalı (ripple) ikili sayıcı (düşen kenar, asenkron temizleme) |
 | 74HC165 | DIP-16 | 34 | 376 | 8 bit paralel giriş / seri çıkış kaydırmalı register |
+| 74HC166 | DIP-16 | 34 | 441 | 8 bit paralel giriş / seri çıkış kaydırmalı register (eşzamanlı yükleme) |
 | 74HC175 | DIP-16 | 4 | 145 | 4 × D flip-flop (ortak saat, asenkron reset) |
 | 74HC573 | DIP-20 | 17 | 210 | 8 bit şeffaf mandal (üç durumlu çıkış) |
 | 74HC574 | DIP-20 | 17 | 355 | 8 bit D flip-flop register (üç durumlu çıkış) |
