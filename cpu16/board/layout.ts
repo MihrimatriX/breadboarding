@@ -8,7 +8,7 @@
 // Hiçbir kart, çip ya da pasif adı burada sabit değildir: yeni kartlar ve elemanlar kendiliğinden yerleşir.
 
 import type { Board, ChipInstance, Passive } from "./board.ts";
-import { PASSIVES } from "./passives.ts";
+import { PASSIVES, ledRengi, type LedRenk } from "./passives.ts";
 
 const PITCH = 2.54;
 
@@ -60,6 +60,8 @@ export interface PassivePlace {
   chip?: string;
   /** kartın arka panele takılan kenar konnektörü */
   edge?: boolean;
+  /** LED'in rengi (görevinden: passives.ts, LED_RENK_KURALLARI) */
+  led?: LedRenk;
   pins: PinPlace[];
 }
 
@@ -231,6 +233,7 @@ function placePassive(p: Passive, x: number, y: number, vertical: boolean, chip?
   const h = vertical ? s.w : s.h;
   return {
     ref: p.ref, part: p.part, card: p.card, block: p.block, role: p.role, kind: s.kind, x, y, w, h, height: s.height, vertical, chip,
+    ...(s.kind === "led" ? { led: ledRengi(p.role) } : {}),
     pins: pins.map((q, i) => {
       const [px, py] = s.pin(q.num, i, pins.length);
       return { num: q.num, name: q.name, net: p.pins[String(q.num)] ?? -1, x: x + (vertical ? py : px), y: y + (vertical ? px : py) };
