@@ -12,7 +12,7 @@ import { programHex, uploadHex } from "../bios/uploader.ts";
 import { erc } from "../board/board.ts";
 import { BusMaster } from "../board/bus-master.ts";
 import { CLOCK_INPUTS } from "../board/clock-card.ts";
-import { buildMachineBoard } from "../board/machine-board.ts";
+import { buildFullMachineBoard, buildMachineBoard } from "../board/machine-board.ts";
 import { IO, Machine, MEM_WAIT } from "../emu/machine.ts";
 import { bios, expectSameMemory, foreignIo, hex } from "./anakart-ortak.ts";
 
@@ -156,6 +156,14 @@ describe("Faz 6 anakart: kartların yapısı", () => {
     expect(count("onbellek")).toBe(37);
     expect(s.bellek["74HC273"]).toBe(4);
     expect(s.onbellek["74HC590"]).toBe(4);
+  });
+
+  it("bütün anakart (CPU, saat, bellek, önbellek, G/Ç, video): ERC temiz, her kartın çip sayısı", () => {
+    const { board } = buildFullMachineBoard();
+    expect(erc(board, ["IRQ", ...CLOCK_INPUTS, "VID_OSC"])).toEqual([]);
+    const s = board.summary();
+    const counts = Object.fromEntries(Object.entries(s).map(([card, parts]) => [card, Object.values(parts).reduce((a, b) => a + b, 0)]));
+    expect(counts).toEqual({ cpu: 146, clk: 10, bellek: 31, onbellek: 37, gc: 65, video: 69 });
   });
 });
 

@@ -13,7 +13,7 @@ import { CLOCK_INPUTS } from "../board/clock-card.ts";
 import { buildComputerBoard } from "../board/computer.ts";
 import { KICAD_CARDS, writeKicadFiles } from "../board/kicad-files.ts";
 import { raporMetni, zamanlamaAnalizi } from "../board/zamanlama.ts";
-import { buildMachineBoard } from "../board/machine-board.ts";
+import { buildFullMachineBoard } from "../board/machine-board.ts";
 import { ChipBench } from "../chips/bench.ts";
 import { toTransistors } from "../chips/cmos.ts";
 import { PASSIVES } from "../board/passives.ts";
@@ -55,11 +55,11 @@ else if (cmd === "board") {
         console.log(`${card} kartı: ${total} entegre`);
         for (const [part, n] of Object.entries(parts).sort()) console.log(`  ${part.padEnd(12)} × ${n}`);
       }
-      const problems = erc(b, ["IRQ", ...CLOCK_INPUTS]);
+      const problems = erc(b, ["IRQ", ...CLOCK_INPUTS, "VID_OSC"]); // osilatörlerin sürdüğü netler
       console.log(problems.length ? problems.join("\n") : "ERC: sorun yok");
     };
     show("Test bilgisayarı: CPU + test bellek + saat (buildComputerBoard)", board);
-    show("Anakart: CPU + saat + bellek + önbellek (buildMachineBoard)", buildMachineBoard().board);
+    show("Anakart: CPU + saat + bellek + önbellek + G/Ç + video (buildFullMachineBoard)", buildFullMachineBoard().board);
     console.log(`KiCad kartları: ${KICAD_CARDS.map((c) => c.card).join(", ")}`);
   }
 }

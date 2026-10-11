@@ -4,7 +4,7 @@ import { kicadSymbolLibrary } from "../chips/kicad.ts";
 import { CHIPS } from "../chips/library.ts";
 import type { Board } from "./board.ts";
 import { bomCsv, cardSchematic, kicadProject, SYM_LIB_TABLE, type SchematicOptions } from "./kicad-sch.ts";
-import { buildMachineBoard } from "./machine-board.ts";
+import { buildFullMachineBoard } from "./machine-board.ts";
 import { PASSIVES } from "./passives.ts";
 import { buildProgrammerBoard } from "./programmer-card.ts";
 
@@ -13,7 +13,7 @@ export const KICAD_DIR = "cpu16/kicad";
 /**
  * Bilgisayarın kartları (her biri ayrı KiCad projesi, arka panelle birbirine bağlı).
  * board = "computer": test bilgisayarı (CPU + test bellek + saat; buildComputerBoard, ortak bom.csv);
- * board = "machine": anakart (buildMachineBoard; referanslar o kartta numaralanır, BOM kart klasöründe).
+ * board = "machine": anakart (buildFullMachineBoard; referanslar o kartta numaralanır, BOM kart klasöründe).
  */
 export const KICAD_CARDS: { card: string; title: string; paper: SchematicOptions["paper"]; board: "computer" | "machine" }[] = [
   { card: "cpu", title: "CPU16 — CPU kartı", paper: "A0", board: "computer" },
@@ -21,6 +21,8 @@ export const KICAD_CARDS: { card: string; title: string; paper: SchematicOptions
   { card: "clk", title: "CPU16 — Saat ve reset kartı", paper: "A3", board: "computer" },
   { card: "bellek", title: "CPU16 — Bellek kartı (Flash 128 KB + RAM 512 KB, bank register'ları)", paper: "A2", board: "machine" },
   { card: "onbellek", title: "CPU16 — Önbellek kartı (2 KB doğrudan eşlemeli, sayaçlar)", paper: "A1", board: "machine" },
+  { card: "gc", title: "CPU16 — G/Ç kartı (UART, PS/2 klavye, zamanlayıcı, kesme denetleyicisi)", paper: "A1", board: "machine" },
+  { card: "video", title: "CPU16 — Video kartı (VGA 640 × 480, 80 × 30 metin)", paper: "A1", board: "machine" },
 ];
 const DATE = "2026-10-11";
 
@@ -41,7 +43,7 @@ function project(board: Board, card: string, title: string, paper: SchematicOpti
 }
 
 /** `board`: test bilgisayarı (buildComputerBoard), `machine`: anakart (buildMachineBoard) */
-export function writeKicadFiles(board: Board, machine: Board = buildMachineBoard().board): KicadFile[] {
+export function writeKicadFiles(board: Board, machine: Board = buildFullMachineBoard().board): KicadFile[] {
   const files: KicadFile[] = [{ path: `${KICAD_DIR}/cpu16.kicad_sym`, content: kicadSymbolLibrary([...CHIPS, ...Object.values(PASSIVES)]) }];
   const computerCards = KICAD_CARDS.filter((c) => c.board === "computer");
   for (const c of computerCards) files.push(...project(board, c.card, c.title, c.paper));
