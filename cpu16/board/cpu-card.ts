@@ -298,7 +298,7 @@ export function buildCpuCard(b: Board): CpuCard {
   }, "bayrak girişi: ALU ya da veriyolu (RETI)");
   // Dört bayrak aynı kapılı saatle yüklenir; C ve V'yi değiştirmeyen işlemlerde (SETSCV = 0) eski
   // değer geri yazılır (çip, kartın sonunda yerleştirilir: C/V tutma seçicisi). SETSCV saat izninde
-  // kullanılmaz: ALU ROM'unun adresinde CFLAG var ve CFLAG tam bu kenarda değişir; ROM çıkışındaki
+  // kullanılmaz: ALU kod çözücünün girişinde CFLAG var ve CFLAG tam bu kenarda değişir; çıkışındaki
   // bir sıçrama kapılı saatte ikinci bir darbe üretebilirdi (docs/uretim.md, zamanlama).
   const clkNZ = gclk(b.or(CW[24], CW[25], "NZ_LD", "N Z yükle"), "NZ");
   const clkCV = clkNZ;

@@ -7,7 +7,7 @@
 | Dosya | İçerik |
 |---|---|
 | `chips/logic.ts` | Kapı seviyesi simülatör: 0/1/Z/X lojiği, çok sürücülü netler (veriyolu), dalga tabanlı zamanlama, DFF / mandal / üç durumlu tampon / davranışsal blok |
-| `chips/parts/*.ts` | 35 çipin tanımı: pinler (veri sayfasındaki numaralarla), kapı devresi, veri sayfası fonksiyon tablosu (referans model) |
+| `chips/parts/*.ts` | 40 çipin tanımı: pinler (veri sayfasındaki numaralarla), kapı devresi, veri sayfası fonksiyon tablosu (referans model) |
 | `chips/cmos.ts` | Kapı → CMOS transistör açılımı; çıktı Silikon3D'nin anahtar seviyesi motorunun okuduğu biçimde |
 | `chips/bench.ts`, `chips/transistor-bench.ts` | Tek çipi kapı veya transistör seviyesinde çalıştıran tezgâhlar |
 | `chips/kicad.ts` → `kicad/cpu16.kicad_sym` | KiCad 7+ sembol kütüphanesi (pin numaraları, footprint, açıklama) |
@@ -38,6 +38,11 @@ Güç verildiğinde flip-flopların değeri **bilinmiyor (X)** kabul edilir; ver
 | 74HC05 | DIP-14 | 6 | 48 | 6 × NOT, açık-akaçlı (open-drain) çıkış |
 | 74HC08 | DIP-14 | 4 | 24 | 4 × 2 girişli AND |
 | 74HC10 | DIP-14 | 3 | 18 | 3 × 3 girişli NAND |
+| 74HC11 | DIP-14 | 3 | 24 | 3 × 3 girişli AND |
+| 74HC20 | DIP-14 | 2 | 16 | 2 × 4 girişli NAND |
+| 74HC21 | DIP-14 | 2 | 20 | 2 × 4 girişli AND |
+| 74HC27 | DIP-14 | 3 | 18 | 3 × 3 girişli NOR |
+| 74HC30 | DIP-14 | 1 | 16 | 8 girişli NAND |
 | 74HC14 | DIP-14 | 6 | 12 | 6 × Schmitt tetiklemeli NOT |
 | 74HC32 | DIP-14 | 4 | 24 | 4 × 2 girişli OR |
 | 74HC86 | DIP-14 | 4 | 48 | 4 × 2 girişli XOR |
@@ -70,6 +75,11 @@ Güç verildiğinde flip-flopların değeri **bilinmiyor (X)** kabul edilir; ver
 "Kapı" sayısında flip-flop ve mandal tek eleman sayılır; transistör sayısı onların açılmış halini içerir. Gerçek 74HC çiplerinde giriş koruma diyotları ve tamponlanmış çıkış katları da vardır, mantığı değiştirmedikleri için modellenmez; bu yüzden gerçek transistör sayısı biraz daha yüksektir.
 
 CPU16'da her çipin nerede kullanıldığı `usage` alanında ve KiCad sembolünün `CPU16_Kullanim` özelliğinde yazılı.
+
+74HC11, 20, 21, 27 ve 30 CPU kartının kapı seviyesindeki kontrol biriminin geniş kapılarıdır
+(`board/kontrol.ts`; mikromimari.md, "Kapı seviyesinde kontrol birimi"). Kartlarda yapıştırıcı lojik
+olarak yerleşirler (`Board.and3`, `nor3`, `and4`, `nand4`, `nand8`): birimler kart bitince çiplere
+paketlenir. 74HC20 ve 74HC21'in 3. ve 11., 74HC30'un 9., 10. ve 13. bacakları bağlantısızdır (NC).
 
 ## Transistör açılımı kuralları
 

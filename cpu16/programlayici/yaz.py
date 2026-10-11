@@ -7,8 +7,8 @@ Kullanım:
   python3 yaz.py --kuru dosya.hex [--sil] [--dogrula]   # gönderilecek komutları yazdır, port açma
 
 Örnekler:
-  python3 yaz.py /dev/ttyUSB0 ../roms/mikrokod-0.hex --sil --dogrula
-  python3 yaz.py COM5 ../roms/alu-1.hex --sil
+  python3 yaz.py /dev/ttyUSB0 bios.hex --sil --dogrula      # npm run cpu16 -- bios -o bios.hex
+  python3 yaz.py COM5 charrom.hex --sil                    # npm run cpu16 -- charrom -o charrom.hex
 
 Gereken: pip install pyserial  (yalnızca gerçek port için)
 Protokol: cpu16/programlayici/cpu16-programlayici/cpu16-programlayici.ino başındaki açıklama.

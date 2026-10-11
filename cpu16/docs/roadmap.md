@@ -37,10 +37,10 @@ Faz 0 Spec ─▶ Faz 1 Emülatör+as16 ─▶ Faz 2 Mikromimari ─▶ Faz 3 74
 - Sonuç: `emu/cpu.ts`, `emu/disasm.ts`, `asm/assembler.ts`, `asm/hex.ts`, `tools/cli.ts`, `programs/*.s` (hello, fib, add32 + yazılım çarpma, bubble, irq), `tests/` (52 test, disassembler 65 536 kelimenin hepsinde gidiş-dönüş). Bit bit davranış: `docs/isa-ayrintilari.md`; assembler rehberi: `docs/as16.md`.
 
 ### Faz 2 — Mikromimari ve mikrokod ✅ 2026-10-11
-- Çıktı: veriyolu blok şeması, kontrol sinyali listesi (24–32 sinyal), mikrokod kaynak dosyası + mikrokod derleyicisi (Flash imajı üretir), **saat döngüsü seviyesinde** blok modeli (register, ALU, bus, kontrol).
+- Çıktı: veriyolu blok şeması, kontrol sinyali listesi (24–32 sinyal), mikrokod kaynak dosyası + mikrokod derleyicisi (kontrol tablosu üretir), **saat döngüsü seviyesinde** blok modeli (register, ALU, bus, kontrol).
 - Bitti ölçütü: Faz 1 test programlarının tamamı blok modelde çalışır ve her komut sonunda emülatörle lockstep aynı durumdadır; komut başına döngü sayısı tablosu çıkar.
 - Video: "Mikrokod nedir? CPU'nun içindeki küçük program".
-- Sonuç: `micro/control.ts` (32 bit kontrol kelimesi), `micro/cpu16.ucode` + `micro/microasm.ts` (4 Flash imajı: `npm run cpu16 -- ucode`), `micro/datapath.ts` (ROM bitlerini çalıştıran saat döngüsü modeli). Lockstep: 5 program + 60 000 rastgele komut. Ortalama ≈5 döngü/komut. Ayrıntı: `docs/mikromimari.md`. Spec değişikliği: `cond = 15` artık NV (asla), yasadışı değil.
+- Sonuç: `micro/control.ts` (32 bit kontrol kelimesi), `micro/cpu16.ucode` + `micro/microasm.ts` (8192 kelimelik kontrol tablosu: `npm run cpu16 -- ucode`), `micro/datapath.ts` (tablonun bitlerini çalıştıran saat döngüsü modeli). Lockstep: 5 program + 60 000 rastgele komut. Ortalama ≈5 döngü/komut. Ayrıntı: `docs/mikromimari.md`. Spec değişikliği: `cond = 15` artık NV (asla), yasadışı değil.
 
 ### Faz 3 — 74HC parça kütüphanesi ✅ 2026-10-11
 - Çıktı: kullanılan her çip (≈25 tip: 74HC00/04/08/32/86/74/138/148/157/161/175/245/283/574/595/688, SRAM, Flash…) için kapı seviyesi model + doğruluk tablosu testleri; her kapı için CMOS transistör açılımı; KiCad sembol/footprint eşlemesi.
@@ -53,7 +53,7 @@ Faz 0 Spec ─▶ Faz 1 Emülatör+as16 ─▶ Faz 2 Mikromimari ─▶ Faz 3 74
 - Çıktı: her kart için `.kicad_sch`, netlist → simülatör içe aktarıcı.
 - Bitti ölçütü: şemadan üretilen **kapı seviyesi** bilgisayar Faz 1 test programlarını emülatörle lockstep çalıştırır. (Şema değişirse simülasyon da kendiliğinden değişir.)
 - Video: kart başına bir bölüm.
-- Sonuç: şema = kod (`board/*.ts`): CPU kartı, saat kartı, test bellek kartı; aynı tanımdan kapı seviyesi simülasyon, KiCad 7 şemaları (`kicad/<kart>/`), BOM ve ERC. Kapı seviyesi bilgisayar 5 programı her saat döngüsünde mikrokod modeliyle aynı çalıştırır. Ayrıntı: `docs/kartlar.md`.
+- Sonuç: şema = kod (`board/*.ts`): CPU kartı, saat kartı, test bellek kartı; aynı tanımdan kapı seviyesi simülasyon, KiCad 7 şemaları (`kicad/<kart>/`), BOM ve ERC. Kapı seviyesi bilgisayar 5 programı her saat döngüsünde mikrokod modeliyle aynı çalıştırır. CPU kartında ROM yok: mikrokod ve ALU kod çözme tablosu `board/kontrol.ts`'nin ürettiği 74HC kapı devresidir (194 entegre; LogicSim ile 8192 + 128 adreste tabloyla birebir). Ayrıntı: `docs/kartlar.md`, `docs/mikromimari.md`.
 
 ### Faz 5 — 3D görünüm (Silikon3D ile birlikte) ✅ 2026-10-11
 - Çıktı: kart → çip → kapı → transistör yakınlaştırma; tıklanan çipin içi açılır; canlı sinyaller.
@@ -80,7 +80,7 @@ Faz 0 Spec ─▶ Faz 1 Emülatör+as16 ─▶ Faz 2 Mikromimari ─▶ Faz 3 74
 ### Faz 9 — Gerçek kartlar 🔧 araçlar hazır, kartlar kurulacak
 - Sıra Faz 4 ile aynı; her kart önce breadboard, sonra PCB. Kendi EEPROM programlayıcımız (Arduino + 74HC595) ilk iş.
 - Bitti ölçütü: gerçek kart, simülasyonun geçtiği aynı test programlarını geçer (UART üzerinden sonuç karşılaştırması).
-- Sonuç: Flash programlayıcı (Arduino Nano + 2 × 74HC595, `programlayici/`, `yaz.py`), mikrokod ve ALU ROM imajları (`roms/`), şemadan statik zamanlama analizi (`npm run cpu16 -- zamanlama [--anakart]`: ilk hedef **1 MHz CPU**, 8 MHz osilatör, UART 28 800 baud; video kartının piksel yolunda birkaç 74AC), kart testi (`npm run cpu16 -- kart-testi`: gerçek kart UART üzerinden simülatörle karşılaştırılır). Bitti ölçütü kartlar kurulup kart testi geçince sağlanır. Ayrıntı: `docs/uretim.md`.
+- Sonuç: Flash programlayıcı (Arduino Nano + 2 × 74HC595, `programlayici/`, `yaz.py`; BIOS Flash'ı ve karakter ROM'u için), şemadan statik zamanlama analizi (`npm run cpu16 -- zamanlama [--anakart]`: ilk hedef **1 MHz CPU**, 8 MHz osilatör, UART 28 800 baud; video kartının piksel yolunda birkaç 74AC), kart testi (`npm run cpu16 -- kart-testi`: gerçek kart UART üzerinden simülatörle karşılaştırılır). Bitti ölçütü kartlar kurulup kart testi geçince sağlanır. Ayrıntı: `docs/uretim.md`.
 
 ### Faz 10 — Deney seti paketi ✅ 2026-10-11 (rehberler)
 - Çıktı: deney başına rehber (malzeme listesi, şema, adımlar, beklenen sonuç, simülatör sahnesi), BOM, sorun giderme.
@@ -99,7 +99,6 @@ cpu16/
   board/         kartlar kod olarak: CPU, saat, bellek, önbellek, G/Ç, video, programlayıcı;
                  ERC, zamanlama analizi, KiCad çıktısı (Faz 4, 6, 9)
   kicad/         üretilen KiCad şemaları ve BOM'lar, kart başına klasör
-  roms/          mikrokod ve ALU Flash imajları
   bios/          BIOS, önyükleyici, kart testi, örnek programlar (Faz 7)
   video/         karakter ROM'u (8 × 16 font)
   cc/ lib/       cc16 C derleyicisi; crt0, rt, libc16 (Faz 8)

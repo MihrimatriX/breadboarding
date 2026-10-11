@@ -211,7 +211,7 @@
       (property "Footprint" "Package_DIP:DIP-32_W15.24mm" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
       (property "Datasheet" "" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
       (property "ki_description" "128 KB Flash (128K × 8, 5 V, komutla programlanır)" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
-      (property "CPU16_Kullanim" "Mikrokod ROM'u (4 adet), BIOS ROM'u (2 adet: çift/tek bayt), video karakter ROM'u" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+      (property "CPU16_Kullanim" "BIOS Flash'ı (bellek kartı), video karakter ROM'u, programlayıcının ZIF soketi" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
       (symbol "SST39SF010A_0_1"
         (rectangle (start -7.62 30.48) (end 7.62 -30.48) (stroke (width 0.254) (type default)) (fill (type background)))
       )

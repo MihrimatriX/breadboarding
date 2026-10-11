@@ -1,5 +1,5 @@
 // CPU16 saat döngüsü modeli: veriyolu, register dosyası, ALU, PC, MAR, IR ve bayraklar.
-// Ne yapacağını bilmez; her saat döngüsünde mikrokod ROM'undan kontrol kelimesini okur ve uygular.
+// Ne yapacağını bilmez; her saat döngüsünde mikrokod tablosundan kontrol kelimesini okur ve uygular.
 // Bu yüzden emülatörle lockstep karşılaştırma, mikrokodun kendisini doğrular.
 
 import type { Bus } from "../emu/cpu.ts";
