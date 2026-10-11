@@ -51,6 +51,7 @@ export function buildCpuCard(b: Board): CpuCard {
   b.pullDown(BUS, "iç veriyolu: sürülmeyince 0");
 
   // ---- saat, çalışma izni
+  b.block = "Kontrol";
   const nCLK = b.not("CLK", "~CLK", "saat tersi");
   const RUN_R = n("RUN_R");
   const nCLKR = b.nand("CLK", RUN_R, "~CLKR", "kapılı ana saat");
@@ -114,6 +115,7 @@ export function buildCpuCard(b: Board): CpuCard {
   }, "BUS alanı çözücü (veriyolu sürücüsü seçimi)");
 
   // ---- register dosyası
+  b.block = "Register dosyası";
   const RIDX = b.bus("RIDX", 3);
   for (let k = 0; k < 3; k++) {
     b.place("74HC151", {
@@ -147,6 +149,7 @@ export function buildCpuCard(b: Board): CpuCard {
   });
 
   // ---- TA, TB, MAR, IR
+  b.block = "Geçici register'lar";
   const latch16 = (name: string, sig: number, q: number[]) => {
     const clk = gclk(sig, name);
     return [reg574(`${name} düşük`, BUS.slice(0, 8), clk, "GND", q.slice(0, 8)), reg574(`${name} yüksek`, BUS.slice(8), clk, "GND", q.slice(8))];
@@ -157,6 +160,7 @@ export function buildCpuCard(b: Board): CpuCard {
   const ir = latch16("IR", CW[23], IR);
 
   // ---- program sayacı: PC[15:1] sayaç, PC[0] = 0
+  b.block = "Program sayacı";
   const PC = ["GND", ...range(15).map((i) => `PC${i + 1}`)];
   const pcInc = b.and(CW[20], RUN_R, "PC_INC_EN", "PC += 2");
   const pcLoad = b.nand(CW[19], RUN_R, "~PC_LOAD", "PC yükle");
@@ -184,6 +188,7 @@ export function buildCpuCard(b: Board): CpuCard {
   buf541("PC → veriyolu yüksek", PC.slice(8), BUS.slice(8), "~SRC_PC");
 
   // ---- sabit birimi: her bit için 8 kaynaktan biri
+  b.block = "Sabit birimi";
   const IMMV = b.bus("IMM", 16);
   const ir_ = (i: number) => IR[i];
   for (let i = 0; i < 16; i++) {
@@ -205,6 +210,7 @@ export function buildCpuCard(b: Board): CpuCard {
   buf541("sabit → veriyolu yüksek", IMMV.slice(8), BUS.slice(8), "~SRC_IMM");
 
   // ---- ALU işlem seçimi: ALU_IR = 1 ise {IR.op[0], IR.f3}
+  b.block = "ALU";
   const AOP = b.bus("AOP", 5);
   b.place("74HC157", {
     S: CW[11], "~E": "GND",
@@ -288,6 +294,7 @@ export function buildCpuCard(b: Board): CpuCard {
   buf541("ALU → veriyolu yüksek", RES.slice(8), BUS.slice(8), "~SRC_ALU");
 
   // ---- bayraklar
+  b.block = "Bayraklar ve koşul";
   b.place("74HC157", {
     S: CW[25], "~E": "GND",
     "1I0": RES[15], "1I1": BUS[3], "1Y": "DN", "2I0": "Z_ALU", "2I1": BUS[2], "2Y": "DZ",
@@ -323,6 +330,7 @@ export function buildCpuCard(b: Board): CpuCard {
   b.xor("CONDY", IR[8], COND, "koşul tersleme");
 
   // ---- bellek arayüzü: 16 bit veriyolu ↔ çift/tek bayt hatları
+  b.block = "Bellek arayüzü";
   const BYTE = CW[28];
   const MEMRD = b.not("~SRC_MEM", "MEMRD", "bellek okuma");
   const MEMW = b.and(CW[22], RUN_R, "MEMW", "bellek yazma");

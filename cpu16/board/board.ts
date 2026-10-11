@@ -16,6 +16,8 @@ export interface ChipInstance {
   card: string;
   /** Şemadaki görevi, ör. "R3 düşük bayt" */
   role: string;
+  /** Kart üzerindeki işlev bloğu, ör. "ALU" (3D yerleşim bunu gruplar) */
+  block: string;
   /** pin adı → net */
   nets: PinNets;
   /** Bu çipin circuit.gates içindeki kapı aralığı [başlangıç, bitiş) */
@@ -55,6 +57,8 @@ export class Board {
   /** Net çekme dirençleri (simülasyonda zayıf sürücü) */
   readonly pulls: { net: number; level: 0 | 1 }[] = [];
   card = "cpu";
+  /** Sonraki çiplerin işlev bloğu */
+  block = "";
   private readonly named = new Map<string, number>();
   private readonly glue: { kind: GlueKind; card: string; nets: number[]; role: string }[] = [];
   private finished = false;
@@ -115,7 +119,7 @@ export class Board {
     this.c.owner = ref;
     const start = this.c.gates.length;
     const handle = def.build(this.c, nets);
-    const inst: ChipInstance = { ref, def, card: this.card, role, nets, gates: [start, this.c.gates.length], handle };
+    const inst: ChipInstance = { ref, def, card: this.card, role, block: this.block, nets, gates: [start, this.c.gates.length], handle };
     this.chips.push(inst);
     return inst;
   }
@@ -167,6 +171,7 @@ export class Board {
   finish(): void {
     if (this.finished) return;
     const savedCard = this.card;
+    this.block = "Yapıştırıcı lojik";
     for (const kind of Object.keys(GLUE) as GlueKind[]) {
       const g = GLUE[kind];
       const cards = [...new Set(this.glue.filter((x) => x.kind === kind).map((x) => x.card))];
