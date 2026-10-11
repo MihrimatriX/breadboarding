@@ -16,11 +16,11 @@ bloklardan geleceği için o deneyde elle sürülür. Şema değişirse rehber d
 |---|---|---|---|
 | 1 | [Saat ve reset kartı](deney-01-saat.md) | saat kartı (9 entegre) | LED'de saat, ADIM butonuyla tek döngü |
 | 2 | [Kapılar ve CMOS transistörler](deney-02-kapilar.md) | 74HC00, isteğe bağlı 4 MOSFET | NAND doğruluk tablosu, NAND'ın içi |
-| 3 | [Flash programlayıcı](deney-03-programlayici.md) | Arduino Nano + 2 × 74HC595 + ZIF | ROM'lar programlanır ve doğrulanır |
+| 3 | [Flash programlayıcı](deney-03-programlayici.md) | Arduino Nano + 2 × 74HC595 + ZIF | Flash'a imaj yazılır ve doğrulanır |
 | 4 | [Register dosyası ve veriyolu](deney-04-register.md) | 8 × 16 bit register | anahtarlardaki değer register'a yazılır, geri okunur |
-| 5 | [ALU ve bayraklar](deney-05-alu.md) | TA, TB, ALU, bayraklar | toplama, çıkarma, mantık, kaydırma; NZCV |
+| 5 | [ALU ve bayraklar](deney-05-alu.md) | TA, TB, ALU, ALU kod çözücü, bayraklar | toplama, çıkarma, mantık, kaydırma; NZCV |
 | 6 | [Program sayacı ve komut çekme](deney-06-komut-cekme.md) | PC, MAR, IR, bellek arayüzü | PC yürür, komut IR'ye çekilir |
-| 7 | [Mikrokod ve kontrol birimi](deney-07-mikrokod.md) | kontrol birimi, sabit birimi | CPU çalışır: NOP döngüsü, HALT |
+| 7 | [Mikrokod ve kontrol birimi](deney-07-mikrokod.md) | kapılarla kurulu kontrol birimi, sabit birimi | CPU çalışır: NOP döngüsü, HALT |
 | 8 | [Bellek kartı ve ilk program](deney-08-bellek.md) | bank'lı 1 MB bellek, Flash, FF00 LED mandalı | ilk program Flash'tan 512 KB RAM'i sınar, LED'lerde `0xA5` |
 | 9 | [Bekleme durumları ve önbellek](deney-09-onbellek.md) | önbellek kartı | önbellek açıkken kayan ışık ≈ 1,4 kat hızlı |
 | 10 | [G/Ç kartı](deney-10-gc.md) | UART, zamanlayıcı, kesmeler, PS/2 | bilgisayarla seri haberleşme, klavye |
@@ -28,15 +28,16 @@ bloklardan geleceği için o deneyde elle sürülür. Şema değişirse rehber d
 | 12 | [BIOS, önyükleyici ve Web Serial](deney-12-bios.md) | yazılım | tarayıcıdan karta program yükleme |
 | 13 | [C derleyicisi: yılan oyunu](deney-13-c.md) | yazılım | C ile yazılmış oyun ekranda |
 
-Sıra donanımın bağımlılığına göredir: saat ve programlayıcı her şeyden önce gelir (ALU ve mikrokod
-ROM'ları programlanmadan CPU çalışmaz), CPU blok blok kurulur, sonra anakart kartları eklenir.
+Sıra donanımın bağımlılığına göredir: saat ve programlayıcı her şeyden önce gelir (bellek kartının
+Flash'ı ve video kartının karakter ROM'u onunla yazılır), CPU blok blok kurulur, sonra anakart kartları
+eklenir. CPU kartında ROM yok: mikrokod ve ALU kod çözme 74HC kapılarıyla kurulu (Deney 5 ve 7).
 
 ## Gereken araçlar
 
 | Araç | Neden |
 |---|---|
-| 5 V, en az 2 A ayarlı/akım sınırlı güç kaynağı | Tam bilgisayar ≈ 300 entegre; ilk açılışta akım sınırı kısa devreyi yakalar |
-| Breadboard (830 delik) × 20–30, tek göbekli 0,5 mm kablo | CPU kartı tek başına ≈ 150 entegre |
+| 5 V, en az 2 A ayarlı/akım sınırlı güç kaynağı | Tam bilgisayar ≈ 400 entegre; ilk açılışta akım sınırı kısa devreyi yakalar |
+| Breadboard (830 delik) × 25–35, tek göbekli 0,5 mm kablo | CPU kartı tek başına ≈ 195 entegre |
 | Multimetre | besleme ve seviye ölçümü |
 | Lojik prob ya da 8 kanallı USB lojik analizör (sigrok / PulseView) | saat, UART, PS/2, VGA zamanlaması |
 | Arduino Nano (klon olur) + ZIF-32 soket | Flash programlayıcı (Deney 3) |

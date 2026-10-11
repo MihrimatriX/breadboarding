@@ -3,12 +3,12 @@
 //   kicad-sym [-o dosya]        KiCad sembol kütüphanesini üret (varsayılan cpu16/kicad/cpu16.kicad_sym)
 //   board                       kartların çip sayıları ve ERC (test bilgisayarı ve anakart)
 //   board kicad                 cpu16/kicad/<kart>/ şemaları + BOM'ları yeniden üret
-//   roms                        cpu16/roms/ altındaki Flash imajlarını (mikrokod, ALU) yeniden üret
+//   kontrol                     mikrokodun gömülü kopyasını (micro/cpu16-ucode.ts) yenile, kontrol
+//                               birimi devresini üret, 8192 + 128 adreste denetle, çip dökümünü yaz
 //   zamanlama [--tip] [--yol N] şemadan statik zamanlama analizi: en uzun yollar, en yüksek saat hızı
 //   zamanlama --anakart [--tip] bütün anakart (6 kart, 6 saat kökü)
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { romFiles } from "../board/roms.ts";
 import { erc, type Board } from "../board/board.ts";
 import { CLOCK_INPUTS } from "../board/clock-card.ts";
 import { buildComputerBoard } from "../board/computer.ts";
@@ -20,6 +20,8 @@ import { toTransistors } from "../chips/cmos.ts";
 import { PASSIVES } from "../board/passives.ts";
 import { kicadSymbolLibrary } from "../chips/kicad.ts";
 import { CHIPS } from "../chips/library.ts";
+import { devreyiDenetle, gomuluUcodeDosyasi, kontrolDevresi, kontrolOzeti } from "../board/kontrol.ts";
+import { assembleMicrocode } from "../micro/microasm.ts";
 
 const [cmd, ...rest] = process.argv.slice(2);
 const opt = (name: string) => {
@@ -64,11 +66,29 @@ else if (cmd === "board") {
     console.log(`KiCad kartları: ${KICAD_CARDS.map((c) => c.card).join(", ")}`);
   }
 }
-else if (cmd === "roms") {
-  for (const f of romFiles(readFileSync("cpu16/micro/cpu16.ucode", "utf8"))) {
-    mkdirSync(f.path.replace(/\/[^/]+$/, ""), { recursive: true });
-    writeFileSync(f.path, f.content);
-    console.log(f.path);
+else if (cmd === "kontrol") {
+  const kaynak = readFileSync("cpu16/micro/cpu16.ucode", "utf8");
+  const micro = assembleMicrocode(kaynak);
+  if (micro.errors.length) {
+    for (const e of micro.errors) console.error(`cpu16.ucode:${e.line}: ${e.message}`);
+    process.exit(1);
+  }
+  const f = gomuluUcodeDosyasi(kaynak);
+  writeFileSync(f.path, f.content);
+  console.log(`${f.path}: güncel`);
+  const devre = kontrolDevresi(kaynak);
+  const hatalar = devreyiDenetle(devre, micro.rom);
+  if (hatalar.length) {
+    console.error(hatalar.join("\n"));
+    process.exit(1);
+  }
+  console.log("devre tabloyla aynı: 8192 mikrokod adresi, 128 ALU adresi");
+  const oz = kontrolOzeti(devre);
+  for (const blok of Object.keys(oz.msi)) {
+    console.log(`${blok}:`);
+    for (const [parca, n] of Object.entries(oz.msi[blok])) console.log(`  ${parca.padEnd(12)} × ${n}`);
+    const kapilar = Object.entries(oz.kapilar[blok] ?? {}).map(([k, n]) => `${k} × ${n}`).join(", ");
+    console.log(`  kapılar: ${kapilar}`);
   }
 }
 else if (cmd === "zamanlama" && rest.includes("--anakart")) {

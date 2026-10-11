@@ -28,6 +28,7 @@ npm run cpu16 -- run cpu16/programs/hello.s          # Merhaba, CPU16! (referans
 npm run cpu16 -- machine                             # anakart + BIOS, UART terminale bağlı (çıkış: Ctrl-])
 npm run cpu16 -- cc --hedef bios cpu16/bios/ornekler/yilan.c -o yilan.s   # C → assembly
 npm run cpu16 -- machine cpu16/kit/programlar/bellek-deneme.s --rom --led # BIOS'suz deneme programı, FF00 LED'leri
+npm run cpu16 -- kontrol                             # mikrokod değişince: kontrol birimini (74HC kapıları) yeniden üret ve denetle
 npm run cpu16 -- zamanlama --anakart                 # şemadan statik zamanlama analizi
 npm run cpu16 -- board kicad                         # KiCad şemalarını ve BOM'ları yeniden üret
 npm run cpu16 -- kit                                 # deney rehberlerinin otomatik bölümlerini üret

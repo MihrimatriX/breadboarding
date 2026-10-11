@@ -305,7 +305,7 @@ yakalarsa çip okuma moduna ancak `F0` (çıkış) komutuyla ya da güç kesilin
 ## Çip listesi (blok başına, tahmini)
 
 Aşağıdaki tablo tasarımın başındaki tahmindir. Bütün kartlar artık kapı seviyesinde kurulu ve
-KiCad'de; kesin sayılar: CPU 146, saat 10, bellek 31, önbellek 37, G/Ç 65, video 69 entegre
+KiCad'de; kesin sayılar: CPU 194, saat 10, bellek 31, önbellek 37, G/Ç 65, video 69 entegre
 (blok → çip eşlemesi ve tahminden farkları: [anakart-kartlari.md](anakart-kartlari.md),
 [anakart-gc-video.md](anakart-gc-video.md); güncel liste `npm run cpu16 -- board`). En büyük fark
 G/Ç tarafındadır: UART ayrı osilatör kullanmaz, bit süresini TCLK'den böler; zamanlayıcının ön

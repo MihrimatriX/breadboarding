@@ -21,7 +21,6 @@ import { Circuit, L0, L1, LogicSim, type Gate, type GateKind, type Level } from 
 import { SRAM62256, SST39SF010 } from "../chips/parts/memory.ts";
 import { pinsOf, type ChipDef } from "../chips/types.ts";
 import { Machine } from "../emu/machine.ts";
-import { assembleMicrocode } from "../micro/microasm.ts";
 import { romImage } from "../tools/machine-cli.ts";
 import { FONT_8X16 } from "../video/font.ts";
 
@@ -370,8 +369,7 @@ describe("3D görünüm: VGA ekranı", () => {
   });
 
   it("ekran kaynağı kapı seviyesi kartın VRAM ve karakter ROM'u çiplerinden okur", () => {
-    const micro = assembleMicrocode(readFileSync(new URL("../micro/cpu16.ucode", import.meta.url), "utf8"));
-    const g = new GateMachine(micro.rom, { cards: FULL_MACHINE_CARDS });
+    const g = new GateMachine({ cards: FULL_MACHINE_CARDS });
     const src = findScreenSource(g)!;
     expect(src).not.toBeNull();
     const card = g.extras.find((x) => !!x && typeof x === "object" && "vramChar" in x) as { vramChar: { handle: { data: Uint8Array } }; vramAttr: { handle: { data: Uint8Array } }; fontRom: { handle: { data: Uint8Array } } };

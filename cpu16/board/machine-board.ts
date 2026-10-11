@@ -6,7 +6,6 @@
 import { L0, L1, LogicSim, type Level } from "../chips/logic.ts";
 import type { MemoryHandle } from "../chips/parts/memory.ts";
 import { RAM_BASE, RESET_BANKS } from "../emu/machine.ts";
-import { aluRomImages } from "./alu-rom.ts";
 import { Board, type ChipInstance } from "./board.ts";
 import { buildCacheCard, type CacheCard } from "./cache-card.ts";
 import { buildClockCard, type ClockCard } from "./clock-card.ts";
@@ -225,7 +224,8 @@ export class GateMachine {
   private readonly ownIrq: boolean;
   private lastWe: Level = L1;
 
-  constructor(microcode: Uint32Array, o: MachineBoardOptions = {}) {
+  /** Kartta ROM yok: kontrol birimi mikrokoddan kart kurulurken kapı devresi olarak üretilir */
+  constructor(o: MachineBoardOptions = {}) {
     const { board, cpu, clock, mem, cache, extras } = buildMachineBoard(o);
     this.board = board;
     this.cpu = cpu;
@@ -237,11 +237,6 @@ export class GateMachine {
       if (!board.has(name)) throw new Error(`Böyle bir net yok: ${name}`);
       return board.n(name);
     };
-    cpu.microcode.forEach((ci, k) => {
-      const h = ci.handle as MemoryHandle;
-      for (let a = 0; a < microcode.length; a++) h.data[a] = (microcode[a] >>> (8 * k)) & 0xff;
-    });
-    aluRomImages().forEach((img, k) => (cpu.aluRom[k].handle as MemoryHandle).data.set(img));
     this.sim = new LogicSim(board.c);
     for (const p of board.pulls) this.sim.pull(p.net, p.level);
     this.probe = new MemoryProbe(this.sim, board, mem, cache);

@@ -18,7 +18,6 @@ import { Ps2Sender, UartSender, type LineIo } from "./serial-in";
 /** Piksel saati / CPU saati (25,175 MHz / 4 MHz) */
 const PIXELS_PER_CYCLE = 25.175 / 4;
 
-let microcode: Uint32Array | null = null;
 let flash = new Uint8Array(0);
 let g: GateMachine | null = null;
 let screen: ScreenSource | null = null;
@@ -46,9 +45,9 @@ let nets = { halted: -1, fault: -1, iflag: -1 };
 
 const post = (m: FromWorker, transfer: Transferable[] = []) => (self as unknown as Worker).postMessage(m, transfer);
 
-/** Bütün anakart; mikrokod CPU kartının ROM'larına yazılır */
+/** Bütün anakart (CPU'nun kontrol birimi kapılardan; ROM yok) */
 function createMachine(): GateMachine {
-  return new GateMachine(microcode!, { cards: FULL_MACHINE_CARDS });
+  return new GateMachine({ cards: FULL_MACHINE_CARDS });
 }
 
 /**
@@ -262,7 +261,6 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
   try {
     switch (m.type) {
       case "init": {
-        microcode = m.microcode;
         flash = m.flash;
         const ms = build();
         post({ type: "ready", netCount: g!.board.c.netCount, ms, screen: !!screen, keyboard: !!ps2, uart: !!uartIn, beam: !!beam });

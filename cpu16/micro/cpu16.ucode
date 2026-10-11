@@ -4,7 +4,8 @@
 ;   hedefler : TA  TB  MAR  IR  PC  MEM  MEM.B  REG(x)  FLAGS
 ;   REG(x)   : RD RS1 RS2 SP LR      IMM: IMM6 IMM6X2 IMM8 IMM9 OFF8X2 OFF12X2 C2 C4
 ;   ek       : PC+2  FLAGS_L(ALU bayraklarını yaz)  I_SET  I_CLR  HALT  ILLEGAL  END
-; Derleyici: cpu16/micro/microasm.ts → 4 adet 8 bit ROM imajı (npm run cpu16 -- ucode)
+; Derleyici: cpu16/micro/microasm.ts → 32 bitlik kontrol kelimesi tablosu (8192 adres); CPU kartındaki
+; kapı seviyesindeki kontrol birimi bu tablodan üretilir (cpu16/board/kontrol.ts, npm run cpu16 -- kontrol)
 
 ; ---- Getirme: her komutun 0. ve 1. adımı (aşağıdaki bölümler 2. adımdan başlar)
 fetch:

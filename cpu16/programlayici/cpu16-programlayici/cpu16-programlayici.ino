@@ -1,5 +1,5 @@
 // CPU16 Flash programlayıcısı: Arduino Nano + 2 × 74HC595 + SST39SF010A (ZIF soket).
-// Mikrokod, ALU ve BIOS ROM'larını seri port üzerinden Intel HEX olarak yazar.
+// BIOS Flash'ını ve karakter ROM'unu seri port üzerinden Intel HEX olarak yazar.
 //
 // Bağlantılar (şema: cpu16/kicad/prog):
 //   D2  → 595 SER (DS)        D3 → 595 SRCLK (SHCP)     D4 → 595 RCLK (STCP)

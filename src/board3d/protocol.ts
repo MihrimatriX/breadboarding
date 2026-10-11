@@ -4,8 +4,8 @@ import type { GateState } from "../../cpu16/board/computer";
 import type { ScreenFrame } from "./screen";
 
 export type ToWorker =
-  /** microcode: mikrokod ROM'u (CPU kartı); flash: 128 KB Flash imajı (program bank 0'da) */
-  | { type: "init"; microcode: Uint32Array; flash: Uint8Array }
+  /** flash: Flash imajı (program bank 0'da) */
+  | { type: "init"; flash: Uint8Array }
   /** Flash'a yeni imaj yaz (programlayıcı) ve RESET'e bas */
   | { type: "load"; flash: Uint8Array; run: boolean }
   /** hz = 0: olabildiğince hızlı */

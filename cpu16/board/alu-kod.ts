@@ -1,8 +1,10 @@
-// ALU kod çözme ROM'unun içeriği. Adres: [4:0] ALU işlemi, [5] h (IR bit 8), [6] C bayrağı.
-// Rastgele kapılarla kod çözmek yerine 3 küçük Flash kullanılır (mikrokodla aynı fikir):
-//   ROM 0: INVA PASSB INVB CIN SETSCV SINL SINHC SAREN
-//   ROM 1: FLO0..3 (düşük bayt doğruluk tablosu), RS0 RS1 (sonuç seçimi)
-//   ROM 2: FHI0..7 (yüksek bayt doğruluk tablosu; giriş 4..7 = a7 = 1 iken)
+// ALU kod çözme tablosu: 7 bitlik adres → 24 ALU kontrol biti (AD0..AD23). Adres: [4:0] ALU işlemi
+// (AOP), [5] h (IR bit 8), [6] C bayrağı. Donanımda ROM yok: kontrol.ts bu tablodan kapı devresi üretir
+// (74HC138 kod çözücüler + VE/VEYA ağı) ve testler devrenin 128 adresin hepsinde tabloyla aynı
+// olduğunu denetler. Bit düzeni:
+//   bit 0..7  : INVA PASSB INVB CIN SETSCV SINL SINHC SAREN
+//   bit 8..15 : FLO0..3 (düşük bayt doğruluk tablosu), RS0 RS1 (sonuç seçimi), 14 ve 15 her zaman 0
+//   bit 16..23: FHI0..7 (yüksek bayt doğruluk tablosu; giriş 4..7 = a7 = 1 iken)
 
 import { ALUOP } from "../micro/control.ts";
 
@@ -48,15 +50,25 @@ export function aluControl(op: number, h: boolean, c: boolean): AluControl {
   return k;
 }
 
-/** 3 ROM imajı (her biri 128 bayt anlamlı; Flash'ın geri kalanı 0xFF) */
-export function aluRomImages(): Uint8Array[] {
-  const roms = [0, 1, 2].map(() => new Uint8Array(128));
-  for (let addr = 0; addr < 128; addr++) {
-    const k = aluControl(addr & 31, ((addr >> 5) & 1) === 1, ((addr >> 6) & 1) === 1);
-    const bit = (v: boolean, i: number) => (v ? 1 << i : 0);
-    roms[0][addr] = bit(k.invA, 0) | bit(k.passB, 1) | bit(k.invB, 2) | bit(k.cin, 3) | bit(k.setsCV, 4) | bit(k.sinL, 5) | bit(k.sinHC, 6) | bit(k.sarEn, 7);
-    roms[1][addr] = k.fLo | (k.rs << 4);
-    roms[2][addr] = k.fHi;
-  }
-  return roms;
+/** ALU kontrol bitlerinin konumları (CPU kartında AD<n> netleri) */
+export const AD_BIT = {
+  INVA: 0, PASSB: 1, INVB: 2, CIN: 3, SETSCV: 4, SINL: 5, SINHC: 6, SAREN: 7,
+  FLO0: 8, RS0: 12, RS1: 13,
+  FHI0: 16,
+} as const;
+
+/** Tablonun adres sayısı (5 bit işlem + h + C) */
+export const ALU_ADRES = 128;
+
+/** Bir adresin 24 bitlik kontrol kelimesi (bit düzeni dosyanın başında) */
+export function aluKelimesi(addr: number): number {
+  const k = aluControl(addr & 31, ((addr >> 5) & 1) === 1, ((addr >> 6) & 1) === 1);
+  const bit = (v: boolean, i: number) => (v ? 1 << i : 0);
+  const lo = bit(k.invA, 0) | bit(k.passB, 1) | bit(k.invB, 2) | bit(k.cin, 3) | bit(k.setsCV, 4) | bit(k.sinL, 5) | bit(k.sinHC, 6) | bit(k.sarEn, 7);
+  return lo | ((k.fLo | (k.rs << 4)) << 8) | (k.fHi << 16);
+}
+
+/** Bütün tablo: 128 adres × 24 bit */
+export function aluKodTablosu(): Uint32Array {
+  return Uint32Array.from({ length: ALU_ADRES }, (_, a) => aluKelimesi(a));
 }

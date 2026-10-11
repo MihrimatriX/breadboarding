@@ -150,7 +150,7 @@ export const SST39SF010 = memChip({
   addrBits: 17,
   flash: true,
   dataNames: range("DQ", 8),
-  usage: "Mikrokod ROM'u (4 adet), BIOS ROM'u (2 adet: çift/tek bayt), video karakter ROM'u",
+  usage: "BIOS Flash'ı (bellek kartı), video karakter ROM'u, programlayıcının ZIF soketi",
 });
 
 export const MEMORY_CHIPS = [SRAM62256, AS6C4008, SST39SF010];

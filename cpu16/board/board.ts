@@ -79,8 +79,29 @@ const GLUE = {
   xor: { part: "74HC86", units: 4, pins: (u: number) => [`${u}A`, `${u}B`, `${u}Y`] },
   not: { part: "74HC04", units: 6, pins: (u: number) => [`${u}A`, `${u}Y`] },
   nand3: { part: "74HC10", units: 3, pins: (u: number) => [`${u}A`, `${u}B`, `${u}C`, `${u}Y`] },
+  // kontrol birimi (board/kontrol.ts) için geniş kapılar; sona eklendi ki eski kartların numaraları değişmesin
+  and3: { part: "74HC11", units: 3, pins: (u: number) => [`${u}A`, `${u}B`, `${u}C`, `${u}Y`] },
+  nor3: { part: "74HC27", units: 3, pins: (u: number) => [`${u}A`, `${u}B`, `${u}C`, `${u}Y`] },
+  and4: { part: "74HC21", units: 2, pins: (u: number) => [`${u}A`, `${u}B`, `${u}C`, `${u}D`, `${u}Y`] },
+  nand4: { part: "74HC20", units: 2, pins: (u: number) => [`${u}A`, `${u}B`, `${u}C`, `${u}D`, `${u}Y`] },
+  nand8: { part: "74HC30", units: 1, pins: () => ["A", "B", "C", "D", "E", "F", "G", "H", "Y"] },
 } as const;
 type GlueKind = keyof typeof GLUE;
+
+/**
+ * Boş birim doldurma (Board.flexibleGlue): bir kapı, girişleri sabite bağlanarak başka türden
+ * bir birimde aynı işlevi görür. Her satır: hedef tür ve eklenecek sabit girişler.
+ * NOT a = NAND(a,1) = NOR(a,0) = XOR(a,1); AND(a,b) = AND3(a,b,1); NAND(a,b) = NAND3(a,b,1) …
+ */
+const GLUE_SUBSTITUTE: Partial<Record<GlueKind, [GlueKind, ("VCC" | "GND")[]][]>> = {
+  not: [["nand", ["VCC"]], ["nor", ["GND"]], ["nand3", ["VCC", "VCC"]], ["nor3", ["GND", "GND"]], ["nand4", ["VCC", "VCC", "VCC"]], ["xor", ["VCC"]]],
+  and: [["and3", ["VCC"]], ["and4", ["VCC", "VCC"]]],
+  and3: [["and4", ["VCC"]]],
+  nand: [["nand3", ["VCC"]], ["nand4", ["VCC", "VCC"]], ["nand8", ["VCC", "VCC", "VCC", "VCC", "VCC", "VCC"]]],
+  nand3: [["nand4", ["VCC"]], ["nand8", ["VCC", "VCC", "VCC", "VCC", "VCC"]]],
+  nand4: [["nand8", ["VCC", "VCC", "VCC", "VCC"]]],
+  nor: [["nor3", ["GND"]]],
+};
 
 export class Board {
   readonly c = new Circuit();
@@ -93,7 +114,17 @@ export class Board {
   block = "";
   private readonly named = new Map<string, number>();
   private readonly extraBases = new Map<string, number>();
-  private readonly glue: { kind: GlueKind; card: string; block: string; nets: number[]; role: string }[] = [];
+  private readonly glue: { kind: GlueKind; card: string; block: string; nets: number[]; role: string; flex: boolean }[] = [];
+  /**
+   * true iken eklenen yapıştırıcı kapılar esnektir (kontrol birimi, board/kontrol.ts):
+   * - finish() onları kartın diğer yapıştırıcı çiplerinden SONRA paketler: önce o çiplerin boş
+   *   birimlerine, sonra yeni çiplere. Böylece kartın eski çiplerinin referansları değişmez.
+   * - Bir türün son çipi az doluysa esnek kapılar başka türlerin boş birimlerine taşınabilir
+   *   (GLUE_SUBSTITUTE): kart bir çip kazanır.
+   */
+  flexibleGlue = false;
+  /** defer() ile ertelenen yerleştirmeler: normal yapıştırıcı çiplerinden sonra, esnek kapılardan önce */
+  private readonly deferred: { card: string; block: string; fn: () => void }[] = [];
   private finished = false;
 
   constructor() {
@@ -226,7 +257,7 @@ export class Board {
   // ---- yapıştırıcı kapılar: kart bitince gerçek çiplere paketlenir
   private gate(kind: GlueKind, ins: Net[], out?: Net, role = ""): number {
     const y = out === undefined ? this.c.net() : this.resolve(out);
-    this.glue.push({ kind, card: this.card, block: this.block, nets: [...ins.map((x) => this.resolve(x)), y], role });
+    this.glue.push({ kind, card: this.card, block: this.block, nets: [...ins.map((x) => this.resolve(x)), y], role, flex: this.flexibleGlue });
     return y;
   }
   and(a: Net, b: Net, out?: Net, role?: string) { return this.gate("and", [a, b], out, role); }
@@ -236,38 +267,120 @@ export class Board {
   xor(a: Net, b: Net, out?: Net, role?: string) { return this.gate("xor", [a, b], out, role); }
   not(a: Net, out?: Net, role?: string) { return this.gate("not", [a], out, role); }
   nand3(a: Net, b: Net, c: Net, out?: Net, role?: string) { return this.gate("nand3", [a, b, c], out, role); }
+  and3(a: Net, b: Net, c: Net, out?: Net, role?: string) { return this.gate("and3", [a, b, c], out, role); }
+  nor3(a: Net, b: Net, c: Net, out?: Net, role?: string) { return this.gate("nor3", [a, b, c], out, role); }
+  and4(a: Net, b: Net, c: Net, d: Net, out?: Net, role?: string) { return this.gate("and4", [a, b, c, d], out, role); }
+  nand4(a: Net, b: Net, c: Net, d: Net, out?: Net, role?: string) { return this.gate("nand4", [a, b, c, d], out, role); }
+  /** 5..8 girişli NAND (74HC30); eksik girişler VCC'ye bağlanır */
+  nand8(ins: Net[], out?: Net, role?: string) {
+    if (ins.length < 2 || ins.length > 8) throw new Error(`nand8: ${ins.length} giriş`);
+    return this.gate("nand8", [...ins, ...Array<Net>(8 - ins.length).fill("VCC")], out, role);
+  }
+
+  /** Bir yapıştırıcı çipi: verilen kapılar birimlerine, boş birimlerin girişleri GND'ye */
+  private packGlue(g: (typeof GLUE)[GlueKind], items: { block: string; nets: number[]; role: string }[]): void {
+    const conn: Record<string, Net> = {};
+    const roles: string[] = [];
+    const units: { block: string; pins: string[]; role: string }[] = [];
+    for (let u = 1; u <= g.units; u++) {
+      const item = items[u - 1];
+      const pins = g.pins(u);
+      if (item) {
+        pins.forEach((p, k) => (conn[p] = item.nets[k]));
+        if (item.role) roles.push(item.role);
+        units.push({ block: item.block, pins: [...pins], role: item.role });
+      } else {
+        pins.slice(0, -1).forEach((p) => (conn[p] = "GND")); // boş birim: girişler GND
+      }
+    }
+    const inst = this.place(g.part, conn, roles.length ? `yapıştırıcı: ${[...new Set(roles)].join(", ")}` : "yapıştırıcı lojik");
+    inst.glueUnits = units;
+  }
+
+  /**
+   * Kartta son çipi az dolu bir kapı türü varsa, o çipteki birimler kadar esnek kapıyı başka
+   * türlerin boş birimlerine taşı (yeni çip açmadan); her adım kartta bir çip kazandırır.
+   * En az dolu son çipten başlar, kazanç kalmayınca durur.
+   */
+  private fillSpareUnits(card: string): void {
+    const items = this.glue.filter((x) => x.card === card);
+    const count = (k: GlueKind) => items.filter((x) => x.kind === k).length;
+    const spare = (k: GlueKind) => {
+      const n = count(k);
+      return n === 0 ? 0 : (GLUE[k].units - (n % GLUE[k].units)) % GLUE[k].units;
+    };
+    for (;;) {
+      const kinds = (Object.keys(GLUE) as GlueKind[])
+        .map((k) => ({ k, rest: count(k) % GLUE[k].units }))
+        .filter((x) => x.rest > 0 && GLUE_SUBSTITUTE[x.k])
+        .sort((a, b) => a.rest - b.rest);
+      let moved = false;
+      for (const { k, rest } of kinds) {
+        const flex = items.filter((x) => x.kind === k && x.flex).slice(0, rest);
+        if (flex.length < rest) continue;
+        const room = new Map(GLUE_SUBSTITUTE[k]!.map(([t]) => [t, spare(t)]));
+        const plan: [GlueKind, ("VCC" | "GND")[]][] = [];
+        for (const [t, pad] of GLUE_SUBSTITUTE[k]!) {
+          while (plan.length < rest && room.get(t)! > 0) {
+            plan.push([t, pad]);
+            room.set(t, room.get(t)! - 1);
+          }
+        }
+        if (plan.length < rest) continue;
+        flex.forEach((item, i) => {
+          const [t, pad] = plan[i];
+          const y = item.nets[item.nets.length - 1];
+          item.kind = t;
+          item.nets = [...item.nets.slice(0, -1), ...pad.map((p) => this.resolve(p)), y];
+        });
+        moved = true;
+        break;
+      }
+      if (!moved) return;
+    }
+  }
+
+  /**
+   * Bir yerleştirmeyi ertele: finish() onu kartın normal yapıştırıcı çiplerinden sonra çalıştırır
+   * (o çiplerin referansları değişmesin diye; ör. kontrol biriminin kalan çipleri).
+   */
+  defer(fn: () => void): void {
+    this.deferred.push({ card: this.card, block: this.block, fn });
+  }
 
   /** Yapıştırıcı kapıları çiplere yerleştir; kullanılmayan birimlerin girişlerini GND'ye bağla. */
   finish(o: { backplane?: boolean } = {}): void {
     if (this.finished) return;
     const savedCard = this.card;
-    this.block = "Yapıştırıcı lojik";
-    for (const kind of Object.keys(GLUE) as GlueKind[]) {
-      const g = GLUE[kind];
-      const cards = [...new Set(this.glue.filter((x) => x.kind === kind).map((x) => x.card))];
-      for (const card of cards) {
-        const items = this.glue.filter((x) => x.kind === kind && x.card === card);
-        this.card = card;
-        for (let i = 0; i < items.length; i += g.units) {
-          const conn: Record<string, Net> = {};
-          const roles: string[] = [];
-          const units: { block: string; pins: string[]; role: string }[] = [];
-          for (let u = 1; u <= g.units; u++) {
-            const item = items[i + u - 1];
-            const pins = g.pins(u);
-            if (item) {
-              pins.forEach((p, k) => (conn[p] = item.nets[k]));
-              if (item.role) roles.push(item.role);
-              units.push({ block: item.block, pins: [...pins], role: item.role });
-            } else {
-              pins.slice(0, -1).forEach((p) => (conn[p] = "GND")); // boş birim: girişler GND
-            }
+    for (const card of new Set(this.glue.filter((x) => x.flex).map((x) => x.card))) this.fillSpareUnits(card);
+    // 1. normal kapılar (son çipin boş birimleri aynı türden esnek kapılarla dolar), 2. ertelenen
+    // yerleştirmeler, 3. kalan esnek kapılar
+    const flexLeft = new Set(this.glue.filter((x) => x.flex));
+    const pack = (flex: boolean) => {
+      this.block = "Yapıştırıcı lojik";
+      for (const kind of Object.keys(GLUE) as GlueKind[]) {
+        const g = GLUE[kind];
+        const cards = [...new Set(this.glue.filter((x) => x.kind === kind).map((x) => x.card))];
+        for (const card of cards) {
+          const ofKind = this.glue.filter((x) => x.kind === kind && x.card === card);
+          let items = ofKind.filter((x) => x.flex === flex && (!flex || flexLeft.has(x)));
+          if (!flex) {
+            const fill = (g.units - (items.length % g.units)) % g.units;
+            items = [...items, ...ofKind.filter((x) => flexLeft.has(x)).slice(0, items.length ? fill : 0)];
           }
-          const inst = this.place(g.part, conn, roles.length ? `yapıştırıcı: ${[...new Set(roles)].join(", ")}` : "yapıştırıcı lojik");
-          inst.glueUnits = units;
+          for (const x of items) flexLeft.delete(x);
+          this.card = card;
+          for (let i = 0; i < items.length; i += g.units) this.packGlue(g, items.slice(i, i + g.units));
         }
       }
+    };
+    pack(false);
+    for (const d of this.deferred) {
+      this.card = d.card;
+      this.block = d.block;
+      d.fn();
     }
+    pack(true);
     // her kart: arka panel konnektörü (istenirse), giriş kondansatörü, her entegreye 100 nF
     for (const card of [...new Set(this.chips.map((c) => c.card))]) {
       this.card = card;

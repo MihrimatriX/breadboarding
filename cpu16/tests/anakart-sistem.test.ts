@@ -16,7 +16,7 @@ import { buildIoCard } from "../board/io-card.ts";
 import { chipDffs, driveClockInputs, GateMachine } from "../board/machine-board.ts";
 import { L0, L1, LogicSim } from "../chips/logic.ts";
 import { Machine } from "../emu/machine.ts";
-import { bios, expectSameMemory, foreignIo, hex, micro, readText } from "./anakart-ortak.ts";
+import { bios, expectSameMemory, foreignIo, hex, readText } from "./anakart-ortak.ts";
 
 // ---------------------------------------------------------------- saat kartı
 
@@ -248,7 +248,7 @@ function ramMachines(prog: Uint8Array) {
   m.loadFlash(STUB);
   m.pokePhys(RAM_BANK * 0x4000, prog);
   m.reset();
-  const g = new GateMachine(micro.rom);
+  const g = new GateMachine();
   g.loadFlash(STUB);
   g.loadPhys(prog, RAM_BANK * 0x4000);
   return { m, g };
@@ -416,7 +416,7 @@ describe("Faz 6 anakart: tam sistem (CPU + saat + bellek + önbellek kartları) 
     const m = new Machine();
     m.loadFlash(bios.flash);
     m.reset();
-    const g = new GateMachine(micro.rom);
+    const g = new GateMachine();
     g.loadFlash(bios.flash);
     const r = lockstep(g, m, 100_000);
     expect(r.foreignRead).toBeGreaterThanOrEqual(0xff00); // UART durumu yoklanana kadar
@@ -430,7 +430,7 @@ describe("Faz 6 anakart: tam sistem (CPU + saat + bellek + önbellek kartları) 
     const m = new Machine();
     m.loadFlash(bios.flash);
     m.reset();
-    const g = new GateMachine(micro.rom, { cards: [buildIoCard] });
+    const g = new GateMachine({ cards: [buildIoCard] });
     g.loadFlash(bios.flash);
     const r = lockstep(g, m, 40_000, { io: true, until: () => m.uartOutput.endsWith("> ") });
     expect(r.foreignRead).toBe(-1); // açılışta video register'ı okunmaz

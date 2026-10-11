@@ -6,8 +6,6 @@ import { buildFullMachineBoard } from "../../cpu16/board/machine-board";
 import { boardLayout, type BoardLayout, type ChipPlace, type PassivePlace } from "../../cpu16/board/layout";
 import type { GateState } from "../../cpu16/board/computer";
 import { LIB } from "../../cpu16/cc/lib-vite";
-import { assembleMicrocode } from "../../cpu16/micro/microasm";
-import ucodeSource from "../../cpu16/micro/cpu16.ucode?raw";
 import { TerminalText } from "../cpu16/serial";
 import { compileProgram, detectLanguage, type Lang, type ProgramError } from "./program";
 import type { FromWorker, MemWindow, ToWorker } from "./protocol";
@@ -287,8 +285,6 @@ export const useKart = create<KartState>((set, get) => ({
 export function startBoardWorker() {
   if (worker) return;
   try {
-    const micro = assembleMicrocode(ucodeSource);
-    if (micro.errors.length) throw new Error(`mikrokod: ${micro.errors[0].message}`);
     const s = useKart.getState();
     const first = compileProgram(s.source, currentLang(s), LIB);
     if (!first.flash) throw new Error(`${s.example}: ${first.errors[0]?.message ?? "derlenemedi"}`);
@@ -296,7 +292,7 @@ export function startBoardWorker() {
     worker.onmessage = (e: MessageEvent<FromWorker>) => onWorker(e.data);
     worker.onerror = (e) => useKart.setState({ error: e.message || "Simülasyon başlatılamadı" });
     useKart.setState({ loaded: s.example, info: `${first.info} · Flash bank 0'da` });
-    send({ type: "init", microcode: micro.rom, flash: first.flash }, [first.flash.buffer]);
+    send({ type: "init", flash: first.flash }, [first.flash.buffer]);
   } catch (err) {
     useKart.setState({ error: String((err as Error).message ?? err) });
   }
