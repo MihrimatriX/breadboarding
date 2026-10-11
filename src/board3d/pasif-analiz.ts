@@ -288,6 +288,9 @@ export const TUR_ADI: Record<PassivePlace["kind"], string> = {
   anahtar: "Sürgülü anahtar",
   pot: "Trimpot (ayarlı direnç)",
   modul: "Modül",
+  dip: "DIP anahtar",
+  gosterge: "7 segment gösterge",
+  dipdizi: "Direnç dizisi (DIP-16, yalıtılmış)",
 };
 
 const v = (x: number, b = 2) => `${sayi(x, b)} V`;
