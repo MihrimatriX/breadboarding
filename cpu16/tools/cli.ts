@@ -3,6 +3,10 @@
 //   run  dosya.s [--trace] [--max N]            derle ve emülatörde çalıştır
 //   dis  dosya.bin [--org 0x0000]               ikili dosyayı geri çevir
 //   ucode dosya.ucode [-o klasör]               mikrokodu 4 Flash imajına derle (rom0..rom3.bin)
+//   bios [-o bios.hex|.bin]                     BIOS'u derle (.bin: 128 KB Flash imajı)
+//   charrom [-o charrom.bin]                    video kartının karakter ROM'u
+//   machine [dosya.s] [--flash] [--cycles N] [--screen]
+//                                               anakart: BIOS + önyükleyici, UART stdin/stdout'ta
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { assemble } from "../asm/assembler.ts";
@@ -10,6 +14,7 @@ import { toIntelHex } from "../asm/hex.ts";
 import { Cpu16, SimpleBus } from "../emu/cpu.ts";
 import { disassemble } from "../emu/disasm.ts";
 import { assembleMicrocode, splitRom } from "../micro/microasm.ts";
+import { biosCommand, charromCommand, machineCommand } from "./machine-cli.ts";
 
 const [cmd, file, ...rest] = process.argv.slice(2);
 const opt = (name: string) => {
@@ -27,12 +32,16 @@ function build(path: string) {
   return res;
 }
 
-if (!cmd || !file) {
-  console.log("kullanım: npm run cpu16 -- asm|run|dis|ucode <dosya> [seçenekler]");
-  process.exit(cmd ? 1 : 0);
-}
+const machineCmds: Record<string, (args: string[]) => void | Promise<void>> = {
+  bios: biosCommand, charrom: charromCommand, machine: machineCommand,
+};
 
-if (cmd === "asm") {
+if (cmd && cmd in machineCmds) {
+  await machineCmds[cmd](process.argv.slice(3));
+} else if (!cmd || !file) {
+  console.log("kullanım: npm run cpu16 -- asm|run|dis|ucode <dosya> [seçenekler]  ·  bios|charrom|machine [seçenekler]");
+  process.exit(cmd ? 1 : 0);
+} else if (cmd === "asm") {
   const res = build(file);
   const out = opt("-o") ?? file.replace(/\.s$/, ".hex");
   if (out.endsWith(".bin")) {
