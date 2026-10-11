@@ -1,5 +1,5 @@
 // CPU16 saat döngüsü modeli: veriyolu, register dosyası, ALU, PC, MAR, IR ve bayraklar.
-// Ne yapacağını bilmez; her saat döngüsünde mikrokod ROM'undan kontrol kelimesini okur ve uygular.
+// Ne yapacağını bilmez; her saat döngüsünde mikrokod tablosundan kontrol kelimesini okur ve uygular.
 // Bu yüzden emülatörle lockstep karşılaştırma, mikrokodun kendisini doğrular.
 
 import type { Bus } from "../emu/cpu.ts";
@@ -43,7 +43,8 @@ export function alu(op: number, a: number, b: number, carry: boolean, h: boolean
     case ALUOP.MOV: out = a; break;
     case ALUOP.NOT: out = ~a & 0xffff; break;
     case ALUOP.SXB: out = sext(a & 0xff, 8) & 0xffff; break;
-    case ALUOP.MERGE: out = (h ? a & 0x00ff : 0) | b; break;
+    // LI/LUI: sabit birimi imm8'i iki bayta da koyar; h düşük baytı (LUI) ya da yüksek baytı (LI) seçer
+    case ALUOP.MERGE: out = h ? (a & 0x00ff) | (b & 0xff00) : b & 0x00ff; break;
     default: {
       // kaydırıcı: 1 bit, çıkan bit C'ye, V = 0
       const cin = carry ? 1 : 0;
@@ -120,7 +121,7 @@ export class Datapath {
     switch (sel) {
       case IMM.IMM6: return sext(ir & 0x3f, 6) & 0xffff;
       case IMM.IMM6X2: return (sext(ir & 0x3f, 6) * 2) & 0xffff;
-      case IMM.IMM8: return (ir >> 8) & 1 ? (ir & 0xff) << 8 : ir & 0xff;
+      case IMM.IMM8: return (ir & 0xff) * 0x101; // iki bayta da kopyalanır (donanımda kablo)
       case IMM.IMM9: return sext(ir & 0x1ff, 9) & 0xffff;
       case IMM.OFF8X2: return (sext(ir & 0xff, 8) * 2) & 0xffff;
       case IMM.OFF12X2: return (sext(ir & 0xfff, 12) * 2) & 0xffff;

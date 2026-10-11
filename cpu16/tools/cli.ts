@@ -2,14 +2,25 @@
 //   asm  dosya.s [-o çıktı.hex|.bin] [--list]   derle
 //   run  dosya.s [--trace] [--max N]            derle ve emülatörde çalıştır
 //   dis  dosya.bin [--org 0x0000]               ikili dosyayı geri çevir
-//   ucode dosya.ucode [-o klasör]               mikrokodu 4 Flash imajına derle (rom0..rom3.bin)
+//   ucode dosya.ucode                           mikrokodu derle ve denetle (yordamlar ve döngü sayıları)
+//   chips | kicad-sym | board | kontrol | zamanlama  donanım komutları (tools/hw.ts)
+//   kit                                         deney rehberlerinin otomatik bölümlerini üret (kit/)
+//   bios [-o bios.hex|.bin]                     BIOS'u derle (.bin: 32 KB EEPROM imajı)
+//   charrom [-o charrom.bin]                    video kartının karakter ROM'u
+//   machine [dosya.s] [--flash|--rom [--led]] [--cycles N] [--screen]
+//                                               anakart: BIOS + önyükleyici, UART stdin/stdout'ta
+//                                               (--rom: BIOS'suz, program EEPROM bank 0'da)
+//   cc   dosya.c [...] [-o x.hex|.bin|.s] [--run] C derle (cc16, ayrıntılar: tools/cc.ts)
+//   kart-testi [--port /dev/ttyUSB0] [--baud N]  gerçek kartı UART üzerinden simülatörle karşılaştır
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { assemble } from "../asm/assembler.ts";
 import { toIntelHex } from "../asm/hex.ts";
 import { Cpu16, SimpleBus } from "../emu/cpu.ts";
 import { disassemble } from "../emu/disasm.ts";
-import { assembleMicrocode, splitRom } from "../micro/microasm.ts";
+import { assembleMicrocode } from "../micro/microasm.ts";
+import { ccMain } from "./cc.ts";
+import { biosCommand, charromCommand, machineCommand } from "./machine-cli.ts";
 
 const [cmd, file, ...rest] = process.argv.slice(2);
 const opt = (name: string) => {
@@ -27,12 +38,31 @@ function build(path: string) {
   return res;
 }
 
-if (!cmd || !file) {
-  console.log("kullanım: npm run cpu16 -- asm|run|dis|ucode <dosya> [seçenekler]");
-  process.exit(cmd ? 1 : 0);
+if (["chips", "kicad-sym", "board", "kontrol", "zamanlama"].includes(cmd)) {
+  await import("./hw.ts");
+  process.exit(0);
+}
+if (cmd === "kit") {
+  await import("../kit/cli.ts");
+  process.exit(0);
+}
+if (cmd === "kart-testi") {
+  const { kartTestiMain } = await import("./kart-testi.ts");
+  process.exit(await kartTestiMain(process.argv.slice(3)));
 }
 
-if (cmd === "asm") {
+const machineCmds: Record<string, (args: string[]) => void | Promise<void>> = {
+  bios: biosCommand, charrom: charromCommand, machine: machineCommand,
+};
+
+if (cmd && cmd in machineCmds) {
+  await machineCmds[cmd](process.argv.slice(3));
+} else if (!cmd || !file) {
+  console.log("kullanım: npm run cpu16 -- asm|run|dis|ucode|cc <dosya> [seçenekler]  ·  bios|charrom|machine|kit|kart-testi|zamanlama [seçenekler]");
+  process.exit(cmd ? 1 : 0);
+} else if (cmd === "cc") {
+  process.exitCode = ccMain([file, ...rest]);
+} else if (cmd === "asm") {
   const res = build(file);
   const out = opt("-o") ?? file.replace(/\.s$/, ".hex");
   if (out.endsWith(".bin")) {
@@ -83,9 +113,8 @@ if (cmd === "asm") {
     for (const e of res.errors) console.error(`${file}:${e.line}: ${e.message}`);
     process.exit(1);
   }
-  const dir = opt("-o") ?? ".";
-  splitRom(res.rom).forEach((img, i) => writeFileSync(`${dir}/rom${i}.bin`, img));
-  console.log(`${dir}/rom0..3.bin: 4 × ${res.rom.length} bayt (rom0 = kontrol bitleri 7..0)`);
+  const kelimeler = new Set(res.rom).size;
+  console.log(`${file}: hatasız, ${res.rom.length} adres, ${kelimeler} farklı kontrol kelimesi (kart devresi: npm run cpu16 -- kontrol)`);
   for (const r of res.routines) console.log(`  ${r.name.padEnd(20)} ${r.steps.length + 2} döngü`);
 } else {
   console.error(`bilinmeyen komut: ${cmd}`);
