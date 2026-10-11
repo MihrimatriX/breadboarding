@@ -72,6 +72,8 @@ export const GECIKME = {
   "74HC595.CP": [16, 35], "74HC595.OE": [15, 35], "74HC595.SU": [4, 12],
   "74HC05": [8, 20], "74HC166.CP": [16, 35], "74HC166.SU": [4, 12],
   "74HC393.CP": [28, 60], "74HC273.CP": [15, 35], "74HC273.SU": [4, 12],
+  // 74HC4511 (hesap makinesinin gösterge sürücüsü): veri → segment, ~BI ve ~LT → segment
+  "74HC4511.D": [25, 60], "74HC4511.BI": [20, 48], "74HC4511.LT": [15, 36],
   // bellekler: hız sınıfının garanti değeri (tip = maks)
   "SST39SF010A.A": [70, 70], "SST39SF010A.OE": [35, 35],
   "62256.A": [70, 70], "62256.OE": [35, 35],
@@ -219,6 +221,19 @@ function model(part: string): Model | null {
       return { arcs: [], seq: [1, 2].map((h) => ({ clock: `~${h}CP`, kenar: -1 as const, q: rng(`${h}Q`, 4), clkq: g("74HC393.CP"), data: [], setup: g("74HC393.CP") })) };
     case "74HC273":
       return { arcs: [], seq: [{ clock: "CP", q: rng("Q", 8), clkq: g("74HC273.CP"), data: rng("D", 8), setup: g("74HC273.SU") }] };
+    case "74HC4511": {
+      // LE = 1 iken mandal tutar (hesap makinesinde LE = GND: hep geçirgen)
+      const seg = ["a", "b", "c", "d", "e", "f", "g"];
+      return {
+        arcs: [
+          ...cross(["A", "B", "C", "D"], seg, g("74HC4511.D"), 0),
+          ...cross(["~BI"], seg, g("74HC4511.BI"), 1),
+          ...cross(["~LT"], seg, g("74HC4511.LT"), -1),
+          ...cross(["LE"], seg, g("74HC4511.D"), 0),
+        ],
+        seq: [],
+      };
+    }
     case "SST39SF010A":
     case "62256":
     case "28C256": {
@@ -629,4 +644,66 @@ export function raporMetni(r: ZamanlamaRaporu, yolSayisi = 3): string {
   if (r.bilinmeyen.length) L.push(`\nZamanlama modeli olmayan parçalar (atlandı): ${r.bilinmeyen.join(", ")}`);
   for (const u of r.uyarilar) L.push(`uyarı: ${u}`);
   return L.join("\n");
+}
+
+/**
+ * Saatsiz (tamamen birleşimsel) devrede en uzun yol: `girisler` netleri 0 anında değişir, her netin
+ * en geç varışı ileri yayılır; `hedefler` arasında en geç oturanın yolu döner. 8 bit hesap
+ * makinesinde (hesap8/) giriş = anahtarlar, hedef = gösterge segmentleri: "anahtarı çevirdikten
+ * ne kadar sonra sonuç doğru görünür".
+ */
+export function birlesimselYol(b: Board, girisler: number[], hedefler: number[], kose: Kose = "maks"): { t: number; adimlar: Adim[]; bilinmeyen: string[] } {
+  const k = kose === "tip" ? 0 : 1;
+  const GND = b.n("GND"), VCC = b.n("VCC");
+  const pinSay = new Map<number, number>();
+  for (const ch of b.chips) for (const p of ch.def.pins) if (!isPower(p.dir)) pinSay.set(ch.nets[p.name], (pinSay.get(ch.nets[p.name]) ?? 0) + 1);
+  // net → onu süren yaylar
+  const gelen = new Map<number, { ch: ChipInstance; from: string; to: string; src: number; d: number }[]>();
+  const bilinmeyen = new Set<string>();
+  for (const ch of b.chips) {
+    const m = model(ch.def.part);
+    if (!m) {
+      bilinmeyen.add(ch.def.part);
+      continue;
+    }
+    for (const a of m.arcs) {
+      const src = ch.nets[a.from], dst = ch.nets[a.to];
+      if (src === undefined || dst === undefined || src === GND || src === VCC || dst === GND || dst === VCC) continue;
+      const d = a.d[k] + yukEki(pinSay.get(dst) ?? 0, kose);
+      if (!gelen.has(dst)) gelen.set(dst, []);
+      gelen.get(dst)!.push({ ch, from: a.from, to: a.to, src, d });
+    }
+  }
+  const giris = new Set(girisler);
+  const varis = new Map<number, Node | null>();
+  const hesapla = (net: number, yigin: Set<number>): Node | null => {
+    if (varis.has(net)) return varis.get(net)!;
+    if (giris.has(net)) {
+      const n: Node = { net, t: 0 };
+      varis.set(net, n);
+      return n;
+    }
+    if (yigin.has(net)) throw new Error(`birleşimsel döngü: ${b.netName(net)}`);
+    yigin.add(net);
+    let en: Node | null = null;
+    for (const e of gelen.get(net) ?? []) {
+      const kaynak = hesapla(e.src, yigin);
+      if (!kaynak) continue;
+      const t = kaynak.t + e.d;
+      if (!en || t > en.t) en = { net, t, prev: { node: kaynak, ref: e.ch.ref, part: e.ch.def.part, from: e.from, to: e.to, d: e.d } };
+    }
+    yigin.delete(net);
+    varis.set(net, en);
+    return en;
+  };
+  let son: Node | null = null;
+  for (const h of hedefler) {
+    const n = hesapla(h, new Set());
+    if (n && (!son || n.t > son.t)) son = n;
+  }
+  const adimlar: Adim[] = [];
+  for (let n = son; n?.prev; n = n.prev.node) {
+    adimlar.unshift({ ref: n.prev.ref, part: n.prev.part, from: n.prev.from, to: n.prev.to, net: b.netName(n.net), d: n.prev.d, t: n.t });
+  }
+  return { t: son?.t ?? 0, adimlar, bilinmeyen: [...bilinmeyen] };
 }

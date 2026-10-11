@@ -1,5 +1,5 @@
 // Hesap makinesinin komut satırı aracı:
-//   npm run hesap8 -- ozet                 çip sayıları (blok blok), pasifler, ERC
+//   npm run hesap8 -- ozet [--yol]         çip sayıları (blok blok), pasifler, en uzun yol, ERC
 //   npm run hesap8 -- hesapla 255 x 7      kapı seviyesi devreyi çalıştır, göstergeleri yaz (+ - x /)
 //   npm run hesap8 -- dogrula              2000 örnek + uç durumlar, altın modelle karşılaştır
 //   npm run hesap8 -- dogrula --hepsi      bütün 4 × 256 × 256 = 262 144 durum (iş parçacıklarına bölünür)
@@ -7,6 +7,7 @@
 import { availableParallelism } from "node:os";
 import { isMainThread, parentPort, Worker, workerData } from "node:worker_threads";
 import { erc } from "../cpu16/board/board.ts";
+import { birlesimselYol } from "../cpu16/board/zamanlama.ts";
 import { buildHesapBoard, ISLEMLER } from "./kart.ts";
 import { beklenen, ornekDurumlar, type Durum, type Gorunum, type IslemKodu } from "./model.ts";
 import { HesapSim } from "./sim.ts";
@@ -65,6 +66,19 @@ if (!isMainThread) {
     console.log(`Pasifler:   ${[...pasif].sort().map(([p, n]) => `${p} × ${n}`).join(", ")}`);
     console.log(`Onluğa çevirme modülleri: ${Object.entries(k.bcd).map(([g, x]) => `${g} ${x.moduller.length}`).join(", ")}`);
     console.log(`Göstergeler: ${k.gruplar.map((g) => `${g.baslik} ${g.haneler.length + (g.isaret ? 1 : 0)}`).join(", ")}`);
+    // anahtarı çevirdikten ne kadar sonra göstergeler doğru: anahtarlardan segmentlere en uzun yol
+    const hedef = k.gruplar.flatMap((g) => g.haneler.flatMap((h) => h.seg));
+    const tip = birlesimselYol(b, [...k.a, ...k.b, ...k.op], hedef, "tip");
+    const maks = birlesimselYol(b, [...k.a, ...k.b, ...k.op], hedef, "maks");
+    const blokOf = new Map(b.chips.map((c) => [c.ref, c.block]));
+    const bloklarYol: string[] = [];
+    for (const a of maks.adimlar) {
+      const bl = blokOf.get(a.ref)!;
+      if (bloklarYol[bloklarYol.length - 1] !== bl) bloklarYol.push(bl);
+    }
+    console.log(`En uzun yol (anahtar → segment): tipik ${Math.round(tip.t)} ns, en kötü ${Math.round(maks.t)} ns, ${maks.adimlar.length} çip geçer`);
+    console.log(`  ${bloklarYol.join(" → ")}`);
+    if (rest.includes("--yol")) for (const a of maks.adimlar) console.log(`  ${a.ref.padEnd(5)} ${a.part.padEnd(9)} ${a.from.padEnd(4)} → ${a.to.padEnd(4)} ${a.net.padEnd(14)} +${a.d.toFixed(0).padStart(3)} = ${a.t.toFixed(0)} ns`);
     const sorun = erc(b);
     console.log(sorun.length ? sorun.join("\n") : "ERC: sorun yok");
   } else if (cmd === "hesapla") {

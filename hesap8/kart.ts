@@ -226,6 +226,9 @@ export function buildHesapBoard(): HesapKarti {
     gosterge(b, "kalan", "Kalan", bcd.kalan, ltN, KALAN_YOK),
   ];
 
+  // tek başına bir alet: arka panel yok, besleme 2 pinli girişten (giriş kondansatörünü finish ekler)
+  b.block = "Besleme ve arka panel";
+  b.passive("CONN_5V", { "1": "VCC", "2": "GND" }, "5 V besleme girişi (en çok ≈ 0,6 A: lamba testinde bütün segmentler)");
   b.finish({ backplane: false });
   return {
     board: b,
