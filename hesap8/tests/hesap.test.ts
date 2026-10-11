@@ -140,13 +140,13 @@ describe("hesap makinesi kapı seviyesinde (altın modelle)", () => {
     expect(dene(10, 0, 0).a).toBe(" 10");
   });
 
-  it("lamba testi: sürülen 14 hanenin hepsi 8 (sönük gruplar dahil)", () => {
+  it("lamba testi: 14 hanenin hepsi 8 ve eksi işareti yanar (sönük gruplar dahil)", () => {
     dene(3, 0, 3); // HATA: sonuç ve kalan sönük
     sim.lamba(true);
     const o = sim.oku();
     expect(o.a).toBe("888");
     expect(o.b).toBe("888");
-    expect(o.sonuc.slice(1)).toBe("88888");
+    expect(o.sonuc).toBe("-88888");
     expect(o.kalan).toBe("888");
     sim.lamba(false);
     expect(sim.oku().sonuc).toBe("      ");

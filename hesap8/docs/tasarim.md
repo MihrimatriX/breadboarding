@@ -18,7 +18,7 @@ belgesi üretilir. Bütün 4 × 256 × 256 = 262 144 durum kapı seviyesinde den
 | SW1 (8'li) | A sayısı. Soldan sağa A7 … A0; anahtar açık (ON) = 1 |
 | SW2 (8'li) | B sayısı, aynı düzen |
 | SW3 (2'li) | İşlem: 1. anahtar OP1, 2. anahtar OP0 |
-| SW4 (buton) | Lamba testi: basılıyken 14 sürülen hanenin bütün segmentleri yanar ("8") |
+| SW4 (buton) | Lamba testi: basılıyken 14 hane "8", işaret hanesi "−" (bütün segmentler yanar) |
 
 | OP1 OP0 | İşlem | Sonuç göstergesi | Kalan göstergesi |
 |---|---|---|---|
@@ -55,7 +55,8 @@ OP0 = 1 (çıkarma) iken ters çevrilir, elde girişi de OP0'dır. İki 74HC283 
 - Çıkarmada C8 = 0 ise A < B'dir, sonuç eksidir: NEG = ÇIKAR · ~C8. Eksi sayıyı göstermek için
   mutlak değeri lazım: |A − B| = ~S + 1. S bir XOR katmanından NEG ile geçer (NEG = 1 ise ters),
   iki 74HC283 daha NEG'i ekler. NEG = 0 iken bu katman S'yi olduğu gibi bırakır (M = S).
-- NEG ayrıca işaret hanesinin g segmentini (330 Ω üzerinden) yakar.
+- NEG ayrıca sonucun en solundaki işaret hanesinin g segmentini yakar (bir OR kapısı ve 330 Ω
+  üzerinden; OR'un öbür girişi lamba testi).
 
 Örnek: 12 − 200. BX = ~200 = 55, S = 12 + 55 + 1 = 68, C8 = 0 → NEG = 1. M = ~68 + 1 = 188.
 Göstergede "−  188".
@@ -111,7 +112,8 @@ dizisi (DIP-16) → 0,56" ortak katotlu gösterge (ör. 5161AS). 4511'in 6 ve 9'
 
 Baştaki sıfırları söndürme: her hane için "bu hane 0" (NOR / NOT) ve "soldaki bütün haneler de 0"
 (AND zinciri); sonuç ~BI'ya gider. Grup söndürme (sonuçta HATA, kalanda "bölme değil ya da B = 0")
-aynı kapıya NOR ile girer. Lamba testi (~LT) 4511'de ~BI'dan üstündür: söndürülmüş haneler de yanar.
+aynı kapıya NOR ile girer. Lamba testi (~LT) 4511'de ~BI'dan üstündür: söndürülmüş haneler de yanar. İşaret hanesi 4511'den
+geçmez; lamba testini kendi OR kapısıyla alır. HATA LED'i sonuç göstergesinin yanındadır.
 
 ## Hız
 

@@ -49,7 +49,7 @@ export interface GostergeGrubu {
   baslik: string;
   /** en anlamlı haneden en az anlamlıya (soldan sağa) */
   haneler: Hane[];
-  /** eksi işareti hanesi (yalnızca sonuçta): yalnız g segmenti, NEG ile */
+  /** eksi işareti hanesi (yalnızca sonuçta, en solda): yalnız g segmenti, NEG ya da lamba testi */
   isaret?: { ref: string; g: Net };
 }
 
@@ -195,7 +195,6 @@ export function buildHesapBoard(): HesapKarti {
   const HATA = bd.and(BOL, BSIFIR, b.n("HATA"), "sıfıra bölme");
   const KALAN_YOK = bd.nand(BOL, BSIFIR_N, b.n("KALAN_SONUK"), "kalan yalnız bölmede (B ≠ 0) görünür");
   bd.bitir();
-  b.led(HATA, "HATA");
 
   // ------------------------------------------------------------ sonuç seçici
   b.block = "Sonuç seçici";
@@ -225,6 +224,9 @@ export function buildHesapBoard(): HesapKarti {
     gosterge(b, "sonuc", "Sonuç", bcd.sonuc, ltN, HATA, NEG),
     gosterge(b, "kalan", "Kalan", bcd.kalan, ltN, KALAN_YOK),
   ];
+  // HATA LED'i sonuç göstergesinin yanında (sıfıra bölmede sonuç söner, LED yanar)
+  b.block = "Gösterge: Sonuç";
+  b.led(HATA, "HATA");
 
   // tek başına bir alet: arka panel yok, besleme 2 pinli girişten (giriş kondansatörünü finish ekler)
   b.block = "Besleme ve arka panel";
@@ -291,7 +293,17 @@ function gosterge(b: Board, ad: GrupAdi, baslik: string, ag: BcdAgi, ltN: Net, s
     if (sonuk === undefined) return h.not(s, nm, `${baslik} ${k}. hane: baştaki sıfır`);
     return h.nor(s, sonuk, nm, `${baslik} ${k}. hane: baştaki sıfır ya da grup sönük`);
   });
+  // eksi işareti: NEG ya da lamba testi (4511'den geçmediği için ~LT'yi kendisi alır)
+  const isaretG = neg === undefined ? undefined : h.or(neg, h.not(ltN, undefined, "lamba testi (aktif yüksek)"), b.n("ISARET_g"), "eksi işareti ya da lamba testi");
   h.bitir();
+  // işaret hanesi önce yerleşir: kartta ve şemada sonucun solunda
+  let isaret: GostergeGrubu["isaret"];
+  if (isaretG !== undefined) {
+    const anot = b.n("ISARET_g_LED");
+    b.passive("R_330", { "1": isaretG, "2": anot }, `${baslik}: eksi işareti direnci`);
+    const disp = b.passive("DISP_7SEG_CC", { "10": anot, "3": "GND", "8": "GND" }, `${baslik}: eksi işareti (yalnız g segmenti)`);
+    isaret = { ref: disp.ref, g: isaretG };
+  }
   const haneler: Hane[] = [];
   for (let k = n - 1; k >= 0; k--) {
     const bits = ag.haneler[k];
@@ -307,13 +319,6 @@ function gosterge(b: Board, ad: GrupAdi, baslik: string, ag: BcdAgi, ltN: Net, s
       "7": anot[0], "6": anot[1], "4": anot[2], "2": anot[3], "1": anot[4], "9": anot[5], "10": anot[6], "3": "GND", "8": "GND",
     }, `${baslik}: ${k}. hane`);
     haneler.push({ ref: disp.ref, surucu: u.ref, dizi: dizi.ref, seg, bcd: bits });
-  }
-  let isaret: GostergeGrubu["isaret"];
-  if (neg !== undefined) {
-    const anot = b.n("ISARET_g_LED");
-    b.passive("R_330", { "1": neg, "2": anot }, `${baslik}: eksi işareti direnci`);
-    const disp = b.passive("DISP_7SEG_CC", { "10": anot, "3": "GND", "8": "GND" }, `${baslik}: eksi işareti (yalnız g segmenti)`);
-    isaret = { ref: disp.ref, g: neg };
   }
   return { ad, baslik, haneler, isaret };
 }

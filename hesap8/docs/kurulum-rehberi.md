@@ -126,21 +126,23 @@ satır toplayıcıları). Önce 64 AND'i kur, sonra toplayıcı satırlarını s
 
 Kurulum belgesi: blok 4, **T0349–T0652**, 39 entegre. 8 aynı basamak; her basamak 2 × 74HC283
 (kalan − B) ve 2 × 74HC157 (yeni kalan). Basamak 7'den (A7) başla, 0'da bitir; her basamak bir
-öncekinin kalanını alır. D5 (kırmızı, HATA) bu blokta.
+öncekinin kalanını alır. Asıl HATA LED'i (D5) 7. aşamada göstergelerin yanına takılır; şimdilik HATA
+netini geçici bir LED + 1 kΩ ile izle.
 
-| A | B | Bölüm Q7..Q0 | Kalan K7..K0 | HATA (BÖL seçiliyken) |
+| A | B | Bölüm Q7..Q0 | Kalan K7..K0 | HATA neti (BÖL seçiliyken) |
 |---|---|---|---|---|
-| 255 | 7 | 00100100 (36) | 00000011 (3) | sönük |
-| 100 | 10 | 00001010 (10) | 00000000 | sönük |
-| 5 | 9 | 00000000 | 00000101 (5) | sönük |
-| 100 | 0 | — | — | yanar |
+| 255 | 7 | 00100100 (36) | 00000011 (3) | 0 |
+| 100 | 10 | 00001010 (10) | 00000000 | 0 |
+| 5 | 9 | 00000000 | 00000101 (5) | 0 |
+| 100 | 0 | — | — | 1 |
 
 ## Aşama 7: sonuç seçici, sonuç ve kalan göstergeleri
 
 Kurulum belgesi: blok 5 (Sonuç seçici, T0653–T0709), 8 (Onluğa çevirme: sonuç, T0866–T1252,
 58 entegre), 9 (kalan, T1253–T1330), 12 (Gösterge: Sonuç, T1469–T1606) ve 13 (Gösterge: Kalan,
-T1607–T1679). Geçici LED'leri sök. Sonuç göstergesinin en solundaki hane (DS12) yalnız eksi
-işaretidir: g segmenti 330 Ω ile NEG'e bağlı, öbür segmentler boş.
+T1607–T1679). Geçici LED'leri sök. Sonuç göstergesinin en solundaki hane (DS7) yalnız eksi
+işaretidir: g segmenti R6 (330 Ω) üzerinden ISARET_g'ye (NEG ya da lamba testi, bir OR kapısı), öbür
+segmentler boş. HATA LED'i (D5, kırmızı, R7 330 Ω) da bu blokta, sonucun yanında.
 
 | A | İşlem | B | Sonuç | Kalan |
 |---|---|---|---|---|
@@ -151,8 +153,8 @@ işaretidir: g segmenti 330 Ω ile NEG'e bağlı, öbür segmentler boş.
 | 100 | ÷ | 0 | sönük, HATA yanar | sönük |
 | 0 | ÷ | 5 | "     0" | "  0" |
 
-Lamba testi (SW4): 14 sürülen hanenin hepsi "8" olmalı (sönük gruplar dahil). İşaret hanesi lamba
-testine bağlı değildir.
+Lamba testi (SW4): 14 hanenin hepsi "8", işaret hanesinde "−" olmalı (sönük gruplar dahil). İşlem
+LED'leri ve HATA LED'i lamba testine bağlı değildir.
 
 ## Sorun giderme
 
