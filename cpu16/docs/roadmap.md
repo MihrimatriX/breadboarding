@@ -80,7 +80,7 @@ Faz 0 Spec ─▶ Faz 1 Emülatör+as16 ─▶ Faz 2 Mikromimari ─▶ Faz 3 74
 ### Faz 9 — Gerçek kartlar 🔧 araçlar hazır, kartlar kurulacak
 - Sıra Faz 4 ile aynı; her kart önce breadboard, sonra PCB. Kendi EEPROM programlayıcımız (Arduino + 74HC595) ilk iş.
 - Bitti ölçütü: gerçek kart, simülasyonun geçtiği aynı test programlarını geçer (UART üzerinden sonuç karşılaştırması).
-- Sonuç: EEPROM programlayıcı (Arduino Nano + 2 × 74HC595, 28C256: korumalı sayfa yazma, `programlayici/`, `yaz.py`; BIOS EEPROM'u ve karakter ROM'u için), şemadan statik zamanlama analizi (`npm run cpu16 -- zamanlama [--anakart]`: ilk hedef **1 MHz CPU**, 8 MHz osilatör, UART 28 800 baud; video kartının piksel yolunda birkaç 74AC), kart testi (`npm run cpu16 -- kart-testi`: gerçek kart UART üzerinden simülatörle karşılaştırılır). Bitti ölçütü kartlar kurulup kart testi geçince sağlanır. Ayrıntı: `docs/uretim.md`.
+- Sonuç: EEPROM programlayıcı (Arduino Nano + 2 × 74HC595, 28C256: korumalı sayfa yazma, `programlayici/`, `yaz.py`; BIOS EEPROM'u ve karakter ROM'u için), şemadan statik zamanlama analizi (`npm run cpu16 -- zamanlama [--anakart]`: ilk hedef **1 MHz CPU**, 8 MHz osilatör, UART 28 800 baud; video kartının piksel yolunda birkaç 74AC), kart testi (`npm run cpu16 -- kart-testi`: gerçek kart UART üzerinden simülatörle karşılaştırılır), kurulum belgeleri (`npm run cpu16 -- kurulum`: kart başına yerleşim, besleme, blok blok numaralı tel listesi ve çip kartları, PDF; el kitabı: breadboard, PCB montajı ve bip testi; `docs/kurulum.md`). Bitti ölçütü kartlar kurulup kart testi geçince sağlanır. Ayrıntı: `docs/uretim.md`.
 
 ### Faz 10 — Deney seti paketi ✅ 2026-10-11 (rehberler)
 - Çıktı: deney başına rehber (malzeme listesi, şema, adımlar, beklenen sonuç, simülatör sahnesi), BOM, sorun giderme.
@@ -104,6 +104,7 @@ cpu16/
   cc/ lib/       cc16 C derleyicisi; crt0, rt, libc16 (Faz 8)
   programlayici/ Arduino EEPROM (28C256) programlayıcısı ve yaz.py (Faz 9)
   kit/           deney rehberleri ve deneme programları (Faz 10)
+  kurulum/       kurulum belgeleri: tel listesi, çip kartları, el kitabı (HTML + PDF, Faz 9)
   programs/      örnek assembly programları
   tools/         npm run cpu16 komutları
   tests/         vitest testleri

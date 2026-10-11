@@ -20,6 +20,7 @@ Tamamen 74HC entegrelerinden kurulan, kendi komut seti, kendi C derleyicisi ve 3
 | BIOS, monitör, önyükleyici | [bios.md](docs/bios.md) |
 | C derleyicisi | [cc16.md](docs/cc16.md) |
 | Üretim, zamanlama, kart testi | [uretim.md](docs/uretim.md) |
+| Kurulum belgeleri: tel listesi, çip kartları, el kitabı | [kurulum.md](docs/kurulum.md) |
 
 ## Komutlar
 
@@ -32,5 +33,6 @@ npm run cpu16 -- kontrol                             # mikrokod değişince: kon
 npm run cpu16 -- zamanlama --anakart                 # şemadan statik zamanlama analizi
 npm run cpu16 -- board kicad                         # KiCad şemalarını ve BOM'ları yeniden üret
 npm run cpu16 -- kit                                 # deney rehberlerinin otomatik bölümlerini üret
+npm run cpu16 -- kurulum hepsi                       # kurulum belgeleri (PDF): tel listesi, çip kartları, el kitabı
 npx vitest run cpu16                                 # testler
 ```

@@ -10,6 +10,12 @@ bloklardan geleceği için o deneyde elle sürülür. Şema değişirse rehber d
 (`npm run cpu16 -- kit`); testler depodaki rehberlerin güncel olduğunu denetler. Aynı netler KiCad
 şemalarında (`cpu16/kicad/<kart>/`) ve 3D görünümde (Silikon3D → "CPU16 kartı 3D") aynı adlarla durur.
 
+Fiziksel kurulum için her kartın ayrıca bir **kurulum belgesi** vardır (`npm run cpu16 -- kurulum hepsi`,
+[docs/kurulum.md](../docs/kurulum.md)): yerleşim haritası, her çipin besleme pinleri ve dekuplajı,
+blok blok numaralı tel listesi (renk kodu, nereden → nereye; PCB'de bip testi listesi), çip çip pin
+kartları ve kenar konnektörü; yanında KiCad şemasının PDF'i ve bir kurulum el kitabı (breadboard,
+PCB montajı, wire-wrap).
+
 ## Deneyler
 
 | # | Deney | Kurulan | Sonuç |
