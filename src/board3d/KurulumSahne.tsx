@@ -137,8 +137,9 @@ function KurulumKamera({ tel }: { tel: Tel | null }) {
     if (!a || !b) return;
     const [ax, az] = w(Math.min(a.x, b.x), Math.min(a.y, b.y));
     const [bx, bz] = w(Math.max(a.x, b.x), Math.max(a.y, b.y));
-    const d = Math.min(70, Math.max(6, Math.max(bx - ax, (bz - az) * 1.4) * 1.35));
-    const tx = (ax + bx) / 2 + d * 0.1;
+    const d = Math.min(80, Math.max(7, Math.max(bx - ax, (bz - az) * 1.4) * 1.6));
+    // tel ekranın sol yarısında kalsın: sağ üstteki VGA paneli uçlarını örtmesin
+    const tx = (ax + bx) / 2 + d * 0.3;
     const tz = (az + bz) / 2;
     anim.current = { target: new Vector3(tx, 0.4, tz), cam: new Vector3(tx, 0.4 + d * 0.8, tz + d * 0.55), t0: controls.target.clone(), c0: camera.position.clone(), t: 0 };
   }, [tel, izle, controls, camera, w]);

@@ -195,7 +195,7 @@ export function KurulumPanel() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
-      if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
+      if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(el.tagName) || el.closest(".vga-screen"))) return;
       const st = useKurulum.getState();
       const t = seciliTel(st);
       if (e.key === "Enter" && t) {
@@ -245,7 +245,9 @@ export function KurulumPanel() {
               <span style={{ width: `${toplam ? (100 * bitti) / toplam : 0}%` }} />
             </div>
             <div className="kur-ilerleme-yazi">
-              <b>{sayi(bitti)}</b> / {sayi(toplam)} tel takıldı · %{yuzde}
+              <span>
+                <b>{sayi(bitti)}</b> / {sayi(toplam)} tel takıldı · %{yuzde}
+              </span>
               <span className="kur-ilerleme-ek">
                 {sayi(plan.cipler.length)} entegre · {sayi(plan.pasifler.length)} pasif · Deney {plan.deneyler.join(", ") || "-"}
               </span>
