@@ -247,7 +247,7 @@ export function asmToObject(source: string, file: string, tag: string, lib: bool
     for (;;) {
       const m = /^([A-Za-z_.][\w.]*)\s*:(?!=)/.exec(text);
       if (!m) break;
-      if (m[1].startsWith(".")) localNames.set(m[1], `.${tag}${m[1]}`);
+      if (m[1].startsWith(".")) localNames.set(m[1], `${tag}.L${m[1]}`); // RAM etiketleri sabit (equate) olarak yazılır: harfle başlamalı
       text = text.slice(m[0].length).trim();
     }
     const eq = /^([A-Za-z_][\w.]*)\s*(?:=|\.equ\s)\s*(.+)$/i.exec(text) ?? /^\.equ\s+([A-Za-z_][\w.]*)\s*,\s*(.+)$/i.exec(text);

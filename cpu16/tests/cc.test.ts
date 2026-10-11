@@ -350,6 +350,42 @@ describe("struct, union, enum, typedef", () => {
   });
 });
 
+describe("C99 ve diğer özellikler", () => {
+  it("bileşik sabitler, iç içe göstergeler, __func__, register, dizi işaretçisi", () => {
+    expect(
+      out(`#include <stdio.h>
+        #include <stddef.h>
+        struct P { int x, y; };
+        struct Q { char name[8]; struct P pos; int tags[2]; } qs[] = {
+          { "first", { 1, 2 }, { 3, 4 } },
+          { .pos.y = 9, .name = "second", .tags[1] = 7 },
+          [3].pos = { 5, 6 },
+        };
+        int matrix[2][3] = { {1, 2, 3}, {4, 5, 6} };
+        struct P *gp = &(struct P){ 11, 12 };
+        int sum_row(int (*row)[3]) { int s = 0, i; for (i = 0; i < 3; i++) s += (*row)[i]; return s; }
+        int dot(struct P a, struct P b) { return a.x * b.x + a.y * b.y; }
+        int main(void) {
+          register int i, s = 0;
+          int *arr = (int[]){ 10, 20, 30 };
+          struct P p = (struct P){ 3, 4 };
+          for (i = 0; i < 3; i++) s += (struct P){ i, i * 2 }.y;
+          printf("%d %d %d %d %d\\n", p.x + p.y, dot(p, (struct P){ .y = 1, .x = 2 }), arr[2], s, (&(struct P){ 7, 8 })->y);
+          printf("%s %d %d %d | %s %d %d %d | %d %u\\n", qs[0].name, qs[0].pos.x, qs[0].pos.y, qs[0].tags[1],
+                 qs[1].name, qs[1].pos.y, qs[1].tags[0], qs[1].tags[1], qs[3].pos.y, (unsigned)(sizeof qs / sizeof qs[0]));
+          printf("%d %d %s %d %d\\n", sum_row(matrix + 1), gp->x + gp->y, __func__, (int)offsetof(struct Q, tags[1]), (int)sizeof(struct Q));
+          return 0;
+        }`),
+    ).toBe("7 10 30 6 8\nfirst 1 2 4 | second 9 0 7 | 6 4\n15 23 main 14 16\n");
+  });
+
+  it("#if 0 içindeki geçersiz karakterler ve kapanmamış tırnaklar hata vermez", () => {
+    expect(exitOf("#if 0\n  bu ' kapanmıyor ve ğ geçersiz \"\n#endif\nint main(void) { return 3; }")).toBe(3);
+    expect(errorsOf("int main(void) { return 'ab'; }")[0].message).toMatch(/Karakter sabiti/);
+    expect(errorsOf("int main(void) { int ğ = 1; return 0; }")[0].message).toMatch(/Geçersiz karakter/);
+  });
+});
+
 describe("global değişkenler ve ilk değerler (ROM'dan RAM'e kopya)", () => {
   it("ilk değerli globaller RAM'de doğru, değiştirilebilir; .bss sıfır", () => {
     const r = runC(`

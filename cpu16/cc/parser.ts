@@ -70,6 +70,7 @@ const newAttr = (): Attr => ({ isTypedef: false, isStatic: false, isExtern: fals
 function convertTokens(toks: Token[]): Token[] {
   const out: Token[] = [];
   for (const t of toks) {
+    if (t.kind === "bad") throw new CompileError(t, t.err!);
     if (t.kind === "num") {
       const c = { ...t };
       convertNumber(c);
@@ -432,6 +433,11 @@ class Parser {
       const t = this.tok();
       if (!this.isTypename(t)) break;
       const s = t.text;
+      if (s === "register" || s === "auto") {
+        // yalnızca bir ipucu; register değişkenlerini derleyici kendisi seçer
+        this.pos++;
+        continue;
+      }
       if (STORAGE.has(s)) {
         if (!attr) throw this.err(t, `'${s}' bu bağlamda kullanılamaz`);
         if (s === "typedef") attr.isTypedef = true;
@@ -802,10 +808,12 @@ class Parser {
           const n = this.ident();
           idx = ty.members!.findIndex((m) => m.name === n.text);
           if (idx < 0) throw this.err(n, `'${n.text}' üyesi yok`);
-          this.expect("=");
+          init.mem = idx;
+          this.designation(init.children![idx]);
+        } else {
+          init.mem = idx;
+          this.initializer2(init.children![idx]);
         }
-        init.mem = idx;
-        this.initializer2(init.children![idx]);
         if (!this.consumeEnd()) throw this.err(this.tok(), "Union başlatıcısında fazla eleman");
         return;
       }
@@ -844,9 +852,8 @@ class Parser {
       if (this.consume("[")) {
         i = this.constExpr();
         this.expect("]");
-        this.consume("=");
-      }
-      this.initializer2(dummy);
+        this.designation(dummy);
+      } else this.initializer2(dummy);
       i++;
       max = Math.max(max, i);
     }
@@ -871,8 +878,10 @@ class Parser {
         this.pos++;
         i = this.constExpr();
         this.expect("]");
-        this.consume("=");
         if (i < 0 || i >= init.ty.len!) throw this.err(t, "Dizi göstergesi sınır dışı");
+        this.designation(init.children![i]);
+        i++;
+        continue;
       }
       if (i >= init.ty.len!) throw this.err(this.tok(), "Dizi başlatıcısında fazla eleman");
       this.initializer2(init.children![i]);
@@ -901,12 +910,41 @@ class Parser {
         const n = this.ident();
         i = members.findIndex((m) => m.name === n.text);
         if (i < 0) throw this.err(n, `'${n.text}' üyesi yok`);
-        this.expect("=");
+        this.designation(init.children![i]);
+        i++;
+        continue;
       }
       if (i >= members.length) throw this.err(this.tok(), "Struct başlatıcısında fazla eleman");
       this.initializer2(init.children![i]);
       i++;
     }
+  }
+
+  /**
+   * İlk göstergeden sonraki kısım: ardışık ".üye" / "[n]" göstergeleri (ör. ".pos.y = 1",
+   * "[2].x = 5"), ardından '=' ve hedef alt nesnenin başlatıcısı.
+   */
+  private designation(init: Init): void {
+    let cur = init;
+    for (;;) {
+      const t = this.tok();
+      if (this.consume(".")) {
+        if (!isStructLike(cur.ty)) throw this.err(t, "'.' göstergesi struct ya da union ister");
+        const n = this.ident();
+        const idx = cur.ty.members!.findIndex((m) => m.name === n.text);
+        if (idx < 0) throw this.err(n, `'${n.text}' üyesi yok`);
+        if (cur.ty.kind === "union") cur.mem = idx;
+        cur = cur.children![idx];
+      } else if (this.consume("[")) {
+        if (cur.ty.kind !== "array" || cur.ty.len! < 0) throw this.err(t, "'[ ]' göstergesi boyutu belli bir dizi ister");
+        const i = this.constExpr();
+        this.expect("]");
+        if (i < 0 || i >= cur.ty.len!) throw this.err(t, "Dizi göstergesi sınır dışı");
+        cur = cur.children![i];
+      } else break;
+    }
+    this.expect("=");
+    this.initializer2(cur);
   }
 
   private structInit2(init: Init): void {
@@ -1483,10 +1521,30 @@ class Parser {
       this.pos++;
       const ty = this.typename();
       this.expect(")");
-      if (this.is("{")) throw this.err(tok, "Bileşik sabitler (compound literal) desteklenmiyor");
+      if (this.is("{")) return this.postfix(this.compoundLiteral(ty, tok));
       return this.newCast(this.cast(), ty, tok, true);
     }
     return this.unary();
+  }
+
+  /**
+   * Bileşik sabit "(tip){ ... }": fonksiyon içinde adsız bir yerel değişken, her değerlendirmede
+   * yeniden başlatılır: *(başlat, &geçici) — böylece bir lvalue olur. Dosya kapsamında statik nesne.
+   */
+  private compoundLiteral(ty: Type, tok: Token): Node {
+    if (!this.fn) {
+      const g = this.newGlobal("", ty, tok, `__cl.${this.tag}.${this.labelNo++}`);
+      g.isStatic = true;
+      g.isDefinition = true;
+      this.globalInit(g);
+      g.isConst = constObj(g.ty);
+      return this.varNode(g, tok, false);
+    }
+    const v = this.newLocal("", ty, tok, false);
+    const init = this.localInit(v, tok);
+    if (isStructLike(v.ty) && !v.ty.complete) throw this.err(tok, "Bileşik sabitin tipi tamamlanmamış");
+    const addr = this.newAddr(this.varNode(v, tok, false), tok);
+    return this.newDeref(this.mk("comma", tok, addr.ty, { lhs: init, rhs: addr }), tok);
   }
 
   private unary(): Node {
@@ -1562,8 +1620,8 @@ class Parser {
     return this.postfix();
   }
 
-  private postfix(): Node {
-    let node = this.primary();
+  private postfix(start?: Node): Node {
+    let node = start ?? this.primary();
     for (;;) {
       const tok = this.tok();
       if (this.consume("(")) {
@@ -1617,6 +1675,11 @@ class Parser {
       if (KEYWORDS.has(tok.text)) throw this.err(tok, `Beklenmeyen '${tok.text}'`);
       this.pos++;
       const sc = this.findVar(tok.text);
+      if (!sc && (tok.text === "__func__" || tok.text === "__FUNCTION__") && this.fn) {
+        const name = this.fn.fn.name;
+        const bytes = Array.from(name, (c) => c.charCodeAt(0) & 0xff);
+        return this.varNode(this.stringVar({ ...tok, kind: "str", bytes }), tok);
+      }
       if (sc?.v) return this.varNode(sc.v, tok);
       if (sc?.enumVal !== undefined) return this.num(sc.enumVal, T.int, tok);
       if (sc?.typedef) throw this.err(tok, `'${tok.text}' bir tip adı, ifade değil`);

@@ -3,7 +3,8 @@
 
 import { T, type Type } from "./types.ts";
 
-export type TokKind = "ident" | "punct" | "num" | "str" | "char" | "eof";
+/** "bad": sözcük hatası; yalnızca etkin kodda (atlanmayan #if bloklarında) hata olur */
+export type TokKind = "ident" | "punct" | "num" | "str" | "char" | "bad" | "eof";
 
 export interface Token {
   kind: TokKind;
@@ -23,6 +24,8 @@ export interface Token {
   ty?: Type;
   /** str: baytlar (sondaki 0 hariç) */
   bytes?: number[];
+  /** bad: hata mesajı */
+  err?: string;
 }
 
 export interface SourcePos {
@@ -176,47 +179,61 @@ export function tokenize(source: string, file: string): Token[] {
       push("num", start);
       continue;
     }
+    // string ve karakter sabitlerindeki hatalar "bad" token'ı olur: #if 0 içindeki metin derlemeyi bozmaz
+    const bad = (e: unknown) => {
+      if (!(e instanceof CompileError)) throw e;
+      while (i < s.length && s[i] !== "\n") i++;
+      push("bad", start, { err: e.message });
+    };
     if (c === '"' || ((c === "L" || c === "u" || c === "U") && s[i + 1] === '"')) {
-      const p = pos();
-      if (c !== '"') throw new CompileError(p, "Geniş karakterli string'ler desteklenmiyor");
-      i++;
-      const bytes: number[] = [];
-      for (;;) {
-        if (i >= s.length || s[i] === "\n") throw new CompileError(p, "Kapanmamış string");
-        if (s[i] === '"') break;
-        if (s[i] === "\\") {
-          const [v, n] = readEscape(s, i + 1, pos());
-          bytes.push(v);
-          i += 1 + n;
-        } else {
-          const ch = String.fromCodePoint(s.codePointAt(i)!);
-          bytes.push(...utf8(ch));
-          i += ch.length;
+      try {
+        const p = pos();
+        if (c !== '"') throw new CompileError(p, "Geniş karakterli string'ler desteklenmiyor");
+        i++;
+        const bytes: number[] = [];
+        for (;;) {
+          if (i >= s.length || s[i] === "\n") throw new CompileError(p, "Kapanmamış string");
+          if (s[i] === '"') break;
+          if (s[i] === "\\") {
+            const [v, n] = readEscape(s, i + 1, pos());
+            bytes.push(v);
+            i += 1 + n;
+          } else {
+            const ch = String.fromCodePoint(s.codePointAt(i)!);
+            bytes.push(...utf8(ch));
+            i += ch.length;
+          }
         }
+        i++;
+        push("str", start, { bytes });
+      } catch (e) {
+        bad(e);
       }
-      i++;
-      push("str", start, { bytes });
       continue;
     }
     if (c === "'") {
-      const p = pos();
-      i++;
-      let v: number;
-      if (s[i] === "\\") {
-        const [ev, n] = readEscape(s, i + 1, pos());
-        v = ev;
-        i += 1 + n;
-      } else {
-        if (s[i] === "'" || s[i] === "\n" || i >= s.length) throw new CompileError(p, "Boş ya da kapanmamış karakter sabiti");
-        const ch = String.fromCodePoint(s.codePointAt(i)!);
-        const b = utf8(ch);
-        if (b.length !== 1) throw new CompileError(p, "Karakter sabiti tek bayt olmalı (ASCII dışı karakter)");
-        v = b[0];
-        i += ch.length;
+      try {
+        const p = pos();
+        i++;
+        let v: number;
+        if (s[i] === "\\") {
+          const [ev, n] = readEscape(s, i + 1, pos());
+          v = ev;
+          i += 1 + n;
+        } else {
+          if (s[i] === "'" || s[i] === "\n" || i >= s.length) throw new CompileError(p, "Boş ya da kapanmamış karakter sabiti");
+          const ch = String.fromCodePoint(s.codePointAt(i)!);
+          const b = utf8(ch);
+          if (b.length !== 1) throw new CompileError(p, "Karakter sabiti tek bayt olmalı (ASCII dışı karakter)");
+          v = b[0];
+          i += ch.length;
+        }
+        if (s[i] !== "'") throw new CompileError(p, "Karakter sabiti tek karakter içermeli");
+        i++;
+        push("char", start, { val: v, ty: T.int });
+      } catch (e) {
+        bad(e);
       }
-      if (s[i] !== "'") throw new CompileError(p, "Karakter sabiti tek karakter içermeli");
-      i++;
-      push("char", start, { val: v, ty: T.int });
       continue;
     }
     if (/[A-Za-z_]/.test(c)) {
@@ -235,7 +252,9 @@ export function tokenize(source: string, file: string): Token[] {
       push("punct", start);
       continue;
     }
-    throw new CompileError(pos(), `Geçersiz karakter: '${c}'`);
+    const ch = String.fromCodePoint(s.codePointAt(i)!);
+    i += ch.length;
+    push("bad", start, { err: `Geçersiz karakter: '${ch}'` });
   }
   toks.push({ kind: "eof", text: "", file, line, col: 1, bol: true, space: false });
   return toks;

@@ -3,6 +3,7 @@
 //   run  dosya.s [--trace] [--max N]            derle ve emülatörde çalıştır
 //   dis  dosya.bin [--org 0x0000]               ikili dosyayı geri çevir
 //   ucode dosya.ucode [-o klasör]               mikrokodu 4 Flash imajına derle (rom0..rom3.bin)
+//   cc   dosya.c [...] [-o x.hex|.bin|.s] [--run] C derle (cc16, ayrıntılar: tools/cc.ts)
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { assemble } from "../asm/assembler.ts";
@@ -10,6 +11,7 @@ import { toIntelHex } from "../asm/hex.ts";
 import { Cpu16, SimpleBus } from "../emu/cpu.ts";
 import { disassemble } from "../emu/disasm.ts";
 import { assembleMicrocode, splitRom } from "../micro/microasm.ts";
+import { ccMain } from "./cc.ts";
 
 const [cmd, file, ...rest] = process.argv.slice(2);
 const opt = (name: string) => {
@@ -28,11 +30,13 @@ function build(path: string) {
 }
 
 if (!cmd || !file) {
-  console.log("kullanım: npm run cpu16 -- asm|run|dis|ucode <dosya> [seçenekler]");
+  console.log("kullanım: npm run cpu16 -- asm|run|dis|ucode|cc <dosya> [seçenekler]");
   process.exit(cmd ? 1 : 0);
 }
 
-if (cmd === "asm") {
+if (cmd === "cc") {
+  process.exitCode = ccMain([file, ...rest]);
+} else if (cmd === "asm") {
   const res = build(file);
   const out = opt("-o") ?? file.replace(/\.s$/, ".hex");
   if (out.endsWith(".bin")) {
