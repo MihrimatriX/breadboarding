@@ -5,7 +5,7 @@
 
 import {
   BoxGeometry, BufferGeometry, CanvasTexture, CatmullRomCurve3, CircleGeometry, Color, CurvePath, CylinderGeometry, ExtrudeGeometry, Float32BufferAttribute,
-  LatheGeometry, LineCurve3, Matrix4, PlaneGeometry, QuadraticBezierCurve3, SRGBColorSpace, Shape, SphereGeometry, TubeGeometry, Vector2, Vector3,
+  LatheGeometry, LineCurve3, Matrix4, PlaneGeometry, QuadraticBezierCurve3, SRGBColorSpace, Shape, ShapeGeometry, SphereGeometry, TubeGeometry, Vector2, Vector3,
 } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
@@ -466,6 +466,119 @@ export function moduleBody(w: number, d: number): BufferGeometry {
     { g: at(new BoxGeometry(w * 0.3, 1.2, d * 0.3), 0, 4.2, 0), color: "#16181b" },
     { g: at(new BoxGeometry(w * 0.12, 2.6, d * 0.35), -w * 0.44, 4.9, 0), color: "#c8cdd2" },
   ]);
+}
+
+// ---------------------------------------------------------------- DIP anahtar, 7 segment gösterge, DIP direnç dizisi
+
+/** DIP anahtar gövdesinin üstü (mm); sürgüler bunun üstünde, tıklanınca gövdeden önce yakalansın diye kabarık */
+export const DIP_TOP = 4.6;
+/** Sürgünün yolu: açık (ON) −z'ye (üst kenardaki "ON" yazısına doğru), kapalı +z'ye */
+export const DIP_TRAVEL = 1.25;
+
+export function dipSwitchBody(w: number, d: number): BufferGeometry {
+  return boxAt(w - 0.3, DIP_TOP - 0.5, d - 0.5, 0.5 + (DIP_TOP - 0.5) / 2);
+}
+
+export function dipSwitchKnob(): BufferGeometry {
+  return boxAt(1.15, 0.9, 2.1, DIP_TOP + 0.4);
+}
+
+/**
+ * DIP anahtarın üst yüzü: her anahtarın oluğu, altında numarası (1 … n), üst kenarda "ON" ve ok.
+ * xs: anahtarların yerel x konumları (mm), w × d: yüzün ölçüsü (mm)
+ */
+export function dipSwitchTexture(xs: number[], w: number, d: number): CanvasTexture {
+  const k = 40;
+  const c = document.createElement("canvas");
+  c.width = Math.round(w * k);
+  c.height = Math.round(d * k);
+  const ctx = c.getContext("2d")!;
+  const X = (x: number) => (x + w / 2) * k;
+  const Z = (z: number) => (z + d / 2) * k;
+  // oluklar
+  ctx.fillStyle = "#101216";
+  for (const x of xs) ctx.fillRect(X(x) - 0.8 * k, Z(-2.45), 1.6 * k, 4.9 * k);
+  ctx.fillStyle = "#f4f6fa";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `700 ${Math.round(1.55 * k)}px "IBM Plex Sans", system-ui, sans-serif`;
+  xs.forEach((x, i) => ctx.fillText(String(i + 1), X(x), Z(d / 2 - 1.25)));
+  // "ON" ve üst kenara bakan ok (ilk anahtarın üstünde)
+  const ox = X(xs[0]) + (xs.length > 2 ? 0.9 * k : 0.2 * k);
+  ctx.textAlign = "left";
+  ctx.font = `700 ${Math.round(1.45 * k)}px "IBM Plex Sans", system-ui, sans-serif`;
+  ctx.fillText("ON", ox, Z(-d / 2 + 1.25));
+  const ax = ox - 0.75 * k;
+  const az = Z(-d / 2 + 1.25);
+  ctx.beginPath();
+  ctx.moveTo(ax, az - 0.6 * k);
+  ctx.lineTo(ax + 0.5 * k, az + 0.4 * k);
+  ctx.lineTo(ax - 0.5 * k, az + 0.4 * k);
+  ctx.closePath();
+  ctx.fill();
+  return finish(c);
+}
+
+/** 7 segment göstergenin gövdesi (0,56" tek hane): kartın üstünde kara kutu */
+export const SEG_TOP = 7.8;
+export function displayBody(w: number, d: number): BufferGeometry {
+  return merge([
+    { g: boxAt(w - 0.2, SEG_TOP - 0.4, d - 0.2, 0.4 + (SEG_TOP - 0.4) / 2), color: "#121316" },
+    // yüzün kenarındaki ince çerçeve (segmentlerin durduğu koyu yüzden ayrılsın)
+    { g: boxAt(w - 0.2, 0.06, 0.5, SEG_TOP + 0.03, 0, -(d - 0.2) / 2 + 0.25), color: "#24262b" },
+    { g: boxAt(w - 0.2, 0.06, 0.5, SEG_TOP + 0.03, 0, (d - 0.2) / 2 - 0.25), color: "#24262b" },
+  ]);
+}
+
+/** Segmentlerin yeri (rakamın ortasına göre, mm; z aşağı): a üstte, g ortada, d altta */
+export const SEGMENT_YERI: Record<string, { x: number; z: number; dikey: boolean }> = (() => {
+  const W = 6.0;
+  const H = 11.6;
+  return {
+    a: { x: 0, z: -H / 2, dikey: false },
+    b: { x: W / 2, z: -H / 4, dikey: true },
+    c: { x: W / 2, z: H / 4, dikey: true },
+    d: { x: 0, z: H / 2, dikey: false },
+    e: { x: -W / 2, z: H / 4, dikey: true },
+    f: { x: -W / 2, z: -H / 4, dikey: true },
+    g: { x: 0, z: 0, dikey: false },
+    dp: { x: W / 2 + 1.45, z: H / 2 + 0.15, dikey: false },
+  };
+})();
+/** Segmentin boyu ve kalınlığı (mm) */
+export const SEGMENT_BOY = { yatay: 5.3, dikey: 5.1, kalinlik: 1.25 };
+/** Rakamın gövdedeki yeri ve eğikliği: üst kısım sağa yatık (x' = x − k·z) */
+export const RAKAM_ORTA = { x: -0.75, z: -0.15, egim: 0.1 };
+
+/** Altıgen uçlu segment (yatay ya da dikey), göstergenin yüzünde */
+export function segmentBar(dikey: boolean): BufferGeometry {
+  const L = dikey ? SEGMENT_BOY.dikey : SEGMENT_BOY.yatay;
+  const t = SEGMENT_BOY.kalinlik;
+  const pts: [number, number][] = [[-L / 2, 0], [-L / 2 + t / 2, t / 2], [L / 2 - t / 2, t / 2], [L / 2, 0], [L / 2 - t / 2, -t / 2], [-L / 2 + t / 2, -t / 2]];
+  const s = new Shape();
+  pts.forEach(([a, b], i) => {
+    const [x, y] = dikey ? [b, a] : [a, b];
+    if (i) s.lineTo(x, y);
+    else s.moveTo(x, y);
+  });
+  s.closePath();
+  const g = new ShapeGeometry(s);
+  g.rotateX(-Math.PI / 2);
+  g.translate(0, SEG_TOP + 0.02, 0);
+  return g;
+}
+
+export function segmentDot(): BufferGeometry {
+  const g = new CircleGeometry(0.62, 12);
+  g.rotateX(-Math.PI / 2);
+  g.translate(0, SEG_TOP + 0.02, 0);
+  return g;
+}
+
+/** DIP-16 direnç dizisi: çip gibi kara gövde (yazı ayrı düzlemde) */
+export const DIPDIZI_TOP = 3.6;
+export function dipArrayBody(w: number, d: number): BufferGeometry {
+  return boxAt(w, DIPDIZI_TOP - 0.6, d, 0.6 + (DIPDIZI_TOP - 0.6) / 2);
 }
 
 // ---------------------------------------------------------------- yazı dokuları

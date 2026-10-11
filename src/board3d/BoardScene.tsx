@@ -1,5 +1,6 @@
-// Bütün CPU16 bilgisayarı 3D'de: anakartın kartları, entegreler, pasif elemanlar, arka panel ve
-// arkada VGA monitörü, hepsi canlı sinyallerle. Çipten çipe teller kavisli atlama telleri olarak
+// Sahnedeki kart 3D'de: bütün CPU16 bilgisayarı (anakartın kartları, arka panel ve arkada VGA
+// monitörü) ya da 8 bit hesap makinesi (tek kart; DIP anahtarlar ve 7 segment göstergeler), hepsi
+// canlı sinyallerle. Entegreler, pasif elemanlar; çipten çipe teller kavisli atlama telleri olarak
 // çizilir (rengi netin değeri). Bir çipe tıklayınca üstünde çipin "kalıbı" (die) açılır: kapılar ve
 // teller canlı; kapıya tıklayınca alt panelde o kapının transistörleri görünür.
 
@@ -8,7 +9,7 @@ import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber"
 import { OrbitControls } from "@react-three/drei";
 import {
   BufferAttribute, BufferGeometry, CanvasTexture, Color, DoubleSide, InstancedMesh, LineBasicMaterial, LineSegments, Object3D, SRGBColorSpace, Vector3,
-  type InterleavedBufferAttribute,
+  type InterleavedBufferAttribute, type PerspectiveCamera,
 } from "three";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
@@ -18,6 +19,7 @@ import { chipInside, type ChipInside } from "../../cpu16/board/inside";
 import type { ChipPlace } from "../../cpu16/board/layout";
 import { BACKPLANE } from "../../cpu16/board/passives";
 import type { Gate } from "../../cpu16/chips/logic";
+import { aktifKart, type KartTuru } from "./aktif";
 import { LEVEL_COLOR } from "./levels";
 import { KameraApi } from "./KameraApi";
 import { Passives3D } from "./Passives3D";
@@ -137,6 +139,8 @@ function TextQuads({ items, cellW = 256, cellH = 80, font = 30 }: { items: TextI
 
 function Cards() {
   const { lay, w } = useLayoutWorld();
+  // arka panel şeridi yalnız kartların kenar konnektörü varsa (bilgisayar); hesap makinesi tek kart
+  const backplane = useMemo(() => lay.passives.some((p) => p.edge), [lay]);
   const outline = useMemo(() => {
     const pos: number[] = [];
     for (const b of lay.blocks) {
@@ -170,7 +174,7 @@ function Cards() {
           </mesh>
         );
       })}
-      {lay.rows.map((r, i) => {
+      {backplane && lay.rows.map((r, i) => {
         const [x, z] = w(r.x + r.w / 2, r.backplaneY + r.backplaneH / 2);
         return (
           <mesh key={i} position={[x, -0.08, z]} raycast={noRaycast}>
@@ -195,7 +199,7 @@ function Cards() {
         <lineBasicMaterial color="#cfe3d6" transparent opacity={0.35} />
       </lineSegments>
       <TextQuads items={titles} cellW={512} cellH={48} font={30} />
-      <BackplaneTraces />
+      {backplane && <BackplaneTraces />}
     </group>
   );
 }
@@ -630,8 +634,20 @@ function Monitor() {
 
 // ---------------------------------------------------------------- kamera
 
-/** Genel bakış: bütün kartlar ve arkadaki monitör, hafif eğik */
-function overview(width: number, height: number) {
+/**
+ * Genel bakış. Bilgisayar: bütün kartlar ve arkadaki monitör, hafif eğik. Hesap makinesi: uzun tek
+ * kart önden (göstergelerin olduğu alt kenardan) eğik bakılarak; göstergeler ve anahtarlar okunur.
+ */
+function overview(width: number, height: number, tur: KartTuru) {
+  if (tur === "hesap") {
+    // uzun ve dar kart: 30° eğik, yukarıdan; bütün boyu dikey görüş açısına sığar, yakın kenardaki
+    // göstergeler en büyük görünür
+    const L = Math.max(height, width * 1.4) * S;
+    const d = L * 1.24;
+    const e = (30 * Math.PI) / 180;
+    const zc = L * 0.1;
+    return { target: new Vector3(0, 0, zc), cam: new Vector3(0, d * Math.cos(e), zc + d * Math.sin(e)) };
+  }
   const span = Math.max(width * 0.8, height) * S;
   // hedef biraz sağda: kartlar ekranın solunda kalır, sağ üstteki VGA paneli onları örtmez
   return { target: new Vector3(span * 0.1, 0, -span * 0.08), cam: new Vector3(span * 0.1, span * 1.22, span * 0.98) };
@@ -641,15 +657,52 @@ function CameraFly() {
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null;
   const camera = useThree((s) => s.camera);
   const chip = useKart((s) => s.chip);
+  const odak = useKart((s) => s.odak);
   const { lay, w } = useLayoutWorld();
   const anim = useRef<{ target: Vector3; cam: Vector3; t0: Vector3; c0: Vector3; t: number } | null>(null);
+  // bilgisayarda sağ üstte VGA paneli var: hedef biraz sağa kayar ki panel çerçeveleneni örtmesin
+  const kay = aktifKart() === "cpu16" ? 0.1 : 0;
+  useEffect(() => {
+    if (!controls || !odak) return;
+    const start = { t0: controls.target.clone(), c0: camera.position.clone(), t: 0 };
+    if (odak.blok === null) {
+      const o = overview(lay.width, lay.height, aktifKart());
+      anim.current = { target: o.target, cam: o.cam, ...start };
+      return;
+    }
+    // "Gösterge" gibi bir ön ad bütün "Gösterge: …" bloklarını birlikte çerçeveler
+    const bs = lay.blocks.filter((x) => x.name === odak.blok || x.name.startsWith(`${odak.blok}:`));
+    if (!bs.length) return;
+    const [ax, az] = w(Math.min(...bs.map((b) => b.x)), Math.min(...bs.map((b) => b.y)));
+    const [bx, bz] = w(Math.max(...bs.map((b) => b.x + b.w)), Math.max(...bs.map((b) => b.y + b.h)));
+    // uzaklık: blokların dört köşesi ekrana sığana dek geri çekil (eğik bakışta yakın kenar daha geniş görünür)
+    const tz = (az + bz) / 2;
+    const deneme = (camera as PerspectiveCamera).clone();
+    const v = new Vector3();
+    const sigar = (d: number) => {
+      const tx = (ax + bx) / 2 + d * kay;
+      deneme.position.set(tx, 0.3 + d * 0.8, tz + d * 0.6);
+      deneme.lookAt(tx, 0.3, tz);
+      deneme.updateMatrixWorld();
+      return [[ax, az], [bx, az], [ax, bz], [bx, bz]].every(([x, z]) => {
+        v.set(x, 0, z).project(deneme);
+        return Math.abs(v.x) <= 0.94 && Math.abs(v.y) <= 0.92;
+      });
+    };
+    let d = 8;
+    while (d < 150 && !sigar(d)) d *= 1.06;
+    const tx = (ax + bx) / 2 + d * kay;
+    anim.current = { target: new Vector3(tx, 0.3, tz), cam: new Vector3(tx, 0.3 + d * 0.8, tz + d * 0.6), ...start };
+  }, [odak, controls, camera, lay, w, kay]);
   useEffect(() => {
     if (!controls) return;
     const part = findPart(chip);
     const c = part?.chip ?? part?.passive ?? null;
     const start = { t0: controls.target.clone(), c0: camera.position.clone(), t: 0 };
     if (!c) {
-      const o = overview(lay.width, lay.height);
+      // seçim kalkınca genel bakış (bir bloğa gidilmişse orada kalır)
+      if (useKart.getState().odak) return;
+      const o = overview(lay.width, lay.height, aktifKart());
       anim.current = { target: o.target, cam: o.cam, ...start };
       return;
     }
@@ -665,12 +718,12 @@ function CameraFly() {
     const [bx, bz] = w(x1, y1);
     const extent = Math.max(bx - ax, (bz - az) * 1.4);
     const d = part?.chip ? Math.min(100, Math.max(11, extent * 1.15)) : Math.min(70, Math.max(5, extent * 1.15));
-    // kutunun ortası; biraz sağa kaydırılır ki sağ üstteki VGA paneli çipi örtmesin
-    const tx = (ax + bx) / 2 + d * 0.1;
+    // kutunun ortası; bilgisayarda biraz sağa kaydırılır ki sağ üstteki VGA paneli çipi örtmesin
+    const tx = (ax + bx) / 2 + d * kay;
     const tz = (az + bz) / 2;
     const ty = part?.chip ? 1.2 : 0.2;
     anim.current = { target: new Vector3(tx, ty, tz), cam: new Vector3(tx, ty + d * 0.78, tz + d * 0.62), ...start };
-  }, [chip, controls, camera, lay, w]);
+  }, [chip, controls, camera, lay, w, kay]);
   useFrame((_, dt) => {
     const a = anim.current;
     if (!a || !controls) return;
@@ -692,10 +745,12 @@ function SelectedDie() {
 
 export function BoardScene() {
   const lay = boardLayoutData();
+  const tur = aktifKart();
   // aynı nesne kalmalı: her yeniden çizimde yeni bir hedef OrbitControls'un hedefini genel bakışa sıfırlardı
-  const o = useMemo(() => overview(lay.width, lay.height), [lay]);
+  const o = useMemo(() => overview(lay.width, lay.height, tur), [lay, tur]);
   return (
     <Canvas
+      key={tur}
       camera={{ position: o.cam.toArray(), fov: 40, near: 0.2, far: 800 }}
       dpr={[1, 2]}
       onPointerMissed={() => {
@@ -713,7 +768,7 @@ export function BoardScene() {
       <Wires />
       <KurulumSahne />
       <SelectedDie />
-      <Monitor />
+      {tur === "cpu16" && <Monitor />}
       <OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI * 0.48} minDistance={1.5} maxDistance={260} target={o.target} />
       <CameraFly />
       <KameraApi />

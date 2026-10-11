@@ -3,7 +3,8 @@
 
 import { describe, expect, it } from "vitest";
 import { KurulumVerisi } from "../kurulum/kartlar.ts";
-import { kartPlani, sahnedeVar, siradakiAcik, ucKonumu, useKurulum } from "../../src/board3d/kurulum.ts";
+import { gorunenKartlar, kartPlani, sahnedeVar, siradakiAcik, ucKonumu, useKurulum } from "../../src/board3d/kurulum.ts";
+import { aktifKart, aktifKartiSec } from "../../src/board3d/aktif.ts";
 
 const veri = new KurulumVerisi();
 const imza = (kart: string, plan = veri.plan(kart)) => plan.teller.map((t) => `${t.id} ${t.from.ref}-${t.from.pin} ${t.to.ref}-${t.to.pin} ${t.net} ${t.renk}`);
@@ -53,5 +54,32 @@ describe("kurulum modu", () => {
     useKurulum.getState().sifirla();
     expect(useKurulum.getState().yapilan.size).toBe(0);
     expect(useKurulum.getState().secili).toBe(t[0].id);
+  });
+});
+
+describe("kurulum modu: 8 bit hesap makinesi bölümü", () => {
+  it("hesap: uygulamadaki tel listesi belgedekiyle aynı (numara, uçlar, net, renk)", () => {
+    expect(imza("hesap", kartPlani("hesap"))).toEqual(imza("hesap"));
+  });
+
+  it("kart listesi bölüme göre: bilgisayarda hesap yok, hesap makinesinde yalnız o", () => {
+    expect(aktifKart()).toBe("cpu16");
+    expect(gorunenKartlar().map((k) => k.kart)).not.toContain("hesap");
+    expect(sahnedeVar("hesap")).toBe(false);
+    try {
+      aktifKartiSec("hesap");
+      expect(gorunenKartlar().map((k) => k.kart)).toEqual(["hesap"]);
+      expect(useKurulum.getState().kart).toBe("hesap");
+      expect(sahnedeVar("hesap")).toBe(true);
+      expect(sahnedeVar("kyb")).toBe(false);
+      for (const t of kartPlani("hesap").teller) {
+        expect(ucKonumu(t.from.ref, t.from.pin), `${t.id} ${t.from.ref}-${t.from.pin}`).not.toBeNull();
+        expect(ucKonumu(t.to.ref, t.to.pin), `${t.id} ${t.to.ref}-${t.to.pin}`).not.toBeNull();
+      }
+    } finally {
+      aktifKartiSec("cpu16");
+    }
+    expect(gorunenKartlar()[0].kart).toBe(useKurulum.getState().kart);
+    expect(sahnedeVar("kyb")).toBe(true);
   });
 });

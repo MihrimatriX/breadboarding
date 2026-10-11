@@ -489,6 +489,7 @@ kbd {
 }
 .tooltip span { color: var(--text-muted); }
 .tooltip span.on { color: var(--accent); font-weight: 600; }
+.tooltip .tt-ek { margin-top: 3px; color: var(--warn); font-size: var(--fs-xs); }
 .credit { font-size: var(--fs-xs); color: var(--text-faint); }
 
 /* ============================================================ değer kutuları, pinler, durum */

@@ -1,7 +1,9 @@
 // Pasif elemanlar 3D'de, gerçeğe yakın: renk bantlı eksenel dirençler, "104" yazılı disk
 // kondansatörler, şeritli elektrolitikler, düz kenarlı flanşı ve uzun anot bacağıyla LED'ler (canlı
 // sinyalle yanar, halesi ve karttaki ışık lekesiyle), noktalı ve "A103J" yazılı direnç dizileri,
-// metal kutulu osilatörler, butonlar, sürgülü anahtarlar (konumu canlı), trimpot ve konnektörler.
+// metal kutulu osilatörler, butonlar, sürgülü anahtarlar (konumu canlı), trimpot ve konnektörler;
+// hesap makinesinde DIP anahtarlar (sürgüleri canlı, tıklanınca değişir), segmentleri canlı yanan
+// 7 segment göstergeler ve DIP-16 direnç dizileri, basılı tutulan lamba testi butonu.
 // Aynı parçanın örnekleri tek InstancedMesh: ~500 pasif birkaç düzine çizim çağrısıdır. Tıklama
 // ve üstüne gelme görünmez kutularla (her pasife bir kutu) yakalanır.
 
@@ -14,13 +16,15 @@ import {
 import type { PassivePlace } from "../../cpu16/board/layout";
 import { LED_RENKLERI } from "../../cpu16/board/passives";
 import { direncBantlari, faradMetni, frekansMetni, pasifDegeri } from "../../cpu16/board/pasif-bilgi";
-import { etkinNet, ledDevresi, ledYanik } from "./pasif-analiz";
+import { basilabilir, butonBas, useHesap } from "./hesap";
+import { dipAnahtarlari, etkinNet, ledDevresi, ledYanik, segmentNetleri, type SegmentAdi } from "./pasif-analiz";
 import {
-  BAND_SLOTS, LED_DIE, LED_TOP, axialLeads, boxAt, buttonBody, buttonCap, canSide, canTexture, canTop, canTopTexture, discBody, discLabelPlane,
-  discLeads, flatPins, glowTexture, headerBase, headerPin, labelTexture, ledEpoxy, ledInner, ledLeads, moduleBody, oscCan, oscTexture, plusMark, ps2Body,
-  resistorBody, sipBody, sipFrontPlane, slideBody, slideKnob, topPlane, trimpotBody, vgaBody,
+  BAND_SLOTS, DIP_TOP, DIP_TRAVEL, DIPDIZI_TOP, LED_DIE, LED_TOP, RAKAM_ORTA, SEGMENT_BOY, SEGMENT_YERI, SEG_TOP, axialLeads, boxAt, buttonBody, buttonCap,
+  canSide, canTexture, canTop, canTopTexture, dipArrayBody, dipSwitchBody, dipSwitchKnob, dipSwitchTexture, discBody, discLabelPlane, discLeads,
+  displayBody, flatPins, glowTexture, headerBase, headerPin, labelTexture, ledEpoxy, ledInner, ledLeads, moduleBody, oscCan, oscTexture, plusMark, ps2Body,
+  resistorBody, segmentBar, segmentDot, sipBody, sipFrontPlane, slideBody, slideKnob, topPlane, trimpotBody, vgaBody,
 } from "./passiveGeometry";
-import { boardLayoutData, findPart, liveNets, netEnds, useKart } from "./store";
+import { boardLayoutData, boardModel, findPart, liveNets, netEnds, useKart } from "./store";
 
 /** 1 dünya birimi = 10 mm */
 const S = 0.1;
@@ -370,11 +374,80 @@ function Buttons({ list, w }: { list: PassivePlace[]; w: W }) {
   const [body, cap, bodyMat, capMat] = useOwned(() => [buttonBody(), buttonCap(), std({ vertexColors: true, roughness: 0.5, metalness: 0.15 }), std({ roughness: 0.45 })], []);
   const mat = useMemo(() => (p: PassivePlace, m: Matrix4) => partMatrix(p, w, m), [w]);
   const color = useMemo(() => (p: PassivePlace) => (/RESET/i.test(p.role) ? "#d1343c" : "#26292e"), []);
+  // elle basılan butonlar (hesap makinesinde lamba testi) ayrı çizilir: tıklanır, basılıyken çöker
+  const elle = useMemo(() => list.filter((p) => basilabilir(p.ref)), [list]);
+  const sabit = useMemo(() => list.filter((p) => !elle.includes(p)), [list, elle]);
   return (
     <>
       <Batch items={list} geometry={body} material={bodyMat} matrix={mat} />
-      <Batch items={list} geometry={cap} material={capMat} matrix={mat} color={color} />
+      <Batch items={sabit} geometry={cap} material={capMat} matrix={mat} color={color} />
+      {elle.length > 0 && <PressCaps list={elle} w={w} geometry={cap} material={capMat} />}
     </>
+  );
+}
+
+/** İmleç: tıklanabilir parçanın üstünde el */
+const imlec = (el: boolean) => {
+  document.body.style.cursor = el ? "pointer" : "";
+};
+
+/** Basılı tutulan butonların başlıkları: iki bacağı aynı seviyedeyken (kontak kapalı) aşağıda */
+function PressCaps({ list, w, geometry, material }: { list: PassivePlace[]; w: W; geometry: BufferGeometry; material: Material }) {
+  const ref = useRef<InstancedMesh>(null);
+  const version = useRef(-1);
+  const yerlestir = (m: InstancedMesh) => {
+    list.forEach((p, i) => {
+      const la = level(liveNets.values, p.pins[0]?.net ?? -1);
+      const basili = la <= 1 && la === level(liveNets.values, p.pins[1]?.net ?? -1);
+      m.setMatrixAt(i, partMatrix(p, w, tmpM, tmpM2.makeTranslation(0, basili ? -0.9 : 0, 0)));
+    });
+    m.instanceMatrix.needsUpdate = true;
+  };
+  useLayoutEffect(() => {
+    const m = ref.current;
+    if (!m) return;
+    list.forEach((_, i) => m.setColorAt(i, tmpC.set("#e2b93b")));
+    if (m.instanceColor) m.instanceColor.needsUpdate = true;
+    yerlestir(m);
+    m.computeBoundingSphere();
+    version.current = -1;
+  }, [list, w]);
+  useFrame(() => {
+    const m = ref.current;
+    if (!m || version.current === liveNets.version) return;
+    version.current = liveNets.version;
+    yerlestir(m);
+  });
+  useEffect(() => () => imlec(false), []);
+  return (
+    <instancedMesh
+      ref={ref}
+      args={[geometry, material, list.length]}
+      onPointerDown={(e: ThreeEvent<PointerEvent>) => {
+        const p = list[e.instanceId ?? -1];
+        if (!p) return;
+        e.stopPropagation();
+        butonBas(p.ref, true);
+        const birak = () => {
+          butonBas(p.ref, false);
+          window.removeEventListener("pointerup", birak);
+          window.removeEventListener("pointercancel", birak);
+        };
+        window.addEventListener("pointerup", birak);
+        window.addEventListener("pointercancel", birak);
+      }}
+      onClick={(e: ThreeEvent<MouseEvent>) => e.stopPropagation()}
+      onPointerMove={(e: ThreeEvent<PointerEvent>) => {
+        e.stopPropagation();
+        const p = list[e.instanceId ?? -1];
+        if (p) useKart.setState({ hover: { ref: p.ref, x: e.nativeEvent.clientX, y: e.nativeEvent.clientY, ek: "Basılı tut: bütün segmentler yanar" } });
+      }}
+      onPointerOver={() => imlec(true)}
+      onPointerOut={() => {
+        imlec(false);
+        useKart.setState({ hover: null });
+      }}
+    />
   );
 }
 
@@ -420,6 +493,230 @@ function Trimpots({ list, w }: { list: PassivePlace[]; w: W }) {
       <Batch items={list} geometry={body} material={bodyMat} matrix={mat} />
       <Batch items={list} geometry={pins} material={pinMat} matrix={mat} far={DETAIL} />
       <Batch items={list} geometry={top} material={labelMat} matrix={mat} renderOrder={2} far={DETAIL} />
+    </>
+  );
+}
+
+// ---------------------------------------------------------------- DIP anahtarlar (hesap makinesi)
+
+const DIP_RENGI: Record<string, string> = { SW_DIP_8: "#2459c8", SW_DIP_2: "#c7302b" };
+
+interface Surgu {
+  p: PassivePlace;
+  /** anahtarın numarası ve yerel x konumu (k. bacağın üstü) */
+  no: number;
+  lx: number;
+}
+
+function DipSwitches({ list, w }: { list: PassivePlace[]; w: W }) {
+  const groups = useMemo(() => byPart(list), [list]);
+  // her parça türü: gövde ve üst yüz (oluklar, numaralar, "ON")
+  const parts = useOwned(
+    () => groups.map(([part, ps]) => {
+      const p0 = ps[0];
+      const pw = p0.vertical ? p0.h : p0.w;
+      const pd = p0.vertical ? p0.w : p0.h;
+      const xs = localPins(p0).filter((q) => q.num <= p0.pins.length / 2).sort((a, b) => a.num - b.num).map((q) => q.lx);
+      const tex = dipSwitchTexture(xs, pw - 0.3, pd - 0.5);
+      const body = dipSwitchBody(pw, pd);
+      const top = topPlane(pw - 0.3, pd - 0.5, DIP_TOP + 0.01);
+      const bodyMat = std({ color: DIP_RENGI[part] ?? "#2459c8", roughness: 0.42, metalness: 0.05 });
+      const topMat = new MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.2, depthWrite: false });
+      return { body, top, bodyMat, topMat, dispose: () => [body, top, bodyMat, topMat, tex].forEach((x) => x.dispose()) };
+    }),
+    [groups],
+  );
+  const [knob, knobMat, legMat] = useOwned(() => [dipSwitchKnob(), std({ color: "#f3f1ea", roughness: 0.5 }), tinned()], []);
+  const legs = useOwned(() => groups.map(([, ps]) => flatPins(localPins(ps[0]).map((q) => q.lx), 0.8, 0.55, 0.25, localPins(ps[0]).map((q) => q.lz))), [groups]);
+  const mat = useMemo(() => (p: PassivePlace, m: Matrix4) => partMatrix(p, w, m), [w]);
+  const surguler = useMemo<Surgu[]>(
+    () => list.flatMap((p) => localPins(p).filter((q) => q.num <= p.pins.length / 2).sort((a, b) => a.num - b.num).map((q) => ({ p, no: q.num, lx: q.lx }))),
+    [list],
+  );
+  const knobRef = useRef<InstancedMesh>(null);
+  const version = useRef(-1);
+  /** anahtarların konumu canlı: açık (ON) sürgü "ON" yazısına doğru */
+  const yerlestir = (k: InstancedMesh) => {
+    const durum = new Map(list.map((p) => [p, dipAnahtarlari(p, (n) => level(liveNets.values, n))]));
+    surguler.forEach((s, i) => {
+      const a = durum.get(s.p)?.[s.no - 1];
+      k.setMatrixAt(i, partMatrix(s.p, w, tmpM, tmpM2.makeTranslation(s.lx, 0, a?.acik ? -DIP_TRAVEL : DIP_TRAVEL)));
+    });
+    k.instanceMatrix.needsUpdate = true;
+  };
+  useLayoutEffect(() => {
+    const k = knobRef.current;
+    if (!k) return;
+    yerlestir(k);
+    k.computeBoundingSphere();
+    version.current = -1;
+  }, [surguler, w]);
+  useFrame(() => {
+    const k = knobRef.current;
+    if (!k || version.current === liveNets.version) return;
+    version.current = liveNets.version;
+    yerlestir(k);
+  });
+  useEffect(() => () => imlec(false), []);
+  const surguBilgisi = (s: Surgu) => {
+    const a = dipAnahtarlari(s.p, (n) => level(liveNets.values, n))[s.no - 1];
+    return a ? `${s.no}. anahtar · ${boardModel().board.netName(a.net)} = ${a.acik ? "1 (ON)" : "0 (OFF)"} · tıkla: değiştir` : "";
+  };
+  return (
+    <>
+      {groups.map(([part, ps], i) => (
+        <group key={part}>
+          <Batch items={ps} geometry={parts[i].body} material={parts[i].bodyMat} matrix={mat} />
+          <Batch items={ps} geometry={parts[i].top} material={parts[i].topMat} matrix={mat} renderOrder={2} />
+          <Batch items={ps} geometry={legs[i]} material={legMat} matrix={mat} far={DETAIL} />
+        </group>
+      ))}
+      <instancedMesh
+        ref={knobRef}
+        args={[knob, knobMat, surguler.length]}
+        onClick={(e: ThreeEvent<MouseEvent>) => {
+          const s = surguler[e.instanceId ?? -1];
+          if (!s) return;
+          e.stopPropagation();
+          const a = dipAnahtarlari(s.p, (n) => level(liveNets.values, n))[s.no - 1];
+          if (a) useHesap.getState().anahtarNet(a.net);
+          useKart.setState((st) => (st.hover ? { hover: { ...st.hover, ek: surguBilgisi(s) } } : {}));
+        }}
+        onPointerMove={(e: ThreeEvent<PointerEvent>) => {
+          e.stopPropagation();
+          const s = surguler[e.instanceId ?? -1];
+          if (s) useKart.setState({ hover: { ref: s.p.ref, x: e.nativeEvent.clientX, y: e.nativeEvent.clientY, ek: surguBilgisi(s) } });
+        }}
+        onPointerOver={() => imlec(true)}
+        onPointerOut={() => {
+          imlec(false);
+          useKart.setState({ hover: null });
+        }}
+      />
+    </>
+  );
+}
+
+// ---------------------------------------------------------------- 7 segment göstergeler (hesap makinesi)
+
+interface Segment {
+  p: PassivePlace;
+  seg: SegmentAdi;
+  /** segmenti yakan net (sürücünün çıkışı; direnç dizisinin öbür ucu) */
+  net: number;
+}
+
+/** Rakamın yüzdeki yeri: gövdenin ortasından kaydırılmış ve eğik (üstü sağa yatık) */
+const RAKAM = new Matrix4().makeTranslation(RAKAM_ORTA.x, 0, RAKAM_ORTA.z).multiply(new Matrix4().set(1, 0, -RAKAM_ORTA.egim, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1));
+const SEG_YANIK = new Color("#ff2d1f");
+const SEG_SONUK = new Color("#33201f");
+const HALE_YANIK = new Color("#ff2a14").multiplyScalar(0.55);
+const HALE_SONUK = new Color("#000000");
+
+function segmentMatrix(s: Segment, w: W, out: Matrix4, hale = false): Matrix4 {
+  const y = SEGMENT_YERI[s.seg];
+  tmpM2.copy(RAKAM).multiply(new Matrix4().makeTranslation(y.x, hale ? 0.05 : 0, y.z));
+  if (hale) {
+    const L = s.seg === "dp" ? 1.3 : y.dikey ? SEGMENT_BOY.dikey : SEGMENT_BOY.yatay;
+    const t = s.seg === "dp" ? 1.3 : SEGMENT_BOY.kalinlik;
+    tmpM2.multiply(new Matrix4().makeScale(y.dikey ? t + 3.2 : L + 3.2, 1, y.dikey ? L + 3.2 : t + 3.2));
+  }
+  return partMatrix(s.p, w, out, tmpM2);
+}
+
+/** Canlı renkli örnekler: her net değişiminde renk yeniden hesaplanır */
+function LiveBatch<T>({ items, geometry, material, matrix, renk, renderOrder }: {
+  items: T[]; geometry: BufferGeometry; material: Material; matrix: (it: T, m: Matrix4) => Matrix4; renk: (it: T, v: Uint8Array | null) => Color; renderOrder?: number;
+}) {
+  const ref = useRef<InstancedMesh>(null);
+  const version = useRef(-1);
+  useLayoutEffect(() => {
+    const m = ref.current;
+    if (!m) return;
+    items.forEach((it, i) => {
+      m.setMatrixAt(i, matrix(it, tmpM));
+      m.setColorAt(i, renk(it, liveNets.values));
+    });
+    m.instanceMatrix.needsUpdate = true;
+    if (m.instanceColor) m.instanceColor.needsUpdate = true;
+    m.computeBoundingSphere();
+    version.current = -1;
+  }, [items, matrix, renk]);
+  useFrame(() => {
+    const m = ref.current;
+    if (!m || version.current === liveNets.version) return;
+    version.current = liveNets.version;
+    items.forEach((it, i) => m.setColorAt(i, renk(it, liveNets.values)));
+    if (m.instanceColor) m.instanceColor.needsUpdate = true;
+  });
+  if (!items.length) return null;
+  return <instancedMesh ref={ref} args={[geometry, material, items.length]} raycast={noRaycast} renderOrder={renderOrder} />;
+}
+
+function Displays({ list, w }: { list: PassivePlace[]; w: W }) {
+  const segs = useMemo<Segment[]>(() => {
+    const ends = netEnds();
+    return list.flatMap((p) => segmentNetleri(p, ends, findPart).map((s) => ({ p, seg: s.seg, net: s.net })));
+  }, [list]);
+  const yatay = useMemo(() => segs.filter((s) => s.seg !== "dp" && !SEGMENT_YERI[s.seg].dikey), [segs]);
+  const dikey = useMemo(() => segs.filter((s) => SEGMENT_YERI[s.seg].dikey), [segs]);
+  const nokta = useMemo(() => segs.filter((s) => s.seg === "dp"), [segs]);
+  const p0 = list[0];
+  const [body, hBar, vBar, dot, glowPlane, bodyMat, segMat, glow] = useOwned(() => {
+    const g = new PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+    g.translate(0, SEG_TOP + 0.06, 0);
+    return [
+      displayBody(p0.vertical ? p0.h : p0.w, p0.vertical ? p0.w : p0.h), segmentBar(false), segmentBar(true), segmentDot(), g,
+      std({ vertexColors: true, roughness: 0.55, metalness: 0.05 }), new MeshBasicMaterial({ color: "#ffffff", toneMapped: false }), glowTexture(),
+    ];
+  }, [list]);
+  const haleMat = useOwned(() => [new MeshBasicMaterial({ map: glow, color: "#ffffff", blending: AdditiveBlending, transparent: true, depthWrite: false, toneMapped: false })], [glow])[0];
+  const mat = useMemo(() => (p: PassivePlace, m: Matrix4) => partMatrix(p, w, m), [w]);
+  const segM = useMemo(() => (s: Segment, m: Matrix4) => segmentMatrix(s, w, m), [w]);
+  const haleM = useMemo(() => (s: Segment, m: Matrix4) => segmentMatrix(s, w, m, true), [w]);
+  const yanik = (s: Segment, v: Uint8Array | null) => s.net >= 0 && level(v, s.net) === 1;
+  const segRenk = useMemo(() => (s: Segment, v: Uint8Array | null) => (yanik(s, v) ? SEG_YANIK : SEG_SONUK), []);
+  const haleRenk = useMemo(() => (s: Segment, v: Uint8Array | null) => (yanik(s, v) ? HALE_YANIK : HALE_SONUK), []);
+  return (
+    <>
+      <Batch items={list} geometry={body} material={bodyMat} matrix={mat} />
+      <LiveBatch items={yatay} geometry={hBar} material={segMat} matrix={segM} renk={segRenk} renderOrder={2} />
+      <LiveBatch items={dikey} geometry={vBar} material={segMat} matrix={segM} renk={segRenk} renderOrder={2} />
+      <LiveBatch items={nokta} geometry={dot} material={segMat} matrix={segM} renk={segRenk} renderOrder={2} />
+      <LiveBatch items={segs} geometry={glowPlane} material={haleMat} matrix={haleM} renk={haleRenk} renderOrder={4} />
+    </>
+  );
+}
+
+// ---------------------------------------------------------------- DIP-16 direnç dizileri (hesap makinesi)
+
+function DipArrays({ list, w }: { list: PassivePlace[]; w: W }) {
+  const p0 = list[0];
+  const pw = p0.vertical ? p0.h : p0.w;
+  const groups = useMemo(() => byPart(list), [list]);
+  const [body, legs, top, bodyMat, legMat] = useOwned(() => {
+    const lp = localPins(p0);
+    return [
+      dipArrayBody(pw - 1.2, 6.2), flatPins(lp.map((q) => q.lx), 1.6, 0.55, 0.3, lp.map((q) => q.lz)), topPlane(pw - 2.4, 4.4, DIPDIZI_TOP + 0.01),
+      std({ color: "#17191c", roughness: 0.75, metalness: 0.05 }), tinned(),
+    ];
+  }, [list]);
+  const labels = useOwned(
+    () => groups.map(([part]) => {
+      const ohm = /^RN_(\d+)/.exec(part)?.[1] ?? "";
+      const kod = ohm.length >= 3 ? `${ohm.slice(0, 2)}${ohm.length - 2}` : ohm;
+      const t = labelTexture(["4116R", kod], { w: 512, h: 112, color: "#e6e9ee", dot: "sol-alt", font: 44 });
+      return new MeshBasicMaterial({ map: t, transparent: true, alphaTest: 0.3, depthWrite: false });
+    }),
+    [groups],
+  );
+  useEffect(() => () => labels.forEach((m) => m.map?.dispose()), [labels]);
+  const mat = useMemo(() => (p: PassivePlace, m: Matrix4) => partMatrix(p, w, m), [w]);
+  return (
+    <>
+      <Batch items={list} geometry={body} material={bodyMat} matrix={mat} />
+      <Batch items={list} geometry={legs} material={legMat} matrix={mat} far={DETAIL} />
+      {groups.map(([part, ps], i) => <Batch key={part} items={ps} geometry={top} material={labels[i]} matrix={mat} renderOrder={2} far={DETAIL * 2} />)}
     </>
   );
 }
@@ -621,7 +918,9 @@ function Outline({ refName, color, opacity, w }: { refName: string | null; color
 
 // ---------------------------------------------------------------- hepsi
 
-const ORDER: PassivePlace["kind"][] = ["direnc", "kondansator", "elektrolitik", "led", "dizi", "osilator", "buton", "anahtar", "pot", "konnektor", "modul"];
+const ORDER: PassivePlace["kind"][] = [
+  "direnc", "kondansator", "elektrolitik", "led", "dizi", "osilator", "buton", "anahtar", "pot", "konnektor", "modul", "dip", "gosterge", "dipdizi",
+];
 
 export function Passives3D({ children }: { children?: ReactNode }) {
   const { lay, w } = useWorld();
@@ -637,7 +936,7 @@ export function Passives3D({ children }: { children?: ReactNode }) {
   const C: Record<PassivePlace["kind"], (props: { list: PassivePlace[]; w: W }) => JSX.Element> = {
     direnc: Resistors, kondansator: DiscCaps, elektrolitik: Electrolytics, led: Leds, dizi: Sips, osilator: Oscillators,
     buton: Buttons, anahtar: Switches, pot: Trimpots, konnektor: Connectors, modul: Modules,
-    dip: Modules, gosterge: Modules, dipdizi: Modules,
+    dip: DipSwitches, gosterge: Displays, dipdizi: DipArrays,
   };
   return (
     <group>

@@ -8,19 +8,39 @@ import type { Board } from "../../cpu16/board/board";
 import { buildComputerBoard } from "../../cpu16/board/computer";
 import { boardLayout, type BoardLayout } from "../../cpu16/board/layout";
 import { buildProgrammerBoard } from "../../cpu16/board/programmer-card";
-import { KURULUM_KARTLARI, kurulumKarti, type KurulumKaynagi } from "../../cpu16/kurulum/kartlar";
+import { KURULUM_KARTLARI, kurulumKarti, type KurulumKarti, type KurulumKaynagi } from "../../cpu16/kurulum/kartlar";
 import { kurulumPlani, type KurulumPlani, type Tel } from "../../cpu16/kurulum/plan";
-import { boardLayoutData, boardModel, findPart } from "./store";
+import { aktifKart, kartDegisince, kartModeli, kartYerlesimi, type KartTuru } from "./aktif";
+import { findPart } from "./store";
 
 export { KURULUM_KARTLARI };
+
+/** Kart türünün kurulum listesindeki kartları: hesap makinesi bölümünde yalnız o, bilgisayarda onun dışındakiler */
+export const gorunenKartlar = (tur: KartTuru = aktifKart()): KurulumKarti[] =>
+  KURULUM_KARTLARI.filter((k) => (k.kaynak === "hesap") === (tur === "hesap"));
 
 // ---------------------------------------------------------------- plan
 
 const kaynaklar = new Map<KurulumKaynagi, { board: Board; layout: BoardLayout }>();
 const planlar = new Map<string, KurulumPlani>();
 
+/** Kurulum kaynağının kartı: 3D sahnenin modelleri (anakart, hesap) yeniden kurulmaz */
+function kaynakKarti(kaynak: KurulumKaynagi): { board: Board; layout: BoardLayout } {
+  switch (kaynak) {
+    case "anakart":
+      return { board: kartModeli("cpu16").board, layout: kartYerlesimi("cpu16") };
+    case "hesap":
+      return { board: kartModeli("hesap").board, layout: kartYerlesimi("hesap") };
+    case "bilgisayar":
+    case "programlayici": {
+      const board = kaynak === "bilgisayar" ? buildComputerBoard().board : buildProgrammerBoard().board;
+      return { board, layout: boardLayout(board) };
+    }
+  }
+}
+
 /**
- * Kartın kurulum planı. Anakart kartları 3D sahnenin kendi modelinden (yeniden kurulmaz); CPU, saat
+ * Kartın kurulum planı. Anakart kartları ve hesap makinesi 3D sahnenin kendi modellerinden; CPU, saat
  * ve test bellek kartı belgedeki gibi test bilgisayarı tanımından, programlayıcı kendi tanımından
  * (ilk istekte kurulur). Tel numaraları komut satırının ürettiği belgeyle aynıdır.
  */
@@ -30,11 +50,7 @@ export function kartPlani(kart: string): KurulumPlani {
   const { kaynak } = kurulumKarti(kart);
   let k = kaynaklar.get(kaynak);
   if (!k) {
-    if (kaynak === "anakart") k = { board: boardModel().board, layout: boardLayoutData() };
-    else {
-      const board = kaynak === "bilgisayar" ? buildComputerBoard().board : buildProgrammerBoard().board;
-      k = { board, layout: boardLayout(board) };
-    }
+    k = kaynakKarti(kaynak);
     kaynaklar.set(kaynak, k);
   }
   const plan = kurulumPlani(k.board, kart, { layout: k.layout });
@@ -50,8 +66,15 @@ export function ucKonumu(ref: string, pin: number): { x: number; y: number } | n
   return p ? { x: p.x, y: p.y } : null;
 }
 
-/** Kart 3D sahnedeki bilgisayarda var mı (programlayıcı ve test bellek kartı yok) */
-export const sahnedeVar = (kart: string): boolean => kurulumKarti(kart).kaynak !== "programlayici" && kart !== "mem";
+/**
+ * Kart 3D sahnede var mı: bilgisayarda anakartın kartları ile CPU ve saat kartı (programlayıcı ve test
+ * bellek kartı yok), hesap makinesi bölümünde yalnız hesap makinesi
+ */
+export const sahnedeVar = (kart: string): boolean => {
+  const { kaynak } = kurulumKarti(kart);
+  if (aktifKart() === "hesap") return kaynak === "hesap";
+  return kaynak !== "programlayici" && kaynak !== "hesap" && kart !== "mem";
+};
 
 // ---------------------------------------------------------------- ilerleme (tarayıcıda)
 
@@ -114,7 +137,7 @@ export function siradakiAcik(teller: readonly Tel[], yapilan: ReadonlySet<string
 
 export const useKurulum = create<KurulumState>((set, get) => ({
   acik: false,
-  kart: KURULUM_KARTLARI[0].kart,
+  kart: gorunenKartlar()[0].kart,
   plan: null,
   yukleniyor: false,
   hata: null,
@@ -183,3 +206,12 @@ export const useKurulum = create<KurulumState>((set, get) => ({
 /** Odaktaki tel (plan yüklüyse) */
 export const seciliTel = (s: Pick<KurulumState, "plan" | "secili">): Tel | null =>
   (s.plan && s.secili ? s.plan.teller.find((t) => t.id === s.secili) : null) ?? null;
+
+// sahnedeki kart değişince listede olmayan kart bırakılır (plan, panel açılınca yeniden yüklenir)
+kartDegisince((tur) => {
+  const liste = gorunenKartlar(tur);
+  const { kart } = useKurulum.getState();
+  if (liste.some((k) => k.kart === kart)) return;
+  const yeni = liste[0].kart;
+  useKurulum.setState({ kart: yeni, plan: null, yukleniyor: false, hata: null, secili: null, yapilan: okuYapilan(yeni) });
+});
