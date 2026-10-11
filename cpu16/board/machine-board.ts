@@ -12,7 +12,9 @@ import { buildCacheCard, type CacheCard } from "./cache-card.ts";
 import { buildClockCard, type ClockCard } from "./clock-card.ts";
 import type { GateState } from "./computer.ts";
 import { buildCpuCard, type CpuCard } from "./cpu-card.ts";
+import { buildIoCard } from "./io-card.ts";
 import { buildMemCard, type MemCard } from "./mem-card.ts";
+import { buildVideoCard } from "./video-card.ts";
 
 /** Ek kart kurucusu (ör. G/Ç kartı, video kartı): aynı Board'a kendi kartını ekler */
 export type CardBuilder = (b: Board) => unknown;
@@ -32,6 +34,11 @@ export function buildMachineBoard(o: MachineBoardOptions = {}) {
   const extras = (o.cards ?? []).map((build) => build(board));
   board.finish();
   return { board, cpu, clock, mem, cache, extras };
+}
+
+/** Bütün anakart: CPU, saat, bellek, önbellek, G/Ç ve video kartları (şema, BOM, KiCad, zamanlama) */
+export function buildFullMachineBoard() {
+  return buildMachineBoard({ cards: [buildIoCard, buildVideoCard] });
 }
 
 /** Reset sırasında osilatör periyodu: önbellek etiket temizleme sayacı 1024 satırı dolaşmalı */

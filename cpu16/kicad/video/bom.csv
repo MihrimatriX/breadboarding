@@ -1,0 +1,27 @@
+Parça;Adet;Açıklama;Footprint;Kart;Referanslar
+62256;2;32 KB statik RAM (32K × 8);Package_DIP:DIP-28_W15.24mm;video;U724 U725
+74HC00;1;4 × 2 girişli NAND;Package_DIP:DIP-14_W7.62mm;video;U764
+74HC02;1;4 × 2 girişli NOR;Package_DIP:DIP-14_W7.62mm;video;U765
+74HC04;2;6 × NOT (evirici);Package_DIP:DIP-14_W7.62mm;video;U766 U767
+74HC08;9;4 × 2 girişli AND;Package_DIP:DIP-14_W7.62mm;video;U752 U753 U754 U755 U756 U757 U758 U759 U760
+74HC10;2;3 × 3 girişli NAND;Package_DIP:DIP-14_W7.62mm;video;U768 U769
+74HC138;4;3'ten 8'e kod çözücü (aktif düşük çıkış);Package_DIP:DIP-16_W7.62mm;video;U701 U702 U703 U704
+74HC157;4;4 × (2'den 1'e seçici);Package_DIP:DIP-16_W7.62mm;video;U721 U722 U723 U734
+74HC161;9;4 bit senkron ikili sayıcı (asenkron reset);Package_DIP:DIP-16_W7.62mm;video;U705 U706 U707 U708 U709 U710 U716 U717 U718
+74HC166;1;8 bit paralel giriş / seri çıkış kaydırmalı register (eşzamanlı yükleme);Package_DIP:DIP-16_W7.62mm;video;U730
+74HC175;1;4 × D flip-flop (ortak saat, asenkron reset);Package_DIP:DIP-16_W7.62mm;video;U731
+74HC193;4;4 bit senkron ileri/geri ikili sayıcı (asenkron yükleme ve temizleme);Package_DIP:DIP-16_W7.62mm;video;U735 U736 U737 U738
+74HC32;3;4 × 2 girişli OR;Package_DIP:DIP-14_W7.62mm;video;U761 U762 U763
+74HC393;1;2 × 4 bit dalgalı (ripple) ikili sayıcı (düşen kenar, asenkron temizleme);Package_DIP:DIP-14_W7.62mm;video;U714
+74HC541;4;8 bit üç durumlu tampon (iki aktif düşük OE);Package_DIP:DIP-20_W7.62mm;video;U715 U747 U750 U751
+74HC574;11;8 bit D flip-flop register (üç durumlu çıkış);Package_DIP:DIP-20_W7.62mm;video;U719 U720 U726 U727 U728 U743 U744 U745 U746 U748 U749
+74HC688;3;8 bit eşitlik karşılaştırıcı;Package_DIP:DIP-20_W7.62mm;video;U712 U732 U733
+74HC74;6;2 × D flip-flop (asenkron preset ve clear);Package_DIP:DIP-14_W7.62mm;video;U711 U713 U739 U740 U741 U742
+BACKPLANE_2x32;1;Arka panel konnektörü 2 × 32 (2,54 mm);Connector_PinHeader_2.54mm:PinHeader_2x32_P2.54mm_Vertical;video;J702
+C_100N;69;100 nF seramik kondansatör (dekuplaj);Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm;video;C702 C703 C704 C705 C706 C707 C708 C709 C710 C711 C712 C713 C714 C715 C716 C717 C718 C719 C720 C721 C722 C723 C724 C725 C726 C727 C728 C729 C730 C731 C732 C733 C734 C735 C736 C737 C738 C739 C740 C741 C742 C743 C744 C745 C746 C747 C748 C749 C750 C751 C752 C753 C754 C755 C756 C757 C758 C759 C760 C761 C762 C763 C764 C765 C766 C767 C768 C769 C770
+C_100U;1;100 µF elektrolitik kondansatör (kart girişi);Capacitor_THT:CP_Radial_D6.3mm_P2.50mm;video;C701
+CONN_VGA;1;VGA konnektörü (DE-15 HD, dişi);Connector_Dsub:DSUB-15-HD_Female_Horizontal_P2.29x1.98mm_EdgePinOffset3.03mm_Housed_MountingHolesOffset4.94mm;video;J701
+OSC_25M175;1;25,175 MHz kristal osilatör modülü (DIP-14 kılıf, 5 V);Oscillator:Oscillator_DIP-14;video;X701
+R_1K3;3;1,3 kΩ direnç;Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal;video;R702 R704 R706
+R_680;3;680 Ω direnç;Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal;video;R701 R703 R705
+SST39SF010A;1;128 KB Flash (128K × 8, 5 V, komutla programlanır);Package_DIP:DIP-32_W15.24mm;video;U729
