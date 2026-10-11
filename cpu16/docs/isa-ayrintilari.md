@@ -45,7 +45,7 @@
 | 4 | MI | N | 12 | GT | ¬Z ∧ N = V |
 | 5 | PL | ¬N | 13 | LE | Z ∨ N ≠ V |
 | 6 | VS | V | 14 | AL | her zaman (`B`) |
-| 7 | VC | ¬V | 15 | — | yasadışı |
+| 7 | VC | ¬V | 15 | NV | asla (assembler üretmez) |
 
 ## Yığın ve kesmeler
 
@@ -58,4 +58,4 @@
 
 ## Yasadışı komutlar
 
-Opcode 2 ve 15, `cond = 15`, STACK `f3 ≥ 2`, SYS `f3 = 7`. Emülatör durur ve adresi `illegalAt`'te bildirir. (Donanımdaki davranış Faz 2'de mikrokodla belirlenecek; hedef: aynı şekilde durmak.)
+Opcode 2 ve 15, STACK `f3 ≥ 2`, SYS `f3 = 7`. Emülatör durur ve adresi `illegalAt`'te bildirir; donanımda mikrokod bu kombinasyonları `ILLEGAL` adımına yönlendirir ve saat durur. (`cond = 15` yasadışı değil, NV: koşul birimi bunu doğal olarak "asla" üretir; bkz. `mikromimari.md`.)

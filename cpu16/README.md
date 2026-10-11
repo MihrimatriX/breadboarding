@@ -6,6 +6,7 @@ Tamamen 74HC entegrelerinden kurulan, kendi komut seti, kendi C derleyicisi ve 3
 - Yol haritası ve şu anki aşama: [docs/roadmap.md](docs/roadmap.md)
 - Komut ayrıntıları: [docs/isa-ayrintilari.md](docs/isa-ayrintilari.md)
 - Assembler: [docs/as16.md](docs/as16.md)
+- Mikromimari ve mikrokod: [docs/mikromimari.md](docs/mikromimari.md)
 
 ```sh
 npm run cpu16 -- run cpu16/programs/hello.s   # Merhaba, CPU16!
