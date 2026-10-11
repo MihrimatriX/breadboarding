@@ -16,20 +16,22 @@ bloklardan geleceği için o deneyde elle sürülür. Şema değişirse rehber d
 |---|---|---|---|
 | 1 | [Saat ve reset kartı](deney-01-saat.md) | saat kartı (9 entegre) | LED'de saat, ADIM butonuyla tek döngü |
 | 2 | [Kapılar ve CMOS transistörler](deney-02-kapilar.md) | 74HC00, isteğe bağlı 4 MOSFET | NAND doğruluk tablosu, NAND'ın içi |
-| 3 | [Flash programlayıcı](deney-03-programlayici.md) | Arduino Nano + 2 × 74HC595 + ZIF | ROM'lar programlanır ve doğrulanır |
+| 3 | [EEPROM programlayıcı](deney-03-programlayici.md) | Arduino Nano + 2 × 74HC595 + ZIF | 28C256 programlanır ve doğrulanır |
 | 4 | [Register dosyası ve veriyolu](deney-04-register.md) | 8 × 16 bit register | anahtarlardaki değer register'a yazılır, geri okunur |
 | 5 | [ALU ve bayraklar](deney-05-alu.md) | TA, TB, ALU, bayraklar | toplama, çıkarma, mantık, kaydırma; NZCV |
 | 6 | [Program sayacı ve komut çekme](deney-06-komut-cekme.md) | PC, MAR, IR, bellek arayüzü | PC yürür, komut IR'ye çekilir |
 | 7 | [Mikrokod ve kontrol birimi](deney-07-mikrokod.md) | kontrol birimi, sabit birimi | CPU çalışır: NOP döngüsü, HALT |
-| 8 | [Bellek kartı ve ilk program](deney-08-bellek.md) | bank'lı 1 MB bellek, Flash, FF00 LED mandalı | ilk program Flash'tan 512 KB RAM'i sınar, LED'lerde `0xA5` |
+| 8 | [Bellek kartı ve ilk program](deney-08-bellek.md) | bank'lı bellek: 32 KB EEPROM + 128 KB RAM, FF00 LED mandalı | ilk program EEPROM'dan 128 KB RAM'i sınar, LED'lerde `0x5A` |
 | 9 | [Bekleme durumları ve önbellek](deney-09-onbellek.md) | önbellek kartı | önbellek açıkken kayan ışık ≈ 1,4 kat hızlı |
 | 10 | [G/Ç kartı](deney-10-gc.md) | UART, zamanlayıcı, kesmeler, PS/2 | bilgisayarla seri haberleşme, klavye |
 | 11 | [Video kartı](deney-11-video.md) | VGA 80 × 30 metin | ekranda "Merhaba", 16 renk, kare sayacı |
 | 12 | [BIOS, önyükleyici ve Web Serial](deney-12-bios.md) | yazılım | tarayıcıdan karta program yükleme |
 | 13 | [C derleyicisi: yılan oyunu](deney-13-c.md) | yazılım | C ile yazılmış oyun ekranda |
+| 14 | [Kendin yap bellek](deney-14-kendin-yap-bellek.md) | 16 bayt RAM: 16 × 74HC574 | bir 62256'nın içi açıkta; terminalde baytlar |
 
-Sıra donanımın bağımlılığına göredir: saat ve programlayıcı her şeyden önce gelir (ALU ve mikrokod
-ROM'ları programlanmadan CPU çalışmaz), CPU blok blok kurulur, sonra anakart kartları eklenir.
+Sıra donanımın bağımlılığına göredir: saat ve programlayıcı her şeyden önce gelir (programlar ve
+karakter ROM'u 28C256'ya yazılır), CPU blok blok kurulur, sonra anakart kartları eklenir. Deney 14
+bir eğitim kartıdır: bilgisayarın çalışması için gerekmez, 13 deneyin bilgisayarına sonradan takılır.
 
 ## Gereken araçlar
 
@@ -39,7 +41,7 @@ ROM'ları programlanmadan CPU çalışmaz), CPU blok blok kurulur, sonra anakart
 | Breadboard (830 delik) × 20–30, tek göbekli 0,5 mm kablo | CPU kartı tek başına ≈ 150 entegre |
 | Multimetre | besleme ve seviye ölçümü |
 | Lojik prob ya da 8 kanallı USB lojik analizör (sigrok / PulseView) | saat, UART, PS/2, VGA zamanlaması |
-| Arduino Nano (klon olur) + ZIF-32 soket | Flash programlayıcı (Deney 3) |
+| Arduino Nano (klon olur) + ZIF-28 soket | EEPROM programlayıcı (Deney 3) |
 | Yardımcı modül: 16 LED gösterge | 2 × 74HC541 + 16 LED + 16 × 1 kΩ: bir veriyolunu yüklemeden izler |
 | Yardımcı modül: 16 bit anahtar girişi | 2 × 8'li DIP anahtar + 16 × 2,2 kΩ: veriyolunu "zayıf" sürer, çıkışlar ezer |
 
@@ -65,5 +67,5 @@ sürdüğünde onu ezmez (veriyolundaki 10 kΩ çekme direnciyle birlikte 1 sevi
 | Entegre ısınıyor | iki çıkış aynı nette (üç durumlu çıkışın ~OE'si yanlış), ters takılmış entegre |
 | Davranış dokunmayla değişiyor | boşta kalmış giriş; tablodaki GND/VCC satırlarını kontrol et |
 | Saat hızlanınca bozuluyor | dekuplaj eksik, uzun saat kabloları; ADIM kipinde doğru çalışıyorsa zamanlama sorunu |
-| Flash'tan yanlış veri | çip doğru soketde mi (etiket), programlayıcıda SUM doğrulaması |
+| EEPROM'dan yanlış veri | çip doğru soketde mi (etiket), programlayıcıda SUM doğrulaması |
 | Simülatörle farklı | aynı programı simülatörde ADIM kipinde yürüt, ilk farklı netin sürücüsünü bul |

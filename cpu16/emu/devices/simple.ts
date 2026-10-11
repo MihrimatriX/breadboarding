@@ -25,7 +25,7 @@ export class Uart {
   }
 }
 
-/** 16 bit aşağı sayan zamanlayıcı (74HC193 ×4 + yeniden yükleme latch'i 74HC574 ×2).
+/** 16 bit aşağı sayan zamanlayıcı (G/Ç kartında 74HC161 ×4 tümleyeni yukarı sayar + yeniden yükleme latch'i 74HC574 ×2).
  * 1 kHz'lik tık ile sayar; 0 olunca yeniden yüklenir ve EXPIRED kurulur. */
 export class Timer {
   reload = 0;

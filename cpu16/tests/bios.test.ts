@@ -38,7 +38,7 @@ function linkFor(m: Machine) {
 describe("BIOS imajı", () => {
   it("bank 0'a sığar; vektörler B; atlama tablosu belgedeki adreslerde", () => {
     expect(bios.size).toBeLessThan(0x4000);
-    expect(bios.flash.length).toBe(0x20000);
+    expect(bios.flash.length).toBe(0x8000); // 28C256
     expect(bios.flash[0x4000]).toBe(0xff);
     for (const v of [0, 2, 4]) expect(f.op(bios.bank0[v] | (bios.bank0[v + 1] << 8))).toBe(OP.BCC);
     const routines: Record<keyof typeof BIOS, string> = {
@@ -65,7 +65,7 @@ describe("açılış", () => {
     expect(screen[0]).toContain("CPU16 BIOS v1");
     expect(m.video.vram[0 + 1]).toBe(0x1f); // başlık çubuğu: beyaz/mavi
     expect(m.video.vram[79 * 2 + 1]).toBe(0x1f);
-    expect(screen[2]).toContain("512 KB RAM");
+    expect(screen[2]).toContain("128 KB RAM, 32 KB EEPROM");
     expect(screen[4]).toBe(">");
     expect(m.uartOutput.startsWith(" CPU16 BIOS v1")).toBe(true);
     expect(m.uartOutput).toContain("Komutlar icin ? yazin.\r\n> ");
@@ -140,17 +140,21 @@ describe("monitör (UART üzerinden)", () => {
     expect(command(m, "C 0")).toContain("denetim 00");
     expect(m.cache.enabled).toBe(false);
     command(m, "C 1");
-    expect(command(m, "I")).toContain("Flash kimligi: BF B5 (SST39SF010)");
-    expect(m.flash.idMode).toBe(false);
+    expect(command(m, "I")).toContain("EEPROM 28C256, yazma korumasi: acik");
+    expect(m.flash.writeCycles).toBe(0); // korumalı çip komutsuz yazmayı yok saydı
     expect(m.cache.enabled).toBe(true);
+    m.flash.sdp = false; // korumasız çip (programlayıcısı korumayı açmamış)
+    expect(command(m, "I")).toContain("yazma korumasi: kapali");
+    expect([m.flash.writeCycles, m.flash.bytesWritten]).toEqual([1, 1]); // kendi değeriyle yeniden yazıldı
+    expect(Array.from(m.flash.data.subarray(0, 0x4000))).toEqual(Array.from(bios.bank0));
     expect(command(m, "Q")).toContain("Bilinmeyen komut");
   });
 
-  it("T: RAM testi 31 bankın hepsini doğrular", () => {
+  it("T: RAM testi 7 bankın hepsini doğrular (32–39, BIOS'un bankı 34 hariç)", () => {
     const m = bootBios();
     const out = command(m, "T", "uart", 40_000_000);
     expect(out).toContain("RAM testi");
-    expect(out).toContain("." .repeat(31) + " Tamam");
+    expect(out).toContain("." .repeat(7) + " Tamam");
     expect(m.banks[2]).toBe(33); // pencere 2 geri yüklendi
   });
 });
@@ -227,41 +231,54 @@ describe("önyükleyici (Intel HEX, UART)", () => {
     m.runUntil(() => m.uartOutput.includes("Iptal"), 1_000_000);
   });
 
-  it("Flash'a yazar (SST komut dizisi): bank 1'e yüklenen program pencereye eşlenip çalışır", async () => {
+  it("EEPROM'a yazar (korumalı sayfa yazması, D7 yoklaması): bank 1'e yüklenen program pencereye eşlenip çalışır", async () => {
     const m = bootBios();
     const link = linkFor(m);
     const asm = example("merhaba");
     const prog = programHex(asm);
+    const t0 = m.cycles;
     const res = await uploadHex(link, prog.hex, { mode: "flash" });
     expect(res.ok, res.message).toBe(true);
     expect(Array.from(m.flash.data.subarray(0x4000, 0x4000 + prog.size))).toEqual(Array.from(asm.image.subarray(0x4000, 0x4000 + prog.size)));
-    expect(m.flash.sectorErases).toBe(1);
-    expect(m.flash.programs).toBe(prog.size);
+    // 16 baytlık kayıtlar 64 baytlık sayfaları aşmaz: kayıt başına bir yazma döngüsü (~10 ms)
+    expect(m.flash.writeCycles).toBe(Math.ceil(prog.size / 16));
+    expect(m.flash.bytesWritten).toBe(prog.size);
+    expect(m.cycles - t0).toBeGreaterThan(m.flash.writeCycles * 40_000);
+    expect(m.flash.sdp).toBe(true);
     expect(m.cache.enabled).toBe(true); // önbellek geri açıldı
-    // RAM bank 32 boş (bu testte RAM'e yükleme yok): çalışan kopya Flash bank 1'deki
+    expect(m.cpu.i).toBe(true); // kesmeler geri açıldı
+    // RAM bank 32 boş (bu testte RAM'e yükleme yok): çalışan kopya EEPROM bank 1'deki
     expect(m.ram[0]).toBe(0);
     command(m, "B 1 1");
     expect(m.banks[1]).toBe(1);
     expect(command(m, "G 4000")).toContain("1+2+...+10 = 0x0037");
+    // korumalı EEPROM'a monitörden doğrudan yazmak etkisiz
+    command(m, "W 4000 00 00");
+    m.idle(100_000);
+    expect(m.flash.data[0x4000]).toBe(asm.image[0x4000]);
   });
 
-  it("Flash: 04 kaydıyla 64 KB üstü (bank 5), bank 0 korunur", async () => {
+  it("EEPROM: yalnız bank 1 (0x4000–0x7FFF); bank 0 ve 32 KB dışı reddedilir; korumasız çip ilk yazmada korunur", async () => {
     const m = bootBios();
     const link = linkFor(m);
     const asm = example("merhaba");
-    const hi = programHex(asm, 0x14000);
-    expect(hi.hex).toMatch(/^:020000040001F9/);
-    const res = await uploadHex(link, hi.hex, { mode: "flash" });
-    expect(res.ok, res.message).toBe(true);
-    expect(m.flash.data[0x14000]).toBe(asm.image[0x4000]);
-    expect(m.flash.data[0x4000]).toBe(0xff);
-    command(m, "B 1 5");
-    expect(command(m, "G 4000")).toContain("Merhaba, CPU16!");
-    const low = programHex(asm, 0x1000);
-    const bad = await uploadHex(link, low.hex, { mode: "flash" });
-    expect(bad.ok).toBe(false);
-    expect(bad.message).toContain("adres izinli degil");
+    for (const base of [0x14000, 0x1000, 0x7ff8]) {
+      const bad = await uploadHex(link, programHex(asm, base).hex, { mode: "flash" });
+      expect(bad.ok, `${base.toString(16)}`).toBe(false);
+      expect(bad.message).toContain("adres izinli degil");
+    }
+    expect(m.flash.writeCycles).toBe(0);
     expect(Array.from(m.flash.data.subarray(0, 0x4000))).toEqual(Array.from(bios.bank0));
+    // sayfa sınırını aşan kayıt iki yazma döngüsüne bölünür
+    m.flash.sdp = false;
+    const odd = programHex(asm, 0x7000 - 8);
+    const res = await uploadHex(link, odd.hex, { mode: "flash" });
+    expect(res.ok, res.message).toBe(true);
+    expect(m.flash.sdp).toBe(true);
+    expect(m.flash.data[0x7000 - 8]).toBe(asm.image[0x4000]);
+    expect(m.flash.writeCycles).toBe(Math.ceil(odd.size / 16) + Math.ceil((odd.size - 8) / 64));
+    command(m, "B 1 1");
+    expect(command(m, "D 6FF8 4")).toContain(`6FF8: ${Array.from(asm.image.subarray(0x4000, 0x4004)).map((x) => x.toString(16).toUpperCase().padStart(2, "0")).join(" ")}`);
   });
 
   it("saat.s: BIOS TICKS, SETCURSOR, çerçeve karakterleri; tuşla monitöre döner", async () => {

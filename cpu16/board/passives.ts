@@ -108,7 +108,7 @@ export const PASSIVES: Record<string, SymbolOnly> = {
       .split(" ")
       .map((name, i) => pas(i + 1, name)),
     footprint: "Module:Arduino_Nano",
-    usage: "Flash programlayıcısının beyni: seri porttan Intel HEX alır, çipe yazar",
+    usage: "EEPROM programlayıcısının beyni: seri porttan Intel HEX alır, çipe yazar",
   },
   BACKPLANE_2x32: {
     part: "BACKPLANE_2x32",

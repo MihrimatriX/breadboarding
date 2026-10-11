@@ -19,10 +19,11 @@ export const KICAD_CARDS: { card: string; title: string; paper: SchematicOptions
   { card: "cpu", title: "CPU16 — CPU kartı", paper: "A0", board: "computer" },
   { card: "mem", title: "CPU16 — Test bellek kartı (64 KB + UART çıkışı)", paper: "A3", board: "computer" },
   { card: "clk", title: "CPU16 — Saat ve reset kartı", paper: "A3", board: "computer" },
-  { card: "bellek", title: "CPU16 — Bellek kartı (Flash 128 KB + RAM 512 KB, bank register'ları)", paper: "A2", board: "machine" },
+  { card: "bellek", title: "CPU16 — Bellek kartı (EEPROM 32 KB + RAM 128 KB, bank register'ları)", paper: "A1", board: "machine" },
   { card: "onbellek", title: "CPU16 — Önbellek kartı (2 KB doğrudan eşlemeli, sayaçlar)", paper: "A1", board: "machine" },
   { card: "gc", title: "CPU16 — G/Ç kartı (UART, PS/2 klavye, zamanlayıcı, kesme denetleyicisi)", paper: "A1", board: "machine" },
   { card: "video", title: "CPU16 — Video kartı (VGA 640 × 480, 80 × 30 metin)", paper: "A1", board: "machine" },
+  { card: "kyb", title: "CPU16 — Kendin yap bellek kartı (16 bayt, her bayt bir 74HC574)", paper: "A2", board: "machine" },
 ];
 const DATE = "2026-10-11";
 
@@ -52,9 +53,9 @@ export function writeKicadFiles(board: Board, machine: Board = buildFullMachineB
     files.push(...project(machine, c.card, c.title, c.paper));
     files.push({ path: `${KICAD_DIR}/${c.card}/bom.csv`, content: bomCsv(machine, [c.card]) });
   }
-  // ayrı bir alet: Flash programlayıcı
+  // ayrı bir alet: EEPROM programlayıcı
   const prog = buildProgrammerBoard().board;
-  files.push(...project(prog, "prog", "CPU16 — Flash programlayıcı (Arduino Nano + 2 × 74HC595)", "A3"));
+  files.push(...project(prog, "prog", "CPU16 — EEPROM programlayıcı (Arduino Nano + 2 × 74HC595)", "A3"));
   files.push({ path: `${KICAD_DIR}/prog/bom.csv`, content: bomCsv(prog, ["prog"]) });
   return files;
 }

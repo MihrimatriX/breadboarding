@@ -1,9 +1,9 @@
-; onbellek-deneme.s — Deney 9: önbellek denemesi (BIOS'suz, Flash bank 0'dan çalışır).
+; onbellek-deneme.s — Deney 9: önbellek denemesi (BIOS'suz, EEPROM bank 0'dan çalışır).
 ;
 ; FF00'daki 8 LED'de bit 0–6 arasında kayan ışık. Işık bir turu önbellek açıkken, bir sonraki
 ; turu kapalıyken atar; bit 7 önbelleğin o anki durumudur (CACHE_CTRL geri okunarak yakılır).
 ; Bekleme döngüsü her adımda aynı iki komutu binlerce kez çalıştırır: önbellek kapalıyken her
-; komut Flash'tan iki bekleme turuyla okunur, açıkken ilk turdan sonra hep isabet eder. Bit 7
+; komut EEPROM'dan iki bekleme turuyla okunur, açıkken ilk turdan sonra hep isabet eder. Bit 7
 ; yanarken ışık gözle görülür biçimde daha hızlı kayar: 1 MHz'de bir adım ≈ 0,16 s, önbellek
 ; kapalıyken ≈ 0,23 s (döngü komut başına 5 yerine 7 döngü sürer, ≈ 1,4 kat).
 

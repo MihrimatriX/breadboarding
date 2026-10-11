@@ -15,12 +15,13 @@
 // Etiket/veri yazma evresi TAGPH = TCLK ∧ CB ∧ ¬CBF = [14, 18) (CBF: CB'nin TCLK↓ ile gecikmişi):
 //   okuma ıskalaması (EN = 1) → satırı doldur (bellek kartı DE/DO'yu t = 10'dan beri sürüyor)
 //   RAM'e yazma isabeti (PA19 = 1) → yazılan bayt(lar)ı satırda güncelle (CPU verisi)
-//   Flash/boş bölgeye yazma isabeti (PA19 = 0) → satırı geçersiz kıl (INVL, t = 6'da örneklenir)
+//   EEPROM/boş bölgeye yazma isabeti (PA19 = 0) → satırı geçersiz kıl (INVL, t = 6'da örneklenir)
 // İsabette veri SRAM'i ~MRD ile birlikte DE/DO'yu sürer (CA = 0 iken).
 //
-// Sayaçlar: 74HC590 × 4, CLK↑'de (R) sayar: isabet = okuma ∧ EN ∧ HIT ∧ ¬CA, ıskalama = okuma ∧ EN ∧ CA.
-// Bir veri yolu döngüsü = bir kelime erişimi = bir sayım. Çıkış register'ları her okuma adımının
-// başında (MRD↑) sayıcıyı alır; FF30 yazması (çift bayt) ikisini de sıfırlar.
+// Sayaçlar: her biri 4 × 74HC161 (16 bit eşzamanlı sayıcı), CLK↑'de (R) sayar: isabet = okuma ∧ EN ∧
+// HIT ∧ ¬CA, ıskalama = okuma ∧ EN ∧ CA. Bir veri yolu döngüsü = bir kelime erişimi = bir sayım.
+// Geri okuma 74HC541'lerle doğrudan sayıcıdan: sayaçlar yalnız bellek okumalarının sonunda değişir,
+// FF30–FF33 okuması (G/Ç) sırasında sabittir. FF30 yazması (çift bayt) ikisini de sıfırlar (~MR).
 // CACHE_CTRL (FF34) bit0 = EN; reset'te 1.
 //
 // Reset: ~RESET düşükken etiket adresi 74HC157'lerle 10 bitlik sayıcıya (3 × 74HC161) geçer ve
@@ -35,11 +36,10 @@ export interface CacheCard {
   tagHi: ChipInstance;
   dataEven: ChipInstance;
   dataOdd: ChipInstance;
-  /** 74HC590: isabet düşük/yüksek, ıskalama düşük/yüksek */
-  hitsLo: ChipInstance;
-  hitsHi: ChipInstance;
-  missLo: ChipInstance;
-  missHi: ChipInstance;
+  /** 74HC161 × 4: isabet sayacı (düşük basamak önce) */
+  hits: ChipInstance[];
+  /** 74HC161 × 4: ıskalama sayacı (düşük basamak önce) */
+  misses: ChipInstance[];
   /** EN flip-flop'unun bulunduğu 74HC74 (2. birim) */
   ctrl: ChipInstance;
 }
@@ -68,7 +68,7 @@ export function buildCacheCard(b: Board): CacheCard {
   b.not("~MRD", "C_MRD", "okuma");
   b.not("~WAIT", "C_WAITING", "bekleme sürüyor");
   b.not("TCLK", "~C_TCLK", "TCLK tersi");
-  b.not("PA19", "C_FLASH", "Flash / boş bölge (PA19 = 0)");
+  b.not("PA19", "C_ROM", "EEPROM / boş bölge (PA19 = 0)");
   b.place("74HC74", {
     "1D": "C_WAITING", "1CLK": "TCLK", "~1PRE": "VCC", "~1CLR": "~RESET", "1Q": "C_CA", "~1Q": "~C_CA",
     "2D": b.and("C_CA", "C_WAITING", "C_CBD", "ikinci bekleme turu"), "2CLK": "TCLK", "~2PRE": "VCC", "~2CLR": "~RESET",
@@ -79,7 +79,7 @@ export function buildCacheCard(b: Board): CacheCard {
     "2D": "GND", "2CLK": "CLK", "~2PRE": "~MWE_O", "~2CLR": "~RESET", "2Q": "C_WRL_O",
   }, "yazma bayrakları: CPU darbesiyle kurulur, CLK↑ ile silinir");
   b.or("C_WRL_E", "C_WRL_O", "C_WRL", "bu adım yazma");
-  b.and("C_WRL", b.and("C_HIT", "C_FLASH", undefined, "Flash bölgesinde isabet"), "C_INVD", "satır geçersiz kılınacak");
+  b.and("C_WRL", b.and("C_HIT", "C_ROM", undefined, "EEPROM / boş bölgede isabet"), "C_INVD", "satır geçersiz kılınacak");
   b.place("74HC74", {
     "1D": "C_CB", "1CLK": "~C_TCLK", "~1PRE": "VCC", "~1CLR": "~RESET", "1Q": "C_CBF", "~1Q": "~C_CBF",
     "2D": "C_INVD", "2CLK": "TCLK", "~2PRE": "VCC", "~2CLR": "~RESET", "2Q": "C_INVL",
@@ -180,19 +180,36 @@ export function buildCacheCard(b: Board): CacheCard {
   // ---- sayaçlar ve CACHE_CTRL geri okuma
   b.block = "Sayaçlar";
   b.and("~RESET", b.or("~MWE_E", "~CS_HITS", undefined, "FF30 yazma"), "~C_CNTCLR", "sayaçları sıfırla (FF30 yazma, reset)");
-  b.nand("C_MRD", b.and("C_EN", "C_CA", undefined, "ıskalama"), "~C_MISS", "ıskalama sayımı (aktif düşük)");
+  b.not("~C_HITRD", "C_HITCNT", "isabet sayımı");
+  b.and("C_MRD", b.and("C_EN", "C_CA", undefined, "ıskalama"), "C_MISSCNT", "ıskalama sayımı");
   b.or("~MRD", "~CS_HITS", "~C_OE_HITS", "FF30/31 okuma");
   b.or("~MRD", "~CS_MISS", "~C_OE_MISS", "FF32/33 okuma");
-  const counter = (cec: string | number, oe: string, lane: "DE" | "DO", rco: string | undefined, role: string) => {
-    const conn: Record<string, string | number> = { "~MRC": "~C_CNTCLR", CPC: "CLK", "~CEC": cec, CPR: "C_MRD", "~OE": oe };
-    if (rco) conn["~RCO"] = rco;
-    range(8).forEach((i) => (conn[`Q${i}`] = `${lane}${i}`));
-    return b.place("74HC590", conn, role);
+  // 16 bit eşzamanlı sayıcı: CEP = sayım izni, CET zinciri = alt basamakların taşması (TC)
+  const counter = (en: string, q: string, role: string) => range(4).map((k) => {
+    const conn: Record<string, string> = {
+      "~MR": "~C_CNTCLR", CP: "CLK", "~PE": "VCC", CEP: en, CET: k === 0 ? "VCC" : `${q}_TC${k - 1}`,
+    };
+    if (k < 3) conn.TC = `${q}_TC${k}`;
+    range(4).forEach((i) => {
+      conn[`D${i}`] = "GND";
+      conn[`Q${i}`] = `${q}${4 * k + i}`;
+    });
+    return b.place("74HC161", conn, `${role} bit ${4 * k}–${4 * k + 3}`);
+  });
+  const hits = counter("C_HITCNT", "C_HC", "isabet sayacı");
+  const misses = counter("C_MISSCNT", "C_MC", "ıskalama sayacı");
+  const readCounter = (q: string, oe: string, role: string) => {
+    for (const [h, lane] of [[0, "DE"], [1, "DO"]] as const) {
+      const conn: Record<string, string> = { "~OE1": oe, "~OE2": "GND" };
+      range(8).forEach((i) => {
+        conn[`A${i}`] = `${q}${8 * h + i}`;
+        conn[`Y${i}`] = `${lane}${i}`;
+      });
+      b.place("74HC541", conn, `${role} ${h ? "yüksek" : "düşük"} bayt okuma`);
+    }
   };
-  const hitsLo = counter("~C_HITRD", "~C_OE_HITS", "DE", "~C_RCO_H", "isabet sayacı düşük bayt (FF30)");
-  const hitsHi = counter(b.or("~C_HITRD", "~C_RCO_H", undefined, "isabet taşması"), "~C_OE_HITS", "DO", undefined, "isabet sayacı yüksek bayt (FF31)");
-  const missLo = counter("~C_MISS", "~C_OE_MISS", "DE", "~C_RCO_M", "ıskalama sayacı düşük bayt (FF32)");
-  const missHi = counter(b.or("~C_MISS", "~C_RCO_M", undefined, "ıskalama taşması"), "~C_OE_MISS", "DO", undefined, "ıskalama sayacı yüksek bayt (FF33)");
+  readCounter("C_HC", "~C_OE_HITS", "isabet sayacı (FF30/31)");
+  readCounter("C_MC", "~C_OE_MISS", "ıskalama sayacı (FF32/33)");
   const rd: Record<string, string> = { "~OE1": "~MRD", "~OE2": "~CS_CTRL" };
   range(8).forEach((i) => {
     rd[`A${i}`] = i === 0 ? "C_EN" : "GND";
@@ -200,5 +217,5 @@ export function buildCacheCard(b: Board): CacheCard {
   });
   b.place("74HC541", rd, "CACHE_CTRL geri okuma (FF34)");
 
-  return { tagLo, tagHi, dataEven, dataOdd, hitsLo, hitsHi, missLo, missHi, ctrl };
+  return { tagLo, tagHi, dataEven, dataOdd, hits, misses, ctrl };
 }

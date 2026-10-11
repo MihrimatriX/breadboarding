@@ -5,7 +5,7 @@
 //   board kicad                 cpu16/kicad/<kart>/ şemaları + BOM'ları yeniden üret
 //   roms                        cpu16/roms/ altındaki Flash imajlarını (mikrokod, ALU) yeniden üret
 //   zamanlama [--tip] [--yol N] şemadan statik zamanlama analizi: en uzun yollar, en yüksek saat hızı
-//   zamanlama --anakart [--tip] bütün anakart (6 kart, 6 saat kökü)
+//   zamanlama --anakart [--tip] bütün anakart (7 kart, 6 saat kökü)
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { romFiles } from "../board/roms.ts";
@@ -60,7 +60,7 @@ else if (cmd === "board") {
       console.log(problems.length ? problems.join("\n") : "ERC: sorun yok");
     };
     show("Test bilgisayarı: CPU + test bellek + saat (buildComputerBoard)", board);
-    show("Anakart: CPU + saat + bellek + önbellek + G/Ç + video (buildFullMachineBoard)", buildFullMachineBoard().board);
+    show("Anakart: CPU + saat + bellek + önbellek + G/Ç + video + kendin yap bellek (buildFullMachineBoard)", buildFullMachineBoard().board);
     console.log(`KiCad kartları: ${KICAD_CARDS.map((c) => c.card).join(", ")}`);
   }
 }

@@ -5,7 +5,7 @@
 /**
  * Deneylerin kurulduğu bilgisayar tanımları (board/ altındaki kart kodları):
  * bilgisayar = CPU + saat + test kartı (Faz 4), anakart = bütün anakart (Faz 6; CPU ve saat kartı
- * aynıdır, onlar bilgisayar tanımından gelir), programlayici = Flash programlayıcı.
+ * aynıdır, onlar bilgisayar tanımından gelir), programlayici = EEPROM programlayıcı.
  */
 export type KitBoard = "bilgisayar" | "anakart" | "programlayici";
 
@@ -30,7 +30,7 @@ export interface Deney {
 export const DENEYLER: Deney[] = [
   { no: 1, kisa: "saat", baslik: "Saat ve reset kartı", kartlar: [{ board: "bilgisayar", card: "clk" }] },
   { no: 2, kisa: "kapilar", baslik: "Kapılar ve CMOS transistörler", cip: "74HC00" },
-  { no: 3, kisa: "programlayici", baslik: "Flash programlayıcı", kartlar: [{ board: "programlayici", card: "prog" }] },
+  { no: 3, kisa: "programlayici", baslik: "EEPROM programlayıcı", kartlar: [{ board: "programlayici", card: "prog" }] },
   { no: 4, kisa: "register", baslik: "Register dosyası ve veriyolu", kartlar: [{ board: "bilgisayar", card: "cpu", blocks: ["Register dosyası"] }] },
   { no: 5, kisa: "alu", baslik: "ALU ve bayraklar", kartlar: [{ board: "bilgisayar", card: "cpu", blocks: ["Geçici register'lar", "ALU", "Bayraklar ve koşul"] }] },
   {
@@ -53,12 +53,14 @@ export const DENEYLER: Deney[] = [
   { no: 11, kisa: "video", baslik: "Video kartı: ekranda Merhaba", kartlar: [{ board: "anakart", card: "video" }] },
   { no: 12, kisa: "bios", baslik: "BIOS, önyükleyici ve Web Serial" },
   { no: 13, kisa: "c", baslik: "C derleyicisi: yılan oyunu" },
+  // Eğitim kartı: 13 deneyin bilgisayarına sonradan takılır (bilgisayarın çalışması için gerekmez)
+  { no: 14, kisa: "kendin-yap-bellek", baslik: "Kendin yap bellek: 16 bayt, her bayt bir 74HC574", kartlar: [{ board: "anakart", card: "kyb" }] },
 ];
 
 /** Yalnızca simülasyonda kullanılan bloklar (gerçek kartta kurulmaz) */
 export const SADECE_SIM: DeneyKart[] = [
   // Faz 4 test bellek kartının 64 KB RAM'i: kapı seviyesi testler programı doğrudan RAM'e yükler.
-  // Gerçek kartta program Flash'tan çalışır (Deney 8, bellek kartı); test kartının yalnızca
+  // Gerçek kartta program EEPROM'dan çalışır (Deney 8, bellek kartı); test kartının yalnızca
   // 0xFF00 çıkış mandalı kurulur.
   { board: "bilgisayar", card: "mem", blocks: ["RAM"] },
 ];

@@ -1,18 +1,13 @@
 // Anakartın G/Ç ve video kartları için eklenen çipler (Faz 6, kapı seviyesi):
 //   74HC05  6 × açık-akaçlı (open-drain) evirici: PS/2 saat hattını "inhibit" için aşağı çekmek
 //   74HC166 8 bit paralel giriş / seri çıkış kaydırmalı register, EŞZAMANLI yükleme: video piksel kaydırıcı
-//   74HC193 4 bit ileri/geri sayıcı, asenkron yükleme ve temizleme: zamanlayıcı, VADDR
 //   74HC393 2 × 4 bit dalgalı (ripple) ikili sayıcı: video kare sayacı (imleç yanıp sönmesi)
 // Pin düzenleri veri sayfasıyla aynıdır; her çipin kapı devresi ve fonksiyon tablosu (ref) ayrı ayrı
 // yazılır, testler (chips.test.ts) ikisini ve CMOS açılımını karşılaştırır.
 
-import {
-  b, busOut, busValue, comb, dipFootprint, pinsOf, range,
-  type ChipDef, type RefIn, type RefModel, type RefOut,
-} from "../types.ts";
+import { busOut, comb, dipFootprint, pinsOf, range, type ChipDef, type RefIn, type RefModel, type RefOut } from "../types.ts";
 
 type Bit = 0 | 1 | null;
-const rising = (prev: RefIn, cur: RefIn, pin: string) => prev[pin] === 0 && cur[pin] === 1;
 const falling = (prev: RefIn, cur: RefIn, pin: string) => prev[pin] === 1 && cur[pin] === 0;
 
 export const HC05: ChipDef = {
@@ -64,55 +59,6 @@ export const HC166: ChipDef = {
   usage: "Video kartı piksel kaydırıcısı: karakter ROM'unun satırını piksel saatinde dışarı kaydırır",
 };
 
-export const HC193: ChipDef = {
-  part: "74HC193",
-  title: "4 bit senkron ileri/geri ikili sayıcı (asenkron yükleme ve temizleme)",
-  pkg: "DIP-16",
-  footprint: dipFootprint(16),
-  pins: pinsOf("D1 Q1 Q0 CPD CPU Q2 Q3 GND D3 D2 ~PL ~TCU ~TCD MR D0 VCC", { out: "Q0 Q1 Q2 Q3 ~TCU ~TCD" }),
-  build(c, p) {
-    // Veri sayfasındaki yapı: her basamak bir T flip-flop'tur ve kendi saatiyle tetiklenir.
-    // Basamak i'nin saati, CPU düşükken alttaki bütün basamaklar 1 ise (ileri) ya da CPD düşükken
-    // alttakilerin hepsi 0 ise (geri) düşük tutulur; sayma darbesinin sonunda (yükselen kenar)
-    // ilgili bütün basamaklar birlikte döner. Yükleme ve temizleme flip-flop'ların asenkron
-    // preset/clear girişleridir.
-    const q = range("Q", 4).map((n) => p[n]);
-    const nCpu = c.not(p.CPU);
-    const nCpd = c.not(p.CPD);
-    const pl = c.not(p["~PL"]);
-    const nMr = c.not(p.MR);
-    const qn: number[] = [];
-    for (let i = 0; i < 4; i++) {
-      const clk = i === 0
-        ? c.and([p.CPU, p.CPD])
-        : c.nor([c.and([nCpu, ...q.slice(0, i)]), c.and([nCpd, ...qn.slice(0, i)])]);
-      const d = p[`D${i}`];
-      const preN = c.nand([pl, d, nMr]);
-      const clrN = c.nor([p.MR, c.and([pl, c.not(d)])]);
-      const ffQn = c.net();
-      c.dff({ d: ffQn, clk, preN, clrN, q: q[i], qn: ffQn });
-      qn.push(ffQn);
-    }
-    c.nand([...q, nCpu], p["~TCU"]);
-    c.nand([...qn, nCpd], p["~TCD"]);
-  },
-  ref: {
-    init: (): number | null => null,
-    eval(s: number | null, prev, cur) {
-      let q = s;
-      // Veri sayfası: bir saat yükselirken diğeri YÜKSEK olmalıdır; değilse sonuç tanımsız (null)
-      if (cur.MR) q = 0;
-      else if (!cur["~PL"]) q = busValue(cur, range("D", 4));
-      else if (rising(prev, cur, "CPU")) q = q === null || !cur.CPD ? null : (q + 1) & 15;
-      else if (rising(prev, cur, "CPD")) q = q === null || !cur.CPU ? null : (q - 1) & 15;
-      const tcu: Bit = cur.CPU ? 1 : q === null ? null : b(q !== 15);
-      const tcd: Bit = cur.CPD ? 1 : q === null ? null : b(q !== 0);
-      return { s: q, out: { ...busOut(range("Q", 4), q), "~TCU": tcu, "~TCD": tcd } };
-    },
-  } satisfies RefModel<number | null>,
-  usage: "Zamanlayıcının 16 bit aşağı sayıcısı (4 adet, RELOAD'dan asenkron yükleme), VADDR adres sayacı (4 adet)",
-};
-
 export const HC393: ChipDef = {
   part: "74HC393",
   title: "2 × 4 bit dalgalı (ripple) ikili sayıcı (düşen kenar, asenkron temizleme)",
@@ -151,4 +97,4 @@ export const HC393: ChipDef = {
   usage: "Video kartı kare sayacı: imleç 16 karede bir yanıp söner",
 };
 
-export const GC_EK_CHIPS = [HC05, HC166, HC193, HC393];
+export const GC_EK_CHIPS = [HC05, HC166, HC393];

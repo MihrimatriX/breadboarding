@@ -68,6 +68,7 @@ export const CARD_REF_BASE: Record<string, [base: number, span: number]> = {
   onbellek: [500, 100],
   gc: [600, 100],
   video: [700, 100],
+  kyb: [800, 100],
 };
 
 /** Yapıştırıcı (glue) kapı türleri: hangi çipten, birimde hangi pinler */

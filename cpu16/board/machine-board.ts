@@ -4,8 +4,9 @@
 // Testler bunu emülatördeki Machine ile komut komut karşılaştırır (cpu16/tests/anakart-bellek.test.ts).
 
 import { L0, L1, LogicSim, type Level } from "../chips/logic.ts";
-import type { MemoryHandle } from "../chips/parts/memory.ts";
-import { RAM_BASE, RESET_BANKS } from "../emu/machine.ts";
+import type { EepromHandle, MemoryHandle } from "../chips/parts/memory.ts";
+import type { At28c256 } from "../emu/devices/eeprom.ts";
+import { CYCLE_NS, RAM_BASE, RAM_SIZE, RESET_BANKS } from "../emu/machine.ts";
 import { aluRomImages } from "./alu-rom.ts";
 import { Board, type ChipInstance } from "./board.ts";
 import { buildCacheCard, type CacheCard } from "./cache-card.ts";
@@ -13,6 +14,7 @@ import { buildClockCard, type ClockCard } from "./clock-card.ts";
 import type { GateState } from "./computer.ts";
 import { buildCpuCard, type CpuCard } from "./cpu-card.ts";
 import { buildIoCard, ioCardYanlisYollar } from "./io-card.ts";
+import { buildKybCard } from "./kyb-card.ts";
 import { buildMemCard, type MemCard } from "./mem-card.ts";
 import { buildVideoCard } from "./video-card.ts";
 import { veriyoluGirisleri, zamanlamaAnalizi, type KapaliYay, type Kose, type SaatKoku } from "./zamanlama.ts";
@@ -37,9 +39,12 @@ export function buildMachineBoard(o: MachineBoardOptions = {}) {
   return { board, cpu, clock, mem, cache, extras };
 }
 
-/** Bütün anakart: CPU, saat, bellek, önbellek, G/Ç ve video kartları (şema, BOM, KiCad, zamanlama) */
+/**
+ * Bütün anakart: CPU, saat, bellek, önbellek, G/Ç, video ve kendin yap bellek (eğitim kartı, FF40–FF4F)
+ * kartları (şema, BOM, KiCad, zamanlama)
+ */
 export function buildFullMachineBoard() {
-  return buildMachineBoard({ cards: [buildIoCard, buildVideoCard] });
+  return buildMachineBoard({ cards: [buildIoCard, buildVideoCard, buildKybCard] });
 }
 
 /** Anakartın saat kökleri (zamanlama analizi) */
@@ -78,7 +83,8 @@ export function chipDffs(board: Board, ci: ChipInstance): number[] {
 
 /** Bellek/önbellek kartlarının durumu, emülatördeki biçimde (Machine.banks, Cache) */
 export interface MemoryState {
-  flash: Uint8Array;
+  /** EEPROM içeriği ya da içerik + iç durum (Machine.flash) */
+  flash: Uint8Array | At28c256;
   ram: Uint8Array;
   banks: ArrayLike<number>;
   cacheEnabled: boolean;
@@ -112,10 +118,11 @@ export class MemoryProbe {
 
   /**
    * Kartların durumunu doğrudan yükler (yalnızca simülasyon: bir izin ortasından başlamak için).
-   * Flash çipinin komut durumu yüklenmez; boşta (okuma kipinde) olmalıdır.
+   * EEPROM'un iç durumu (yazma döngüsü, koruma) da st.flash bir At28c256 ise kopyalanır.
    */
   load(st: MemoryState): void {
-    this.flash.set(st.flash);
+    if (st.flash instanceof Uint8Array) this.flash.set(st.flash);
+    else this.eeprom.copyFrom(st.flash);
     this.ram.set(st.ram);
     const set = (ci: ChipInstance, from: number, n: number, v: number) => {
       const ff = this.ffs(ci);
@@ -123,10 +130,8 @@ export class MemoryProbe {
     };
     this.mem.banks.forEach((ci, k) => set(ci, 0, 6, st.banks[k] ^ RESET_BANKS[k]));
     set(this.cache.ctrl, 1, 1, st.cacheEnabled ? 1 : 0);
-    set(this.cache.hitsLo, 0, 8, st.hits & 0xff);
-    set(this.cache.hitsHi, 0, 8, st.hits >> 8);
-    set(this.cache.missLo, 0, 8, st.misses & 0xff);
-    set(this.cache.missHi, 0, 8, st.misses >> 8);
+    this.cache.hits.forEach((ci, k) => set(ci, 0, 4, st.hits >> (4 * k)));
+    this.cache.misses.forEach((ci, k) => set(ci, 0, 4, st.misses >> (4 * k)));
     const h = (ci: ChipInstance) => (ci.handle as MemoryHandle).data;
     for (let line = 0; line < 1024; line++) {
       const t = st.tags[line];
@@ -138,18 +143,30 @@ export class MemoryProbe {
     this.sim.settle();
   }
 
-  get flash(): Uint8Array {
-    return (this.mem.flash.handle as MemoryHandle).data;
+  /** EEPROM çipinin modeli (içerik + yazma döngüsü / koruma durumu) */
+  get eeprom(): At28c256 {
+    return (this.mem.eeprom.handle as EepromHandle).core;
   }
 
+  /** EEPROM içeriği (32 KB, fiziksel 0x00000'dan) */
+  get flash(): Uint8Array {
+    return (this.mem.eeprom.handle as EepromHandle).data;
+  }
+
+  /** RAM içeriği (128 KB, fiziksel 0x80000'den; dört 62256'nın tutamaçları bunun dilimleri) */
   get ram(): Uint8Array {
-    return (this.mem.ram.handle as MemoryHandle).data;
+    return this.mem.ramData;
+  }
+
+  /** EEPROM'un gördüğü zaman (ns): yazma döngüsü bununla ölçülür */
+  setClock(now: () => number): void {
+    (this.mem.eeprom.handle as EepromHandle).now = now;
   }
 
   /** Fiziksel adresteki bayt (Machine.physRead gibi; boş bölge 0xFF) */
   physRead(phys: number): number {
     if (phys < this.flash.length) return this.flash[phys];
-    if (phys >= RAM_BASE) return this.ram[phys - RAM_BASE];
+    if (phys >= RAM_BASE && phys < RAM_BASE + RAM_SIZE) return this.ram[phys - RAM_BASE];
     return 0xff;
   }
 
@@ -173,13 +190,13 @@ export class MemoryProbe {
     return this.sim.stateOf(this.ffs(this.cache.ctrl)[1]) === L1;
   }
 
-  /** 16 bit isabet / ıskalama sayaçları (74HC590'ların sayıcı kısmı) */
+  /** 16 bit isabet / ıskalama sayaçları (4 × 74HC161) */
   get hits(): number {
-    return this.bits(this.cache.hitsLo, 0, 8) | (this.bits(this.cache.hitsHi, 0, 8) << 8);
+    return this.cache.hits.reduce((v, ci, k) => v | (this.bits(ci, 0, 4) << (4 * k)), 0);
   }
 
   get misses(): number {
-    return this.bits(this.cache.missLo, 0, 8) | (this.bits(this.cache.missHi, 0, 8) << 8);
+    return this.cache.misses.reduce((v, ci, k) => v | (this.bits(ci, 0, 4) << (4 * k)), 0);
   }
 
   /** Satırın etiketi (fiziksel adres >> 11), geçersizse -1 (Cache.tags ile aynı biçim) */
@@ -213,6 +230,8 @@ export class GateMachine {
   readonly probe: MemoryProbe;
   /** CPU saat döngüsü (bekleme turları dahil) — Machine.cycles ile aynı ölçü */
   cycles = 0;
+  /** Son komutun başladığı döngü: EEPROM'un saati (Machine erişimleri de komut başıyla damgalar) */
+  instrStart = 0;
   /** Bekleme turları */
   waitCycles = 0;
   /** Test için UART çıkışı: 0xFF00'a yapılan çift bayt yazmaları (G/Ç kartı yokken) */
@@ -242,6 +261,7 @@ export class GateMachine {
     this.sim = new LogicSim(board.c);
     for (const p of board.pulls) this.sim.pull(p.net, p.level);
     this.probe = new MemoryProbe(this.sim, board, mem, cache);
+    this.probe.setClock(() => this.instrStart * CYCLE_NS);
     // IRQ'yu süren bir kart (G/Ç kartı) takılı değilse düzenek 0'da tutar
     const driven = (net: number) => board.chips.some((ci) => ci.def.pins.some((p) => (p.dir === "out" || p.dir === "tri") && ci.nets[p.name] === net));
     this.ownIrq = !driven(board.n("IRQ"));
@@ -252,9 +272,9 @@ export class GateMachine {
     this.reset();
   }
 
-  /** Flash'a imaj yükle (programlayıcıyla yazılmış gibi) */
+  /** EEPROM'a imaj yükle (programlayıcıyla yazılmış gibi: yazılım koruması açık kalır) */
   loadFlash(image: Uint8Array, offset = 0): void {
-    this.probe.flash.set(image.subarray(0, this.probe.flash.length - offset), offset);
+    this.probe.eeprom.load(image, offset);
   }
 
   /** RAM'e doğrudan yükle (fiziksel adres) */
@@ -262,7 +282,7 @@ export class GateMachine {
     for (let i = 0; i < image.length; i++) {
       const p = phys + i;
       if (p < this.probe.flash.length) this.probe.flash[p] = image[i];
-      else if (p >= RAM_BASE) this.probe.ram[p - RAM_BASE] = image[i];
+      else if (p >= RAM_BASE && p < RAM_BASE + RAM_SIZE) this.probe.ram[p - RAM_BASE] = image[i];
     }
   }
 
@@ -327,6 +347,7 @@ export class GateMachine {
 
   /** Bir komut: adım sayacı 0'a dönene kadar CPU adımları (durmuş CPU'da bir adım) */
   step(): void {
+    this.instrStart = this.cycles;
     do this.cycle();
     while (this.bus("STEP", 4) !== 0 && !this.flag("HALTED") && !this.flag("FAULT"));
   }

@@ -1,4 +1,4 @@
-// CPU16 anakartı (Faz 6): CPU + bank register'ları (basit MMU) + önbellek + Flash + RAM + G/Ç.
+// CPU16 anakartı (Faz 6): CPU + bank register'ları (basit MMU) + önbellek + EEPROM + RAM + G/Ç.
 // Machine, Cpu16'nın Bus arayüzünü uygular; komut setine dokunmaz. Zaman CPU döngüsüyle
 // ölçülür: her komut mikromimari tablosundaki döngü sayısı + bellek bekleme durumları kadar
 // sürer; zamanlayıcı, dikey tarama, UART ve klavye bu sayaçla ilerler.
@@ -7,12 +7,14 @@
 import { Cpu16, type Bus, type StepResult } from "./cpu.ts";
 import { OP, VEC_IRQ } from "./isa.ts";
 import { Cache } from "./devices/cache.ts";
-import { FLASH_SIZE, Sst39sf010 } from "./devices/flash.ts";
+import { At28c256, FLASH_SIZE } from "./devices/eeprom.ts";
 import { Ps2Keyboard, breakCodes, makeCodes, textToScancodes } from "./devices/keyboard.ts";
 import { Timer, Uart, VideoCard, VRAM_SIZE } from "./devices/simple.ts";
 
 // ---- zamanlama
 export const CPU_HZ = 4_000_000;
+/** Bir CPU döngüsü (ns): EEPROM'un zaman damgaları bununla */
+export const CYCLE_NS = 1e9 / CPU_HZ;
 /** Zamanlayıcının 1 kHz tıkı: 4 MHz / 4000. */
 export const TICK_CYCLES = 4000;
 /** 60 Hz kare: 4 MHz / 60 ≈ 66 667 döngü. */
@@ -28,9 +30,9 @@ export const MEM_WAIT = 2;
 /** IRQ girişi (mikrokod: PUSH PC, PUSH bayrak, vektör). */
 export const IRQ_ENTRY_CYCLES = 8;
 
-// ---- bellek
+// ---- bellek: EEPROM 0x00000–0x07FFF (bank 0–1), RAM 0x80000–0x9FFFF (bank 32–39), gerisi boş (0xFF)
 export const RAM_BASE = 0x80000;
-export const RAM_SIZE = 0x80000;
+export const RAM_SIZE = 0x20000;
 export const RESET_BANKS = [0, 32, 33, 34] as const;
 
 /** G/Ç register adresleri (0xFF00–0xFFFF her zaman G/Ç). */
@@ -41,9 +43,14 @@ export const IO = {
   BANK0: 0xff10, BANK1: 0xff11, BANK2: 0xff12, BANK3: 0xff13,
   VADDR: 0xff20, VDATA: 0xff22, VCTRL: 0xff23, CURSOR_X: 0xff24, CURSOR_Y: 0xff25, VSTAT: 0xff26,
   CACHE_HITS: 0xff30, CACHE_MISSES: 0xff32, CACHE_CTRL: 0xff34,
+  /** Kendin yap bellek kartı: 16 bayt (FF40–FF4F), her bayt bir 74HC574 */
+  KYB: 0xff40,
 } as const;
 
-/** IRQ kaynak numaraları (IRQ_PEND bitleri). 74HC148 gibi: büyük numara = yüksek öncelik. */
+/** Kendin yap bellek kartının bayt sayısı */
+export const KYB_SIZE = 16;
+
+/** IRQ kaynak numaraları (IRQ_PEND bitleri). Öncelik kodlayıcıda (G/Ç kartı, kapılarla) büyük numara = yüksek öncelik. */
 export const IRQ_TIMER = 0;
 export const IRQ_KBD = 1;
 export const IRQ_UART = 2;
@@ -103,7 +110,8 @@ export type RunResult = "ok" | "halted" | "illegal";
 
 export class Machine implements Bus {
   readonly cpu: Cpu16;
-  readonly flash = new Sst39sf010();
+  /** BIOS EEPROM'u (28C256, 32 KB); adı tarihsel: arayüz ve araçlar "Flash" der */
+  readonly flash = new At28c256();
   readonly ram = new Uint8Array(RAM_SIZE);
   readonly banks = Uint8Array.from(RESET_BANKS);
   readonly cache = new Cache();
@@ -111,6 +119,8 @@ export class Machine implements Bus {
   readonly kbd = new Ps2Keyboard();
   readonly timer = new Timer();
   readonly video = new VideoCard();
+  /** Kendin yap bellek (FF40–FF4F): 16 × 74HC574. Reset silmez (574'ün reset ucu yok). */
+  readonly kyb = new Uint8Array(KYB_SIZE);
   irqMask = 0;
   /** Açılıştan beri geçen CPU döngüsü (zamanın kendisi). */
   cycles = 0;
@@ -143,9 +153,15 @@ export class Machine implements Bus {
     return this.banks[addr >> 14] * 0x4000 + (addr & 0x3fff);
   }
 
+  /** Şu anki zaman (ns): EEPROM'un yazma döngüsü bununla ölçülür */
+  get nowNs(): number {
+    return this.cycles * CYCLE_NS;
+  }
+
+  /** Fiziksel bayt (okuma döngüsü içinde; EEPROM'un okuma kenarı ayrıca readCycle ile) */
   private physRead(phys: number): number {
-    if (phys < FLASH_SIZE) return this.flash.read(phys);
-    if (phys >= RAM_BASE) return this.ram[phys - RAM_BASE];
+    if (phys < FLASH_SIZE) return this.flash.output(phys);
+    if (phys >= RAM_BASE && phys < RAM_BASE + RAM_SIZE) return this.ram[phys - RAM_BASE];
     return 0xff; // boş fiziksel alan: veriyolu dirençlerle 1'e çekili
   }
 
@@ -169,6 +185,9 @@ export class Machine implements Bus {
     this.pairAddr = odd ? -1 : addr;
     this.pairWrite = false;
     const phys = this.banks[addr >> 14] * 0x4000 + (addr & 0x3fff);
+    // EEPROM seçiliyse her veriyolu okuması çip için bir okuma döngüsüdür (~CE ve ~OE düşer), önbellek
+    // isabet etse bile: yazma sürerken toggle biti değişir
+    if (!second && phys < FLASH_SIZE) this.flash.readCycle(this.nowNs);
     const c = this.cache;
     if (c.enabled) {
       const w = c.probe(phys);
@@ -207,8 +226,8 @@ export class Machine implements Bus {
     const phys = this.banks[addr >> 14] * 0x4000 + (addr & 0x3fff);
     const isRam = phys >= RAM_BASE;
     this.cache.snoopWrite(phys, value, isRam);
-    if (phys < FLASH_SIZE) this.flash.write(phys, value);
-    else if (isRam) this.ram[phys - RAM_BASE] = value;
+    if (phys < FLASH_SIZE) this.flash.write(phys, value, this.nowNs);
+    else if (isRam && phys < RAM_BASE + RAM_SIZE) this.ram[phys - RAM_BASE] = value;
   }
 
   // ------------------------------------------------------------ G/Ç
@@ -220,7 +239,7 @@ export class Machine implements Bus {
       (this.video.vsyncFlag ? 1 << IRQ_VSYNC : 0);
   }
 
-  /** 74HC148 öncelik kodlayıcısı: bekleyen ve maskesi açık en yüksek kaynak, yoksa 0xFF. */
+  /** Öncelik kodlayıcı (G/Ç kartında kapılarla): bekleyen ve maskesi açık en yüksek kaynak, yoksa 0xFF. */
   get irqSource(): number {
     const p = this.irqPending & this.irqMask;
     return p ? 31 - Math.clz32(p) : 0xff;
@@ -285,7 +304,9 @@ export class Machine implements Bus {
       case 0x32: return this.cache.misses & 0xff;
       case 0x33: return this.cache.misses >> 8;
       case 0x34: return this.cache.enabled ? 1 : 0;
-      default: return 0xff; // sadece yazılır register'lar ve boş adresler
+      default:
+        if (off >= 0x40 && off < 0x40 + KYB_SIZE) return this.kyb[off - 0x40];
+        return 0xff; // sadece yazılır register'lar ve boş adresler
     }
   }
 
@@ -314,7 +335,9 @@ export class Machine implements Bus {
       case 0x26: if (v & 2) this.video.vsyncFlag = false; break;
       case 0x30: this.cache.resetCounters(); break;
       case 0x34: this.cache.enabled = (v & 1) !== 0; break;
-      default: return;
+      default:
+        if (off >= 0x40 && off < 0x40 + KYB_SIZE) this.kyb[off - 0x40] = v;
+        return;
     }
     this.nextEvent = this.cycles;
     this.updateIrq();
@@ -408,7 +431,7 @@ export class Machine implements Bus {
     return cond();
   }
 
-  /** Reset düğmesi: CPU, bank register'ları ve cihazlar sıfırlanır; RAM, VRAM ve Flash içeriği kalır.
+  /** Reset düğmesi: CPU, bank register'ları ve cihazlar sıfırlanır; RAM, VRAM ve EEPROM içeriği kalır.
    * Önbellek etiketleri reset sırasında temizlenir (donanımda 1024 adımlık temizleme sayacı). */
   reset(): void {
     this.cpu.reset();
@@ -416,7 +439,7 @@ export class Machine implements Bus {
     this.cache.invalidateAll();
     this.cache.enabled = true;
     this.cache.resetCounters();
-    this.flash.resetState(); // gerçek çipte RESET ucu yok; bkz. anakart.md
+    // EEPROM'un reset ucu yok: süren bir yazma döngüsü resetten etkilenmez
     this.uart.reset();
     this.kbd.reset();
     this.timer.reset();
@@ -437,7 +460,7 @@ export class Machine implements Bus {
       const w = this.cache.probe(phys);
       if (w >= 0) return phys & 1 ? w >> 8 : w & 0xff;
     }
-    return this.physRead(phys);
+    return this.peekPhys(phys);
   }
 
   peek16(addr: number): number {
@@ -447,21 +470,23 @@ export class Machine implements Bus {
 
   /** Fiziksel adresi okur (önbelleği atlar). */
   peekPhys(phys: number): number {
-    return this.physRead(phys & 0xfffff);
+    phys &= 0xfffff;
+    if (phys < FLASH_SIZE) return this.flash.peek(phys, this.nowNs);
+    return this.physRead(phys);
   }
 
-  /** Flash'a programlayıcıyla yazılmış gibi imaj yükler (ör. BIOS). */
+  /** EEPROM'a programlayıcıyla yazılmış gibi imaj yükler (ör. BIOS). */
   loadFlash(image: Uint8Array, offset = 0): void {
     this.flash.load(image, offset);
     this.cache.invalidateAll();
   }
 
-  /** Fiziksel adrese doğrudan yazar (RAM ya da Flash içeriği; "sihirli" yükleme). */
+  /** Fiziksel adrese doğrudan yazar (RAM ya da EEPROM içeriği; "sihirli" yükleme). */
   pokePhys(phys: number, bytes: ArrayLike<number>): void {
     for (let i = 0; i < bytes.length; i++) {
       const p = (phys + i) & 0xfffff;
       if (p < FLASH_SIZE) this.flash.data[p] = bytes[i] & 0xff;
-      else if (p >= RAM_BASE) this.ram[p - RAM_BASE] = bytes[i] & 0xff;
+      else if (p >= RAM_BASE && p < RAM_BASE + RAM_SIZE) this.ram[p - RAM_BASE] = bytes[i] & 0xff;
     }
     this.cache.invalidateAll();
   }

@@ -1,22 +1,20 @@
 Parça;Adet;Açıklama;Footprint;Kart;Referanslar
-74HC00;3;4 × 2 girişli NAND;Package_DIP:DIP-14_W7.62mm;gc;U658 U659 U660
-74HC02;2;4 × 2 girişli NOR;Package_DIP:DIP-14_W7.62mm;gc;U661 U662
-74HC04;3;6 × NOT (evirici);Package_DIP:DIP-14_W7.62mm;gc;U663 U664 U665
+74HC00;2;4 × 2 girişli NAND;Package_DIP:DIP-14_W7.62mm;gc;U657 U658
+74HC02;2;4 × 2 girişli NOR;Package_DIP:DIP-14_W7.62mm;gc;U659 U660
+74HC04;5;6 × NOT (evirici);Package_DIP:DIP-14_W7.62mm;gc;U661 U662 U663 U664 U665
 74HC05;1;6 × NOT, açık-akaçlı (open-drain) çıkış;Package_DIP:DIP-14_W7.62mm;gc;U619
-74HC08;8;4 × 2 girişli AND;Package_DIP:DIP-14_W7.62mm;gc;U646 U647 U648 U649 U650 U651 U652 U653
+74HC08;8;4 × 2 girişli AND;Package_DIP:DIP-14_W7.62mm;gc;U644 U645 U646 U647 U648 U649 U650 U651
 74HC138;4;3'ten 8'e kod çözücü (aktif düşük çıkış);Package_DIP:DIP-16_W7.62mm;gc;U601 U602 U603 U604
 74HC14;1;6 × Schmitt tetiklemeli NOT;Package_DIP:DIP-14_W7.62mm;gc;U606
-74HC148;1;8'den 3'e öncelikli kodlayıcı;Package_DIP:DIP-16_W7.62mm;gc;U639
-74HC161;10;4 bit senkron ikili sayıcı (asenkron reset);Package_DIP:DIP-16_W7.62mm;gc;U608 U609 U610 U613 U614 U615 U617 U620 U621 U622
+74HC161;14;4 bit senkron ikili sayıcı (asenkron reset);Package_DIP:DIP-16_W7.62mm;gc;U608 U609 U610 U613 U614 U615 U617 U620 U621 U622 U631 U632 U633 U634
 74HC165;1;8 bit paralel giriş / seri çıkış kaydırmalı register;Package_DIP:DIP-16_W7.62mm;gc;U607
-74HC175;2;4 × D flip-flop (ortak saat, asenkron reset);Package_DIP:DIP-16_W7.62mm;gc;U627 U638
-74HC193;4;4 bit senkron ileri/geri ikili sayıcı (asenkron yükleme ve temizleme);Package_DIP:DIP-16_W7.62mm;gc;U632 U633 U634 U635
-74HC32;4;4 × 2 girişli OR;Package_DIP:DIP-14_W7.62mm;gc;U654 U655 U656 U657
-74HC541;9;8 bit üç durumlu tampon (iki aktif düşük OE);Package_DIP:DIP-20_W7.62mm;gc;U625 U626 U628 U629 U640 U641 U642 U643 U644
+74HC175;2;4 × D flip-flop (ortak saat, asenkron reset);Package_DIP:DIP-16_W7.62mm;gc;U627 U637
+74HC32;5;4 × 2 girişli OR;Package_DIP:DIP-14_W7.62mm;gc;U652 U653 U654 U655 U656
+74HC541;9;8 bit üç durumlu tampon (iki aktif düşük OE);Package_DIP:DIP-20_W7.62mm;gc;U625 U626 U628 U629 U638 U639 U640 U641 U642
 74HC574;2;8 bit D flip-flop register (üç durumlu çıkış);Package_DIP:DIP-20_W7.62mm;gc;U623 U624
 74HC595;2;8 bit seri giriş / paralel çıkış kaydırmalı register (çıkış mandallı);Package_DIP:DIP-16_W7.62mm;gc;U616 U618
-74HC688;2;8 bit eşitlik karşılaştırıcı;Package_DIP:DIP-20_W7.62mm;gc;U636 U637
-74HC74;6;2 × D flip-flop (asenkron preset ve clear);Package_DIP:DIP-14_W7.62mm;gc;U605 U611 U612 U630 U631 U645
+74HC688;2;8 bit eşitlik karşılaştırıcı;Package_DIP:DIP-20_W7.62mm;gc;U635 U636
+74HC74;5;2 × D flip-flop (asenkron preset ve clear);Package_DIP:DIP-14_W7.62mm;gc;U605 U611 U612 U630 U643
 BACKPLANE_2x32;1;Arka panel konnektörü 2 × 32 (2,54 mm);Connector_PinHeader_2.54mm:PinHeader_2x32_P2.54mm_Vertical;gc;J603
 C_100N;65;100 nF seramik kondansatör (dekuplaj);Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm;gc;C602 C603 C604 C605 C606 C607 C608 C609 C610 C611 C612 C613 C614 C615 C616 C617 C618 C619 C620 C621 C622 C623 C624 C625 C626 C627 C628 C629 C630 C631 C632 C633 C634 C635 C636 C637 C638 C639 C640 C641 C642 C643 C644 C645 C646 C647 C648 C649 C650 C651 C652 C653 C654 C655 C656 C657 C658 C659 C660 C661 C662 C663 C664 C665 C666
 C_100U;1;100 µF elektrolitik kondansatör (kart girişi);Capacitor_THT:CP_Radial_D6.3mm_P2.50mm;gc;C601
