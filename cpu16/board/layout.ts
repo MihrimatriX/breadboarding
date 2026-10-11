@@ -59,7 +59,9 @@ export interface BoardLayout {
   height: number;
 }
 
-const CARD_TITLES: Record<string, string> = { cpu: "CPU kartı", mem: "Test bellek kartı", clk: "Saat ve reset kartı" };
+const CARD_TITLES: Record<string, string> = {
+  cpu: "CPU kartı", mem: "Test bellek kartı", clk: "Saat ve reset kartı", bellek: "Bellek kartı", onbellek: "Önbellek kartı",
+};
 
 /** Çip kılıf ölçüleri: DIP-n, dar (7,62 mm) ya da geniş (15,24 mm) */
 export function packageSize(ci: Pick<ChipInstance, "def">): { w: number; h: number; row: number } {
@@ -96,7 +98,7 @@ export interface LayoutOptions {
 }
 
 export function boardLayout(board: Board, o: LayoutOptions = {}): BoardLayout {
-  const cardWidth = { cpu: 420, mem: 120, clk: 120, ...o.cardWidth };
+  const cardWidth = { cpu: 420, mem: 120, clk: 120, bellek: 200, onbellek: 200, ...o.cardWidth };
   const maxCols = o.maxCols ?? 8;
   const margin = 8;
   const gapX = 4;
