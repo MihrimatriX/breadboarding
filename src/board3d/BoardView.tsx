@@ -1,13 +1,13 @@
 // "CPU16 kartı 3D" bölümü: bütün bilgisayar tek sahnede (anakartın bütün kartları, kapı seviyesinde).
 // Kart → çip → kapı → transistör; çipten çipe teller; VGA monitörü; assembly / C program düzenleyicisi.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { gateCmos } from "../../cpu16/board/inside";
 import { PASSIVES } from "../../cpu16/board/passives";
 import type { Gate } from "../../cpu16/chips/logic";
 import { breakCodes, makeCodes, textToScancodes } from "../../cpu16/emu/devices/keyboard";
 import { disassemble } from "../../cpu16/emu/disasm";
-import { ModeSwitch } from "../ui/ModeSwitch";
+import { AppHeader, Group, Meter, PanelToggle, Splitter, Tabs, heightShare, useLayout, type LayoutPrefs, type Shortcut, type TabDef } from "../ui/Shell";
 import { BoardScene } from "./BoardScene";
 import { CmosDiagram } from "./CmosDiagram";
 import { InsideDiagram } from "./InsideDiagram";
@@ -16,7 +16,7 @@ import { MemoryInside } from "./MemoryInside";
 import { detectLanguage } from "./program";
 import { screenCanvas, updateScreenCanvas } from "./screenCanvas";
 import {
-  EXAMPLES, SPEEDS, boardLayoutData, boardModel, currentLang, findPart, liveNets, netEnds, startBoardWorker, useKart, type LangMode, type WireMode,
+  EXAMPLES, SPEEDS, boardLayoutData, boardModel, currentLang, findPart, liveNets, netEnds, startBoardWorker, useKart, type BottomTab, type LangMode, type WireMode,
 } from "./store";
 import { partLinks, type Endpoint } from "./wires";
 
@@ -27,50 +27,72 @@ const WIRE_MODES: { m: WireMode; label: string; title: string }[] = [
   { m: "hepsi", label: "hepsi", title: "Bütün netler: her netin pinleri en kısa yoldan zincirlenir" },
 ];
 
-function Toolbar() {
-  const s = useKart();
-  const st = s.state;
-  const { board } = boardModel();
+const SHORTCUTS: Shortcut[] = [
+  { keys: "Boşluk", what: "Çalıştır / duraklat" },
+  { keys: ".", what: "1 saat çevrimi" },
+  { keys: "N", what: "1 komut" },
+  { keys: "Esc", what: "Seçimi kaldır (kapı → net → çip)" },
+  { keys: "Ctrl+Enter", what: "Düzenleyicide: derleyip EEPROM'a yazar ve çalıştırır" },
+  { keys: "Tıkla", what: "Entegreyi seç: teller, bağlantılar, içi" },
+  { keys: "Sürükle", what: "Döndür" },
+  { keys: "Sağ tık", what: "Kaydır" },
+  { keys: "Tekerlek", what: "Yakınlaş / uzaklaş" },
+];
+
+/** Üst çubuktaki canlı ölçümler */
+function Meters() {
+  const cycles = useKart((s) => s.cycles);
+  const running = useKart((s) => s.running);
+  const rate = useKart((s) => s.rate);
+  const st = useKart((s) => s.state);
   return (
-    <header className="toolbar">
-      <div className="brand">
-        <h1>Silikon3D</h1>
-        <span className="brand-sub">CPU16 bilgisayarı · kapı seviyesinde</span>
-        <span className="brand-sub">{board.chips.length} entegre · {board.passives.length} pasif</span>
-      </div>
-      <ModeSwitch mode="kart" />
-      <div className="clock">
-        <button onClick={() => s.step("cycle")} disabled={!s.ready} title="Kısayol: .">1 saat</button>
-        <button onClick={() => s.step("instr")} disabled={!s.ready} title="Kısayol: N">1 komut</button>
+    <>
+      <Meter label="Döngü">{cycles.toLocaleString("tr-TR")}</Meter>
+      <Meter label="Hız">{running ? `${Math.round(rate).toLocaleString("tr-TR")} Hz` : "durdu"}</Meter>
+      <Meter label="PC">{st ? hex4(st.pc) : "-"}</Meter>
+      {st?.halted && <span className="bench-status s-halt">{st.fault ? "HATA" : "HALT"}</span>}
+    </>
+  );
+}
+
+function Toolbar({ lay, setLay }: { lay: LayoutPrefs; setLay: (p: Partial<LayoutPrefs>) => void }) {
+  const s = useKart();
+  return (
+    <div className="toolbar">
+      <Group label="Adım adım">
+        <button onClick={() => s.step("cycle")} disabled={!s.ready} title="Bir saat çevrimi · kısayol: .">1 saat</button>
+        <button onClick={() => s.step("instr")} disabled={!s.ready} title="Bir komut · kısayol: N">1 komut</button>
+      </Group>
+      <Group label="Çalıştırma">
         <button className="primary" onClick={() => (s.running ? s.pause() : s.run())} disabled={!s.ready} title="Kısayol: Boşluk">
           {s.running ? "Duraklat" : "Çalıştır"}
         </button>
         <button onClick={s.reset} disabled={!s.ready} title="RESET butonu: program EEPROM'da kalır">Sıfırla</button>
+      </Group>
+      <Group label="Saat hızı">
         <label className="speed">
           Saat
           <select value={s.hz} onChange={(e) => s.setHz(+e.target.value)} aria-label="Saat hızı">
             {SPEEDS.map((x) => <option key={x.hz} value={x.hz}>{x.label}</option>)}
           </select>
         </label>
-        <span className="wires-ctl">
-          Teller
-          <span className="seg" role="group" aria-label="Teller">
-            {WIRE_MODES.map((w) => (
-              <button key={w.m} className={s.wires === w.m ? "on" : ""} onClick={() => s.setWires(w.m)} title={w.title}>{w.label}</button>
-            ))}
-          </span>
-          <label className="chk" title="GND ve VCC tellerini de çiz">
-            <input type="checkbox" checked={s.power} onChange={(e) => s.setPower(e.target.checked)} /> GND/VCC
-          </label>
+      </Group>
+      <Group label="Teller" className="wires-ctl">
+        <span className="tb-label">Teller</span>
+        <span className="seg" role="group" aria-label="Teller">
+          {WIRE_MODES.map((w) => (
+            <button key={w.m} className={s.wires === w.m ? "on" : ""} aria-pressed={s.wires === w.m} onClick={() => s.setWires(w.m)} title={w.title}>{w.label}</button>
+          ))}
         </span>
-      </div>
-      <div className="meter">
-        <span>Döngü <b>{s.cycles.toLocaleString("tr-TR")}</b></span>
-        <span>Hız <b>{s.running ? `${Math.round(s.rate).toLocaleString("tr-TR")} Hz` : "durdu"}</b></span>
-        <span>PC <b>{st ? hex4(st.pc) : "-"}</b></span>
-        {st?.halted && <span className="bench-status s-halt">{st.fault ? "HATA" : "HALT"}</span>}
-      </div>
-    </header>
+        <label className="chk" title="GND ve VCC tellerini de çiz">
+          <input type="checkbox" checked={s.power} onChange={(e) => s.setPower(e.target.checked)} /> GND/VCC
+        </label>
+      </Group>
+      <Group label="Paneller" className="tb-end">
+        <PanelToggle which="bottom" open={lay.bottom} onToggle={() => setLay({ bottom: !lay.bottom })} />
+        <PanelToggle which="side" open={lay.side} onToggle={() => setLay({ side: !lay.side })} />
+      </Group>
+    </div>
   );
 }
 
@@ -111,16 +133,11 @@ function VgaPanel() {
   };
   return (
     <div className={`vga-panel${focused ? " focused" : ""}${big ? " big" : ""}`}>
-      <div className="row between">
+      <div className="vga-head">
         <h2>VGA · 640 × 480</h2>
-        <span className="row" style={{ marginTop: 0 }}>
-          {has.beam && (
-            <label className="chk" title="Piksel saatinde VGA konnektörünün R, G, B, HSYNC ve VSYNC hatlarını örnekle: ışın ekranı yavaşça çizer">
-              <input type="checkbox" checked={beam} onChange={(e) => useKart.getState().setBeam(e.target.checked)} /> Işın modu
-            </label>
-          )}
-          <button className="link" onClick={() => setBig(!big)}>{big ? "küçük" : "büyük"}</button>
-          <button className="link" onClick={() => setOpen(false)}>gizle</button>
+        <span className="vga-actions">
+          <button className="link" onClick={() => setBig(!big)} title={big ? "Ekranı küçült" : "Ekranı büyüt"}>{big ? "küçük" : "büyük"}</button>
+          <button className="link" onClick={() => setOpen(false)} title="Ekranı gizle (sahnedeki monitör çalışmaya devam eder)">gizle</button>
         </span>
       </div>
       <div
@@ -134,11 +151,18 @@ function VgaPanel() {
         onKeyDown={(e) => onKey(e, true)}
         onKeyUp={(e) => onKey(e, false)}
       />
-      <p className="muted small">
+      <div className="vga-foot">
+        {has.beam && (
+          <label className="chk" title="Piksel saatinde VGA konnektörünün R, G, B, HSYNC ve VSYNC hatlarını örnekle: ışın ekranı yavaşça çizer">
+            <input type="checkbox" checked={beam} onChange={(e) => useKart.getState().setBeam(e.target.checked)} /> Işın modu
+          </label>
+        )}
+        {has.keyboard && <span className={`kbd-state${focused ? " on" : ""}`}>{focused ? "Klavye bağlı: yazdıkların PS/2'den gidiyor." : "Ekrana tıkla: klavye."}</span>}
+      </div>
+      <p className="vga-note">
         {beam
           ? `Işın modu: ${beamFrames} kare. Görüntü VGA konnektörünün hatlarından (DAC dirençleri dahil) örnekleniyor.`
           : `${info || "video kartı"} · VRAM ve karakter ROM'u kartın kendi bellek çiplerinden.`}
-        {has.keyboard && (focused ? " Klavye bağlı: yazdıkların PS/2'den gidiyor." : " Ekrana tıkla: klavye.")}
       </p>
     </div>
   );
@@ -360,7 +384,6 @@ function Editor() {
         <button className="primary" onClick={() => s.compileAndLoad(true)} disabled={!s.ready} title="Derle, EEPROM bank 0'a yaz, RESET ve çalıştır">
           Yükle ve çalıştır
         </button>
-        <span className={`muted small${s.errors.length ? " err" : ""}`}>{s.info}</span>
       </div>
       <div className="editor-body">
         <pre ref={gutter} className="gutter" aria-hidden="true">
@@ -404,6 +427,9 @@ function Editor() {
           </ul>
         )}
       </div>
+      <p className={`editor-status${s.errors.length ? " err" : ""}`} title={s.info} role="status">
+        {s.info || "Ctrl+Enter: yükle ve çalıştır · Tab: iki boşluk"}
+      </p>
     </div>
   );
 }
@@ -449,19 +475,67 @@ function Inside() {
   );
 }
 
+/** Alt panel: sekmeler bir diziden gelir; yeni bir alt sekme (ör. "Kurulum") için diziye bir öğe eklenir. */
 function Bottom() {
   const tab = useKart((s) => s.bottom);
   const chip = useKart((s) => s.chip);
+  const tabs: TabDef<BottomTab>[] = [
+    { id: "program", label: "Program", title: "Assembly / C düzenleyicisi" },
+    { id: "ic", label: `Çipin içi${chip ? ` · ${chip}` : ""}`, title: "Seçili entegrenin kapıları, transistörleri ya da bellek hücreleri" },
+  ];
   return (
     <div className="bottom-tabs">
-      <div className="seg tabs" role="tablist">
-        <button role="tab" aria-selected={tab === "program"} className={tab === "program" ? "on" : ""} onClick={() => useKart.getState().setBottom("program")}>Program</button>
-        <button role="tab" aria-selected={tab === "ic"} className={tab === "ic" ? "on" : ""} onClick={() => useKart.getState().setBottom("ic")}>
-          Çipin içi{chip ? ` · ${chip}` : ""}
-        </button>
-      </div>
-      <div className="bottom-body">{tab === "program" ? <Editor /> : <Inside />}</div>
+      <Tabs tabs={tabs} value={tab} onChange={(t) => useKart.getState().setBottom(t)} label="Alt panel" />
+      <div className="bottom-body" role="tabpanel">{tab === "program" ? <Editor /> : <Inside />}</div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------- yan panel: sekmeler
+
+type SideTab = "inceleme" | "cpu";
+
+/**
+ * Denetçi (inspector): seçili parçanın (entegre ya da pasif) veya netin ayrıntıları. Yeni ayrıntı
+ * panelleri (ör. pasif eleman bilgisi) bu bölgeye eklenir.
+ */
+function Inspector() {
+  const chip = useKart((s) => s.chip);
+  const net = useKart((s) => s.net);
+  return (
+    <div className="inspector">
+      {chip && <PartPanel />}
+      {net !== null && <NetPanel />}
+      {!chip && net === null && <PartPanel />}
+    </div>
+  );
+}
+
+function SidePanel({ tab, onTab }: { tab: SideTab; onTab: (t: SideTab) => void }) {
+  const chip = useKart((s) => s.chip);
+  const net = useKart((s) => s.net);
+  // bir parça ya da net seçilince ayrıntıları öne gelir
+  useEffect(() => {
+    if (chip || net !== null) onTab("inceleme");
+  }, [chip, net]); // onTab her çizimde yeni; yalnız seçim değişince çalışsın
+  // Yeni yan panel sekmeleri (ör. "Kurulum") bu diziye eklenir.
+  const tabs: TabDef<SideTab>[] = [
+    { id: "inceleme", label: chip ? `İnceleme · ${chip}` : "İnceleme", title: "Seçili parça ya da net: bağlantılar" },
+    { id: "cpu", label: "CPU ve UART", title: "Register'lar, bayraklar, UART terminali" },
+  ];
+  return (
+    <aside className="side" aria-label="Yan panel">
+      <Tabs tabs={tabs} value={tab} onChange={onTab} label="Yan panel" />
+      <div className="side-body" role="tabpanel">
+        {tab === "inceleme" && <Inspector />}
+        {tab === "cpu" && (
+          <>
+            <StatePanel />
+            <UartPanel />
+          </>
+        )}
+      </div>
+    </aside>
   );
 }
 
@@ -482,8 +556,9 @@ function Tooltip() {
 export function BoardView() {
   const ready = useKart((s) => s.ready);
   const error = useKart((s) => s.error);
-  const chip = useKart((s) => s.chip);
-  const net = useKart((s) => s.net);
+  const [lay, setLay] = useLayout("kart", { side: true, bottom: true, bottomH: heightShare(0.32, 220, 360), sideTab: "inceleme" });
+  const sideTab: SideTab = lay.sideTab === "cpu" ? "cpu" : "inceleme";
+  const { board } = boardModel();
   useEffect(() => {
     startBoardWorker();
     installKartApi();
@@ -503,24 +578,38 @@ export function BoardView() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
   return (
-    <div className="app kart">
-      <Toolbar />
-      <main className="stage">
-        <BoardScene />
-        <VgaPanel />
-        {!ready && !error && <div className="overlay">Bilgisayar kuruluyor…</div>}
-        {error && <div className="overlay warn">{error}</div>}
-      </main>
-      <aside className="side">
-        {chip && <PartPanel />}
-        {net !== null && <NetPanel />}
-        <StatePanel />
-        <UartPanel />
-        {!chip && <PartPanel />}
-      </aside>
-      <section className="bottom">
-        <Bottom />
-      </section>
+    <div
+      className="app kart shell"
+      data-side={lay.side ? "open" : "closed"}
+      data-bottom={lay.bottom ? "open" : "closed"}
+      style={{ "--bottom-h": `${lay.bottomH}px` } as CSSProperties}
+    >
+      <AppHeader
+        mode="kart"
+        context={`CPU16 bilgisayarı · ${board.chips.length} entegre · ${board.passives.length} pasif`}
+        meters={<Meters />}
+        shortcuts={SHORTCUTS}
+      />
+      <Toolbar lay={lay} setLay={setLay} />
+      <div className="workspace">
+        <div className="center">
+          <main className="stage">
+            <BoardScene />
+            <VgaPanel />
+            {!ready && !error && <div className="overlay">Bilgisayar kuruluyor…</div>}
+            {error && <div className="overlay warn">{error}</div>}
+          </main>
+          {lay.bottom && (
+            <>
+              <Splitter value={lay.bottomH} onChange={(h) => setLay({ bottomH: h })} min={160} label="Alt panelin yüksekliği" />
+              <section className="bottom" aria-label="Program ve çipin içi">
+                <Bottom />
+              </section>
+            </>
+          )}
+        </div>
+        {lay.side && <SidePanel tab={sideTab} onTab={(t) => setLay({ sideTab: t })} />}
+      </div>
       <Tooltip />
     </div>
   );
