@@ -17,7 +17,7 @@ import type { ChipData } from "./chip/types";
 const CHIP_URL = `${import.meta.env.BASE_URL}chips/mos6502/chip.json`;
 const DEFAULT_WATCH = ["clk0", "sync", "rw", "ab0", "db0"];
 
-export function App() {
+export function App({ active = true }: { active?: boolean }) {
   const status = useApp((s) => s.status);
   const error = useApp((s) => s.error);
   const chip = useApp((s) => s.chip);
@@ -43,6 +43,7 @@ export function App() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (!active) return;
       if ((e.target as HTMLElement).closest("input, textarea, select")) return;
       if (e.key === " ") { e.preventDefault(); useApp.getState().running ? sim.pause() : sim.run(); }
       else if (e.key === ".") sim.halfStep(1);
@@ -52,13 +53,13 @@ export function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [active]);
 
   return (
-    <div className="app">
+    <div className="app" hidden={!active}>
       <Toolbar />
       <main className="stage">
-        {status === "ready" && <DieScene />}
+        {status === "ready" && active && <DieScene />}
         {status === "loading" && <div className="overlay">Die verisi yükleniyor…</div>}
         {status === "error" && <div className="overlay warn">{error}</div>}
         <p className="hint">Tıkla: sinyali ölç · Sürükle: döndür · Sağ tık: kaydır · Tekerlek: yakınlaş · Boşluk: çalıştır/duraklat · N: sonraki komut</p>
