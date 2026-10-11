@@ -17,22 +17,40 @@ import { CPU_HZ, Machine } from "../../cpu16/emu/machine";
 import { SET2 } from "../../cpu16/emu/devices/keyboard";
 import { textToChar } from "../../cpu16/video/font";
 import { ModeSwitch } from "../ui/ModeSwitch";
+import { dilBul, ornekDili, type Dil } from "./dil";
 import { VgaRenderer } from "./vga";
 import { TerminalText, WebSerialLink, webSerial } from "./serial";
 
 const sources = import.meta.glob("../../cpu16/bios/ornekler/*.{s,c}", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
 /** Örnekler: assembly dosyaları uzantısız ("merhaba"), C dosyaları uzantılı ("yilan.c") anahtarla */
 const EXAMPLES = Object.fromEntries(Object.entries(sources).map(([p, s]) => [p.split("/").pop()!.replace(/\.s$/, ""), s]));
-const ORDER = ["merhaba", "saat", "renkler", "onbellek", "selam.c", "yilan.c"].filter((n) => n in EXAMPLES);
+const ORDER = ["merhaba", "saat", "renkler", "onbellek", "yeni.c", "selam.c", "yilan.c"].filter((n) => n in EXAMPLES);
 const LABELS: Record<string, string> = {
   merhaba: "merhaba.s · renkli selam ve toplam",
   saat: "saat.s · kutu çizimi ve saat",
   renkler: "renkler.s · 16×16 renk tablosu",
   onbellek: "onbellek.s · önbellek açık / kapalı",
+  "yeni.c": "yeni.c · C: boş şablon, buradan başla",
   "selam.c": "selam.c · C: printf, renkler, özyineleme",
   "yilan.c": "yilan.c · C: yılan oyunu (W A S D)",
 };
-const isC = (name: string) => name.endsWith(".c");
+/** Kullanıcının örnek üzerinde yaptığı değişiklikler tarayıcıda saklanır (sayfa yenilense de kaybolmaz) */
+const KAYNAK_ANAHTARI = (name: string) => `cpu16.kaynak.${name}`;
+function kayitliKaynak(name: string): string {
+  try {
+    return localStorage.getItem(KAYNAK_ANAHTARI(name)) ?? EXAMPLES[name] ?? "";
+  } catch {
+    return EXAMPLES[name] ?? "";
+  }
+}
+function kaynakKaydet(name: string, src: string): void {
+  try {
+    if (src === EXAMPLES[name]) localStorage.removeItem(KAYNAK_ANAHTARI(name));
+    else localStorage.setItem(KAYNAK_ANAHTARI(name), src);
+  } catch {
+    /* depolama kapalı: değişiklik yalnız bu oturumda kalır */
+  }
+}
 /** Kart testi programları (cpu16/bios/testler): gerçek kart bunları simülatörle aynı çıktıyla geçmeli */
 const TESTLER = Object.fromEntries(
   Object.entries(import.meta.glob("../../cpu16/bios/testler/*.{s,c}", { query: "?raw", import: "default", eager: true }) as Record<string, string>).map(([p, s]) => [
@@ -77,7 +95,10 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
   const [term] = useState(() => new TerminalText());
   const [boardTerm] = useState(() => new TerminalText());
   const [prog, setProg] = useState(ORDER[0]);
-  const [src, setSrc] = useState(EXAMPLES[ORDER[0]] ?? "");
+  const [src, setSrc] = useState(() => kayitliKaynak(ORDER[0]));
+  /** Editördeki dil: örnekten gelir, yazdıkça içerikten tahmin edilir; elle seçilirse o kalır */
+  const [lang, setLang] = useState<Dil>(() => dilBul(kayitliKaynak(ORDER[0])) ?? ornekDili(ORDER[0]));
+  const langManual = useRef(false);
   const [errors, setErrors] = useState<{ line: number; message: string }[]>([]);
   const [info, setInfo] = useState("BIOS açıldı. Ekrana tıklayıp monitöre komut yazabilir ya da bir program yükleyebilirsin.");
   const [running, setRunning] = useState(true);
@@ -195,9 +216,10 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
 
   /** Derler; hata varsa null. */
   const compile = () => {
-    if (isC(prog)) {
+    if (lang === "c") {
       // cc16, BIOS hedefi: RAM'e 0x4000'dan yüklenir, giriş __reset (0x4000)
-      const b = buildProgram({ [`/${prog}`]: src }, [`/${prog}`], { lib: LIB, target: "bios" });
+      const file = `/${prog.endsWith(".c") ? prog : `${prog}.c`}`;
+      const b = buildProgram({ [file]: src }, [file], { lib: LIB, target: "bios" });
       setErrors(b.errors.map((e) => ({ line: e.line, message: e.col ? `${e.col}. sütun: ${e.message}` : e.message })));
       if (b.errors.length) {
         setInfo("Derleme başarısız; hataları düzeltip tekrar dene.");
@@ -334,9 +356,26 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
   };
 
   const pick = (name: string) => {
+    const text = kayitliKaynak(name);
     setProg(name);
-    setSrc(EXAMPLES[name]);
+    setSrc(text);
+    langManual.current = false;
+    setLang(dilBul(text) ?? ornekDili(name));
     setErrors([]);
+  };
+  const edit = (text: string) => {
+    setSrc(text);
+    kaynakKaydet(prog, text);
+    if (!langManual.current) setLang((l) => dilBul(text) ?? l);
+  };
+  const chooseLang = (l: Dil) => {
+    langManual.current = true;
+    setLang(l);
+    setErrors([]);
+  };
+  const restoreExample = () => {
+    kaynakKaydet(prog, EXAMPLES[prog]);
+    pick(prog);
   };
 
   // ---- klavye: VGA ekranı odaktayken tuşlar PS/2 set 2 kodlarına çevrilir
@@ -463,15 +502,35 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
           <div className="row between">
             <h2>Program</h2>
             <select value={prog} onChange={(e) => pick(e.target.value)} aria-label="Örnek program">
-              {ORDER.map((n) => <option key={n} value={n}>{LABELS[n] ?? n}</option>)}
+              <optgroup label="Assembly">
+                {ORDER.filter((n) => ornekDili(n) === "asm").map((n) => <option key={n} value={n}>{LABELS[n] ?? n}</option>)}
+              </optgroup>
+              <optgroup label="C">
+                {ORDER.filter((n) => ornekDili(n) === "c").map((n) => <option key={n} value={n}>{LABELS[n] ?? n}</option>)}
+              </optgroup>
             </select>
+          </div>
+          <div className="row between wrap">
+            <div className="seg" role="group" aria-label="Dil">
+              <button className={lang === "asm" ? "on" : ""} onClick={() => chooseLang("asm")} title="as16 ile derlenir">Assembly</button>
+              <button className={lang === "c" ? "on" : ""} onClick={() => chooseLang("c")} title="cc16 C derleyicisiyle derlenir (BIOS hedefi)">C</button>
+            </div>
+            <span className="muted small">
+              {lang === "c" ? "C: cc16 ile derlenir, BIOS üzerinde 0x4000'dan çalışır" : "Assembly: as16 ile derlenir"}
+              {src !== EXAMPLES[prog] && (
+                <>
+                  {" · "}
+                  <button className="link" onClick={restoreExample} title="Değişiklikleri at, örneğin aslına dön">örneğe dön</button>
+                </>
+              )}
+            </span>
           </div>
           <textarea
             id="cpu16-msrc"
             spellCheck={false}
             value={src}
-            aria-label={isC(prog) ? "C kaynak kodu" : "Assembly kaynak kodu"}
-            onChange={(e) => setSrc(e.target.value)}
+            aria-label={lang === "c" ? "C kaynak kodu" : "Assembly kaynak kodu"}
+            onChange={(e) => edit(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
                 e.preventDefault();

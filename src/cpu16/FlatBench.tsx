@@ -1,20 +1,36 @@
-// CPU16 tezgâhı, düz bellek kipi (Faz 1): as16 ile derle, 64 KB düz RAM'li referans
-// emülatörde (SimpleBus) adım adım çalıştır. Faz 1 örnek programları bu kipte çalışır.
+// CPU16 tezgâhı, düz bellek kipi (Faz 1): as16 ya da cc16 (C, ROM hedefi) ile derle, 64 KB düz
+// RAM'li referans emülatörde (SimpleBus) adım adım çalıştır. Faz 1 örnek programları bu kipte çalışır.
 // Motor cpu16/ klasöründe; bu dosya sadece Silikon3D arayüzüne bağlar.
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { assemble } from "../../cpu16/asm/assembler";
+import { buildProgram } from "../../cpu16/cc/index";
+import { LIB } from "../../cpu16/cc/lib-vite";
 import { Cpu16, SimpleBus, type StepResult } from "../../cpu16/emu/cpu";
 import { disassemble } from "../../cpu16/emu/disasm";
 import { ModeSwitch } from "../ui/ModeSwitch";
+import { dilBul, ornekDili, type Dil } from "./dil";
 
-const sources = import.meta.glob("../../cpu16/programs/*.s", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+const sources = import.meta.glob("../../cpu16/programs/*.{s,c}", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+/** Örnekler: assembly dosyaları uzantısız ("fib"), C dosyaları uzantılı ("merhaba.c") anahtarla */
 const PROGRAMS = Object.fromEntries(Object.entries(sources).map(([p, s]) => [p.split("/").pop()!.replace(/\.s$/, ""), s]));
-const ORDER = ["hello", "fib", "add32", "bubble", "irq"].filter((n) => n in PROGRAMS);
+const ORDER = ["hello", "fib", "add32", "bubble", "irq", "merhaba.c"].filter((n) => n in PROGRAMS);
 const LABELS: Record<string, string> = {
   hello: "hello.s · UART'a merhaba", fib: "fib.s · Fibonacci", add32: "add32.s · 32 bit + yazılımla çarpma",
-  bubble: "bubble.s · sıralama", irq: "irq.s · kesmeler",
+  bubble: "bubble.s · sıralama", irq: "irq.s · kesmeler", "merhaba.c": "merhaba.c · C: printf ve özyineleme",
 };
+
+/** Kaynağı derler: assembly as16 ile, C cc16 ile (ROM hedefi: 0x0000'dan kendi vektörleriyle) */
+function compileSource(text: string, lang: Dil) {
+  if (lang === "asm") return assemble(text);
+  const b = buildProgram({ "/program.c": text }, ["/program.c"], { lib: LIB });
+  return {
+    image: b.image,
+    ranges: b.ranges,
+    symbols: b.symbols,
+    errors: b.errors.map((e) => ({ line: e.line, message: e.col ? `${e.col}. sütun: ${e.message}` : e.message })),
+  };
+}
 const MEMDEFAULT: Record<string, number> = { hello: 0x0000 };
 const REG_NAMES = ["r0", "r1", "r2", "r3", "r4", "r5", "r6 · sp", "r7 · lr"];
 
@@ -31,6 +47,9 @@ type Status = { kind: "idle" | "run" | "halt" | "bad"; text: string };
 export function FlatBench({ switcher }: { switcher: ReactNode }) {
   const [prog, setProg] = useState(ORDER[0]);
   const [src, setSrc] = useState(PROGRAMS[ORDER[0]]);
+  /** Editördeki dil: örnekten gelir, yazdıkça içerikten tahmin edilir; elle seçilirse o kalır */
+  const [lang, setLang] = useState<Dil>(ornekDili(ORDER[0]));
+  const langManual = useRef(false);
   const [errors, setErrors] = useState<{ line: number; message: string }[]>([]);
   const [info, setInfo] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle", text: "hazır" });
@@ -69,9 +88,9 @@ export function FlatBench({ switcher }: { switcher: ReactNode }) {
     }
   };
 
-  const build = useCallback((text: string, autorun = false) => {
+  const build = useCallback((text: string, lang: Dil, autorun = false) => {
     stop();
-    const res = assemble(text);
+    const res = compileSource(text, lang);
     setErrors(res.errors);
     if (res.errors.length) {
       m.current = null;
@@ -102,7 +121,7 @@ export function FlatBench({ switcher }: { switcher: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    build(PROGRAMS[ORDER[0]], true);
+    build(PROGRAMS[ORDER[0]], ornekDili(ORDER[0]), true);
     return () => {
       runningRef.current = false;
     };
@@ -150,10 +169,21 @@ export function FlatBench({ switcher }: { switcher: ReactNode }) {
   };
 
   const pick = (name: string) => {
+    const l = ornekDili(name);
     setProg(name);
     setSrc(PROGRAMS[name]);
+    langManual.current = false;
+    setLang(l);
     setMemAddr(hex4(MEMDEFAULT[name] ?? 0x4000));
-    build(PROGRAMS[name]);
+    build(PROGRAMS[name], l);
+  };
+  const edit = (text: string) => {
+    setSrc(text);
+    if (!langManual.current) setLang((l) => dilBul(text) ?? l);
+  };
+  const chooseLang = (l: Dil) => {
+    langManual.current = true;
+    setLang(l);
   };
 
   const cpu = m.current?.cpu;
@@ -195,7 +225,7 @@ export function FlatBench({ switcher }: { switcher: ReactNode }) {
         <div className="clock">
           <button onClick={step} disabled={!cpu || running} title="Bir komut çalıştır">Adım</button>
           <button className="primary" onClick={running ? pause : run} disabled={!cpu}>{running ? "Durdur" : "Çalıştır"}</button>
-          <button onClick={() => build(src)}>Sıfırla</button>
+          <button onClick={() => build(src, lang)}>Sıfırla</button>
           <button onClick={raiseIrq} disabled={!cpu} title="IRQ hattını kaldır (irq.s örneği için)">IRQ</button>
           <span className={`bench-status s-${status.kind}`}>{status.text}</span>
         </div>
@@ -212,17 +242,24 @@ export function FlatBench({ switcher }: { switcher: ReactNode }) {
             <select id="cpu16-prog" value={prog} onChange={(e) => pick(e.target.value)} aria-label="Örnek program">
               {ORDER.map((n) => <option key={n} value={n}>{LABELS[n] ?? n}</option>)}
             </select>
-            <button className="primary" onClick={() => build(src)}>Derle ve yükle</button>
+            <button className="primary" onClick={() => build(src, lang)}>Derle ve yükle</button>
           </div>
+        </div>
+        <div className="row between wrap">
+          <div className="seg" role="group" aria-label="Dil">
+            <button className={lang === "asm" ? "on" : ""} onClick={() => chooseLang("asm")} title="as16 ile derlenir">Assembly</button>
+            <button className={lang === "c" ? "on" : ""} onClick={() => chooseLang("c")} title="cc16 C derleyicisiyle derlenir (ROM hedefi)">C</button>
+          </div>
+          <span className="muted small">{lang === "c" ? "C: cc16, program 0x0000'dan; printf UART'a yazar" : "Assembly: as16"}</span>
         </div>
         <textarea
           id="cpu16-src"
           spellCheck={false}
           value={src}
-          aria-label="Assembly kaynak kodu"
-          onChange={(e) => setSrc(e.target.value)}
+          aria-label={lang === "c" ? "C kaynak kodu" : "Assembly kaynak kodu"}
+          onChange={(e) => edit(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); build(src); }
+            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); build(src, lang); }
           }}
         />
         {errors.length > 0 && (
