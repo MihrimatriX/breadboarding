@@ -82,13 +82,17 @@ export function symbolDef(def: Pick<ChipDef, "part" | "title" | "pins" | "footpr
   ].join("\n");
 }
 
-/** Referans harfi: entegre U, direnç R, direnç dizisi RN, kondansatör C, LED D, konnektör J */
+/** Referans harfi: entegre U, direnç R, direnç dizisi RN, kondansatör C, LED D, konnektör J, anahtar SW, pot RV, osilatör X, modül A */
 export function refPrefix(part: string): string {
   if (part.startsWith("RN")) return "RN";
   if (part.startsWith("R_")) return "R";
   if (part.startsWith("C_")) return "C";
   if (part.startsWith("LED")) return "D";
   if (part.startsWith("CONN") || part.startsWith("BACKPLANE")) return "J";
+  if (part.startsWith("SW_")) return "SW";
+  if (part.startsWith("POT")) return "RV";
+  if (part.startsWith("OSC")) return "X";
+  if (part.startsWith("ARDUINO")) return "A";
   return "U";
 }
 

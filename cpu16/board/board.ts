@@ -24,6 +24,8 @@ export interface ChipInstance {
   gates: [number, number];
   /** build() dönüşü (bellek içeriği) */
   handle: unknown;
+  /** KiCad footprint'i (kütüphanedekinden farklıysa, ör. ZIF soket) */
+  footprint: string;
 }
 
 export interface Passive {
@@ -96,7 +98,7 @@ export class Board {
   }
 
   /** Bir çip yerleştir. Bağlanmamış giriş pini hata verir (CMOS girişi boşta bırakılmaz). */
-  place(part: string, conn: Record<string, Net>, role = ""): ChipInstance {
+  place(part: string, conn: Record<string, Net>, role = "", opts: { footprint?: string } = {}): ChipInstance {
     if (this.finished) throw new Error("Kart tamamlandıktan sonra çip eklenemez");
     const def = chip(part);
     const ref = `U${this.chips.length + 1}`;
@@ -119,7 +121,10 @@ export class Board {
     this.c.owner = ref;
     const start = this.c.gates.length;
     const handle = def.build(this.c, nets);
-    const inst: ChipInstance = { ref, def, card: this.card, role, block: this.block, nets, gates: [start, this.c.gates.length], handle };
+    const inst: ChipInstance = {
+      ref, def, card: this.card, role, block: this.block, nets, gates: [start, this.c.gates.length], handle,
+      footprint: opts.footprint ?? def.footprint,
+    };
     this.chips.push(inst);
     return inst;
   }
@@ -127,6 +132,7 @@ export class Board {
   /** Pasif eleman (direnç dizisi, kondansatör, LED, konnektör): simülasyona etkisi yok, BOM ve şema için */
   passive(part: string, pins: Record<string, Net>, role: string): Passive {
     const prefix = refPrefix(part);
+    if (prefix === "U") throw new Error(`${part}: pasif elemanın referans harfi U olamaz (entegrelerle çakışır)`);
     const n = this.passives.filter((x) => refPrefix(x.part) === prefix).length + 1;
     const resolved: Record<string, number> = {};
     for (const [k, v] of Object.entries(pins)) resolved[k] = this.resolve(v);
@@ -168,7 +174,7 @@ export class Board {
   nand3(a: Net, b: Net, c: Net, out?: Net, role?: string) { return this.gate("nand3", [a, b, c], out, role); }
 
   /** Yapıştırıcı kapıları çiplere yerleştir; kullanılmayan birimlerin girişlerini GND'ye bağla. */
-  finish(): void {
+  finish(o: { backplane?: boolean } = {}): void {
     if (this.finished) return;
     const savedCard = this.card;
     this.block = "Yapıştırıcı lojik";
@@ -195,12 +201,14 @@ export class Board {
         }
       }
     }
-    // her kart: arka panel konnektörü, giriş kondansatörü, her entegreye 100 nF
+    // her kart: arka panel konnektörü (istenirse), giriş kondansatörü, her entegreye 100 nF
     for (const card of [...new Set(this.chips.map((c) => c.card))]) {
       this.card = card;
-      const pins: Record<string, Net> = {};
-      for (const [num, name] of Object.entries(BACKPLANE)) if (this.has(name)) pins[num] = name;
-      this.passive("BACKPLANE_2x32", pins, "arka panel konnektörü");
+      if (o.backplane !== false) {
+        const pins: Record<string, Net> = {};
+        for (const [num, name] of Object.entries(BACKPLANE)) if (this.has(name)) pins[num] = name;
+        this.passive("BACKPLANE_2x32", pins, "arka panel konnektörü");
+      }
       this.passive("C_100U", { "1": "VCC", "2": "GND" }, "besleme girişi");
       for (const ci of this.chips.filter((c) => c.card === card)) this.passive("C_100N", { "1": "VCC", "2": "GND" }, `${ci.ref} dekuplaj`);
     }

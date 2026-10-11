@@ -5,7 +5,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { assembleOrThrow } from "../asm/assembler.ts";
 import { erc } from "../board/board.ts";
-import { writeKicadFiles } from "../board/kicad-files.ts";
+import { CLOCK_INPUTS } from "../board/clock-card.ts";
+import { writeKicadFiles, type KicadFile } from "../board/kicad-files.ts";
 import { kicadNetName } from "../board/kicad-sch.ts";
 import { parseSExpr, type SExpr } from "../chips/kicad.ts";
 import { GateComputer, buildComputerBoard, type GateState } from "../board/computer.ts";
@@ -38,7 +39,7 @@ function cycleLockstep(g: GateComputer, dp: Datapath, maxCycles: number, onCycle
 describe("Faz 4: kapı seviyesi bilgisayar (şema = kod)", () => {
   it("elektriksel kural denetimi: çakışan çıkış ve boşta giriş yok", () => {
     const { board } = buildComputerBoard();
-    expect(erc(board, ["CLK", "WR_WIN", "~RESET", "IRQ"])).toEqual([]);
+    expect(erc(board, ["IRQ", ...CLOCK_INPUTS])).toEqual([]);
   });
 
   for (const name of ["hello", "fib", "add32", "bubble"]) {
@@ -90,6 +91,40 @@ describe("Faz 4: kapı seviyesi bilgisayar (şema = kod)", () => {
     });
     expect(raised).toBe(3);
     expect(g.read8(0x4000)).toBe(3);
+  });
+
+  it("saat kartı: ADIM kipinde saat durur, her basış tam bir CPU döngüsü ilerletir", () => {
+    const image = program("fib");
+    const g = new GateComputer(micro.rom);
+    g.load(image);
+    const db = new SimpleBus();
+    db.load(image);
+    const dp = new Datapath(micro.rom, db);
+    const clk = g.board.n("CLK");
+    let rises = 0;
+    const run = (n: number) => {
+      for (let k = 0; k < n; k++) {
+        const before = g.sim.get(clk);
+        g.osc(1);
+        if (before === 0 && g.sim.get(clk) === 1) rises++;
+      }
+    };
+    g.setAuto(false);
+    run(40);
+    expect(rises).toBe(0);
+    for (let i = 0; i < 40; i++) {
+      g.stepButton(true);
+      run(3 + (i % 5)); // basış süresi değişse de tek döngü
+      g.stepButton(false);
+      run(20);
+      dp.clock();
+      expect(fmt(g.state), `basış ${i}`).toBe(fmt(dpState(dp)));
+    }
+    expect(rises).toBe(40);
+    // OTOMATİK'e dönünce program kaldığı yerden sürer
+    g.setAuto(true);
+    cycleLockstep(g, dp, 50_000);
+    expect(dp.halted).toBe(true);
   });
 
   it("rastgele komut akışları: rastgele bellek, register ve bayraklar (yasadışı komutlar dahil)", () => {
@@ -150,7 +185,8 @@ describe("Faz 4: KiCad şemaları ve BOM", () => {
         if (el[0] === "label") labels.set(key(at![1], at![2]), el[1] as string);
         if (el[0] === "no_connect") nc.add(key(at![1], at![2]));
       }
-      const card = f.path.split("/").at(-2)!;
+      const card = f.card!;
+      const board = f.board!;
       const syms = tree.filter((x) => Array.isArray(x) && x[0] === "symbol") as SExpr[][];
       expect(syms.length).toBe(board.chips.filter((c) => c.card === card).length + board.passives.filter((p) => p.card === card).length);
       // entegrelerin pinleri: etiket metni = netin adı
@@ -175,7 +211,7 @@ describe("Faz 4: KiCad şemaları ve BOM", () => {
           }
         }
       }
-      expect(checked).toBeGreaterThan(100);
+      expect(checked).toBeGreaterThan(20);
     }
   });
 });
@@ -191,9 +227,8 @@ const hasKicad = (() => {
 })();
 
 describe.skipIf(!hasKicad)("Faz 4: KiCad'in kendisiyle doğrulama (kicad-cli)", () => {
-  const { board } = buildComputerBoard();
-  const files = writeKicadFiles(board);
-  for (const card of ["mem", "cpu"]) {
+  const files = writeKicadFiles(buildComputerBoard().board);
+  for (const { card, board } of files.filter((f) => f.board) as Required<KicadFile>[]) {
     it(`${card}: KiCad netlist'i = kartın netleri`, () => {
       const dir = mkdtempSync(join(tmpdir(), "cpu16-kicad-"));
       const sch = files.find((f) => f.path.endsWith(`${card}.kicad_sch`))!;

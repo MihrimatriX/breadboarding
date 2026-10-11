@@ -3,9 +3,12 @@
 //   kicad-sym [-o dosya]        KiCad sembol kütüphanesini üret (varsayılan cpu16/kicad/cpu16.kicad_sym)
 //   board                       kartların çip sayıları
 //   board kicad                 cpu16/kicad/<kart>/ şemaları + BOM'u yeniden üret
+//   roms                        cpu16/roms/ altındaki Flash imajlarını (mikrokod, ALU) yeniden üret
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { romFiles } from "../board/roms.ts";
 import { erc } from "../board/board.ts";
+import { CLOCK_INPUTS } from "../board/clock-card.ts";
 import { buildComputerBoard } from "../board/computer.ts";
 import { KICAD_CARDS, writeKicadFiles } from "../board/kicad-files.ts";
 import { ChipBench } from "../chips/bench.ts";
@@ -47,8 +50,15 @@ else if (cmd === "board") {
       console.log(`${card} kartı: ${total} entegre`);
       for (const [part, n] of Object.entries(parts).sort()) console.log(`  ${part.padEnd(12)} × ${n}`);
     }
-    const problems = erc(board, ["CLK", "WR_WIN", "~RESET", "IRQ"]);
+    const problems = erc(board, ["IRQ", ...CLOCK_INPUTS]);
     console.log(problems.length ? problems.join("\n") : "ERC: sorun yok");
     console.log(`kartlar: ${KICAD_CARDS.map((c) => c.card).join(", ")}`);
+  }
+}
+else if (cmd === "roms") {
+  for (const f of romFiles(readFileSync("cpu16/micro/cpu16.ucode", "utf8"))) {
+    mkdirSync(f.path.replace(/\/[^/]+$/, ""), { recursive: true });
+    writeFileSync(f.path, f.content);
+    console.log(f.path);
   }
 }
