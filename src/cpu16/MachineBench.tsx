@@ -84,6 +84,8 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
   const [speed, setSpeed] = useState(1);
   const [busy, setBusy] = useState<string | null>(null);
   const [testOut, setTestOut] = useState("");
+  /** Gerçek kartın UART hızı: UART bit süresi CPU saatinden (TCLK) bölünür, 1 MHz'de 28 800 baud */
+  const [baud, setBaud] = useState(115200);
   const [focused, setFocused] = useState(false);
   const [flashRun, setFlashRun] = useState<string | null>(null);
   const [bad, setBad] = useState<string | null>(null);
@@ -270,7 +272,7 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
     const { hex } = programHex(res);
     let link: WebSerialLink | null = null;
     try {
-      link = await WebSerialLink.open(115200);
+      link = await WebSerialLink.open(baud);
       link.onByte = (b) => {
         boardTerm.push(b);
         redraw();
@@ -304,7 +306,7 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
       const expected = await beklenenCiktilar(programs, bios().flash);
       let link: SerialLink;
       if (where === "kart") {
-        const l = await WebSerialLink.open(115200);
+        const l = await WebSerialLink.open(baud);
         l.onByte = (b) => {
           boardTerm.push(b);
           redraw();
@@ -504,6 +506,14 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
               Kart testini simülatörde dene
             </button>
           </div>
+          <label className="row small muted">
+            Kartın UART hızı
+            <select value={baud} onChange={(e) => setBaud(Number(e.target.value))} aria-label="Kartın UART hızı (baud)">
+              <option value={115200}>115 200 baud (CPU 4 MHz)</option>
+              <option value={57600}>57 600 baud (CPU 2 MHz)</option>
+              <option value={28800}>28 800 baud (CPU 1 MHz, ilk kurulum)</option>
+            </select>
+          </label>
           {testOut && <pre className="bench-uart" aria-label="Kart testi sonucu">{testOut}</pre>}
           {!serialOk && <p className="muted small">Karta gönder: bu tarayıcıda Web Serial yok (Chrome / Edge masaüstü, https ya da localhost gerekir). Kart yine de CLI ile yüklenebilir.</p>}
           <p className="muted small">
