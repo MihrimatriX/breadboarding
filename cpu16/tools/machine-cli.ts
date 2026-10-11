@@ -4,9 +4,10 @@
 //   machine [dosya.s] [--flash] [--cycles N] [--screen]
 //                                           BIOS'u aç, programı UART önyükleyicisiyle yükleyip
 //                                           çalıştır; UART stdin/stdout'a bağlı (çıkış: Ctrl-])
-//   machine dosya.s --rom [--cycles N] [--screen]
+//   machine dosya.s --rom [--led] [--cycles N] [--screen]
 //                                           BIOS'suz: program Flash bank 0'a yazılmış gibi reset'ten
-//                                           çalışır (BIOS'tan önceki deneylerin programları, .org 0)
+//                                           çalışır (BIOS'tan önceki deneylerin programları, .org 0).
+//                                           --led: FF00'a yazılanları test kartının 8 LED'i gibi göster
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { assemble } from "../asm/assembler.ts";
@@ -66,6 +67,7 @@ export async function machineCommand(args: string[]): Promise<void> {
   const file = args.find((a, i) => !a.startsWith("-") && !["--cycles"].includes(args[i - 1] ?? ""));
   const cyclesArg = opt(args, "--cycles");
   const rom = args.includes("--rom");
+  const led = args.includes("--led");
   const m = new Machine();
   if (rom) {
     if (!file) throw new Error("--rom bir program dosyası ister");
@@ -75,8 +77,17 @@ export async function machineCommand(args: string[]): Promise<void> {
   const link = new MachineLink(m, true);
   m.uartOnOutput = (b) => {
     link.push(b);
-    process.stdout.write(decode(b));
+    if (!led) process.stdout.write(decode(b));
   };
+  if (led) {
+    // G/Ç kartından önceki deneylerde FF00 test kartının çıkış mandalıdır (bit 7 solda)
+    console.error("[FF00 LED'leri: bit 7 … bit 0; zaman 1 MHz CPU saatiyle]");
+    m.onAccess = (w, a, v, c) => {
+      if (!w || a !== 0xff00) return;
+      const row = Array.from({ length: 8 }, (_, i) => ((v >> (7 - i)) & 1 ? "●" : "·")).join(" ");
+      process.stdout.write(`${(c / 1e6).toFixed(3).padStart(9)} s   ${row}   0x${v.toString(16).toUpperCase().padStart(2, "0")}\n`);
+    };
+  }
   if (!rom) m.runUntil(() => m.uartOutput.endsWith("> "), 2_000_000);
 
   if (file && !rom) {

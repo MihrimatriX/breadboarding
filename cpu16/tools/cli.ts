@@ -7,7 +7,7 @@
 //   kit                                         deney rehberlerinin otomatik bölümlerini üret (kit/)
 //   bios [-o bios.hex|.bin]                     BIOS'u derle (.bin: 128 KB Flash imajı)
 //   charrom [-o charrom.bin]                    video kartının karakter ROM'u
-//   machine [dosya.s] [--flash|--rom] [--cycles N] [--screen]
+//   machine [dosya.s] [--flash|--rom [--led]] [--cycles N] [--screen]
 //                                               anakart: BIOS + önyükleyici, UART stdin/stdout'ta
 //                                               (--rom: BIOS'suz, program Flash bank 0'da)
 //   cc   dosya.c [...] [-o x.hex|.bin|.s] [--run] C derle (cc16, ayrıntılar: tools/cc.ts)

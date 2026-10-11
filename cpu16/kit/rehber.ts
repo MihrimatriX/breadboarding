@@ -5,6 +5,7 @@
 
 import type { Board } from "../board/board.ts";
 import { buildComputerBoard } from "../board/computer.ts";
+import { buildFullMachineBoard } from "../board/machine-board.ts";
 import { BACKPLANE, PASSIVES } from "../board/passives.ts";
 import { buildProgrammerBoard } from "../board/programmer-card.ts";
 import { ChipBench } from "../chips/bench.ts";
@@ -78,9 +79,10 @@ export interface KitData {
 export function kitData(): KitData {
   const boards: Record<KitBoard, Board> = {
     bilgisayar: buildComputerBoard().board,
+    anakart: buildFullMachineBoard().board,
     programlayici: buildProgrammerBoard().board,
   };
-  const elems = { bilgisayar: elements(boards.bilgisayar), programlayici: elements(boards.programlayici) };
+  const elems = { bilgisayar: elements(boards.bilgisayar), anakart: elements(boards.anakart), programlayici: elements(boards.programlayici) };
   // yalnızca simülasyonda olan bloklar rehbere girmez (deney 0)
   for (const k of SADECE_SIM) {
     for (const e of elems[k.board]) if (e.card === k.card && !e.shell && (!k.blocks || k.blocks.includes(e.block))) e.deney = 0;
@@ -98,6 +100,13 @@ export function kitData(): KitData {
         if (!k.blocks || k.blocks.includes(e.block)) e.deney = d.no;
       }
     }
+  }
+  // anakartın CPU ve saat kartı bilgisayardakiyle aynı (aynı referanslar): onların deneyinde kurulur
+  const ortak = new Map(elems.bilgisayar.filter((e) => e.card === "cpu" || e.card === "clk").map((e) => [`${e.card}/${e.id}`, e.deney]));
+  for (const e of elems.anakart) {
+    if (e.card !== "cpu" && e.card !== "clk") continue;
+    if (!ortak.has(`${e.card}/${e.id}`)) throw new Error(`anakartta bilgisayarda olmayan ${e.card} elemanı: ${e.id}`);
+    e.deney = ortak.get(`${e.card}/${e.id}`);
   }
   for (const list of Object.values(elems)) {
     for (const e of list) {
@@ -130,7 +139,8 @@ export function deneyBolumu(d: Deney, data: KitData): string {
     const mine = all.filter((e) => e.deney === d.no);
     const before = all.filter((e) => e.deney! > 0 && e.deney! < d.no);
     const later = all.filter((e) => e.deney! > d.no);
-    if (boards.length > 1) lines.push(`### ${bn === "programlayici" ? "Programlayıcı kartı" : "Bilgisayar"}`, "");
+    const baslik = { programlayici: "Programlayıcı kartı", bilgisayar: "Bilgisayar (CPU, saat ve test kartı)", anakart: "Anakart" }[bn];
+    if (boards.length > 1) lines.push(`### ${baslik}`, "");
     lines.push(...malzeme(mine, all), ...baglantilar(board, mine, before, later));
   }
   if (!lines.length) lines.push("Bu deneyde yeni donanım kurulmaz; önceki deneylerin kartları kullanılır.");

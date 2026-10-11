@@ -155,10 +155,10 @@ osilatörün kenarlarında rastgele hatalar yapar. Uzun breadboard dizilerinde b
 | Deney 2 | (kapılar, tek çip) | doğruluk tablosu | 74HC00'ün dört kapısı tabloya uyar |
 | Deney 3 | Flash programlayıcı | `yaz.py --id`, `--dogrula` | kimlik BF B5; yazılan imaj geri okunduğunda aynı |
 | Deney 4–7 | CPU kartı, blok blok | rehberdeki elle adımlar (DIP anahtar + LED) | her blok rehberdeki tabloyu verir; Deney 7 sonunda CPU, sahte bellekle komut çeker |
-| Deney 8 | Bellek kartı | ilk program: Flash'tan çalışıp FF00 çıkış mandalına yazar | LED'lerde beklenen sayı |
-| Deney 9 | Önbellek kartı | `onbellek.s` | önbellek açıkken aynı döngü belirgin hızlı, sayaçlar artıyor |
+| Deney 8 | Bellek kartı | `kit/programlar/bellek-deneme.s` Flash'ta, FF00 mandalında 8 LED | LED'ler bank 32–63'ü dört kez sayar, ≈ 46 s sonra `0xA5` ve kayan ışık |
+| Deney 9 | Önbellek kartı | `kit/programlar/onbellek-deneme.s` | bit 7 yanıkken (önbellek açık) kayan ışığın adımı ≈ 0,16 s, sönükken ≈ 0,23 s |
 | Deney 10 | G/Ç kartı | `kit/programlar/gc-deneme.s` Flash'ta, USB-UART (CH340, 28 800 baud), PS/2 klavye | terminalde başlık, saniyede bir nokta, yazılanların yankısı, tuşların tarama kodu |
-| Deney 11 | Video kartı | VGA monitör | açılış ekranı ve renkler |
+| Deney 11 | Video kartı | `kit/programlar/video-deneme.s`, VGA monitör | mavi zeminde "Merhaba, CPU16!", 16 renk çubuğu, saniyede 60 artan kare sayacı |
 | Deney 12 | BIOS + önyükleyici | **`kart-testi`** | **4/4 geçti** |
 | Deney 13 | C | `yilan.c` | ekranda oyun |
 

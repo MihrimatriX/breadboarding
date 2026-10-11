@@ -2,8 +2,12 @@
 // Rehber dosyalarındaki (cpu16/kit/deney-*.md) "otomatik" bölümler bu tablodan ve kart
 // tanımlarından üretilir: npm run cpu16 -- kit. Elle yazılan metin işaretlerin dışında kalır.
 
-/** Deneylerin kurulduğu bilgisayar tanımları (board/ altındaki kart kodları) */
-export type KitBoard = "bilgisayar" | "programlayici";
+/**
+ * Deneylerin kurulduğu bilgisayar tanımları (board/ altındaki kart kodları):
+ * bilgisayar = CPU + saat + test kartı (Faz 4), anakart = bütün anakart (Faz 6; CPU ve saat kartı
+ * aynıdır, onlar bilgisayar tanımından gelir), programlayici = Flash programlayıcı.
+ */
+export type KitBoard = "bilgisayar" | "anakart" | "programlayici";
 
 export interface DeneyKart {
   board: KitBoard;
@@ -34,10 +38,19 @@ export const DENEYLER: Deney[] = [
     kartlar: [{ board: "bilgisayar", card: "cpu", blocks: ["Program sayacı", "MAR ve IR", "Bellek arayüzü"] }],
   },
   { no: 7, kisa: "mikrokod", baslik: "Mikrokod ve kontrol birimi", kartlar: [{ board: "bilgisayar", card: "cpu" }] },
-  { no: 8, kisa: "bellek", baslik: "Bellek kartı ve ilk program", kartlar: [{ board: "bilgisayar", card: "mem", blocks: ["UART"] }] },
-  { no: 9, kisa: "onbellek", baslik: "Bekleme durumları ve önbellek" },
-  { no: 10, kisa: "gc", baslik: "G/Ç kartı: UART, zamanlayıcı, kesmeler, klavye" },
-  { no: 11, kisa: "video", baslik: "Video kartı: ekranda Merhaba" },
+  {
+    no: 8, kisa: "bellek", baslik: "Bellek kartı ve ilk program",
+    kartlar: [
+      // FF00 çıkış mandalı (8 LED): G/Ç kartına kadar programların tek çıkışı, sonra da hata ayıklama ışığı
+      { board: "bilgisayar", card: "mem", blocks: ["UART"] },
+      { board: "anakart", card: "bellek" },
+      // bellek kartı her kelimeyi iki baytta okur/yazar: bekleme turlarını önbellek kartının bu blokları üretir
+      { board: "anakart", card: "onbellek", blocks: ["G/Ç çözme", "Bekleme ve sıralama"] },
+    ],
+  },
+  { no: 9, kisa: "onbellek", baslik: "Bekleme durumları ve önbellek", kartlar: [{ board: "anakart", card: "onbellek" }] },
+  { no: 10, kisa: "gc", baslik: "G/Ç kartı: UART, zamanlayıcı, kesmeler, klavye", kartlar: [{ board: "anakart", card: "gc" }] },
+  { no: 11, kisa: "video", baslik: "Video kartı: ekranda Merhaba", kartlar: [{ board: "anakart", card: "video" }] },
   { no: 12, kisa: "bios", baslik: "BIOS, önyükleyici ve Web Serial" },
   { no: 13, kisa: "c", baslik: "C derleyicisi: yılan oyunu" },
 ];
