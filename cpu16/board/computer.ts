@@ -1,11 +1,12 @@
-// Kapı seviyesi bilgisayar: CPU kartı + test bellek kartı, kütüphanedeki çiplerden kurulur ve
-// LogicSim'de saat saat çalışır. Testler bunu saat döngüsü modeliyle (datapath) her döngüde,
+// Kapı seviyesi bilgisayar: saat kartı + CPU kartı + test bellek kartı, kütüphanedeki çiplerden
+// kurulur ve LogicSim'de saat saat çalışır (test düzeneği yalnızca osilatörü ve butonları sürer). Testler bunu saat döngüsü modeliyle (datapath) her döngüde,
 // emülatörle de program sonunda karşılaştırır.
 
 import { L0, L1, LogicSim, type Level } from "../chips/logic.ts";
 import type { MemoryHandle } from "../chips/parts/memory.ts";
 import { aluRomImages } from "./alu-rom.ts";
 import { Board, type ChipInstance } from "./board.ts";
+import { buildClockCard, type ClockCard } from "./clock-card.ts";
 import { buildCpuCard, type CpuCard } from "./cpu-card.ts";
 import { buildTestMemCard, type TestMemCard } from "./test-mem-card.ts";
 
@@ -31,14 +32,16 @@ export function buildComputerBoard() {
   const board = new Board();
   const cpu = buildCpuCard(board);
   const mem = buildTestMemCard(board);
+  const clock = buildClockCard(board);
   board.finish();
-  return { board, cpu, mem };
+  return { board, cpu, mem, clock };
 }
 
 export class GateComputer {
   readonly board: Board;
   readonly cpu: CpuCard;
   readonly mem: TestMemCard;
+  readonly clock: ClockCard;
   readonly sim: LogicSim;
   output = "";
   onOutput?: (ch: string) => void;
@@ -47,10 +50,11 @@ export class GateComputer {
   private uartCp: Level = L1;
 
   constructor(microcode: Uint32Array) {
-    const { board, cpu, mem } = buildComputerBoard();
+    const { board, cpu, mem, clock } = buildComputerBoard();
     this.board = board;
     this.cpu = cpu;
     this.mem = mem;
+    this.clock = clock;
     this.net = (name) => {
       if (!board.has(name)) throw new Error(`Böyle bir net yok: ${name}`);
       return board.n(name);
@@ -63,6 +67,8 @@ export class GateComputer {
     aluRomImages().forEach((img, k) => (cpu.aluRom[k].handle as MemoryHandle).data.set(img));
     this.sim = new LogicSim(board.c);
     for (const p of board.pulls) this.sim.pull(p.net, p.level);
+    // saat kartı: kristal, OTOMATİK kip, butonlar bırakılmış
+    for (const [name, v] of [["OSC_XTAL", 0], ["SLOW_SEL", 0], ["SLOW_RC", 0], ["AUTO", 1], ["STEP_RC", 1]] as const) this.sim.drive(this.net(name), v === 1);
     this.sim.settle();
     this.reset();
   }
@@ -87,18 +93,37 @@ export class GateComputer {
     h.data[(addr & 0xffff) >> 1] = v & 0xff;
   }
 
-  /** ~RESET darbesi; register'lar (gerçekte rastgele) testler için 0'lanır */
+  /** RESET butonu; register'lar (gerçekte rastgele) testler için 0'lanır */
   reset(): void {
     const s = this.sim;
-    s.drive(this.net("CLK"), true);
-    s.drive(this.net("WR_WIN"), false);
     s.drive(this.net("IRQ"), false);
-    s.set(this.net("~RESET"), false);
+    s.set(this.net("OSC_XTAL"), false);
+    s.set(this.net("RST_RC"), false);
     for (const r of this.cpu.regs) for (const ci of r) this.fill(ci, 0, 8);
     for (const grp of [this.cpu.ir, this.cpu.ta, this.cpu.tb, this.cpu.mar]) grp.forEach((ci) => this.fill(ci, 0, 8));
     s.settle();
-    s.set(this.net("~RESET"), true);
+    s.set(this.net("RST_RC"), true);
     this.uartCp = s.get(this.net("UART_CP"));
+  }
+
+  /** Osilatörün n periyodu (yükselen + düşen kenar) */
+  osc(n: number): void {
+    const s = this.sim;
+    const osc = this.net("OSC_XTAL");
+    for (let k = 0; k < n; k++) {
+      s.set(osc, true);
+      this.watchUart();
+      s.set(osc, false);
+    }
+  }
+
+  /** Saat kartındaki anahtar ve butonlar (adım kipi testleri için) */
+  setAuto(on: boolean): void {
+    this.sim.set(this.net("AUTO"), on);
+  }
+
+  stepButton(pressed: boolean): void {
+    this.sim.set(this.net("STEP_RC"), !pressed);
   }
 
   /** Bir çipin içindeki flip-flopların kapı indeksleri (sırasıyla) */
@@ -167,17 +192,12 @@ export class GateComputer {
   }
 
   /**
-   * Bir saat döngüsü: düşen kenar (kontrol register'ı mikrokodu örnekler), yazma penceresi
-   * (bellek/G-Ç yazma darbesi), yükselen kenar (bütün durum register'ları).
+   * Bir CPU saat döngüsü = osilatörün 8 periyodu (saat kartındaki Johnson sayacı): düşen kenar
+   * (kontrol register'ı mikrokodu örnekler), yazma penceresi (bellek/G-Ç yazma darbesi),
+   * yükselen kenar (bütün durum register'ları).
    */
   cycle(): void {
-    const s = this.sim;
-    s.set(this.net("CLK"), false);
-    s.set(this.net("WR_WIN"), true);
-    this.watchUart();
-    s.set(this.net("WR_WIN"), false);
-    this.watchUart();
-    s.set(this.net("CLK"), true);
+    this.osc(8);
     this.cycles++;
   }
 
