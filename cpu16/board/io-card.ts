@@ -19,6 +19,7 @@
 // çalışır (zamanlama klavyeden gelir).
 
 import type { Board, ChipInstance } from "./board.ts";
+import { okumaSuruculeri, type KapaliYay } from "./zamanlama.ts";
 
 /** Kartın arka panel dışından gelen (başka kartın ya da konnektörün sürdüğü) girişleri */
 export const IO_CARD_INPUTS = [
@@ -34,6 +35,19 @@ export interface IoCard {
   /** UART alıcı / klavye kaydırma register'ları (74HC595) */
   uartRx: ChipInstance;
   kbd: ChipInstance;
+}
+
+/**
+ * Zamanlama analizinde G/Ç kartının yanlış yolları (TCLK ve PS/2 alanları için):
+ * - okuma sürücülerinin veriyoluna sürdüğü değer TCLK'deki yazma mantığına gidemez;
+ * - TRL2 yalnızca yeniden yükleme darbesini bitirir: ~PL'nin kalkması sayaç çıkışını değiştirmez
+ *   (üstelik o döngüde tık yoktur, GC_DECP 0'dır).
+ */
+export function ioCardYanlisYollar(b: Board): KapaliYay[] {
+  return [
+    okumaSuruculeri(b, ["gc"]),
+    { neden: "TRL2 yalnızca sayaç yüklemesini bitirir (~PL kalkarken çıkış değişmez)", yay: (ch, _from, to) => ch.card === "gc" && ch.nets[to] === b.n("~GC_TRL2") },
+  ];
 }
 
 const range = (n: number) => Array.from({ length: n }, (_, i) => i);
@@ -227,7 +241,8 @@ function buildPs2(b: Board): ChipInstance {
 //     tık kenarında yükselir); c = 1: azaltmak yerine yeniden yükle ve EXPIRED kur (aynı kenarda).
 //   c = 1 iki 74HC688 ile algılanır. Yeniden yükleme tık kenarını izleyen yarım döngüde (TCLK
 //   yüksekken, aynı döngüdeki bir yazma darbesinden önce) asenkron (~PL) yapılır; sayaç değeri
-//   dışarıdan okunamadığı için bu yarım döngülük gecikme görünmez.
+//   dışarıdan okunamadığı için bu yarım döngülük gecikme görünmez. Darbeyi iki flip-flop üretir
+//   (tık kenarında kurulan TRL, düşen kenarda kurulan TRL2): TCLK ile kapılanmadığı için sıçramasızdır.
 function buildTimer(b: Board): { timer: ChipInstance[]; prescaler: ChipInstance[] } {
   b.block = "Zamanlayıcı";
   const prescaler = [
@@ -272,7 +287,10 @@ function buildTimer(b: Board): { timer: ChipInstance[]; prescaler: ChipInstance[
   b.and("GC_TTICK", "GC_Z1", "GC_RLD", "tıkta c = 1: yeniden yükle, EXPIRED");
   b.and("GC_TTICK", "~GC_Z1", "GC_DECP", "tıkta c > 1 (ya da 0): azalt");
   b.nand("GC_DECP", "GC_TCLKN", "GC_TDCLK", "azaltma saati (tık kenarında yükselir)");
-  b.and("GC_TRL", "TCLK", "GC_RLPULSE", "yeniden yükleme darbesi (tık kenarından sonraki yarım döngü)");
+  // Darbe = GC_TRL ∧ ¬GC_TRL2: TRL tık kenarında, TRL2 (aynı bilginin düşen kenardaki kopyası) yarım
+  // döngü sonra kurulur. Girişler hiçbir zaman aynı anda değişmediği için darbe parazitsizdir; TCLK ile
+  // kapılanmış (TRL ∧ TCLK) bir darbe, sonraki kenarda TRL düşmeden önce kısa bir sıçrama üretirdi.
+  b.and("GC_TRL", "~GC_TRL2", "GC_RLPULSE", "yeniden yükleme darbesi (tık kenarını izleyen yarım döngü)");
   b.nor("GC_TLDEN", "GC_RLPULSE", "~GC_TPL", "sayaç yükleme");
   b.or("GC_RLD", "GC_EXPIRED", "GC_EXP_D", "EXPIRED kur / tut");
   b.and("~RESET", b.nand(b.not("~GC_WO3"), "DO0"), "~GC_EXPCLR", "TIMER_STAT'a 1 yazınca sil");
@@ -280,6 +298,10 @@ function buildTimer(b: Board): { timer: ChipInstance[]; prescaler: ChipInstance[
     "1D": "GC_RLD", "1CLK": "TCLK", "~1PRE": "VCC", "~1CLR": "~RESET", "1Q": "GC_TRL",
     "2D": "GC_EXP_D", "2CLK": "TCLK", "~2PRE": "VCC", "~2CLR": "~GC_EXPCLR", "2Q": "GC_EXPIRED",
   }, "yeniden yükleme isteği, EXPIRED (FF07)");
+  b.place("74HC74", {
+    "1D": "GC_TRL", "1CLK": "GC_TCLKN", "~1PRE": "VCC", "~1CLR": "~RESET", "1Q": "GC_TRL2", "~1Q": "~GC_TRL2",
+    "2D": "GND", "2CLK": "GND", "~2PRE": "VCC", "~2CLR": "VCC",
+  }, "yeniden yükleme darbesinin sonu (TCLK düşen kenarı)");
 
   const timer: ChipInstance[] = [];
   for (let k = 0; k < 4; k++) {

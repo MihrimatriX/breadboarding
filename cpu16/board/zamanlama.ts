@@ -308,9 +308,33 @@ export interface KokRaporu {
   aciktaDegisen: TutmaKontrolu[];
 }
 
+/**
+ * Analizden çıkarılan zamanlama yayları (SDC'deki set_disable_timing). Yalnızca mantıksal olarak
+ * hiç duyarlı olmayan yollar için: ör. okuma tamponunun veriyoluna sürdüğü değer yazma mantığına
+ * gidemez, çünkü okuma ve yazma aynı döngüde olmaz.
+ */
+export interface KapaliYay {
+  neden: string;
+  yay: (ch: ChipInstance, from: string, to: string) => boolean;
+}
+
+/**
+ * Kartların veriyoluna (DE / DO) okuma için sürdüğü yollar. CPU dışındaki saat alanlarında (TCLK,
+ * PS/2, piksel saati) bunlar yanlış yoldur: veriyolundaki okuma verisini yalnızca CPU örnekler; o
+ * alanın yazma mantığı veriyolunu yalnızca yazma döngüsünde, okuma sürücüleri kapalıyken dinler.
+ */
+export function okumaSuruculeri(b: Board, kartlar: string[]): KapaliYay {
+  return {
+    neden: `${kartlar.join(", ")} ${kartlar.length > 1 ? "kartlarının" : "kartının"} veriyoluna okuma sürücüleri: okuma ile yazma aynı döngüde olmaz`,
+    yay: (ch, _from, to) => kartlar.includes(ch.card) && ch.nets[to] !== undefined && /^D[EO]\d+$/.test(b.netName(ch.nets[to])),
+  };
+}
+
 export interface ZamanlamaRaporu {
   kose: Kose;
   kokler: KokRaporu[];
+  /** kapatılan yaylar: neden ve sayısı */
+  kapali: { neden: string; sayi: number }[];
   uyarilar: string[];
   bilinmeyen: string[];
 }
@@ -329,7 +353,10 @@ function yukEki(pins: number, kose: Kose): number {
   return c <= 50 ? 0 : (c - 50) * (kose === "tip" ? 0.08 : 0.12);
 }
 
-export function zamanlamaAnalizi(b: Board, opts: { kokler: SaatKoku[]; kose?: Kose; yukDuzeltme?: boolean; enCok?: number }): ZamanlamaRaporu {
+export function zamanlamaAnalizi(
+  b: Board,
+  opts: { kokler: SaatKoku[]; kose?: Kose; yukDuzeltme?: boolean; enCok?: number; kapali?: KapaliYay[] },
+): ZamanlamaRaporu {
   const kose = opts.kose ?? "maks";
   const k = kose === "tip" ? 0 : 1;
   const uyarilar: string[] = [];
@@ -346,6 +373,7 @@ export function zamanlamaAnalizi(b: Board, opts: { kokler: SaatKoku[]; kose?: Ko
   const out = new Map<number, Edge[]>();
   const seqs: { ch: ChipInstance; s: Ardisik }[] = [];
   const gates: { ch: ChipInstance; ins: string[]; out: string; kontrol: 0 | 1 }[] = [];
+  const kapali = (opts.kapali ?? []).map((k) => ({ neden: k.neden, sayi: 0 }));
   for (const ch of b.chips) {
     const m = model(ch.def.part);
     if (!m) {
@@ -356,10 +384,23 @@ export function zamanlamaAnalizi(b: Board, opts: { kokler: SaatKoku[]; kose?: Ko
       const src = ch.nets[a.from], dst = ch.nets[a.to];
       if (src === undefined || dst === undefined) throw new Error(`${ch.def.part}: zamanlama modelinde bilinmeyen pin ${a.from}/${a.to}`);
       if (sabit(src) || sabit(dst)) continue;
+      const kp = (opts.kapali ?? []).findIndex((k) => k.yay(ch, a.from, a.to));
+      if (kp >= 0) {
+        kapali[kp].sayi++;
+        continue;
+      }
       if (!out.has(src)) out.set(src, []);
       out.get(src)!.push({ ch, from: a.from, to: a.to, src, dst, d: a.d, yon: a.yon });
     }
-    for (const s of m.seq) seqs.push({ ch, s });
+    for (const s of m.seq) {
+      // kapatılan saat → Q yayları (ör. okuma sırasında veriyolunu süren çıkış register'ı)
+      const q = s.q.filter((qp) => {
+        const kp = (opts.kapali ?? []).findIndex((k) => k.yay(ch, s.clock, qp));
+        if (kp >= 0) kapali[kp].sayi++;
+        return kp < 0;
+      });
+      seqs.push({ ch, s: q.length === s.q.length ? s : { ...s, q } });
+    }
     for (const gt of m.gates ?? []) gates.push({ ch, ...gt });
   }
 
@@ -545,7 +586,7 @@ export function zamanlamaAnalizi(b: Board, opts: { kokler: SaatKoku[]; kose?: Ko
       yollar: sirali.slice(0, opts.enCok ?? 10), tutma: dedupe(tutmaSirali), aciktaDegisen: dedupe(acikta),
     });
   }
-  return { kose, kokler: raporlar, uyarilar, bilinmeyen: [...bilinmeyen].sort() };
+  return { kose, kokler: raporlar, kapali, uyarilar, bilinmeyen: [...bilinmeyen].sort() };
 }
 
 function dedupe(t: TutmaKontrolu[]): TutmaKontrolu[] {
@@ -579,6 +620,7 @@ export function raporMetni(r: ZamanlamaRaporu, yolSayisi = 3): string {
       L.push(`  saat kapılama tutma payı (tipik): en az ${enAz.pay.toFixed(0)} ns (${enAz.ref}.${enAz.pin} ${enAz.net})${dar.length ? `, 5 ns'den az: ${dar.length}` : ""}`);
     }
   }
+  for (const k of r.kapali) L.push(`\nanaliz dışı: ${k.sayi} yay (${k.neden})`);
   if (r.bilinmeyen.length) L.push(`\nZamanlama modeli olmayan parçalar (atlandı): ${r.bilinmeyen.join(", ")}`);
   for (const u of r.uyarilar) L.push(`uyarı: ${u}`);
   return L.join("\n");
