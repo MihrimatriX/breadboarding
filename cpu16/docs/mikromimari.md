@@ -40,7 +40,7 @@ Tek bir 16 bitlik **iç veriyolu** var. Her saat döngüsünde veriyoluna tek bi
 | 5..3 | `RSEL` register seçimi | 0 RD · 1 RS1 · 2 RS2 · 3 SP (r6) · 4 LR (r7) |
 | 10..6 | `ALU_OP` | 0–7: ADD ADC SUB SBC AND OR XOR CMP · 8–15: MOV NOT NEG SHL SHR SAR ROL ROR · 17 SXB · 18 MERGE |
 | 11 | `ALU_IR` | 1 ise işlem = {IR.op[0], IR.f3}: ALU komutları decoder'sız seçilir |
-| 15..12 | `IMM` sabit birimi | IMM6 · IMM6×2 · IMM8 (h=1 ise <<8) · IMM9 · OFF8×2 · OFF12×2 · sabit 2 · sabit 4 |
+| 15..12 | `IMM` sabit birimi | IMM6 · IMM6×2 · IMM8 (imm8 iki bayta da kopyalanır; MERGE h'ye göre birini alır) · IMM9 · OFF8×2 · OFF12×2 · sabit 2 · sabit 4 |
 | 16 | `REG_W` | register dosyasına veriyolunu yaz |
 | 17, 18 | `TA_L`, `TB_L` | ALU giriş latch'leri |
 | 19, 20 | `PC_L`, `PC_INC` | PC'yi yükle (bit 0 hep 0) / PC += 2 |

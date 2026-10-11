@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { ChipBench } from "../chips/bench.ts";
 import { kicadSymbolLibrary, parseSExpr, type SExpr } from "../chips/kicad.ts";
-import { CHIPS, chip } from "../chips/library.ts";
+import { CHIPS, CHIP_BY_PART, chip } from "../chips/library.ts";
+import { PASSIVES } from "../board/passives.ts";
 import { L0, L1, LZ, levelChar } from "../chips/logic.ts";
 import type { MemoryHandle } from "../chips/parts/memory.ts";
 import { TransistorBench } from "../chips/transistor-bench.ts";
@@ -304,7 +305,7 @@ describe("transistör sayıları", () => {
 });
 
 describe("KiCad sembol kütüphanesi", () => {
-  const generated = kicadSymbolLibrary(CHIPS);
+  const generated = kicadSymbolLibrary([...CHIPS, ...Object.values(PASSIVES)]);
 
   it("depodaki cpu16.kicad_sym güncel (npm run cpu16 -- kicad-sym)", () => {
     const committed = readFileSync(new URL("../kicad/cpu16.kicad_sym", import.meta.url), "utf8");
@@ -315,9 +316,9 @@ describe("KiCad sembol kütüphanesi", () => {
     const tree = parseSExpr(generated) as SExpr[];
     expect(tree[0]).toBe("kicad_symbol_lib");
     const symbols = tree.filter((x) => Array.isArray(x) && x[0] === "symbol") as SExpr[][];
-    expect(symbols).toHaveLength(CHIPS.length);
+    expect(symbols).toHaveLength(CHIPS.length + Object.keys(PASSIVES).length);
     for (const sym of symbols) {
-      const def = chip(sym[1] as string);
+      const def = CHIP_BY_PART[sym[1] as string] ?? PASSIVES[sym[1] as string];
       const unit = sym.find((x) => Array.isArray(x) && x[0] === "symbol" && (x[1] as string).endsWith("_1_1")) as SExpr[];
       const nums = unit
         .filter((x) => Array.isArray(x) && x[0] === "pin")

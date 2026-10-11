@@ -147,6 +147,8 @@ export class LogicSim {
   readonly value: Uint8Array;
   /** Dışarıdan sürülen değer (LZ = sürülmüyor) */
   private readonly ext: Uint8Array;
+  /** Zayıf çekme direnci: net hiç sürülmüyorsa bu değeri alır (LZ = direnç yok) */
+  private readonly pullv: Uint8Array;
   /** Her kapı çıkışının (sürücünün) değeri: driverStart[g] + çıkış sırası */
   private readonly drv: Uint8Array;
   private readonly driverStart: Int32Array;
@@ -171,6 +173,7 @@ export class LogicSim {
     const gates = circuit.gates;
     this.value = new Uint8Array(n).fill(LZ);
     this.ext = new Uint8Array(n).fill(LZ);
+    this.pullv = new Uint8Array(n).fill(LZ);
     this.ext[circuit.GND] = L0;
     this.ext[circuit.VCC] = L1;
 
@@ -222,6 +225,23 @@ export class LogicSim {
     this.touch(net);
   }
 
+  /** Neti bir dirençle 0'a ya da 1'e çek (veriyolu çekme dirençleri) */
+  pull(net: number, v: Level): void {
+    this.pullv[net] = v;
+    this.touch(net);
+  }
+
+  /**
+   * Bir flip-flop / mandalın iç durumunu doğrudan ayarla. Yalnızca simülasyon içindir:
+   * test başlangıç durumu (gerçek donanımda güç açılışında değerler rastgeledir).
+   */
+  setState(gate: number, v: Level): void {
+    const s = this.seq[gate];
+    if (!s) throw new Error(`Kapı ${gate} sıralı eleman değil`);
+    s.q = v;
+    this.schedule(gate);
+  }
+
   /** Sür ve yerleşmesini bekle. */
   set(net: number, v: Level | boolean): void {
     this.drive(net, v);
@@ -258,7 +278,7 @@ export class LogicSim {
       if (v === LZ) v = d;
       else if (v !== d) return LX;
     }
-    return v;
+    return v === LZ ? (this.pullv[net] as Level) : v;
   }
 
   /** Bütün değişiklikler yayılana kadar dalga dalga hesapla. */
@@ -335,8 +355,10 @@ export class LogicSim {
     const s = this.seq[gi]!;
     const [d, clk, preN, clrN] = ins;
     const clkL = (isX(clk) ? LX : clk) as Level;
-    const rising = s.lastClk === L0 && clkL === L1;
-    const maybeRising = (s.lastClk !== L1 && clkL !== L0) && !rising;
+    // kenar yalnızca saat girişi gerçekten değiştiyse: 0→1 kesin, 0→X / X→1 belki
+    const changed = clkL !== s.lastClk;
+    const rising = changed && s.lastClk === L0 && clkL === L1;
+    const maybeRising = changed && !rising && s.lastClk !== L1 && clkL !== L0;
     s.lastClk = clkL;
     if (preN === L0 && clrN === L0) {
       // veri sayfası: ikisi birden aktifken Q = Q̅ = 1 (kararsız durum)

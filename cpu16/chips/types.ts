@@ -2,8 +2,8 @@
 
 import type { Circuit } from "./logic.ts";
 
-/** in: giriş · out: itme-çekme çıkış · tri: üç durumlu çıkış · bidir: çift yönlü · power: besleme · nc: bağlı değil */
-export type PinDir = "in" | "out" | "tri" | "bidir" | "power" | "nc";
+/** in: giriş · out: itme-çekme çıkış · tri: üç durumlu çıkış · bidir: çift yönlü · power: besleme · nc: bağlı değil · passive: pasif eleman ucu */
+export type PinDir = "in" | "out" | "tri" | "bidir" | "power" | "nc" | "passive";
 
 export interface PinDef {
   num: number;
