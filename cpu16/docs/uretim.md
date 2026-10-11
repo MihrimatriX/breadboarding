@@ -157,7 +157,7 @@ osilatörün kenarlarında rastgele hatalar yapar. Uzun breadboard dizilerinde b
 | Deney 4–7 | CPU kartı, blok blok | rehberdeki elle adımlar (DIP anahtar + LED) | her blok rehberdeki tabloyu verir; Deney 7 sonunda CPU, sahte bellekle komut çeker |
 | Deney 8 | Bellek kartı | ilk program: Flash'tan çalışıp FF00 çıkış mandalına yazar | LED'lerde beklenen sayı |
 | Deney 9 | Önbellek kartı | `onbellek.s` | önbellek açıkken aynı döngü belirgin hızlı, sayaçlar artıyor |
-| Deney 10 | G/Ç kartı | USB-UART (CH340, 28 800 baud) | terminalde BIOS istemi `> `; `?` komut listesi |
+| Deney 10 | G/Ç kartı | `kit/programlar/gc-deneme.s` Flash'ta, USB-UART (CH340, 28 800 baud), PS/2 klavye | terminalde başlık, saniyede bir nokta, yazılanların yankısı, tuşların tarama kodu |
 | Deney 11 | Video kartı | VGA monitör | açılış ekranı ve renkler |
 | Deney 12 | BIOS + önyükleyici | **`kart-testi`** | **4/4 geçti** |
 | Deney 13 | C | `yilan.c` | ekranda oyun |
