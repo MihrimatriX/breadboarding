@@ -1,32 +1,43 @@
-// CPU16 bilgisayarının 3D hali: kartlar, entegreler, pinler ve arka panel, canlı sinyallerle.
-// Bir çipe tıklayınca üstünde çipin "kalıbı" (die) açılır: kapılar ve teller canlı; kapıya
-// tıklayınca alt panelde o kapının transistörleri görünür.
+// Bütün CPU16 bilgisayarı 3D'de: anakartın kartları, entegreler, pasif elemanlar, arka panel ve
+// arkada VGA monitörü, hepsi canlı sinyallerle. Çipten çipe teller kavisli atlama telleri olarak
+// çizilir (rengi netin değeri). Bir çipe tıklayınca üstünde çipin "kalıbı" (die) açılır: kapılar ve
+// teller canlı; kapıya tıklayınca alt panelde o kapının transistörleri görünür.
 
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import {
   BufferAttribute, BufferGeometry, CanvasTexture, Color, DoubleSide, InstancedMesh, LineBasicMaterial, LineSegments, Object3D, SRGBColorSpace, Vector3,
+  type InterleavedBufferAttribute,
 } from "three";
+import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
+import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
+import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { chipInside, type ChipInside } from "../../cpu16/board/inside";
-import type { ChipPlace } from "../../cpu16/board/layout";
+import type { ChipPlace, PassiveKind, PassivePlace } from "../../cpu16/board/layout";
 import { BACKPLANE } from "../../cpu16/board/passives";
 import type { Gate } from "../../cpu16/chips/logic";
 import { LEVEL_COLOR } from "./levels";
-import { boardLayoutData, boardModel, liveNets, useKart } from "./store";
+import { updateScreenCanvas, screenCanvas } from "./screenCanvas";
+import { boardLayoutData, boardModel, findPart, liveNets, netEnds, useKart } from "./store";
+import { allWires, busRouter, netWires, partWires, wireGeometry, type Endpoint, type WireEdge } from "./wires";
 
 /** 1 dünya birimi = 10 mm */
 const S = 0.1;
 const BODY_H = 0.32;
 const BODY_Y = 0.05;
 const DIE_Y = 2.2;
+const PIN_TOP = 0.24;
 
 const levelColors = LEVEL_COLOR.map((c) => new Color(c));
 const PIN_COLORS = [new Color("#56606c"), new Color("#ff2a55"), new Color("#9d8cff"), new Color("#e6e600")];
+/** tellerde 0 koyu kartın üstünde görünsün diye açık mavi; 1, Z, X her yerdeki gibi */
+const WIRE_COLORS = [new Color("#5f8fd6"), new Color("#ff2a55"), new Color("#9d8cff"), new Color("#e6e600")];
 const tmpC = new Color();
 const DIE_LOW = new Color("#5d7390");
 const tmpO = new Object3D();
+const noRaycast = () => null;
 
 function useLayoutWorld() {
   const lay = boardLayoutData();
@@ -34,6 +45,8 @@ function useLayoutWorld() {
   const cz = lay.height / 2;
   return useMemo(() => ({ lay, w: (x: number, y: number): [number, number] => [(x - cx) * S, (y - cz) * S] }), [lay, cx, cz]);
 }
+
+const level = (v: Uint8Array | null, net: number) => (net < 0 ? 2 : net <= 1 ? net : v ? (v[net] ?? 3) : 3);
 
 // ---------------------------------------------------------------- yazı atlası
 
@@ -50,62 +63,70 @@ interface TextItem {
   align?: "left" | "center";
 }
 
-/** Birçok yazıyı tek dokuya çizer ve hepsini tek bir düz yüzey ağıyla gösterir */
+/** Birçok yazıyı dokulara çizer (doku başına en çok 2048 × 4096) ve her dokuyu tek bir ağla gösterir */
 function TextQuads({ items, cellW = 256, cellH = 80, font = 30 }: { items: TextItem[]; cellW?: number; cellH?: number; font?: number }) {
-  const { geometry, texture } = useMemo(() => {
+  const chunks = useMemo(() => {
     const cols = Math.floor(2048 / cellW);
-    const rows = Math.ceil(items.length / cols);
-    const canvas = document.createElement("canvas");
-    canvas.width = cols * cellW;
-    canvas.height = Math.max(1, rows * cellH);
-    const ctx = canvas.getContext("2d")!;
-    ctx.textBaseline = "middle";
-    const pos: number[] = [];
-    const uv: number[] = [];
-    const idx: number[] = [];
-    items.forEach((it, i) => {
-      const col = i % cols;
-      const row = Math.floor(i / cols);
-      const ox = col * cellW;
-      const oy = row * cellH;
-      ctx.fillStyle = it.color;
-      ctx.textAlign = it.align === "left" ? "left" : "center";
-      const tx = it.align === "left" ? ox + 6 : ox + cellW / 2;
-      if (it.sub) {
-        ctx.font = `600 ${font}px "IBM Plex Mono", ui-monospace, monospace`;
-        ctx.fillText(it.text, tx, oy + cellH * 0.32, cellW - 8);
-        ctx.font = `${Math.round(font * 0.72)}px "IBM Plex Mono", ui-monospace, monospace`;
-        ctx.globalAlpha = 0.75;
-        ctx.fillText(it.sub, tx, oy + cellH * 0.72, cellW - 8);
-        ctx.globalAlpha = 1;
-      } else {
-        ctx.font = `600 ${font}px "IBM Plex Sans", system-ui, sans-serif`;
-        ctx.fillText(it.text, tx, oy + cellH / 2, cellW - 8);
-      }
-      const u0 = ox / canvas.width;
-      const u1 = (ox + cellW) / canvas.width;
-      const v0 = 1 - oy / canvas.height;
-      const v1 = 1 - (oy + cellH) / canvas.height;
-      const b = pos.length / 3;
-      pos.push(it.x, it.y, it.z, it.x + it.w, it.y, it.z, it.x + it.w, it.y, it.z + it.d, it.x, it.y, it.z + it.d);
-      uv.push(u0, v0, u1, v0, u1, v1, u0, v1);
-      idx.push(b, b + 2, b + 1, b, b + 3, b + 2);
-    });
-    const g = new BufferGeometry();
-    g.setAttribute("position", new BufferAttribute(new Float32Array(pos), 3));
-    g.setAttribute("uv", new BufferAttribute(new Float32Array(uv), 2));
-    g.setIndex(idx);
-    g.computeVertexNormals();
-    const t = new CanvasTexture(canvas);
-    t.colorSpace = SRGBColorSpace;
-    t.anisotropy = 8;
-    return { geometry: g, texture: t };
+    const perTex = cols * Math.floor(4096 / cellH);
+    const out: { geometry: BufferGeometry; texture: CanvasTexture }[] = [];
+    for (let start = 0; start < items.length; start += perTex) {
+      const list = items.slice(start, start + perTex);
+      const rows = Math.ceil(list.length / cols);
+      const canvas = document.createElement("canvas");
+      canvas.width = cols * cellW;
+      canvas.height = Math.max(1, rows * cellH);
+      const ctx = canvas.getContext("2d")!;
+      ctx.textBaseline = "middle";
+      const pos: number[] = [];
+      const uv: number[] = [];
+      const idx: number[] = [];
+      list.forEach((it, i) => {
+        const ox = (i % cols) * cellW;
+        const oy = Math.floor(i / cols) * cellH;
+        ctx.fillStyle = it.color;
+        ctx.textAlign = it.align === "left" ? "left" : "center";
+        const tx = it.align === "left" ? ox + 6 : ox + cellW / 2;
+        if (it.sub) {
+          ctx.font = `600 ${font}px "IBM Plex Mono", ui-monospace, monospace`;
+          ctx.fillText(it.text, tx, oy + cellH * 0.32, cellW - 8);
+          ctx.font = `${Math.round(font * 0.72)}px "IBM Plex Mono", ui-monospace, monospace`;
+          ctx.globalAlpha = 0.75;
+          ctx.fillText(it.sub, tx, oy + cellH * 0.72, cellW - 8);
+          ctx.globalAlpha = 1;
+        } else {
+          ctx.font = `600 ${font}px "IBM Plex Sans", system-ui, sans-serif`;
+          ctx.fillText(it.text, tx, oy + cellH / 2, cellW - 8);
+        }
+        const u0 = ox / canvas.width;
+        const u1 = (ox + cellW) / canvas.width;
+        const v0 = 1 - oy / canvas.height;
+        const v1 = 1 - (oy + cellH) / canvas.height;
+        const b = pos.length / 3;
+        pos.push(it.x, it.y, it.z, it.x + it.w, it.y, it.z, it.x + it.w, it.y, it.z + it.d, it.x, it.y, it.z + it.d);
+        uv.push(u0, v0, u1, v0, u1, v1, u0, v1);
+        idx.push(b, b + 2, b + 1, b, b + 3, b + 2);
+      });
+      const geometry = new BufferGeometry();
+      geometry.setAttribute("position", new BufferAttribute(new Float32Array(pos), 3));
+      geometry.setAttribute("uv", new BufferAttribute(new Float32Array(uv), 2));
+      geometry.setIndex(idx);
+      geometry.computeVertexNormals();
+      const texture = new CanvasTexture(canvas);
+      texture.colorSpace = SRGBColorSpace;
+      texture.anisotropy = 8;
+      out.push({ geometry, texture });
+    }
+    return out;
   }, [items, cellW, cellH, font]);
-  useEffect(() => () => { geometry.dispose(); texture.dispose(); }, [geometry, texture]);
+  useEffect(() => () => chunks.forEach((c) => { c.geometry.dispose(); c.texture.dispose(); }), [chunks]);
   return (
-    <mesh geometry={geometry} raycast={() => null}>
-      <meshBasicMaterial map={texture} transparent depthWrite={false} side={DoubleSide} />
-    </mesh>
+    <>
+      {chunks.map((c, i) => (
+        <mesh key={i} geometry={c.geometry} raycast={noRaycast}>
+          <meshBasicMaterial map={c.texture} transparent depthWrite={false} side={DoubleSide} />
+        </mesh>
+      ))}
+    </>
   );
 }
 
@@ -135,41 +156,48 @@ function Cards() {
       return { text: c.title, x, z, w: 90 * S, d: 7 * S, y: 0.003, color: "#ffffff", align: "left" as const };
     }),
   ], [lay, w]);
-  const maxH = Math.max(...lay.cards.map((c) => c.h));
-  const [bx, bz] = w(lay.width / 2, maxH + 13);
   return (
     <group>
       {lay.cards.map((c) => {
         const [x, z] = w(c.x + c.w / 2, c.y + c.h / 2);
-        const [kx, kz] = w(c.connectorX, c.h - 3);
         return (
-          <group key={c.name}>
-            <mesh position={[x, -0.08, z]} raycast={() => null}>
-              <boxGeometry args={[c.w * S, 0.16, c.h * S]} />
-              <meshStandardMaterial color="#0f3d2c" roughness={0.55} metalness={0.1} />
-            </mesh>
-            <mesh position={[kx, 0.12, kz]} raycast={() => null}>
-              <boxGeometry args={[82 * S, 0.24, 5 * S]} />
-              <meshStandardMaterial color="#0b0b0d" roughness={0.6} />
-            </mesh>
-          </group>
+          <mesh key={c.name} position={[x, -0.08, z]} raycast={noRaycast}>
+            <boxGeometry args={[c.w * S, 0.16, c.h * S]} />
+            <meshStandardMaterial color="#0f3d2c" roughness={0.55} metalness={0.1} />
+          </mesh>
         );
       })}
-      <lineSegments geometry={outline} raycast={() => null}>
+      {lay.rows.map((r, i) => {
+        const [x, z] = w(r.x + r.w / 2, r.backplaneY + r.backplaneH / 2);
+        return (
+          <mesh key={i} position={[x, -0.08, z]} raycast={noRaycast}>
+            <boxGeometry args={[(r.w + 20) * S, 0.16, r.backplaneH * S]} />
+            <meshStandardMaterial color="#13261d" roughness={0.6} />
+          </mesh>
+        );
+      })}
+      {lay.rows.slice(1).map((r, i) => {
+        // sıralar arasında arka panel kablosu (sol kenarda)
+        const top = lay.rows[i];
+        const [x, z0] = w(r.x - 8, top.backplaneY + top.backplaneH / 2);
+        const [, z1] = w(r.x - 8, r.backplaneY + r.backplaneH / 2);
+        return (
+          <mesh key={`k${i}`} position={[x, 0.02, (z0 + z1) / 2]} raycast={noRaycast}>
+            <boxGeometry args={[6 * S, 0.06, z1 - z0]} />
+            <meshStandardMaterial color="#8a8f99" roughness={0.7} />
+          </mesh>
+        );
+      })}
+      <lineSegments geometry={outline} raycast={noRaycast}>
         <lineBasicMaterial color="#cfe3d6" transparent opacity={0.35} />
       </lineSegments>
       <TextQuads items={titles} cellW={512} cellH={48} font={30} />
-      <mesh position={[bx, -0.08, bz]} raycast={() => null}>
-        <boxGeometry args={[lay.width * S, 0.16, 20 * S]} />
-        <meshStandardMaterial color="#13261d" roughness={0.6} />
-      </mesh>
       <BackplaneTraces />
-      <Leds />
     </group>
   );
 }
 
-/** Arka paneldeki bakır yollar: her biri bir arka panel sinyali, canlı renkte */
+/** Arka paneldeki bakır yollar: her biri bir arka panel sinyali, canlı renkte (her kart sırasında) */
 function BackplaneTraces() {
   const { lay, w } = useLayoutWorld();
   const { board } = boardModel();
@@ -177,16 +205,15 @@ function BackplaneTraces() {
   const ref = useRef<LineSegments>(null);
   const version = useRef(-1);
   const geo = useMemo(() => {
-    const maxH = Math.max(...lay.cards.map((c) => c.h));
-    const x0 = lay.cards[0].connectorX - 40;
-    const x1 = lay.cards[lay.cards.length - 1].connectorX + 40;
     const pos: number[] = [];
-    signals.forEach((_, i) => {
-      const y = maxH + 4.5 + (i * 17) / signals.length;
-      const [a, z] = w(x0, y);
-      const [b] = w(x1, y);
-      pos.push(a, 0.004, z, b, 0.004, z);
-    });
+    for (const r of lay.rows) {
+      signals.forEach((_, i) => {
+        const y = r.backplaneY + 1.5 + (i * (r.backplaneH - 3)) / signals.length;
+        const [a, z] = w(r.x - 6, y);
+        const [b] = w(r.x + r.w + 6, y);
+        pos.push(a, 0.004, z, b, 0.004, z);
+      });
+    }
     const g = new BufferGeometry();
     g.setAttribute("position", new BufferAttribute(new Float32Array(pos), 3));
     g.setAttribute("color", new BufferAttribute(new Float32Array(pos.length), 3));
@@ -197,49 +224,19 @@ function BackplaneTraces() {
     if (version.current === liveNets.version || !ref.current) return;
     version.current = liveNets.version;
     const col = geo.getAttribute("color") as BufferAttribute;
-    nets.forEach((n, i) => {
-      const lv = liveNets.values?.[n] ?? 3;
+    const per = nets.length;
+    for (let k = 0; k < col.count / 2; k++) {
+      const lv = liveNets.values?.[nets[k % per]] ?? 3;
       const c = lv === 1 ? levelColors[1] : lv === 0 ? tmpC.set("#a07a3a") : levelColors[lv];
-      col.setXYZ(2 * i, c.r, c.g, c.b);
-      col.setXYZ(2 * i + 1, c.r, c.g, c.b);
-    });
+      col.setXYZ(2 * k, c.r, c.g, c.b);
+      col.setXYZ(2 * k + 1, c.r, c.g, c.b);
+    }
     col.needsUpdate = true;
   });
   return (
-    <lineSegments ref={ref} geometry={geo} raycast={() => null}>
+    <lineSegments ref={ref} geometry={geo} raycast={noRaycast}>
       <lineBasicMaterial vertexColors />
     </lineSegments>
-  );
-}
-
-function Leds() {
-  const { lay, w } = useLayoutWorld();
-  const { board } = boardModel();
-  const card = lay.cards[0];
-  const leds = useMemo(() => [
-    { name: "HALTED", net: board.n("HALTED"), color: "#4dff6a", pos: w(card.x + 14, card.h - 4) },
-    { name: "FAULT", net: board.n("FAULT"), color: "#ff3b3b", pos: w(card.x + 26, card.h - 4) },
-  ], [board, card, w]);
-  const mats = useRef<({ emissiveIntensity: number } | null)[]>([]);
-  useFrame(() => {
-    leds.forEach((l, i) => {
-      const m = mats.current[i];
-      if (m) m.emissiveIntensity = liveNets.values?.[l.net] === 1 ? 2.2 : 0.05;
-    });
-  });
-  const labels = useMemo<TextItem[]>(() => leds.map((l) => ({
-    text: l.name, x: l.pos[0] - 0.5, z: l.pos[1] - 1.1, w: 1, d: 0.35, y: 0.003, color: "#d8e6dc",
-  })), [leds]);
-  return (
-    <group>
-      {leds.map((l, i) => (
-        <mesh key={l.name} position={[l.pos[0], 0.15, l.pos[1]]} raycast={() => null}>
-          <sphereGeometry args={[0.15, 16, 12]} />
-          <meshStandardMaterial ref={(m) => (mats.current[i] = m)} color={l.color} emissive={l.color} emissiveIntensity={0.05} transparent opacity={0.9} />
-        </mesh>
-      ))}
-      <TextQuads items={labels} cellW={256} cellH={64} font={34} />
-    </group>
   );
 }
 
@@ -251,7 +248,6 @@ function Chips() {
   const body = useRef<InstancedMesh>(null);
   const pins = useRef<InstancedMesh>(null);
   const pads = useRef<InstancedMesh>(null);
-  const caps = useRef<InstancedMesh>(null);
   const selected = useKart((s) => s.chip);
   const hover = useKart((s) => s.hover?.ref ?? null);
   const flatPins = useMemo(() => chips.flatMap((c) => c.pins.map((p) => ({ chip: c, pin: p }))), [chips]);
@@ -264,16 +260,11 @@ function Chips() {
       tmpO.scale.set(c.w * S, BODY_H, c.h * S);
       tmpO.updateMatrix();
       body.current!.setMatrixAt(i, tmpO.matrix);
-      const [cx, cz] = w(c.x + c.w + 2.2, c.y + c.h / 2);
-      tmpO.position.set(cx, 0.12, cz);
-      tmpO.scale.set(0.12, 0.24, 0.5);
-      tmpO.updateMatrix();
-      caps.current!.setMatrixAt(i, tmpO.matrix);
     });
     flatPins.forEach(({ pin }, i) => {
       const [x, z] = w(pin.x, pin.y);
-      tmpO.position.set(x, 0.12, z);
-      tmpO.scale.set(0.06, 0.24, 0.06);
+      tmpO.position.set(x, PIN_TOP / 2, z);
+      tmpO.scale.set(0.06, PIN_TOP, 0.06);
       tmpO.updateMatrix();
       pins.current!.setMatrixAt(i, tmpO.matrix);
       tmpO.position.set(x, 0.004, z);
@@ -283,10 +274,11 @@ function Chips() {
       pins.current!.setColorAt(i, PIN_COLORS[0]);
       pads.current!.setColorAt(i, PIN_COLORS[0]);
     });
-    for (const m of [body.current!, pins.current!, pads.current!, caps.current!]) {
+    for (const m of [body.current!, pins.current!, pads.current!]) {
       m.instanceMatrix.needsUpdate = true;
       m.computeBoundingSphere();
     }
+    version.current = -1;
   }, [chips, flatPins, w]);
 
   useLayoutEffect(() => {
@@ -299,9 +291,9 @@ function Chips() {
     version.current = liveNets.version;
     const v = liveNets.values;
     flatPins.forEach(({ pin }, i) => {
-      const lv = pin.net < 0 ? 2 : pin.net <= 1 ? pin.net : v[pin.net];
-      pins.current!.setColorAt(i, PIN_COLORS[lv] ?? PIN_COLORS[3]);
-      pads.current!.setColorAt(i, PIN_COLORS[lv] ?? PIN_COLORS[3]);
+      const c = PIN_COLORS[level(v, pin.net)] ?? PIN_COLORS[3];
+      pins.current!.setColorAt(i, c);
+      pads.current!.setColorAt(i, c);
     });
     pins.current!.instanceColor!.needsUpdate = true;
     pads.current!.instanceColor!.needsUpdate = true;
@@ -346,59 +338,260 @@ function Chips() {
         <boxGeometry />
         <meshStandardMaterial color="#ffffff" roughness={0.35} metalness={0.6} />
       </instancedMesh>
-      <instancedMesh ref={pads} args={[undefined, undefined, flatPins.length]} raycast={() => null}>
+      <instancedMesh ref={pads} args={[undefined, undefined, flatPins.length]} raycast={noRaycast}>
         <boxGeometry />
         <meshStandardMaterial color="#ffffff" roughness={0.4} metalness={0.5} />
-      </instancedMesh>
-      <instancedMesh ref={caps} args={[undefined, undefined, chips.length]} raycast={() => null}>
-        <boxGeometry />
-        <meshStandardMaterial color="#c98a3a" roughness={0.6} />
       </instancedMesh>
     </group>
   );
 }
 
-// ---------------------------------------------------------------- seçili net: pinleri birleştiren çizgiler
+// ---------------------------------------------------------------- pasif elemanlar
 
-function NetLines() {
-  const net = useKart((s) => s.net);
+const PASSIVE_COLOR: Record<PassiveKind, string> = {
+  direnc: "#c9b48c", kondansator: "#c98a3a", elektrolitik: "#22406e", led: "#3a2a2a", dizi: "#202226",
+  konnektor: "#17191c", osilator: "#a7b0ba", buton: "#2a2d33", anahtar: "#2b5fb0", pot: "#2f68c2", modul: "#1f4f6b",
+};
+const ROUND = new Set<PassiveKind>(["elektrolitik", "led"]);
+
+/** LED'in yandığı net: anot netini süren çip yoksa, anoda bağlı direncin öbür ucu (sinyal → R → LED) */
+function ledSignal(p: PassivePlace, ends: Map<number, Endpoint[]>): number {
+  const anode = p.pins.find((q) => q.num === 1)?.net ?? -1;
+  if (anode < 0) return -1;
+  const list = ends.get(anode) ?? [];
+  if (list.some((e) => e.kind === "chip")) return anode;
+  for (const e of list) {
+    if (e.kind !== "passive" || e.ref === p.ref) continue;
+    const r = findPart(e.ref)?.passive;
+    if (r && r.pins.length === 2) return r.pins.find((q) => q.num !== e.num)?.net ?? -1;
+  }
+  return anode;
+}
+
+function Passives() {
   const { lay, w } = useLayoutWorld();
-  const ref = useRef<LineSegments>(null);
+  const all = lay.passives;
+  const boxes = useMemo(() => all.filter((p) => !ROUND.has(p.kind)), [all]);
+  const rounds = useMemo(() => all.filter((p) => ROUND.has(p.kind)), [all]);
+  const flatPins = useMemo(() => all.flatMap((p) => p.pins.map((pin) => ({ p, pin }))), [all]);
+  const boxRef = useRef<InstancedMesh>(null);
+  const roundRef = useRef<InstancedMesh>(null);
+  const pinRef = useRef<InstancedMesh>(null);
+  const selected = useKart((s) => s.chip);
   const version = useRef(-1);
-  const geo = useMemo(() => {
-    if (net === null) return null;
-    const pts = lay.chips.flatMap((c) => c.pins.filter((p) => p.net === net).map((p) => w(p.x, p.y)));
-    if (pts.length < 2) return null;
-    // en kısa yayılan ağaç (Prim)
-    const inTree = [0];
-    const rest = pts.map((_, i) => i).slice(1);
-    const pos: number[] = [];
-    while (rest.length) {
-      let best = [0, 0, Infinity];
-      for (const a of inTree) for (const [k, b] of rest.entries()) {
-        const d = Math.hypot(pts[a][0] - pts[b][0], pts[a][1] - pts[b][1]);
-        if (d < best[2]) best = [a, k, d];
-      }
-      const b = rest.splice(best[1], 1)[0];
-      inTree.push(b);
-      pos.push(pts[best[0]][0], 0.5, pts[best[0]][1], pts[b][0], 0.5, pts[b][1]);
+  const leds = useMemo(() => {
+    const ends = netEnds();
+    return rounds.map((p, i) => (p.kind === "led" ? { i, net: ledSignal(p, ends), on: /fault|hata/i.test(p.role) ? "#ff3b3b" : "#4dff6a" } : null)).filter((x) => x !== null);
+  }, [rounds]);
+
+  /** gövdenin dikdörtgeni: eksenel elemanlarda pinler gövdenin dışında */
+  const bodyRect = (p: PassivePlace) => {
+    const inset = p.kind === "direnc" || p.kind === "kondansator" ? 1.1 : 0;
+    return p.vertical ? { x: p.x, y: p.y + inset, w: p.w, h: p.h - 2 * inset } : { x: p.x + inset, y: p.y, w: p.w - 2 * inset, h: p.h };
+  };
+
+  useLayoutEffect(() => {
+    boxes.forEach((p, i) => {
+      const r = bodyRect(p);
+      const [x, z] = w(r.x + r.w / 2, r.y + r.h / 2);
+      const hgt = Math.max(0.12, p.height * S * (p.kind === "konnektor" ? 0.35 : 1));
+      tmpO.position.set(x, hgt / 2 + 0.01, z);
+      tmpO.scale.set(r.w * S, hgt, r.h * S);
+      tmpO.updateMatrix();
+      boxRef.current!.setMatrixAt(i, tmpO.matrix);
+    });
+    rounds.forEach((p, i) => {
+      const [x, z] = w(p.x + p.w / 2, p.y + p.h / 2);
+      const hgt = p.height * S;
+      tmpO.position.set(x, hgt / 2 + 0.01, z);
+      tmpO.scale.set(p.w * S, hgt, p.h * S);
+      tmpO.updateMatrix();
+      roundRef.current!.setMatrixAt(i, tmpO.matrix);
+      roundRef.current!.setColorAt(i, tmpC.set(PASSIVE_COLOR[p.kind]));
+    });
+    flatPins.forEach(({ p, pin }, i) => {
+      const [x, z] = w(pin.x, pin.y);
+      const tall = p.kind === "konnektor" ? p.height * S : 0.16;
+      tmpO.position.set(x, tall / 2, z);
+      tmpO.scale.set(0.07, tall, 0.07);
+      tmpO.updateMatrix();
+      pinRef.current!.setMatrixAt(i, tmpO.matrix);
+      pinRef.current!.setColorAt(i, PIN_COLORS[0]);
+    });
+    for (const m of [boxRef.current, roundRef.current, pinRef.current]) {
+      if (!m) continue;
+      m.instanceMatrix.needsUpdate = true;
+      if (m.instanceColor) m.instanceColor.needsUpdate = true;
+      m.computeBoundingSphere();
     }
-    const g = new BufferGeometry();
-    g.setAttribute("position", new BufferAttribute(new Float32Array(pos), 3));
-    return g;
-  }, [net, lay, w]);
-  useEffect(() => () => geo?.dispose(), [geo]);
+    version.current = -1;
+  }, [boxes, rounds, flatPins, w]);
+
+  useLayoutEffect(() => {
+    boxes.forEach((p, i) => boxRef.current!.setColorAt(i, tmpC.set(p.ref === selected ? "#5f7bb0" : PASSIVE_COLOR[p.kind])));
+    if (boxRef.current?.instanceColor) boxRef.current.instanceColor.needsUpdate = true;
+  }, [boxes, selected]);
+
   useFrame(() => {
-    if (!ref.current || net === null || version.current === liveNets.version) return;
+    if (version.current === liveNets.version || !liveNets.values) return;
     version.current = liveNets.version;
-    const lv = liveNets.values?.[net] ?? 3;
-    (ref.current.material as LineBasicMaterial).color.copy(lv === 0 ? tmpC.set("#7fb3ff") : levelColors[lv]);
+    const v = liveNets.values;
+    flatPins.forEach(({ pin }, i) => pinRef.current!.setColorAt(i, PIN_COLORS[level(v, pin.net)] ?? PIN_COLORS[3]));
+    if (pinRef.current?.instanceColor) pinRef.current.instanceColor.needsUpdate = true;
+    if (roundRef.current && leds.length) {
+      for (const l of leds) roundRef.current.setColorAt(l.i, tmpC.set(level(v, l.net) === 1 ? l.on : "#3a2a2a"));
+      roundRef.current.instanceColor!.needsUpdate = true;
+    }
   });
-  if (!geo) return null;
+
+  const labels = useMemo<TextItem[]>(() => all.filter((p) => !p.chip && p.kind !== "kondansator").map((p) => {
+    const [x, z] = w(p.x, p.y + p.h + 0.4);
+    return { text: p.ref, x, z, w: Math.max(4, p.w) * S, d: 2.6 * S, y: 0.004, color: "#b8c8bd", align: "left" as const };
+  }), [all, w]);
+
+  const pick = (list: PassivePlace[]) => ({
+    onClick: (e: ThreeEvent<MouseEvent>) => {
+      e.stopPropagation();
+      const p = list[e.instanceId ?? -1];
+      if (p) useKart.getState().selectChip(p.ref);
+    },
+    onPointerMove: (e: ThreeEvent<PointerEvent>) => {
+      e.stopPropagation();
+      const p = list[e.instanceId ?? -1];
+      if (p) useKart.setState({ hover: { ref: p.ref, x: e.nativeEvent.clientX, y: e.nativeEvent.clientY } });
+    },
+    onPointerOut: () => useKart.setState({ hover: null }),
+  });
+
   return (
-    <lineSegments ref={ref} geometry={geo} raycast={() => null} renderOrder={10}>
-      <lineBasicMaterial color="#ffffff" depthTest={false} transparent />
-    </lineSegments>
+    <group>
+      {boxes.length > 0 && (
+        <instancedMesh ref={boxRef} args={[undefined, undefined, boxes.length]} {...pick(boxes)}>
+          <boxGeometry />
+          <meshStandardMaterial color="#ffffff" roughness={0.6} metalness={0.1} />
+        </instancedMesh>
+      )}
+      {rounds.length > 0 && (
+        <instancedMesh ref={roundRef} args={[undefined, undefined, rounds.length]} {...pick(rounds)}>
+          <cylinderGeometry args={[0.5, 0.5, 1, 18]} />
+          <meshStandardMaterial color="#ffffff" roughness={0.45} metalness={0.15} />
+        </instancedMesh>
+      )}
+      {flatPins.length > 0 && (
+        <instancedMesh
+          ref={pinRef}
+          args={[undefined, undefined, flatPins.length]}
+          onClick={(e) => {
+            e.stopPropagation();
+            const p = flatPins[e.instanceId ?? -1];
+            if (p && p.pin.net > 1) useKart.getState().selectNet(p.pin.net);
+          }}
+        >
+          <boxGeometry />
+          <meshStandardMaterial color="#ffffff" roughness={0.35} metalness={0.6} />
+        </instancedMesh>
+      )}
+      <TextQuads items={labels} cellW={256} cellH={64} font={34} />
+    </group>
+  );
+}
+
+// ---------------------------------------------------------------- teller (kavisli atlama telleri)
+
+const pinTop = (e: Endpoint) => {
+  if (e.kind === "chip") return PIN_TOP;
+  const p = findPart(e.ref)?.passive;
+  return p?.kind === "konnektor" ? p.height * S : 0.16;
+};
+
+/**
+ * Birleştirilmiş tel katmanı: tek çizim çağrısı, renkler net değeri değişince güncellenir.
+ * width ≤ 1 ise ince (1 piksel, sıradan LineSegments: binlerce tel için en ucuzu), değilse
+ * kalın (LineSegments2).
+ */
+function WireLayer({ edges, width, opacity = 1, onTop = false, order = 0 }: { edges: WireEdge[]; width: number; opacity?: number; onTop?: boolean; order?: number }) {
+  const { lay, w } = useLayoutWorld();
+  const size = useThree((s) => s.size);
+  const version = useRef(-1);
+  const obj = useMemo(() => {
+    if (!edges.length) return null;
+    const wg = wireGeometry(edges, w, pinTop, busRouter(lay));
+    const transparent = opacity < 1 || onTop;
+    if (width <= 1) {
+      const geo = new BufferGeometry();
+      geo.setAttribute("position", new BufferAttribute(wg.positions, 3));
+      const colors = new BufferAttribute(new Float32Array(wg.positions.length), 3);
+      geo.setAttribute("color", colors);
+      const mat = new LineBasicMaterial({ vertexColors: true, transparent, opacity, depthTest: !onTop });
+      const line = new LineSegments(geo, mat);
+      line.raycast = () => {};
+      line.renderOrder = order;
+      line.frustumCulled = false;
+      return { line, geo, mat, nets: wg.nets, colors: () => { colors.needsUpdate = true; return colors.array as Float32Array; } };
+    }
+    const geo = new LineSegmentsGeometry();
+    geo.setPositions(wg.positions);
+    geo.setColors(new Float32Array(wg.positions.length));
+    const mat = new LineMaterial({ linewidth: width, vertexColors: true, transparent, opacity, depthTest: !onTop, worldUnits: false });
+    const line = new LineSegments2(geo, mat);
+    line.raycast = () => {};
+    line.renderOrder = order;
+    line.frustumCulled = false;
+    return {
+      line, geo, mat, nets: wg.nets,
+      colors: () => {
+        const attr = geo.getAttribute("instanceColorStart") as InterleavedBufferAttribute;
+        attr.data.needsUpdate = true;
+        return attr.data.array as Float32Array;
+      },
+    };
+  }, [edges, lay, w, width, opacity, onTop, order]);
+  useEffect(() => () => {
+    obj?.geo.dispose();
+    obj?.mat.dispose();
+  }, [obj]);
+  useEffect(() => {
+    if (obj?.mat instanceof LineMaterial) obj.mat.resolution.set(size.width, size.height);
+    version.current = -1;
+  }, [obj, size]);
+  useFrame(() => {
+    if (!obj || version.current === liveNets.version) return;
+    version.current = liveNets.version;
+    const v = liveNets.values;
+    // her parça 6 sayı: iki ucun rengi (r g b r g b)
+    const arr = obj.colors();
+    const nets = obj.nets;
+    let lastNet = -2;
+    let c = WIRE_COLORS[3];
+    for (let k = 0; k < nets.length; k++) {
+      if (nets[k] !== lastNet) {
+        lastNet = nets[k];
+        c = WIRE_COLORS[level(v, lastNet)] ?? WIRE_COLORS[3];
+      }
+      const o = 6 * k;
+      arr[o] = arr[o + 3] = c.r;
+      arr[o + 1] = arr[o + 4] = c.g;
+      arr[o + 2] = arr[o + 5] = c.b;
+    }
+  });
+  return obj ? <primitive object={obj.line} /> : null;
+}
+
+function Wires() {
+  const mode = useKart((s) => s.wires);
+  const power = useKart((s) => s.power);
+  const chip = useKart((s) => s.chip);
+  const net = useKart((s) => s.net);
+  const all = useMemo(() => (mode === "hepsi" ? allWires(netEnds(), { power }) : []), [mode, power]);
+  const mine = useMemo(() => (mode !== "yok" && chip ? partWires(chip, netEnds(), { power }) : []), [mode, chip, power]);
+  const sel = useMemo(() => (net !== null ? netWires(net, netEnds()) : []), [net]);
+  return (
+    <group>
+      {/* bütün bilgisayar: binlerce tel, ince çizgi (ucuz) */}
+      <WireLayer edges={all} width={1} opacity={chip ? 0.35 : 0.85} />
+      <WireLayer edges={mine} width={2.2} order={5} />
+      <WireLayer edges={sel} width={3.2} onTop order={10} />
+    </group>
   );
 }
 
@@ -492,7 +685,7 @@ function Die({ chip }: { chip: ChipPlace }) {
 
   return (
     <group>
-      <mesh position={[cx, DIE_Y - 0.03, cz]} raycast={() => null}>
+      <mesh position={[cx, DIE_Y - 0.03, cz]} raycast={noRaycast}>
         <boxGeometry args={[dieW + 0.3, 0.05, dieD + 0.3]} />
         <meshStandardMaterial color="#1a2330" roughness={0.35} metalness={0.5} transparent opacity={0.94} />
       </mesh>
@@ -508,19 +701,71 @@ function Die({ chip }: { chip: ChipPlace }) {
         <boxGeometry />
         <meshStandardMaterial color="#ffffff" roughness={0.5} emissive="#000000" />
       </instancedMesh>
-      <lineSegments ref={wires} geometry={wireGeo.g} raycast={() => null}>
+      <lineSegments ref={wires} geometry={wireGeo.g} raycast={noRaycast}>
         <lineBasicMaterial vertexColors />
       </lineSegments>
-      <lineSegments ref={bonds} geometry={bondGeo.g} raycast={() => null}>
+      <lineSegments ref={bonds} geometry={bondGeo.g} raycast={noRaycast}>
         <lineBasicMaterial vertexColors transparent opacity={0.55} />
       </lineSegments>
     </group>
   );
 }
 
+// ---------------------------------------------------------------- VGA monitörü (kartların arkasında)
+
+function Monitor() {
+  const { lay } = useLayoutWorld();
+  const texture = useMemo(() => {
+    const t = new CanvasTexture(screenCanvas());
+    t.colorSpace = SRGBColorSpace;
+    t.anisotropy = 4;
+    return t;
+  }, []);
+  useEffect(() => () => texture.dispose(), [texture]);
+  const seen = useRef(-1);
+  useFrame(() => {
+    const v = updateScreenCanvas();
+    if (v !== seen.current) {
+      seen.current = v;
+      texture.needsUpdate = true;
+    }
+  });
+  const sw = 34;
+  const sh = 25.5;
+  const z = -(lay.height * S) / 2 - 9;
+  const y = sh / 2 + 4;
+  return (
+    <group position={[0, 0, z]}>
+      <group position={[0, y, 0]} rotation={[-0.12, 0, 0]}>
+        <mesh raycast={noRaycast}>
+          <boxGeometry args={[sw + 2.4, sh + 2.4, 1.6]} />
+          <meshStandardMaterial color="#1b1e22" roughness={0.7} />
+        </mesh>
+        <mesh position={[0, 0, 0.95]} raycast={noRaycast}>
+          <planeGeometry args={[sw, sh]} />
+          <meshBasicMaterial map={texture} toneMapped={false} />
+        </mesh>
+      </group>
+      <mesh position={[0, 2, -1]} raycast={noRaycast}>
+        <boxGeometry args={[3, 4, 2]} />
+        <meshStandardMaterial color="#1b1e22" roughness={0.7} />
+      </mesh>
+      <mesh position={[0, 0.15, -1]} raycast={noRaycast}>
+        <boxGeometry args={[14, 0.3, 8]} />
+        <meshStandardMaterial color="#1b1e22" roughness={0.7} />
+      </mesh>
+    </group>
+  );
+}
+
 // ---------------------------------------------------------------- kamera
 
-const OVERVIEW = { target: new Vector3(0, 0, 3), cam: new Vector3(0, 56, 38) };
+/** Genel bakış: bütün kartlar ve arkadaki monitör, hafif eğik */
+function overview(width: number, height: number) {
+  const span = Math.max(width * 0.8, height) * S;
+  // hedef biraz sağda: kartlar ekranın solunda kalır, sağ üstteki VGA paneli onları örtmez
+  return { target: new Vector3(span * 0.1, 0, -span * 0.08), cam: new Vector3(span * 0.1, span * 1.22, span * 0.98) };
+}
 
 function CameraFly() {
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null;
@@ -530,14 +775,31 @@ function CameraFly() {
   const anim = useRef<{ target: Vector3; cam: Vector3; t0: Vector3; c0: Vector3; t: number } | null>(null);
   useEffect(() => {
     if (!controls) return;
-    const c = chip ? lay.chips.find((x) => x.ref === chip) : null;
+    const part = findPart(chip);
+    const c = part?.chip ?? part?.passive ?? null;
     const start = { t0: controls.target.clone(), c0: camera.position.clone(), t: 0 };
     if (!c) {
-      anim.current = { target: OVERVIEW.target.clone(), cam: OVERVIEW.cam.clone(), ...start };
+      const o = overview(lay.width, lay.height);
+      anim.current = { target: o.target, cam: o.cam, ...start };
       return;
     }
-    const [x, z] = w(c.x + c.w / 2, c.y + c.h / 2);
-    anim.current = { target: new Vector3(x, 1.4, z), cam: new Vector3(x, 1.4 + 6.5, z + 5.5), ...start };
+    // çip ve tellerinin öbür uçları birlikte görünsün: uçların kutusunu çerçevele
+    let x0 = c.x, x1 = c.x + c.w, y0 = c.y, y1 = c.y + c.h;
+    for (const e of partWires(c.ref, netEnds(), { power: false })) {
+      for (const p of [e.a, e.b]) {
+        x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x);
+        y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y);
+      }
+    }
+    const [ax, az] = w(x0, y0);
+    const [bx, bz] = w(x1, y1);
+    const extent = Math.max(bx - ax, (bz - az) * 1.4);
+    const d = part?.chip ? Math.min(100, Math.max(11, extent * 1.15)) : Math.min(70, Math.max(5, extent * 1.15));
+    // kutunun ortası; biraz sağa kaydırılır ki sağ üstteki VGA paneli çipi örtmesin
+    const tx = (ax + bx) / 2 + d * 0.1;
+    const tz = (az + bz) / 2;
+    const ty = part?.chip ? 1.2 : 0.2;
+    anim.current = { target: new Vector3(tx, ty, tz), cam: new Vector3(tx, ty + d * 0.78, tz + d * 0.62), ...start };
   }, [chip, controls, camera, lay, w]);
   useFrame((_, dt) => {
     const a = anim.current;
@@ -554,15 +816,16 @@ function CameraFly() {
 
 function SelectedDie() {
   const chip = useKart((s) => s.chip);
-  const { lay } = useLayoutWorld();
-  const c = chip ? lay.chips.find((x) => x.ref === chip) : null;
+  const c = findPart(chip)?.chip;
   return c ? <Die key={c.ref} chip={c} /> : null;
 }
 
 export function BoardScene() {
+  const lay = boardLayoutData();
+  const o = overview(lay.width, lay.height);
   return (
     <Canvas
-      camera={{ position: OVERVIEW.cam.toArray(), fov: 40, near: 0.05, far: 400 }}
+      camera={{ position: o.cam.toArray(), fov: 40, near: 0.2, far: 800 }}
       dpr={[1, 2]}
       onPointerMissed={() => {
         const s = useKart.getState();
@@ -575,11 +838,12 @@ export function BoardScene() {
       <directionalLight position={[20, 40, 15]} intensity={1.3} />
       <Cards />
       <Chips />
-      <NetLines />
+      <Passives />
+      <Wires />
       <SelectedDie />
-      <OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI * 0.48} minDistance={1.5} maxDistance={120} />
+      <Monitor />
+      <OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI * 0.48} minDistance={1.5} maxDistance={260} target={o.target} />
       <CameraFly />
     </Canvas>
   );
 }
-
