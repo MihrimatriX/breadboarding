@@ -4,6 +4,7 @@
 //   dis  dosya.bin [--org 0x0000]               ikili dosyayı geri çevir
 //   ucode dosya.ucode [-o klasör]               mikrokodu 4 Flash imajına derle (rom0..rom3.bin)
 //   chips | kicad-sym | board | roms …          donanım komutları (tools/hw.ts)
+//   kit                                         deney rehberlerinin otomatik bölümlerini üret (kit/)
 //   bios [-o bios.hex|.bin]                     BIOS'u derle (.bin: 128 KB Flash imajı)
 //   charrom [-o charrom.bin]                    video kartının karakter ROM'u
 //   machine [dosya.s] [--flash] [--cycles N] [--screen]
@@ -35,6 +36,10 @@ function build(path: string) {
 
 if (["chips", "kicad-sym", "board", "roms"].includes(cmd)) {
   await import("./hw.ts");
+  process.exit(0);
+}
+if (cmd === "kit") {
+  await import("../kit/cli.ts");
   process.exit(0);
 }
 

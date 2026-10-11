@@ -48,6 +48,7 @@ export function buildCpuCard(b: Board): CpuCard {
   const TA = b.bus("TA", 16);
   const TB = b.bus("TB", 16);
   const A = b.bus("A", 16);
+  b.block = "Register dosyası";
   b.pullDown(BUS, "iç veriyolu: sürülmeyince 0");
 
   // ---- saat, çalışma izni
@@ -148,7 +149,7 @@ export function buildCpuCard(b: Board): CpuCard {
     ];
   });
 
-  // ---- TA, TB, MAR, IR
+  // ---- TA, TB (ALU girişleri), MAR, IR
   b.block = "Geçici register'lar";
   const latch16 = (name: string, sig: number, q: number[]) => {
     const clk = gclk(sig, name);
@@ -156,6 +157,7 @@ export function buildCpuCard(b: Board): CpuCard {
   };
   const ta = latch16("TA", CW[17], TA);
   const tb = latch16("TB", CW[18], TB);
+  b.block = "MAR ve IR";
   const mar = latch16("MAR", CW[21], A);
   const ir = latch16("IR", CW[23], IR);
 
@@ -359,6 +361,7 @@ export function buildCpuCard(b: Board): CpuCard {
   b.nand(weO, "WR_WIN", "~MWE_O", "tek bayt yazma darbesi");
   // ~MRD = ~SRC_MEM (bellek çıkış izni) arka panele doğrudan gider
   b.not(MEMRD, "~MRD", "bellek okuma (aktif düşük)");
+  b.block = "Kontrol";
   b.led("HALTED", "HALTED");
   b.led("FAULT", "FAULT");
 
