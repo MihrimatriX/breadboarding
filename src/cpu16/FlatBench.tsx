@@ -8,7 +8,7 @@ import { buildProgram } from "../../cpu16/cc/index";
 import { LIB } from "../../cpu16/cc/lib-vite";
 import { Cpu16, SimpleBus, type StepResult } from "../../cpu16/emu/cpu";
 import { disassemble } from "../../cpu16/emu/disasm";
-import { ModeSwitch } from "../ui/ModeSwitch";
+import { AppHeader, Group, Meter, PanelToggle, Section, Tabs, useLayout, type Shortcut, type TabDef } from "../ui/Shell";
 import { dilBul, ornekDili, type Dil } from "./dil";
 
 const sources = import.meta.glob("../../cpu16/programs/*.{s,c}", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
@@ -33,6 +33,13 @@ function compileSource(text: string, lang: Dil) {
 }
 const MEMDEFAULT: Record<string, number> = { hello: 0x0000 };
 const REG_NAMES = ["r0", "r1", "r2", "r3", "r4", "r5", "r6 · sp", "r7 · lr"];
+
+const SHORTCUTS: Shortcut[] = [{ keys: "Ctrl+Enter", what: "Düzenleyicide: derleyip yükler" }];
+type SideTab = "durum" | "bellek";
+const SIDE_TABS: TabDef<SideTab>[] = [
+  { id: "durum", label: "Durum", title: "Register'lar, UART çıkışı, komut izi" },
+  { id: "bellek", label: "Bellek", title: "Bellek dökümü" },
+];
 
 const hex4 = (n: number) => (n & 0xffff).toString(16).toUpperCase().padStart(4, "0");
 const hex2 = (n: number) => n.toString(16).toUpperCase().padStart(2, "0");
@@ -61,6 +68,8 @@ export function FlatBench({ switcher }: { switcher: ReactNode }) {
   const prevMem = useRef<Uint8Array | null>(null);
   const irqPending = useRef(false);
   const runningRef = useRef(false);
+  const [lay, setLay] = useLayout("cpu16-duz", { side: true, bottom: true, bottomH: 0, sideTab: "durum" });
+  const sideTab = (SIDE_TABS.some((t) => t.id === lay.sideTab) ? lay.sideTab : "durum") as SideTab;
 
   const redraw = () => setFrame((f) => f + 1);
   const snapshot = () => {
@@ -202,9 +211,9 @@ export function FlatBench({ switcher }: { switcher: ReactNode }) {
   const memRows = (() => {
     if (!bus) return [];
     const base = (parseInt(memAddr, 16) || 0) & 0xfff0;
-    return Array.from({ length: 8 }, (_, r) => {
-      const a = (base + r * 16) & 0xffff;
-      const bytes = Array.from({ length: 16 }, (_, k) => {
+    return Array.from({ length: 16 }, (_, r) => {
+      const a = (base + r * 8) & 0xffff;
+      const bytes = Array.from({ length: 8 }, (_, k) => {
         const addr = (a + k) & 0xffff;
         const v = bus.mem[addr];
         return { v, changed: prevMem.current !== null && prevMem.current[addr] !== v };
@@ -214,102 +223,123 @@ export function FlatBench({ switcher }: { switcher: ReactNode }) {
   })();
 
   return (
-    <div className="bench">
-      <header className="toolbar">
-        <div className="brand">
-          <h1>Silikon3D</h1>
-          <span>CPU16 · kendi 16 bit işlemcimiz</span>
-        </div>
-        <ModeSwitch mode="cpu16" />
-        {switcher}
-        <div className="clock">
+    <div className="bench bench-flat shell" data-side={lay.side ? "open" : "closed"}>
+      <AppHeader
+        mode="cpu16"
+        context="CPU16 · düz bellek (64 KB RAM)"
+        shortcuts={SHORTCUTS}
+        meters={
+          <>
+            <Meter label="Komut">{cpu ? cpu.instructions.toLocaleString("tr-TR") : "-"}</Meter>
+            <Meter label="PC">{cpu ? hex4(cpu.pc) : "-"}</Meter>
+          </>
+        }
+      />
+      <div className="toolbar">
+        <Group label="Kip">{switcher}</Group>
+        <Group label="Çalıştırma">
           <button onClick={step} disabled={!cpu || running} title="Bir komut çalıştır">Adım</button>
           <button className="primary" onClick={running ? pause : run} disabled={!cpu}>{running ? "Durdur" : "Çalıştır"}</button>
-          <button onClick={() => build(src, lang)}>Sıfırla</button>
+          <button onClick={() => build(src, lang)} title="Programı yeniden yükle, CPU'yu sıfırla">Sıfırla</button>
           <button onClick={raiseIrq} disabled={!cpu} title="IRQ hattını kaldır (irq.s örneği için)">IRQ</button>
-          <span className={`bench-status s-${status.kind}`}>{status.text}</span>
-        </div>
-        <div className="meter">
-          <span>Komut <b>{cpu ? cpu.instructions.toLocaleString("tr-TR") : "-"}</b></span>
-          <span>PC <b>{cpu ? hex4(cpu.pc) : "-"}</b></span>
-        </div>
-      </header>
+        </Group>
+        <Group label="Durum">
+          <span className={`bench-status s-${status.kind}`} role="status">{status.text}</span>
+        </Group>
+        <Group label="Paneller" className="tb-end">
+          <PanelToggle which="side" open={lay.side} onToggle={() => setLay({ side: !lay.side })} />
+        </Group>
+      </div>
 
-      <section className="bench-src">
-        <div className="row between">
-          <h2>Kaynak</h2>
-          <div className="row">
-            <select id="cpu16-prog" value={prog} onChange={(e) => pick(e.target.value)} aria-label="Örnek program">
-              {ORDER.map((n) => <option key={n} value={n}>{LABELS[n] ?? n}</option>)}
-            </select>
-            <button className="primary" onClick={() => build(src, lang)}>Derle ve yükle</button>
+      <div className="workspace">
+        <section className="bench-main">
+          <div className="bench-src panel fill">
+            <div className="panel-head">
+              <h2>Kaynak</h2>
+              <select id="cpu16-prog" value={prog} onChange={(e) => pick(e.target.value)} aria-label="Örnek program">
+                {ORDER.map((n) => <option key={n} value={n}>{LABELS[n] ?? n}</option>)}
+              </select>
+              <div className="seg" role="group" aria-label="Dil">
+                <button className={lang === "asm" ? "on" : ""} aria-pressed={lang === "asm"} onClick={() => chooseLang("asm")} title="as16 ile derlenir">Assembly</button>
+                <button className={lang === "c" ? "on" : ""} aria-pressed={lang === "c"} onClick={() => chooseLang("c")} title="cc16 C derleyicisiyle derlenir (ROM hedefi)">C</button>
+              </div>
+              <span className="hint-text grow">{lang === "c" ? "cc16 · program 0x0000'dan; printf UART'a yazar" : "as16 ile derlenir"}</span>
+            </div>
+            <textarea
+              id="cpu16-src"
+              spellCheck={false}
+              value={src}
+              aria-label={lang === "c" ? "C kaynak kodu" : "Assembly kaynak kodu"}
+              onChange={(e) => edit(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); build(src, lang); }
+              }}
+            />
+            {errors.length > 0 && (
+              <ol className="bench-errors">{errors.map((e, i) => <li key={i}>satır {e.line}: {e.message}</li>)}</ol>
+            )}
+            <div className="panel-foot">
+              <button className="primary" onClick={() => build(src, lang)} title="Ctrl+Enter">Derle ve yükle</button>
+              <p className="info" role="status">{info}</p>
+            </div>
           </div>
-        </div>
-        <div className="row between wrap">
-          <div className="seg" role="group" aria-label="Dil">
-            <button className={lang === "asm" ? "on" : ""} onClick={() => chooseLang("asm")} title="as16 ile derlenir">Assembly</button>
-            <button className={lang === "c" ? "on" : ""} onClick={() => chooseLang("c")} title="cc16 C derleyicisiyle derlenir (ROM hedefi)">C</button>
-          </div>
-          <span className="muted small">{lang === "c" ? "C: cc16, program 0x0000'dan; printf UART'a yazar" : "Assembly: as16"}</span>
-        </div>
-        <textarea
-          id="cpu16-src"
-          spellCheck={false}
-          value={src}
-          aria-label={lang === "c" ? "C kaynak kodu" : "Assembly kaynak kodu"}
-          onChange={(e) => edit(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); build(src, lang); }
-          }}
-        />
-        {errors.length > 0 && (
-          <ol className="bench-errors">{errors.map((e, i) => <li key={i}>satır {e.line}: {e.message}</li>)}</ol>
+        </section>
+
+        {lay.side && (
+          <aside className="bench-panel side" aria-label="Makine durumu">
+            <Tabs tabs={SIDE_TABS} value={sideTab} onChange={(t) => setLay({ sideTab: t })} label="Yan panel" />
+            <div className="side-body" role="tabpanel" hidden={sideTab !== "durum"}>
+              <Section title="Register'lar">
+                <div className="bench-regs">
+                  {cpu && [...REG_NAMES.map((n, i) => [n, cpu.regs[i], cpu.regs[i] !== prevRegs.current[i]] as const), ["pc", cpu.pc, false] as const].map(([n, v, ch]) => (
+                    <div key={n} className={ch ? "changed" : ""}>
+                      <b>{n}<i>{v > 32767 ? v - 65536 : v}</i></b>
+                      <span>{hex4(v)}</span>
+                      <span className="leds">{Array.from({ length: 16 }, (_, k) => <i key={k} className={(v >> (15 - k)) & 1 ? "on" : ""} />)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="pins" aria-label="Bayraklar">
+                  {cpu && (["n", "z", "c", "v", "i"] as const).map((f) => <span key={f} className={`pin ${cpu[f] ? "on" : ""}`}>{f.toUpperCase()}</span>)}
+                  {cpu?.irq && <span className="pin on">IRQ</span>}
+                </div>
+              </Section>
+
+              <Section title="UART çıkışı">
+                <pre className="bench-uart">{bus?.output || "UART boş: programın 0xFF00'a yazdığı baytlar burada görünür"}</pre>
+              </Section>
+
+              <Section title="Komut izi">
+                <div className="bench-trace">
+                  {trace.map((t) => (
+                    <div key={t.a} className={t.cur ? "cur" : ""}><span>{hex4(t.a)}</span><span>{hex4(t.w)}</span><span>{t.text}</span></div>
+                  ))}
+                </div>
+              </Section>
+            </div>
+
+            <div className="side-body" role="tabpanel" hidden={sideTab !== "bellek"}>
+              <Section
+                title="Bellek"
+                actions={<input id="cpu16-mem" className="addr" value={memAddr} onChange={(e) => setMemAddr(e.target.value)} size={6} aria-label="Bellek başlangıç adresi (hex)" />}
+              >
+                <pre className="bench-mem">
+                  {memRows.map((r) => (
+                    <div key={r.a}>
+                      <span className="ad">{hex4(r.a)}</span>{"  "}
+                      {r.bytes.map((b, k) => (
+                        <span key={k} className={b.changed ? "ch" : b.v === 0 ? "z" : ""}>{hex2(b.v)}{k === 3 ? "  " : " "}</span>
+                      ))}
+                      {" "}{r.bytes.map((b) => (b.v >= 32 && b.v < 127 ? String.fromCharCode(b.v) : ".")).join("")}
+                    </div>
+                  ))}
+                </pre>
+                <p className="legend"><span><i className="sw ch" /> son adımda değişen bayt</span></p>
+              </Section>
+            </div>
+          </aside>
         )}
-        <p className="muted small">{info} Ctrl+Enter: derle.</p>
-      </section>
-
-      <section className="bench-panel">
-        <h2>Register'lar</h2>
-        <div className="bench-regs">
-          {cpu && [...REG_NAMES.map((n, i) => [n, cpu.regs[i], cpu.regs[i] !== prevRegs.current[i]] as const), ["pc", cpu.pc, false] as const].map(([n, v, ch]) => (
-            <div key={n} className={ch ? "changed" : ""}>
-              <b>{n}<i>{v > 32767 ? v - 65536 : v}</i></b>
-              <span>{hex4(v)}</span>
-              <span className="leds">{Array.from({ length: 16 }, (_, k) => <i key={k} className={(v >> (15 - k)) & 1 ? "on" : ""} />)}</span>
-            </div>
-          ))}
-        </div>
-        <div className="pins">
-          {cpu && (["n", "z", "c", "v", "i"] as const).map((f) => <span key={f} className={`pin ${cpu[f] ? "on" : ""}`}>{f.toUpperCase()}</span>)}
-          {cpu?.irq && <span className="pin on">IRQ</span>}
-        </div>
-
-        <h2>Komut izi</h2>
-        <div className="bench-trace">
-          {trace.map((t) => (
-            <div key={t.a} className={t.cur ? "cur" : ""}><span>{hex4(t.a)}</span><span>{hex4(t.w)}</span><span>{t.text}</span></div>
-          ))}
-        </div>
-
-        <h2>UART çıkışı</h2>
-        <pre className="bench-uart">{bus?.output || "UART boş: programın 0xFF00'a yazdığı baytlar burada görünür"}</pre>
-
-        <div className="row between">
-          <h2>Bellek</h2>
-          <input id="cpu16-mem" value={memAddr} onChange={(e) => setMemAddr(e.target.value)} size={6} aria-label="Bellek başlangıç adresi (hex)" />
-        </div>
-        <pre className="bench-mem">
-          {memRows.map((r) => (
-            <div key={r.a}>
-              <span className="ad">{hex4(r.a)}</span>{"  "}
-              {r.bytes.map((b, k) => (
-                <span key={k} className={b.changed ? "ch" : b.v === 0 ? "z" : ""}>{hex2(b.v)}{k === 7 ? "  " : " "}</span>
-              ))}
-              {" "}{r.bytes.map((b) => (b.v >= 32 && b.v < 127 ? String.fromCharCode(b.v) : ".")).join("")}
-            </div>
-          ))}
-        </pre>
-      </section>
+      </div>
     </div>
   );
 }

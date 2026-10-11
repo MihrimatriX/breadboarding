@@ -2,6 +2,7 @@ import { useApp } from "../state/store";
 import { sim } from "../sim/SimClient";
 import { disassemble } from "../sim/asm6502";
 import { flags, h2, h4 } from "./format";
+import { Section } from "./Shell";
 
 const PINS: { name: string; label: string; toggle?: boolean; activeLow?: boolean }[] = [
   { name: "clk0", label: "CLK0" },
@@ -24,20 +25,19 @@ export function RegistersPanel() {
     ["Adres yolu", "$" + h4(t.ab)], ["Veri yolu", "$" + h2(t.db)], ["Yön", t.rw ? "Okuma" : "Yazma"],
   ];
   return (
-    <section>
-      <h2>Yazmaçlar (die'dan okunuyor)</h2>
+    <Section title="Yazmaçlar" actions={<span className="hint-text">die'dan okunuyor</span>}>
       <div className="regs">
         {regs.map(([k, v]) => (
           <div key={k}><b>{k}</b><span>{v}</span></div>
         ))}
       </div>
-      <div className="pins">
+      <div className="pins" aria-label="Pinler">
         {PINS.map((p) => {
           const high = snap.pins[p.name];
           return (
             <button
               key={p.name}
-              className={`pin ${high ? "on" : ""}`}
+              className={`pin ${high ? "on" : ""}${p.toggle ? " toggle" : ""}`}
               disabled={!p.toggle}
               title={p.toggle ? "Tıkla: pini değiştir" : "Çip tarafından sürülüyor"}
               onClick={() => sim.pin(p.name, !high)}
@@ -49,6 +49,6 @@ export function RegistersPanel() {
       </div>
       <p className="dis">{t.sync ? `Komut çekiliyor  $${h4(t.ab)}  ${disassemble(read, t.ab).text}` : "Komut yürütülüyor"}</p>
       {snap.oscillations > 0 && <p className="warn">Kararsız devre: {snap.oscillations} kez döngü sınırına ulaşıldı.</p>}
-    </section>
+    </Section>
   );
 }

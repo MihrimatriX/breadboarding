@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useApp } from "../state/store";
+import { Section } from "./Shell";
 
 /** visual6502'deki "find" gibi: sinyal adını yaz, die üzerinde bul ve oraya uç */
 export function SignalSearch() {
@@ -19,16 +20,15 @@ export function SignalSearch() {
     useApp.getState().select(node, true);
   };
   return (
-    <section>
-      <h2>Sinyal bul</h2>
+    <Section title="Sinyal bul">
       <form className="row" onSubmit={(e) => { e.preventDefault(); go(); }}>
-        <input id="signal" list="signals" value={q} onChange={(e) => setQ(e.target.value)} placeholder="ör. clk0, ab5, a3, alu2, 1234" />
+        <input id="signal" list="signals" value={q} onChange={(e) => setQ(e.target.value)} placeholder="ör. clk0, ab5, a3, alu2, 1234" aria-label="Sinyal adı ya da düğüm numarası" />
         <button type="submit">Bul</button>
       </form>
       <datalist id="signals">
         {index.signalNames.map((n) => <option key={n} value={n} />)}
       </datalist>
       {err && <p className="warn">{err}</p>}
-    </section>
+    </Section>
   );
 }
