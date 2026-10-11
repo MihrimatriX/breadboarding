@@ -6,6 +6,9 @@ import { describe, expect, it } from "vitest";
 import { buildProgram } from "../cc/index.ts";
 import { LIB as VITE_LIB } from "../cc/lib-vite.ts";
 import { runProgram } from "../cc/run.ts";
+import { SimpleBus } from "../emu/cpu.ts";
+import { Datapath } from "../micro/datapath.ts";
+import { assembleMicrocode } from "../micro/microasm.ts";
 import { build, errorsOf, evalInt, exitOf, LIB, out, runC } from "./cc-helpers.ts";
 
 describe("temel dil", () => {
@@ -295,6 +298,38 @@ describe("struct, union, enum, typedef", () => {
     expect([...Array(6).keys()].map((i) => r.word("r", i))).toEqual([11, 22, 33, 140, 6, 8]);
     expect(r.dword("q", 0) | 0).toBe(-7);
     expect(r.dword("q", 1)).toBe(123456);
+  });
+
+  it("fonksiyon işaretçisiyle struct döndürme (5+ kelime argüman), özyinelemeli struct dönüşü", () => {
+    expect(
+      out(`#include <stdio.h>
+        struct R { long a; int b[3]; };
+        typedef struct R (*mk_fn)(int, long, int, int, char);
+        struct R mk(int x, long y, int z, int w, char c) {
+          struct R r; r.a = y + x; r.b[0] = z; r.b[1] = w; r.b[2] = c; return r;
+        }
+        struct R rec(int n) {
+          struct R r;
+          if (n == 0) { r.a = 1; r.b[0] = r.b[1] = r.b[2] = 0; return r; }
+          r = rec(n - 1); r.a *= 3; r.b[n % 3] += n;
+          return r;
+        }
+        int main(void) {
+          mk_fn f = mk;
+          struct R r = f(1, 100000L, 3, 4, 'z'), q = rec(10);
+          printf("%ld %d %d %d|%ld %d %d %d\\n", r.a, r.b[0], r.b[1], r.b[2], q.a, q.b[0], q.b[1], q.b[2]);
+          return 0;
+        }`),
+    ).toBe("100001 3 4 122|59049 18 22 15\n");
+  });
+
+  it("işaretçi karşılaştırmaları işaretsizdir (0x8000 üstü RAM adresleri)", () => {
+    expect(
+      exitOf(`int main(void) {
+        char *a = (char *)0x9000, *b = (char *)0x7000;
+        return (a > b) + (a < b) * 2 + ((int)a > (int)b) * 4 + (a - b == 0x2000) * 8;
+      }`),
+    ).toBe(9);
   });
 
   it("iç içe struct, struct dizisi, işaretçiyle erişim (->)", () => {
@@ -763,6 +798,23 @@ describe("örnek programlar (cpu16/programs/c)", () => {
         "id: 100 101 102, yerel sayaç 6\n" +
         "util çağrıları: 9, history[5]=8\n",
     );
+  });
+
+  it("derlenmiş C programı mikrokod modelinde (Faz 2) de aynı sonucu verir", () => {
+    const micro = assembleMicrocode(readFileSync(new URL("../micro/cpu16.ucode", import.meta.url), "utf8"));
+    for (const n of ["switch.c", "structs.c"]) {
+      const b = build(prog(n));
+      const emu = runProgram(b.image);
+      const bus = new SimpleBus();
+      bus.load(b.image);
+      const dp = new Datapath(micro.rom, bus);
+      let res = "ok";
+      for (let i = 0; i < 1_000_000 && res === "ok"; i++) res = dp.stepInstruction();
+      expect(res, n).toBe("halted");
+      expect(bus.output, n).toBe(emu.bus.output);
+      expect(dp.regs[0], n).toBe(emu.cpu.regs[0]);
+      expect(Buffer.from(bus.mem.subarray(0x4000, 0xff00)).equals(Buffer.from(emu.bus.mem.subarray(0x4000, 0xff00))), n).toBe(true);
+    }
   });
 
   it("iyileştirmeler kapalıyken de örnekler aynı çıktıyı verir", () => {
