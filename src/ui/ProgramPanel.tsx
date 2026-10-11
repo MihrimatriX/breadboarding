@@ -3,6 +3,7 @@ import { useApp } from "../state/store";
 import { sim } from "../sim/SimClient";
 import { PROGRAMS } from "../sim/programs";
 import { assemble } from "../sim/asm6502";
+import { Section } from "./Shell";
 
 export function ProgramPanel() {
   const programId = useApp((s) => s.programId);
@@ -18,11 +19,11 @@ export function ProgramPanel() {
     }
   };
   return (
-    <section>
-      <h2>Program</h2>
+    <Section title="Program" className="grow">
       <div className="row">
         <select
           id="program"
+          aria-label="Örnek program"
           value={programId}
           onChange={(e) => {
             const p = PROGRAMS.find((x) => x.id === e.target.value)!;
@@ -33,11 +34,11 @@ export function ProgramPanel() {
         >
           {PROGRAMS.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
-        <button onClick={() => load(source)}>Derle ve yükle</button>
+        <button className="primary" onClick={() => load(source)}>Derle ve yükle</button>
       </div>
       <p className="muted">{PROGRAMS.find((p) => p.id === programId)?.description}</p>
-      <textarea id="source" spellCheck={false} value={source} onChange={(e) => setSource(e.target.value)} rows={10} />
+      <textarea id="source" spellCheck={false} value={source} onChange={(e) => setSource(e.target.value)} rows={16} aria-label="6502 assembly kaynağı" />
       {msg && <p className={msg.ok ? "ok" : "warn"}>{msg.text}</p>}
-    </section>
+    </Section>
   );
 }
