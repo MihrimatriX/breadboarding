@@ -93,14 +93,14 @@ export function buildCacheCard(b: Board): CacheCard {
   // yüklenmedi); R'den sonra da istek kalkar, bir sonraki adıma taşmaz
   b.not("CLK", "~C_CLK", "adımın ikinci yarısı");
   const memNow = b.and("~IO", "~C_CLK", "C_MEMNOW", "bellek adresi, adımın ikinci yarısı");
-  b.and(memNow, b.or("C_WRL", rdMiss, undefined, "ana belleğe erişim"), "C_NEED", "ana belleğe erişim");
+  b.and(memNow, b.or("C_WRL", rdMiss, "C_MEMACC", "ana belleğe erişim"), "C_NEED", "ana belleğe erişim");
   b.nand(b.or("C_NEED", "C_CA", undefined, "bekleme"), "~C_CB", "~WAIT", "bekleme isteği (iki tur)");
 
   // etiket/veri yazma evresi [14, 18)
-  const tagph = b.and(b.and("TCLK", "C_CB", undefined, "yazma evresi"), "~C_CBF", "C_TAGPH", "yazma evresi [14, 18)");
+  const tagph = b.and(b.and("TCLK", "C_CB", "C_TCB", "yazma evresi"), "~C_CBF", "C_TAGPH", "yazma evresi [14, 18)");
   const fill = b.and(tagph, b.and("C_MRD", "C_EN", undefined, "doldurma"), "C_FILL", "satırı doldur");
-  b.or(fill, b.and(tagph, "C_INVL", undefined, "geçersiz kıl"), "C_TAGWR", "etiket yazma");
-  const snp = b.and(tagph, b.and("C_HIT", "PA19", undefined, "RAM'de isabet"), "C_SNP", "gözetleme: RAM'e yazma isabeti");
+  b.or(fill, b.and(tagph, "C_INVL", "C_INVWR", "geçersiz kıl"), "C_TAGWR", "etiket yazma");
+  const snp = b.and(tagph, b.and("C_HIT", "PA19", "C_RAMHIT", "RAM'de isabet"), "C_SNP", "gözetleme: RAM'e yazma isabeti");
   b.nor(fill, b.and(snp, "C_WRL_E", undefined, "çift bayt güncelle"), "~C_CWE_E", "veri belleği yazma (çift)");
   b.nor(fill, b.and(snp, "C_WRL_O", undefined, "tek bayt güncelle"), "~C_CWE_O", "veri belleği yazma (tek)");
   // isabette okuma: veri SRAM'i veri yolunu sürer
