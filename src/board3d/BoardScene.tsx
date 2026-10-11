@@ -21,6 +21,7 @@ import type { Gate } from "../../cpu16/chips/logic";
 import { LEVEL_COLOR } from "./levels";
 import { updateScreenCanvas, screenCanvas } from "./screenCanvas";
 import { boardLayoutData, boardModel, findPart, liveNets, netEnds, useKart } from "./store";
+import { KurulumSahne } from "./KurulumSahne";
 import { allWires, busRouter, netWires, partWires, wireGeometry, type Endpoint, type WireEdge } from "./wires";
 
 /** 1 dünya birimi = 10 mm */
@@ -840,6 +841,7 @@ export function BoardScene() {
       <Chips />
       <Passives />
       <Wires />
+      <KurulumSahne />
       <SelectedDie />
       <Monitor />
       <OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI * 0.48} minDistance={1.5} maxDistance={260} target={o.target} />

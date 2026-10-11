@@ -1,11 +1,11 @@
-/* Kurulum modu paneli. Renkler ve aralıklar uygulamanın tasarım değişkenlerinden; yoksa yedek değerler. */
+/* Kurulum modu paneli. Renkler, aralıklar ve yazı boyları styles.css'teki tasarım belirteçlerinden. */
 
 .kur {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4, 16px);
-  font-family: var(--font-sans, "IBM Plex Sans", system-ui, sans-serif);
-  color: var(--text, #d8dee6);
+  gap: var(--sp-4);
+  font-family: var(--body);
+  color: var(--text);
   min-width: 0;
 }
 
@@ -13,7 +13,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: end;
-  gap: var(--space-3, 12px);
+  gap: var(--sp-3);
 }
 .kur-kart {
   display: flex;
@@ -23,10 +23,10 @@
   min-width: 0;
 }
 .kur-kart > span {
-  font-size: var(--text-xs, 11px);
+  font-size: var(--fs-xs);
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--text-muted, #8b96a3);
+  color: var(--text-muted);
 }
 .kur-kart select {
   width: 100%;
@@ -35,17 +35,17 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: var(--text-sm, 13px);
-  color: var(--text-muted, #8b96a3);
+  font-size: var(--fs-md);
+  color: var(--text-muted);
 }
 
 .kur-not {
   margin: 0;
-  font-size: var(--text-sm, 13px);
-  color: var(--text-muted, #8b96a3);
+  font-size: var(--fs-md);
+  color: var(--text-muted);
 }
 .kur-not.hata {
-  color: var(--danger, #ff6b7a);
+  color: var(--danger);
 }
 
 .kur-ilerleme {
@@ -59,14 +59,14 @@
   display: block;
   height: 8px;
   border-radius: 4px;
-  background: var(--surface-3, #1e252e);
+  background: var(--surface-3);
   overflow: hidden;
 }
 .kur-bar > span,
 .kur-mini-bar > span {
   position: absolute;
   inset: 0 auto 0 0;
-  background: var(--success, #3ecf8e);
+  background: var(--ok);
   border-radius: inherit;
   transition: width 0.25s ease;
 }
@@ -75,25 +75,25 @@
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 4px 12px;
-  font-size: var(--text-sm, 13px);
+  font-size: var(--fs-md);
   font-variant-numeric: tabular-nums;
 }
 .kur-ilerleme-ek {
-  color: var(--text-muted, #8b96a3);
+  color: var(--text-muted);
 }
 
 /* odaktaki tel */
 .kur-tel {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3, 12px);
-  padding: var(--space-4, 16px);
-  border: 1px solid var(--border, #2a323c);
-  border-radius: var(--radius-lg, 10px);
-  background: var(--surface-2, #12171d);
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
 }
 .kur-tel.takildi {
-  border-color: color-mix(in srgb, var(--success, #3ecf8e) 55%, transparent);
+  border-color: color-mix(in srgb, var(--ok) 55%, transparent);
 }
 .kur-tel-bas {
   display: flex;
@@ -102,7 +102,7 @@
   flex-wrap: wrap;
 }
 .kur-tel-id {
-  font-family: var(--font-mono, "IBM Plex Mono", ui-monospace, monospace);
+  font-family: var(--mono);
   font-size: 22px;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -120,36 +120,36 @@
   height: 11px;
 }
 .kur-tel-renk {
-  font-size: var(--text-sm, 13px);
-  color: var(--text-muted, #8b96a3);
+  font-size: var(--fs-md);
+  color: var(--text-muted);
 }
 .kur-rozet {
   margin-left: auto;
   padding: 2px 8px;
   border-radius: 999px;
-  font-size: var(--text-xs, 11px);
-  background: color-mix(in srgb, var(--success, #3ecf8e) 22%, transparent);
-  color: var(--success, #3ecf8e);
+  font-size: var(--fs-xs);
+  background: color-mix(in srgb, var(--ok) 22%, transparent);
+  color: var(--ok);
 }
 .kur-tel-net {
-  font-size: var(--text-sm, 13px);
-  color: var(--text-muted, #8b96a3);
+  font-size: var(--fs-md);
+  color: var(--text-muted);
   overflow-wrap: anywhere;
 }
 .kur-tel-net b {
-  font-family: var(--font-mono, "IBM Plex Mono", ui-monospace, monospace);
-  color: var(--text, #d8dee6);
+  font-family: var(--mono);
+  color: var(--text);
 }
 .kur-tel-uclar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  gap: var(--space-3, 12px);
+  gap: var(--sp-3);
   align-items: start;
 }
 .kur-ok {
   align-self: center;
   font-size: 22px;
-  color: var(--text-muted, #8b96a3);
+  color: var(--text-muted);
 }
 .kur-uc {
   display: flex;
@@ -158,13 +158,13 @@
   min-width: 0;
 }
 .kur-uc-yon {
-  font-size: var(--text-xs, 11px);
+  font-size: var(--fs-xs);
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--text-muted, #8b96a3);
+  color: var(--text-muted);
 }
 .kur-uc-ref {
-  font-family: var(--font-mono, "IBM Plex Mono", ui-monospace, monospace);
+  font-family: var(--mono);
   font-size: 18px;
   font-weight: 600;
   display: flex;
@@ -173,19 +173,19 @@
   flex-wrap: wrap;
 }
 .kur-uc-deger {
-  font-size: var(--text-sm, 13px);
+  font-size: var(--fs-md);
   font-weight: 400;
-  color: var(--text-muted, #8b96a3);
+  color: var(--text-muted);
 }
 .kur-uc-pin {
   font-size: 15px;
 }
 .kur-uc-pin b {
-  font-family: var(--font-mono, "IBM Plex Mono", ui-monospace, monospace);
+  font-family: var(--mono);
 }
 .kur-uc-yer {
-  font-size: var(--text-xs, 12px);
-  color: var(--text-muted, #8b96a3);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
 }
 .kur-dip {
   margin-top: 4px;
@@ -210,13 +210,13 @@
 }
 .kur-dip-yazi {
   fill: #c9d0d8;
-  font: 600 6px var(--font-mono, "IBM Plex Mono", ui-monospace, monospace);
+  font: 600 6px var(--mono);
 }
 
 .kur-dugmeler {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2, 8px);
+  gap: var(--sp-2);
 }
 .kur-dugmeler button {
   flex: 1 1 auto;
@@ -224,21 +224,21 @@
 }
 .kur-ipucu {
   margin: 0;
-  font-size: var(--text-xs, 12px);
+  font-size: var(--fs-xs);
   line-height: 1.5;
-  color: var(--text-muted, #8b96a3);
+  color: var(--text-muted);
 }
 
 /* bloklar */
 .kur-bloklar {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2, 8px);
+  gap: var(--sp-2);
 }
 .kur-blok {
-  border: 1px solid var(--border, #2a323c);
-  border-radius: var(--radius-md, 8px);
-  background: var(--surface-1, #0e1217);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--surface-1);
   overflow: hidden;
 }
 .kur-blok-bas {
@@ -254,7 +254,7 @@
   cursor: pointer;
 }
 .kur-blok-bas:focus-visible {
-  outline: 2px solid var(--accent, #6aa9ff);
+  outline: 2px solid var(--focus);
   outline-offset: -2px;
 }
 .kur-blok-renk {
@@ -263,19 +263,19 @@
   border-radius: 3px;
 }
 .kur-blok-ad {
-  font-size: var(--text-sm, 13px);
+  font-size: var(--fs-md);
   font-weight: 600;
   overflow-wrap: anywhere;
 }
 .kur-blok-deney {
   margin-left: 8px;
   font-weight: 400;
-  color: var(--text-muted, #8b96a3);
+  color: var(--text-muted);
 }
 .kur-blok-sayi {
-  font-size: var(--text-xs, 12px);
+  font-size: var(--fs-xs);
   font-variant-numeric: tabular-nums;
-  color: var(--text-muted, #8b96a3);
+  color: var(--text-muted);
 }
 .kur-blok-bas .kur-mini-bar {
   grid-column: 1 / -1;
@@ -287,7 +287,7 @@
   padding: 0 0 6px;
   max-height: 320px;
   overflow-y: auto;
-  border-top: 1px solid var(--border, #2a323c);
+  border-top: 1px solid var(--border-strong);
 }
 .kur-liste li {
   display: flex;
@@ -296,13 +296,13 @@
   padding: 0 12px;
 }
 .kur-liste li.secili {
-  background: color-mix(in srgb, var(--accent, #6aa9ff) 16%, transparent);
+  background: color-mix(in srgb, var(--focus) 16%, transparent);
 }
 .kur-liste li.takildi .kur-li-uc,
 .kur-liste li.takildi .kur-li-id {
-  color: var(--text-muted, #8b96a3);
+  color: var(--text-muted);
   text-decoration: line-through;
-  text-decoration-color: color-mix(in srgb, var(--text-muted, #8b96a3) 60%, transparent);
+  text-decoration-color: color-mix(in srgb, var(--text-muted) 60%, transparent);
 }
 .kur-liste li > button {
   all: unset;
@@ -315,22 +315,22 @@
   gap: 8px;
   padding: 6px 0;
   cursor: pointer;
-  font-size: var(--text-xs, 12px);
+  font-size: var(--fs-xs);
 }
 .kur-liste li > button:focus-visible {
-  outline: 2px solid var(--accent, #6aa9ff);
+  outline: 2px solid var(--focus);
 }
 .kur-li-id,
 .kur-li-uc {
-  font-family: var(--font-mono, "IBM Plex Mono", ui-monospace, monospace);
+  font-family: var(--mono);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .kur-li-net {
-  font-family: var(--font-mono, "IBM Plex Mono", ui-monospace, monospace);
-  color: var(--text-muted, #8b96a3);
+  font-family: var(--mono);
+  color: var(--text-muted);
   max-width: 90px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -342,6 +342,6 @@
   justify-content: flex-end;
 }
 .kur-sifirla.soruyor {
-  border-color: var(--danger, #ff6b7a);
-  color: var(--danger, #ff6b7a);
+  border-color: var(--danger);
+  color: var(--danger);
 }

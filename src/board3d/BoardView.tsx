@@ -9,6 +9,8 @@ import { breakCodes, makeCodes, textToScancodes } from "../../cpu16/emu/devices/
 import { disassemble } from "../../cpu16/emu/disasm";
 import { AppHeader, Group, Meter, PanelToggle, Splitter, Tabs, heightShare, useLayout, type LayoutPrefs, type Shortcut, type TabDef } from "../ui/Shell";
 import { BoardScene } from "./BoardScene";
+import { KurulumPanel } from "./KurulumPanel";
+import { useKurulum } from "./kurulum";
 import { CmosDiagram } from "./CmosDiagram";
 import { InsideDiagram } from "./InsideDiagram";
 import { LEVEL_NAME, hex4, levelOf } from "./levels";
@@ -493,7 +495,8 @@ function Bottom() {
 
 // ---------------------------------------------------------------- yan panel: sekmeler
 
-type SideTab = "inceleme" | "cpu";
+type SideTab = "inceleme" | "cpu" | "kurulum";
+const SIDE_TABS: SideTab[] = ["inceleme", "cpu", "kurulum"];
 
 /**
  * Denetçi (inspector): seçili parçanın (entegre ya da pasif) veya netin ayrıntıları. Yeni ayrıntı
@@ -522,6 +525,7 @@ function SidePanel({ tab, onTab }: { tab: SideTab; onTab: (t: SideTab) => void }
   const tabs: TabDef<SideTab>[] = [
     { id: "inceleme", label: chip ? `İnceleme · ${chip}` : "İnceleme", title: "Seçili parça ya da net: bağlantılar" },
     { id: "cpu", label: "CPU ve UART", title: "Register'lar, bayraklar, UART terminali" },
+    { id: "kurulum", label: "Kurulum", title: "Kartı gerçekte kurarken tel tel ilerle (yazdırılan kurulum belgesiyle aynı numaralar)" },
   ];
   return (
     <aside className="side" aria-label="Yan panel">
@@ -534,6 +538,7 @@ function SidePanel({ tab, onTab }: { tab: SideTab; onTab: (t: SideTab) => void }
             <UartPanel />
           </>
         )}
+        {tab === "kurulum" && <KurulumPanel />}
       </div>
     </aside>
   );
@@ -557,7 +562,7 @@ export function BoardView() {
   const ready = useKart((s) => s.ready);
   const error = useKart((s) => s.error);
   const [lay, setLay] = useLayout("kart", { side: true, bottom: true, bottomH: heightShare(0.32, 220, 360), sideTab: "inceleme" });
-  const sideTab: SideTab = lay.sideTab === "cpu" ? "cpu" : "inceleme";
+  const sideTab: SideTab = SIDE_TABS.includes(lay.sideTab as SideTab) ? (lay.sideTab as SideTab) : "inceleme";
   const { board } = boardModel();
   useEffect(() => {
     startBoardWorker();
@@ -661,6 +666,11 @@ function installKartApi() {
       if (!place) return [];
       const { board } = boardModel();
       return partLinks(ref, place.pins, netEnds()).map((l) => `${l.num} ${l.name} → ${l.net < 0 ? "bağlı değil" : board.netName(l.net)} → ${l.others.map(endLabel).join(", ")}`);
+    },
+    /** kurulum modu: kart, odaktaki tel, takılan / toplam tel */
+    kurulum: () => {
+      const k = useKurulum.getState();
+      return { kart: k.kart, acik: k.acik, secili: k.secili, takilan: k.yapilan.size, toplam: k.plan?.teller.length ?? 0 };
     },
     kapilar: (ref: string) => {
       const ci = boardModel().board.instance(ref);
