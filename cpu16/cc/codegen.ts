@@ -196,8 +196,23 @@ class FnGen {
     return l.off === 0 ? l.sym : l.off > 0 ? `${l.sym}+${l.off}` : `${l.sym}-${-l.off}`;
   }
 
+  /** volatile nesnelerin okumalarını işaretle: gözetleme deliği bunları silmez */
+  private markVolatile(from: number, ty: Type): void {
+    if (!ty.isVolatile) return;
+    for (let i = from; i < this.out.length; i++) {
+      const it = this.out[i];
+      if (it.k === "ins" && (it.op === "LW" || it.op === "LBU")) it.vol = true;
+    }
+  }
+
   /** [base+off]'tan skaler yükle (base "sp" ise depth eklenir). */
   private loadAt(rd: string, base: string, off: number, ty: Type): void {
+    const start = this.out.length;
+    this.loadAtRaw(rd, base, off, ty);
+    this.markVolatile(start, ty);
+  }
+
+  private loadAtRaw(rd: string, base: string, off: number, ty: Type): void {
     if (base === "sp") off += this.depth;
     const byte = ty.size === 1;
     const ok = byte ? off >= -32 && off <= 31 : off >= -64 && off <= 62 && !(off & 1);
@@ -1288,7 +1303,12 @@ class FnGen {
     const s = this.dry(() => this.simpleLoc(l, "r2"));
     if (s) {
       this.emit(s.items);
-      const loc = s.r;
+      let loc = s.r;
+      if (loc.base === "abs") {
+        // global: adres bir kez r2'ye (okuma ve yazma için iki LI yerine)
+        this.ins("LI", "r2", this.symExpr(loc));
+        loc = { base: "r2", off: 0 };
+      }
       this.loadLoc(loc, "r0", l.ty);
       const v = discard ? "r0" : "r1";
       this.addImm(v, "r0", d, "r7");
@@ -1647,6 +1667,18 @@ class FnGen {
   // ---------------------------------------------------------------- fonksiyon
 
   run(): Item[] {
+    const items = this.generate(true);
+    if (this.opts.optimize && canSkipLr(items)) {
+      // küçük yaprak fonksiyon r7'ye hiç dokunmuyor: LR'yi kaydetmeden yeniden üret
+      this.out = [];
+      this.depth = 0;
+      this.lv = undefined;
+      return this.generate(false);
+    }
+    return items;
+  }
+
+  private generate(saveLr: boolean): Item[] {
     const fn = this.fn;
     // register değişkenleri
     const saved: string[] = [];
@@ -1675,7 +1707,7 @@ class FnGen {
     }
     const frameSize = off;
     if (frameSize > 0x4000) throw new CompileError(fn.tok, `'${fn.name}' yerel değişkenleri çok büyük (${frameSize} bayt, sınır 16384)`);
-    const A = frameSize + 2 * saved.length + 2;
+    const A = frameSize + 2 * saved.length + (saveLr ? 2 : 0);
     this.homeBase = A;
     for (const p of fn.params) {
       p.offset = p.paramWord < this.homeWords ? A + 2 * p.paramWord : A + 2 * this.homeWords + 2 * (p.paramWord - 4);
@@ -1685,7 +1717,7 @@ class FnGen {
     // prolog
     this.place(fn.sym);
     for (let i = this.homeWords - 1; i >= 0; i--) this.ins("PUSH", `r${i}`);
-    this.ins("PUSH", "r7");
+    if (saveLr) this.ins("PUSH", "r7");
     for (const r of saved) this.ins("PUSH", r);
     this.addSp(-frameSize);
     for (const p of fn.params) {
@@ -1699,12 +1731,48 @@ class FnGen {
     this.place(this.retLabel);
     this.addSp(frameSize);
     for (const r of [...saved].reverse()) this.ins("POP", r);
-    this.ins("POP", "r7");
+    if (saveLr) this.ins("POP", "r7");
     if (this.homeWords) this.addImm("sp", "sp", 2 * this.homeWords);
     this.ins("RET");
     if (this.depth !== 0) throw new Error(`iç hata: ${fn.name} yığın dengesi ${this.depth}`);
     return this.opts.optimize ? peephole(this.out) : this.out;
   }
+}
+
+/**
+ * LR (r7) kaydı atlanabilir mi: çağrı yok, gövde r7'ye dokunmuyor ve fonksiyon dallanma uzatması
+ * (JAL ya da LI r7) gerektirmeyecek kadar küçük (en kötü durumda 200 bayt).
+ */
+function canSkipLr(items: Item[]): boolean {
+  let size = 0;
+  let pushes = 0;
+  let pops = 0;
+  for (const it of items) {
+    switch (it.k) {
+      case "call":
+        return false;
+      case "ins":
+        if (it.op === "JALR") return false;
+        if (it.op === "PUSH" && it.args[0] === "r7" && pushes++ === 0) continue; // prolog
+        if (it.op === "POP" && it.args[0] === "r7" && pops++ === 0) continue; // epilog
+        if (it.args.some((a) => /\b(r7|lr)\b/.test(a))) return false;
+        size += it.op === "LI" ? 4 : 2;
+        break;
+      case "br":
+      case "jmp":
+      case "word":
+        size += 2;
+        break;
+      case "byte":
+        size += it.bytes.length;
+        break;
+      case "space":
+      case "align":
+        size += it.n;
+        break;
+    }
+  }
+  return size <= 200;
 }
 
 // ---------------------------------------------------------------- gözetleme deliği iyileştirmeleri
@@ -1788,6 +1856,13 @@ const NO_WRITE = new Set(["CMP", "CMPI", "SW", "SB", "PUSH", "NOP", "EI", "DI", 
 
 const regName = (r: string) => (r === "r6" ? "sp" : r === "lr" ? "r7" : r);
 
+/** "[sp]", "[sp+4]", "[sp-2]" → ofset; başka bir biçimse undefined */
+function spOffset(m: string): number | undefined {
+  const x = /^\[sp(?:([+-])(\d+))?\]$/.exec(m.replace(/\s/g, ""));
+  if (!x) return undefined;
+  return x[1] ? (x[1] === "+" ? 1 : -1) * Number(x[2]) : 0;
+}
+
 /**
  * Temel blok içinde register'da zaten bulunan değeri yeniden yükleyen LI / LW / LBU komutlarını siler
  * (ör. "SW r0, [sp+4]" ardından "LW r0, [sp+4]", art arda "LI r0, 0"). Bu komutlar bayrakları
@@ -1811,6 +1886,34 @@ function dropRedundantLoads(items: Item[]): Item[] {
   const clearMem = () => {
     for (const k of known.values()) for (const key of k.keys) if (!key.startsWith("LI ")) k.keys.delete(key);
   };
+  /** yığın bilgisini SP değişimine göre kaydır (SP += -delta); SP'nin altına düşenler unutulur */
+  const shiftMem = (delta: number) => {
+    for (const k of known.values()) {
+      const keys = [...k.keys];
+      k.keys.clear();
+      for (const key of keys) {
+        const m = /^(LW|LBU) (\[.*\])$/.exec(key);
+        if (!m) {
+          k.keys.add(key);
+          continue;
+        }
+        const off = spOffset(m[2]);
+        if (off !== undefined && off + delta >= 0) k.keys.add(`${m[1]} ${memOp("sp", off + delta)}`);
+      }
+    }
+  };
+  /** [sp+off, sp+off+size) bölgesiyle çakışan yığın bilgilerini unut */
+  const clobber = (off: number, size: number) => {
+    for (const k of known.values()) {
+      for (const key of k.keys) {
+        const m = /^(LW|LBU) (\[.*\])$/.exec(key);
+        if (!m) continue;
+        const o = spOffset(m[2]);
+        const ks = m[1] === "LW" ? 2 : 1;
+        if (o === undefined || (o < off + size && off < o + ks)) k.keys.delete(key);
+      }
+    }
+  };
   const out: Item[] = [];
   items.forEach((it, i) => {
     if (barrier[i]) known = new Map();
@@ -1833,7 +1936,7 @@ function dropRedundantLoads(items: Item[]): Item[] {
       out.push(it);
       return;
     }
-    if ((op === "LW" || op === "LBU") && spMem && a0 !== "sp") {
+    if ((op === "LW" || op === "LBU") && spMem && a0 !== "sp" && !it.vol) {
       const key = `${op} ${it.args[1]}`;
       if (known.get(a0)?.keys.has(key)) return; // değer zaten register'da
       known.set(a0, { keys: new Set([key]), byte: op === "LBU" });
@@ -1841,7 +1944,9 @@ function dropRedundantLoads(items: Item[]): Item[] {
       return;
     }
     if (op === "SW" || op === "SB") {
-      clearMem();
+      const off = spMem ? spOffset(it.args[1]) : undefined;
+      if (off === undefined) clearMem(); // işaretçiyle yazma: adresi alınmış yereller değişmiş olabilir
+      else clobber(off, op === "SW" ? 2 : 1);
       const k = known.get(a0);
       if (spMem && (op === "SW" || k?.byte)) {
         // saklanan değer artık hem register'da hem bellekte
@@ -1860,7 +1965,25 @@ function dropRedundantLoads(items: Item[]): Item[] {
       out.push(it);
       return;
     }
-    if (op === "PUSH" || op === "POP") clearMem();
+    if (op === "PUSH") {
+      shiftMem(2);
+      const k = known.get(a0);
+      if (k) k.keys.add("LW [sp]");
+      else known.set(a0, { keys: new Set(["LW [sp]"]), byte: false });
+      out.push(it);
+      return;
+    }
+    if (op === "POP") {
+      shiftMem(-2);
+      known.delete(a0);
+      out.push(it);
+      return;
+    }
+    if (op === "ADDI" && a0 === "sp" && regName(it.args[1]) === "sp" && /^-?\d+$/.test(it.args[2])) {
+      shiftMem(-Number(it.args[2]));
+      out.push(it);
+      return;
+    }
     if (op === "JALR") {
       known = new Map();
     } else if (WRITES_RD.has(op)) {

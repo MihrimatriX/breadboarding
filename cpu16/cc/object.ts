@@ -9,7 +9,7 @@ export type Item =
   /** etiket tanımı */
   | { k: "label"; name: string }
   /** sabit komut (LI dışında hep 2 bayt; LI'nin boyutu as16 kuralıyla hesaplanır) */
-  | { k: "ins"; op: string; args: string[] }
+  | { k: "ins"; op: string; args: string[]; vol?: boolean }
   /** uzatılabilir koşullu dallanma: Bcc (±256 B) → B!cc + JAL → B!cc + LI r7 + JALR */
   | { k: "br"; cond: string; target: string }
   /** uzatılabilir koşulsuz atlama: B → JAL → LI r7 + JALR (r7 bozulur) */
