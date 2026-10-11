@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "cpu16")(type "KiCad")(uri "${KIPRJMOD}/../cpu16.kicad_sym")(options "")(descr "CPU16 parça kütüphanesi (cpu16/chips'ten üretilir)"))
+)

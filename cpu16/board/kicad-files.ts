@@ -3,10 +3,11 @@
 import { kicadSymbolLibrary } from "../chips/kicad.ts";
 import { CHIPS } from "../chips/library.ts";
 import type { Board } from "./board.ts";
-import { bomCsv, cardSchematic, kicadProject, SYM_LIB_TABLE, type SchematicOptions } from "./kicad-sch.ts";
+import { bomCsv, cardSchematic, hierarchicalSchematic, kicadProject, SYM_LIB_TABLE, type SchematicOptions } from "./kicad-sch.ts";
 import { buildFullMachineBoard } from "./machine-board.ts";
 import { PASSIVES } from "./passives.ts";
 import { buildProgrammerBoard } from "./programmer-card.ts";
+import { buildHesapBoard, HESAP_SAYFALARI } from "../../hesap8/kart.ts";
 
 export const KICAD_DIR = "cpu16/kicad";
 
@@ -57,5 +58,23 @@ export function writeKicadFiles(board: Board, machine: Board = buildFullMachineB
   const prog = buildProgrammerBoard().board;
   files.push(...project(prog, "prog", "CPU16 — EEPROM programlayıcı (Arduino Nano + 2 × 74HC595)", "A3"));
   files.push({ path: `${KICAD_DIR}/prog/bom.csv`, content: bomCsv(prog, ["prog"]) });
+  files.push(...hesapKicadFiles());
   return files;
+}
+
+/**
+ * Bilgisayardan bağımsız bir alet: 8 bit hesap makinesi (hesap8/), aynı parça kütüphanesiyle.
+ * Tek sayfaya sığmadığı için çok sayfalı şema (sayfalar: hesap8/kart.ts, HESAP_SAYFALARI).
+ */
+export function hesapKicadFiles(hesap: Board = buildHesapBoard().board): KicadFile[] {
+  const title = "8 bit hesap makinesi — 74HC, programsız (+ − × ÷, 15 haneli 7 segment)";
+  return [
+    ...hierarchicalSchematic(hesap, "hesap", { project: "hesap", title, date: DATE, densePassives: true }, HESAP_SAYFALARI).map((f) => ({
+      path: `${KICAD_DIR}/hesap/${f.file}`,
+      content: f.content,
+    })),
+    { path: `${KICAD_DIR}/hesap/hesap.kicad_pro`, content: kicadProject("hesap") },
+    { path: `${KICAD_DIR}/hesap/sym-lib-table`, content: SYM_LIB_TABLE },
+    { path: `${KICAD_DIR}/hesap/bom.csv`, content: bomCsv(hesap, ["hesap"]) },
+  ];
 }
