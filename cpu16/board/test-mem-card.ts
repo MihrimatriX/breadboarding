@@ -20,6 +20,7 @@ export function buildTestMemCard(b: Board): TestMemCard {
     range(8).forEach((i) => (conn[`IO${i}`] = `${lane}${i}`));
     return b.place("62256", conn, role);
   };
+  b.block = "UART";
   // UART adresi: A[15:1] = 0x7F80 (0xFF00/0xFF01 kelimesi), yalnızca çift bayt
   const lo: Record<string, number | string> = { "~E": "GND", "~EQ": "~UA_LO" };
   const hi: Record<string, number | string> = { "~E": "GND", "~EQ": "~UA_HI" };
@@ -34,8 +35,10 @@ export function buildTestMemCard(b: Board): TestMemCard {
   const nSel = b.or("~UA_LO", "~UA_HI", "~UART_SEL", "UART seçimi");
   const sel = b.not(nSel, "UART_SEL", "UART seçimi");
   b.or("~MWE_E", sel, "~WE_RAM_E", "UART adresine RAM yazılmaz");
+  b.block = "RAM";
   const ramEven = ram("DE", "~WE_RAM_E", "RAM çift baytlar");
   const ramOdd = ram("DO", "~MWE_O", "RAM tek baytlar");
+  b.block = "UART";
   const conn: Record<string, number | string> = { "~OE": "GND", CP: b.or("~MWE_E", nSel, "UART_CP", "UART yazma kenarı") };
   range(8).forEach((i) => {
     conn[`D${i}`] = `DE${i}`;
