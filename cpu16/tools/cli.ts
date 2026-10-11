@@ -3,6 +3,7 @@
 //   run  dosya.s [--trace] [--max N]            derle ve emülatörde çalıştır
 //   dis  dosya.bin [--org 0x0000]               ikili dosyayı geri çevir
 //   ucode dosya.ucode [-o klasör]               mikrokodu 4 Flash imajına derle (rom0..rom3.bin)
+//   chips | kicad-sym | board …                 donanım komutları (tools/hw.ts)
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { assemble } from "../asm/assembler.ts";
@@ -25,6 +26,11 @@ function build(path: string) {
     process.exit(1);
   }
   return res;
+}
+
+if (["chips", "kicad-sym", "board"].includes(cmd)) {
+  await import("./hw.ts");
+  process.exit(0);
 }
 
 if (!cmd || !file) {
