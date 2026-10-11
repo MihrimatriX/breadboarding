@@ -37,9 +37,12 @@ export function buildMachineBoard(o: MachineBoardOptions = {}) {
   return { board, cpu, clock, mem, cache, extras };
 }
 
+/** Bütün anakartın ek kartları, takılma sırasıyla (buildFullMachineBoard ve 3D görünüm aynı listeyi kullanır) */
+export const FULL_MACHINE_CARDS: CardBuilder[] = [buildIoCard, buildVideoCard];
+
 /** Bütün anakart: CPU, saat, bellek, önbellek, G/Ç ve video kartları (şema, BOM, KiCad, zamanlama) */
 export function buildFullMachineBoard() {
-  return buildMachineBoard({ cards: [buildIoCard, buildVideoCard] });
+  return buildMachineBoard({ cards: FULL_MACHINE_CARDS });
 }
 
 /** Anakartın saat kökleri (zamanlama analizi) */
