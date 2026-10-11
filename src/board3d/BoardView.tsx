@@ -15,6 +15,7 @@ import { CmosDiagram } from "./CmosDiagram";
 import { InsideDiagram } from "./InsideDiagram";
 import { LEVEL_NAME, hex4, levelOf } from "./levels";
 import { MemoryInside } from "./MemoryInside";
+import { PassiveInfo, PassiveTooltip } from "./PassiveInfo";
 import { detectLanguage } from "./program";
 import { screenCanvas, updateScreenCanvas } from "./screenCanvas";
 import {
@@ -311,6 +312,7 @@ function PartPanel() {
           {ci ? ` · ${ci.def.pkg}${transistors ? ` · ${transistors} transistör` : " · davranışsal bellek modeli"}` : ""}
         </span>
       </p>
+      {part?.passive && <PassiveInfo p={part.passive} />}
       <h2 className="links-title">Bağlantılar</h2>
       <ul className="links">
         {links.map((l) => <LinkRow key={l.num} {...l} self={place.ref} />)}
@@ -553,7 +555,7 @@ function Tooltip() {
   const p = part.passive;
   return (
     <div className="tooltip" style={{ transform: `translate(${hover.x + 14}px, ${hover.y + 14}px)` }}>
-      <b>{hover.ref}</b> {c ? c.part : p!.part} <span>{c ? c.role : p!.role}</span>
+      <b>{hover.ref}</b> {c ? c.part : p!.part} {c ? <span>{c.role}</span> : <PassiveTooltip p={p!} />}
     </div>
   );
 }

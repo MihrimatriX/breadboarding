@@ -1,0 +1,135 @@
+/* Pasif eleman bilgi paneli (PassiveInfo.tsx). Yalnız kendi sınıfları; renkler sayfanın
+   değişkenlerinden, yoksa yedek değerlerle. */
+
+.pasif-info {
+  --pi-fg: var(--fg, #e2e6ea);
+  --pi-muted: var(--muted, #8a949e);
+  --pi-line: var(--line, #222a33);
+  --pi-raised: var(--raised, #141a21);
+  --pi-sunk: var(--sunk, #0a0e12);
+  --pi-high: var(--high, #ff2a55);
+  --pi-accent: var(--diff, #e6e600);
+  --pi-mono: var(--mono, "IBM Plex Mono", ui-monospace, monospace);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 4px 0 12px;
+  color: var(--pi-fg);
+  font-size: 13px;
+  line-height: 1.5;
+  min-width: 0;
+}
+
+.pasif-info .pi-kimlik {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pasif-info .pi-tur { font-weight: 600; }
+.pasif-info .pi-deger { font: 600 13px var(--pi-mono); color: var(--pi-accent); }
+
+.pasif-info .pi-led,
+.pi-ipucu .pi-led {
+  display: inline-block;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+}
+.pi-ipucu .pi-led-k { width: 9px; height: 9px; margin-right: 6px; vertical-align: -1px; }
+
+.pasif-info .pi-durum {
+  border: 1px solid var(--pi-line);
+  border-left-width: 3px;
+  border-radius: 6px;
+  padding: 6px 9px;
+  background: var(--pi-sunk);
+  font-size: 12.5px;
+}
+.pasif-info .pi-durum.pi-yanik { border-left-color: var(--pi-high); }
+.pasif-info .pi-durum.pi-sonuk { border-left-color: #5b6b7d; color: var(--pi-muted); }
+.pasif-info .pi-durum.pi-bilgi { border-left-color: #6f9bff; }
+.pasif-info .pi-durum.pi-uyari { border-left-color: var(--pi-accent); }
+
+.pasif-info .pi-cizim {
+  margin: 0;
+  border: 1px solid var(--pi-line);
+  border-radius: 8px;
+  background: var(--pi-sunk);
+  padding: 8px 8px 4px;
+}
+.pasif-info .pi-cizim figcaption {
+  font: 600 10.5px var(--display, var(--pi-mono));
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pi-muted);
+  margin-bottom: 2px;
+}
+.pasif-info .pi-cizim svg { display: block; width: 100%; height: auto; }
+
+.pasif-info .pi-baslik {
+  margin: 6px 0 0;
+  font: 600 11px var(--display, var(--pi-mono));
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pi-muted);
+}
+.pasif-info .pi-metin { margin: 0; font-size: 12.5px; }
+
+.pasif-info .pi-hesap { width: 100%; border-collapse: collapse; font-size: 12px; }
+.pasif-info .pi-hesap th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--pi-muted);
+  padding: 4px 8px 4px 0;
+  vertical-align: top;
+  width: 38%;
+}
+.pasif-info .pi-hesap td { padding: 4px 0; border-top: 1px solid var(--pi-line); }
+.pasif-info .pi-hesap tr:first-child td { border-top: 0; }
+.pasif-info .pi-hesap code { display: block; font: 11.5px var(--pi-mono); color: var(--pi-fg); white-space: normal; }
+.pasif-info .pi-hesap b { font: 600 12px var(--pi-mono); color: var(--pi-accent); }
+
+.pasif-info .pi-bacaklar { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.pasif-info .pi-bacaklar li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  border: 1px solid var(--pi-line);
+  border-radius: 5px;
+  padding: 4px 7px;
+  background: var(--pi-sunk);
+  font: 11.5px var(--pi-mono);
+}
+.pasif-info .pi-no { color: var(--pi-muted); min-width: 1.4em; }
+.pasif-info .pi-ad { color: var(--pi-fg); }
+.pasif-info .pi-soluk { color: var(--pi-muted); }
+.pasif-info .pi-lv { font: 600 11px var(--pi-mono); }
+.pasif-info .pi-lv small { font-weight: 400; color: var(--pi-muted); }
+.pasif-info .pi-l0 { color: #9fb0c4; }
+.pasif-info .pi-l1 { color: var(--pi-high); }
+.pasif-info .pi-l2 { color: #9d8cff; }
+.pasif-info .pi-l3 { color: var(--pi-accent); }
+
+.pasif-info button {
+  font: 11px var(--pi-mono);
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--pi-line);
+  background: var(--pi-raised);
+  color: var(--pi-fg);
+  cursor: pointer;
+}
+.pasif-info button:hover { border-color: var(--metal, #8080c0); }
+.pasif-info .pi-net { color: #c9d6e6; }
+.pasif-info .pi-uclar { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+
+.pasif-info .pi-ilgili { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; }
+.pasif-info .pi-ilgili button span { color: var(--pi-muted); }
+
+.pasif-info .pi-rehber { margin: 2px 0 0; font-size: 11.5px; color: var(--pi-muted); }
+.pasif-info .pi-rehber code { font: 11px var(--pi-mono); color: var(--pi-fg); }
+
+.pi-ipucu { color: var(--fg, #e2e6ea); }

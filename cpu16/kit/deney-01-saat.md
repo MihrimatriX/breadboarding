@@ -2,6 +2,9 @@
 
 > **Video:** "Bilgisayarın kalbi: saat, reset ve tek adım" · **Önce:** yok · **Kart:** saat kartı (`clk`, 9 entegre)
 
+Pasif elemanları (renk kodu, LED'in kutbu, 100 nF dekuplaj, elektrolitiğin şeridi) ilk kez takıyorsan
+önce [LED, direnç ve kondansatör](led-ve-direnc.md) rehberine bak: bu kartta hepsi var.
+
 ## Ne öğreneceksin
 
 - Bir bilgisayarda her şeyin neden bir saat kenarında olduğunu; yükselen ve düşen kenarın ayrı işleri.
@@ -44,7 +47,8 @@ anahtarı (SW204) 74HC157 (U202) ile kaynağı seçer.
 
 ## Kurulum adımları
 
-1. Besleme rayları: 5 V'u akım sınırlı (≈ 200 mA) kaynaktan ver, raylara C204 (100 µF).
+1. Besleme rayları: 5 V'u akım sınırlı (≈ 200 mA) kaynaktan ver, raylara C204 (100 µF, şeritli bacak
+   GND rayına). Her entegrenin yanına bir 100 nF ("104").
 2. U201 (74HC14) + reset devresi (R201, C201, SW201). `~RST` ve `RESET`'i lojik probla ölç: butona
    basınca `~RST` = 0.
 3. Yavaş osilatör: RV201, R203, C203 ve U201'in 4. kapısı. `OSC_SLOW`'da kare dalga görmelisin
@@ -55,7 +59,10 @@ anahtarı (SW204) 74HC157 (U202) ile kaynağı seçer.
 6. Johnson sayacı U203 (74HC175) ve U209 (74HC04). Q0..Q3'e gösterge modülünü bağla, YAVAŞ ve OTOMATİK'te
    yukarıdaki diziyi gör.
 7. Adım mantığı: U204, U205 (74HC74), U207 (74HC08), U208 (74HC32), SW202 ve SW203.
-8. U206 (74HC541) çıkış sürücüsü ve CLK LED'i (D201, R204).
+8. U206 (74HC541) çıkış sürücüsü ve CLK LED'i (D201, R205): `CLK` → R205 (330 Ω, turuncu – turuncu –
+   kahverengi) → LED'in uzun bacağı; kısa bacak GND'ye. Mavi LED ≈ 5,8 mA çeker
+   ([seri direnç hesabı](led-ve-direnc.md#seri-direnç-ledi-her-zaman-bir-dirençle-sür)). R204 (10 kΩ)
+   `~WAIT`'in çekme direncidir: bekleme isteyen kart yokken CPU beklemez.
 
 ## Test: beklenen sonuç
 
@@ -72,6 +79,8 @@ anahtarı (SW204) 74HC157 (U202) ile kaynağı seçer.
   tam bir döngü ilerlettiği doğrulanır).
 - 3D: Silikon3D → "CPU16 kartı 3D" → saat kartı; konsolda `kart.secCip("U203")` Johnson sayacının içini,
   bir flip-flopa tıklamak transistörlerini gösterir. `kart.hiz(2)` ile yavaşlat, `kart.secNet("CLK")`.
+  `kart.yakinlas("D201")` mavi CLK LED'ine yaklaşır: CLK 1 olunca yanar. D201'e, R205'e ya da C201'e
+  tıklayınca sağ panel değeri, renk bantlarını, akımı ve RC süresini anlatır.
 - Şema: `cpu16/kicad/clk/clk.kicad_sch` (KiCad 7).
 
 ## Sorun giderme
