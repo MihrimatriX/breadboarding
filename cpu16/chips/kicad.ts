@@ -12,6 +12,7 @@ const ELEC: Record<PinDef["dir"], string> = {
   bidir: "bidirectional",
   power: "power_in",
   nc: "no_connect",
+  passive: "passive",
 };
 
 const q = (s: string) => `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
@@ -22,48 +23,79 @@ const fontHidden = "(effects (font (size 1.27 1.27)) hide)";
 /** "~OE" → "~{OE}" (KiCad üst çizgi) */
 export const kicadPinName = (n: string) => (n.startsWith("~") ? `~{${n.slice(1)}}` : n);
 
-function symbol(def: ChipDef): string {
-  const left = def.pins.filter((p) => p.dir === "in" || p.dir === "nc");
-  const right = def.pins.filter((p) => p.dir === "out" || p.dir === "tri" || p.dir === "bidir");
+export interface SymbolPin {
+  pin: PinDef;
+  /** bağlantı noktası (sembol koordinatı, y yukarı) */
+  x: number;
+  y: number;
+  angle: number;
+}
+
+/** Sembol yerleşimi: girişler solda, çıkışlar sağda, VCC üstte, GND altta */
+export function symbolLayout(def: Pick<ChipDef, "pins">): { w: number; h: number; pins: SymbolPin[] } {
+  const passive = def.pins.filter((p) => p.dir === "passive");
+  if (passive.length === 2 && def.pins.length === 2) {
+    // iki uçlu eleman (direnç, kondansatör, LED): dikey, 1 üstte
+    const w = G;
+    const h = G;
+    return { w, h, pins: [{ pin: def.pins[0], x: 0, y: h + G, angle: 270 }, { pin: def.pins[1], x: 0, y: -h - G, angle: 90 }] };
+  }
+  const left = def.pins.filter((p) => p.dir === "in" || p.dir === "nc" || (p.dir === "passive" && p.num % 2 === 1));
+  const right = def.pins.filter((p) => p.dir === "out" || p.dir === "tri" || p.dir === "bidir" || (p.dir === "passive" && p.num % 2 === 0));
   const power = def.pins.filter((p) => p.dir === "power");
   const rows = Math.max(left.length, right.length);
   const h = (Math.ceil(rows / 2) + 1) * G; // yarım yükseklik, ızgaraya oturur
   const w = 3 * G;
-  const pinLine = (p: PinDef, x: number, y: number, angle: number) =>
-    `      (pin ${ELEC[p.dir]} line (at ${mm(x)} ${mm(y)} ${angle}) (length ${G})${p.dir === "nc" ? " hide" : ""}\n` +
-    `        (name ${q(kicadPinName(p.name))} ${font})\n        (number ${q(String(p.num))} ${font}))`;
   const top = h - G;
-  const pins = [
-    ...left.map((p, i) => pinLine(p, -w - G, top - i * G, 0)),
-    ...right.map((p, i) => pinLine(p, w + G, top - i * G, 180)),
-    ...power.map((p) => {
-      const ground = /^(GND|VSS)$/.test(p.name);
-      return pinLine(p, 0, ground ? -h - G : h + G, ground ? 90 : 270);
+  const pins: SymbolPin[] = [
+    ...left.map((pin, i) => ({ pin, x: -w - G, y: top - i * G, angle: 0 })),
+    ...right.map((pin, i) => ({ pin, x: w + G, y: top - i * G, angle: 180 })),
+    ...power.map((pin, i) => {
+      const ground = /^(GND|VSS)$/.test(pin.name) || (power.length === 2 && i === 1 && !/^(VCC|VDD)$/.test(pin.name));
+      return { pin, x: 0, y: ground ? -h - G : h + G, angle: ground ? 90 : 270 };
     }),
   ];
-  const name = def.part;
+  return { w, h, pins };
+}
+
+/** Kütüphanede ya da şemaya gömülü sembol tanımı. `name` gömülüde "cpu16:74HC00" olur. */
+export function symbolDef(def: Pick<ChipDef, "part" | "title" | "pins" | "footprint" | "usage">, name = def.part, indent = "  "): string {
+  const { w, h, pins } = symbolLayout(def);
+  const pinLine = (sp: SymbolPin) =>
+    `${indent}    (pin ${ELEC[sp.pin.dir]} line (at ${mm(sp.x)} ${mm(sp.y)} ${sp.angle}) (length ${G})${sp.pin.dir === "nc" ? " hide" : ""}\n` +
+    `${indent}      (name ${q(kicadPinName(sp.pin.name))} ${font})\n${indent}      (number ${q(String(sp.pin.num))} ${font}))`;
   return [
-    `  (symbol ${q(name)} (pin_names (offset 1.016)) (in_bom yes) (on_board yes)`,
-    `    (property "Reference" "U" (at ${mm(-w)} ${mm(h + 1.27)} 0) ${font})`,
-    `    (property "Value" ${q(name)} (at ${mm(w)} ${mm(h + 1.27)} 0) ${font})`,
-    `    (property "Footprint" ${q(def.footprint)} (at 0 0 0) ${fontHidden})`,
-    `    (property "Datasheet" "" (at 0 0 0) ${fontHidden})`,
-    `    (property "ki_description" ${q(def.title)} (at 0 0 0) ${fontHidden})`,
-    `    (property "CPU16_Kullanim" ${q(def.usage)} (at 0 0 0) ${fontHidden})`,
-    `    (symbol ${q(`${name}_0_1`)}`,
-    `      (rectangle (start ${mm(-w)} ${mm(h)}) (end ${mm(w)} ${mm(-h)}) (stroke (width 0.254) (type default)) (fill (type background)))`,
-    `    )`,
-    `    (symbol ${q(`${name}_1_1`)}`,
-    ...pins,
-    `    )`,
-    `  )`,
+    `${indent}(symbol ${q(name)} (pin_names (offset 1.016)) (in_bom yes) (on_board yes)`,
+    `${indent}  (property "Reference" ${q(def.part.startsWith("~") ? "X" : refPrefix(def.part))} (at ${mm(-w)} ${mm(h + 1.27)} 0) ${font})`,
+    `${indent}  (property "Value" ${q(def.part)} (at ${mm(w)} ${mm(h + 1.27)} 0) ${font})`,
+    `${indent}  (property "Footprint" ${q(def.footprint)} (at 0 0 0) ${fontHidden})`,
+    `${indent}  (property "Datasheet" "" (at 0 0 0) ${fontHidden})`,
+    `${indent}  (property "ki_description" ${q(def.title)} (at 0 0 0) ${fontHidden})`,
+    `${indent}  (property "CPU16_Kullanim" ${q(def.usage)} (at 0 0 0) ${fontHidden})`,
+    `${indent}  (symbol ${q(`${def.part}_0_1`)}`,
+    `${indent}    (rectangle (start ${mm(-w)} ${mm(h)}) (end ${mm(w)} ${mm(-h)}) (stroke (width 0.254) (type default)) (fill (type background)))`,
+    `${indent}  )`,
+    `${indent}  (symbol ${q(`${def.part}_1_1`)}`,
+    ...pins.map(pinLine),
+    `${indent}  )`,
+    `${indent})`,
   ].join("\n");
 }
 
-export function kicadSymbolLibrary(chips: ChipDef[]): string {
+/** Referans harfi: entegre U, direnç R, direnç dizisi RN, kondansatör C, LED D, konnektör J */
+export function refPrefix(part: string): string {
+  if (part.startsWith("RN")) return "RN";
+  if (part.startsWith("R_")) return "R";
+  if (part.startsWith("C_")) return "C";
+  if (part.startsWith("LED")) return "D";
+  if (part.startsWith("CONN") || part.startsWith("BACKPLANE")) return "J";
+  return "U";
+}
+
+export function kicadSymbolLibrary(chips: Pick<ChipDef, "part" | "title" | "pins" | "footprint" | "usage">[]): string {
   return [
     "(kicad_symbol_lib (version 20220914) (generator cpu16_chips)",
-    ...chips.map(symbol),
+    ...chips.map((c) => symbolDef(c)),
     ")",
     "",
   ].join("\n");
