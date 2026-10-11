@@ -117,8 +117,8 @@ süresi ve zamanlayıcının 1 kHz ön bölücüsü TCLK döngüsü sayar. Bu y�
 |---|---|---|
 | Mikrokod ROM 0–3 (CPU kartı U1, U3, U5, U7) | `cpu16/roms/mikrokod-0..3.hex` | `npm run cpu16 -- roms` |
 | ALU kod çözme ROM 0–2 (CPU kartı U69–U71) | `cpu16/roms/alu-0..2.hex` | `npm run cpu16 -- roms` |
-| BIOS Flash (bellek kartı) | `bios.bin` (128 KB imaj) | `npm run cpu16 -- bios -o bios.bin` |
-| Karakter ROM'u (video kartı) | `charrom.bin` | `npm run cpu16 -- charrom -o charrom.bin` |
+| BIOS Flash (bellek kartı) | `bios.hex` | `npm run cpu16 -- bios -o bios.hex` |
+| Karakter ROM'u (video kartı) | `charrom.hex` | `npm run cpu16 -- charrom -o charrom.hex` |
 
 Hepsi SST39SF010A'dır ve deney setinin programlayıcısıyla yazılır (Deney 3):
 

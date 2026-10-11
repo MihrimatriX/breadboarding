@@ -42,7 +42,8 @@ export function biosCommand(args: string[]): void {
 
 export function charromCommand(args: string[]): void {
   const out = opt(args, "-o") ?? "charrom.bin";
-  writeFileSync(out, FONT_8X16);
+  // .hex: Flash programlayıcısı (yaz.py) için Intel HEX; diğerleri ham imaj
+  writeFileSync(out, out.endsWith(".hex") ? intelHex([{ addr: 0, data: FONT_8X16 }]) : FONT_8X16);
   console.log(`${out}: ${FONT_8X16.length} bayt (256 karakter × 16 satır; adres = kod·16 + satır)`);
 }
 
