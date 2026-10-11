@@ -5,16 +5,25 @@
 // Zaman tabanı kartın kendi osilatörüdür (VID_OSC, 25,175 MHz piksel saati); CPU saatinden
 // bağımsızdır. Satır 800, kare 525 satır (görünür 640 × 480, HSYNC ve VSYNC negatif kutuplu).
 //
-// Bir karakter = 8 piksel saati (p0..p7, H2..H0). VRAM erişimi iki yuvaya bölünür:
+// İki saat alanı vardır (statik zamanlama: docs/anakart-gc-video.md):
+//   piksel saati (VID_OSC, 39,7 ns): yalnızca faz sayacı (74AC161), H2 / LD7 register'ı (74AC74) ve
+//     piksel kaydırıcı (74HC166); aralarında kapı yoktur
+//   karakter saati (H2 = piksel / 8, 318 ns): karakter ve satır sayaçları, tarama adresi, çözümleme,
+//     VRAM yuvaları, CPU istekleri. H2'nin yükselen kenarı p4, düşen kenarı p0'dır.
+// Alanlar arasındaki geçişler (karakter ROM'u → kaydırıcı, VRAM yuvaları, yazma darbesi) aynı
+// belgede elle hesaplanmıştır.
+//
+// Bir karakter = 8 piksel saati (p0..p7). VRAM erişimi iki yuvaya bölünür:
 //   p0..p3 (H2 = 0) tarama: adres = MA (tarama sayacı), p4'ün başında karakter ve renk baytı tutulur
 //   p4..p7 (H2 = 1) CPU: adres = VADDR; bekleyen bir yazma ya da ön okuma (prefetch) burada yapılır
 // Bu yüzden CPU erişimi taramayı hiç bozmaz (kar / "snow" yok) ve CPU'yu bekletmez.
 //
 // Ardışık düzen (pipeline): H karakteri j'de MA'daki karakter okunur, karakter ROM'una girer ve
-// j'nin sonunda piksel kaydırıcısına yüklenir; j + 1 boyunca ekrana çıkar. Görüntü bu yüzden sayaca
-// göre 8 piksel geride başlar: görünür piksel x, satırın hc = x + 8 anındadır. Senkron ve karartma
-// sinyalleri de aynı karakter sınırında bir register'dan geçtiği için hepsi birlikte kayar; VGA
-// zamanlaması (ön/arka sundurma, senkron genişliği) görünür alana göre standarttır.
+// j'nin sonunda (p7 → p0) piksel kaydırıcısına yüklenir; j + 1 boyunca ekrana çıkar. Görüntü bu
+// yüzden sayaca göre 8 piksel geride başlar: görünür piksel x, satırın hc = x + 8 anındadır (hc =
+// 8 × karakter + p). Senkron ve karartma sinyalleri p4'te bir ön register'a, p7 → p0 kenarında
+// piksellerle birlikte çıkış register'ına alındığı için hepsi birlikte kayar; VGA zamanlaması
+// (ön/arka sundurma, senkron genişliği) görünür alana göre standarttır.
 //
 // CPU arayüzü (Machine ile aynı register'lar):
 //   FF20/21 VADDR (13 bit, 4 × 74HC193, ~PL ile asenkron yükleme)    yalnız yazılır (okuma 0xFF)
@@ -22,7 +31,7 @@
 //           her ikisi de VADDR'i artırır
 //   FF23    VCTRL bit0 imleç açık          FF24/25 CURSOR_X / CURSOR_Y
 //   FF26    VSTAT bit0 vblank, bit1 vsync bayrağı (1 yazınca silinir) = VSYNC_REQ (IRQ kaynağı 3)
-// Yazma ve ön okuma piksel saati alanında yapılır; istekler iki flip-flop ile eşzamanlanır. Bir
+// Yazma ve ön okuma karakter saati alanında yapılır; istekler iki flip-flop ile eşzamanlanır. Bir
 // istek en geç ~3,5 CPU döngüsünde (yazma) / ~4,4 döngüde (okumadan sonraki ön okuma) biter; CPU'nun
 // G/Ç komutları 6 döngü sürdüğü için ardışık iki erişim bunu her zaman bekler.
 
@@ -69,42 +78,50 @@ export function buildVideoCard(b: Board): VideoCard {
   // =========================================================================== zamanlama
   b.block = "Piksel saati ve sayaçlar";
   b.passive("OSC_25M175", { "1": "VCC", "7": "GND", "8": "VID_OSC", "14": "VCC" }, "25,175 MHz piksel osilatörü");
-  const counter = (prefix: string, k: number, conn: Conn, role: string) => {
-    const c: Conn = { CP: "VID_OSC", "~MR": "VCC", D0: "GND", D1: "GND", D2: "GND", D3: "GND", ...conn };
-    range(4).forEach((i) => {
-      if (4 * k + i < 10) c[`Q${i}`] = `${prefix}${4 * k + i}`;
-    });
+  // Piksel saatinde (39,7 ns) yalnızca bu iki 74AC çipi ve kaydırıcı çalışır. Faz sayacı 9..15, 0
+  // diye sayar: 0'da Q3 = 0 olduğundan bir sonraki kenarda kendi ~PE'siyle yine 9 yüklenir (çözücü
+  // kapı yok). Durum → faz: 9..15 = p0..p6, 0 = p7. Q3 (~V_LD7) yalnızca p7'de düşüktür: kaydırıcının
+  // yükleme izni ve p7 → p0 kenarında yükselen karakter sınırı saati.
+  b.place("74HC161", {
+    CP: "VID_OSC", "~MR": "VCC", "~PE": "~V_LD7", CEP: "VCC", CET: "VCC", D0: "VCC", D1: "GND", D2: "GND", D3: "VCC",
+    Q0: "V_Q0", Q1: "V_Q1", Q2: "V_Q2", Q3: "~V_LD7", TC: "V_Q15",
+  }, "piksel fazı p0..p7 (9..15, 0); Q3 = 0 → p7", { aile: "AC" });
+  // H2 (p4..p7) ve LD7 (p7) faz sayacının bir piksel gecikmiş çıkışlarıdır: flip-flop çıkışı
+  // oldukları için parazitsizdir. H2 karakter saatidir (yükselen kenar p4, düşen kenar p0).
+  b.place("74HC74", {
+    "1D": "V_Q2", "1CLK": "VID_OSC", "~1PRE": "VCC", "~1CLR": "VCC", "1Q": "V_H2",
+    "2D": "V_Q15", "2CLK": "VID_OSC", "~2PRE": "VCC", "~2CLR": "VCC", "2Q": "V_LD7",
+  }, "karakter saati H2 (p4..p7) ve karakter sonu LD7 (p7)", { aile: "AC" });
+  b.not("V_H2", "V_H2N", "CPU yuvası bitti (p0)");
+  const counter = (q: string[], conn: Conn, role: string) => {
+    const c: Conn = { CP: "V_H2", "~MR": "VCC", D0: "GND", D1: "GND", D2: "GND", D3: "GND", ...conn };
+    q.forEach((n, i) => (c[`Q${i}`] = n));
     b.place("74HC161", c, role);
   };
-  // H: 0..799, 799'da eşzamanlı 0 yüklenir
-  counter("V_H", 0, { "~PE": "~V_HEND", CEP: "VCC", CET: "VCC", TC: "V_HTC0" }, "yatay sayaç H0–H3 (piksel)");
-  counter("V_H", 1, { "~PE": "~V_HEND", CEP: "VCC", CET: "V_HTC0", TC: "V_HTC1" }, "yatay sayaç H4–H7");
-  counter("V_H", 2, { "~PE": "~V_HEND", CEP: "VCC", CET: "V_HTC1" }, "yatay sayaç H8–H9");
+  const bits = (p: string, from: number, n: number) => range(n).map((i) => `${p}${from + i}`);
+  // H: karakter sayacı (hc'nin 9..3 bitleri) 0..99, H2'nin yükselen kenarında (p4) sayar; 99'da
+  // eşzamanlı 0 yüklenir. p4'te örnekleyen her şey (MA, satır başı, ön register) sayacın kenardan
+  // önceki değerini, yani o karakteri görür.
+  counter(bits("V_H", 3, 4), { "~PE": "~V_HEND", CEP: "VCC", CET: "VCC", TC: "V_HTC0" }, "karakter sayacı H3–H6 (0..99)");
+  counter(bits("V_H", 7, 3), { "~PE": "~V_HEND", CEP: "VCC", CET: "V_HTC0" }, "karakter sayacı H7–H9");
   b.and("V_H8", "V_H9", "V_H89");
-  b.nand3("V_HTC0", "V_H4", "V_H89", "~V_HEND", "hc = 799 (satır sonu)");
+  b.and("V_H89", "V_H4", "V_H984", "karakter 98 / 99");
+  b.nand("V_H984", "V_H3", "~V_HEND", "karakter 99 (satır sonu)");
   b.not("~V_HEND", "V_HEND", "satır sonu");
-  // V: 0..524, satır sonlarında sayar
-  counter("V_V", 0, { "~PE": "~V_VLD", CEP: "V_HEND", CET: "VCC", TC: "V_VTC0" }, "dikey sayaç V0–V3 (satır)");
-  counter("V_V", 1, { "~PE": "~V_VLD", CEP: "V_HEND", CET: "V_VTC0", TC: "V_VTC1" }, "dikey sayaç V4–V7");
-  counter("V_V", 2, { "~PE": "~V_VLD", CEP: "V_HEND", CET: "V_VTC1" }, "dikey sayaç V8–V9");
+  // V: 0..524, satır sonunda (karakter 99'un p4'ünde) sayar
+  counter(bits("V_V", 0, 4), { "~PE": "~V_VLD", CEP: "V_HEND", CET: "VCC", TC: "V_VTC0" }, "dikey sayaç V0–V3 (satır)");
+  counter(bits("V_V", 4, 4), { "~PE": "~V_VLD", CEP: "V_HEND", CET: "V_VTC0", TC: "V_VTC1" }, "dikey sayaç V4–V7");
+  counter(bits("V_V", 8, 2), { "~PE": "~V_VLD", CEP: "V_HEND", CET: "V_VTC1" }, "dikey sayaç V8–V9");
   b.and("V_V3", "V_V2", "V_V32");
   b.nand3("V_HEND", "V_V9", "V_V32", "~V_VLD", "vc = 524 ve satır sonu: kare sonu");
 
   b.block = "Çözümleme";
-  // piksel fazı: p6'da LD7 kurulur (p7 boyunca 1); WRP p5..p6 (VRAM yazma darbesi)
-  b.and(b.and("V_H2", "V_H1"), b.not("V_H0"), "V_P6", "p = 6");
-  b.and("V_H2", b.not("V_H1"), "V_P45", "p = 4, 5");
-  b.place("74HC74", {
-    "1D": "V_P6", "1CLK": "VID_OSC", "~1PRE": "VCC", "~1CLR": "VCC", "1Q": "V_LD7", "~1Q": "~V_LD7",
-    "2D": "V_P45", "2CLK": "VID_OSC", "~2PRE": "VCC", "~2CLR": "VCC", "2Q": "V_WRP",
-  }, "karakter sonu (p7) ve VRAM yazma darbesi (p5–p6): parazitsiz");
-  b.or("VID_OSC", "~V_LD7", "V_CLKA", "karakter sınırı saati (p7 → p0)");
-  b.not("V_H2", "V_H2N", "CPU yuvası bitti (p0)");
+  // VRAM yazma darbesi p5..p6: H2 ∧ Q1. Her kenarda girişlerden yalnızca biri değişir (H2 p4 ve
+  // p0'da, Q1 p1, p3, p5 ve p7'de), bu yüzden parazitsizdir.
+  b.and("V_H2", "V_Q1", "V_WRP", "VRAM yazma darbesi (p5–p6)");
   // yatay: görünür karakter < 80; satır sonu karakterleri 98, 99; senkron karakter 82..93
   b.and("V_H9", b.or("V_H8", "V_H7"), "V_HBL", "hc ≥ 640 (yatay karartma)");
   b.not("V_HBL", "V_HVIS", "görünür karakter (MA sayar)");
-  b.and("V_H89", "V_H4", "V_H984", "karakter 98 / 99");
-  b.nand("V_H984", "V_H3", "~V_HC99", "karakter 99: MA ← satır başı");
   b.and("V_H984", b.not("V_H3"), "V_HC98", "karakter 98: satır başı ← MA");
   b.and(b.and("V_H9", "V_H7"), b.not("V_H8"), "V_HSA", "karakter 80..95");
   b.and(b.or(b.or("V_H4", "V_H5"), "V_H6"), b.nand3("V_H4", "V_H5", "V_H6"), "V_HSB", "alt 4 bit 2..13");
@@ -123,8 +140,10 @@ export function buildVideoCard(b: Board): VideoCard {
 
   b.block = "Dikey tarama durumu";
   b.and("~RESET", b.nand(b.not("~V_WE3"), "DE1"), "~V_FCLR", "VSTAT'a bit1 = 1 yazınca bayrağı sil");
+  // VBQ p0'da (H2'nin düşen kenarı) VBL'yi alır: V, karakter 99'un p4'ünde 480 olur; VBQ bundan
+  // sonraki ilk p0'da (karenin 384 000. piksel kenarı) kurulur, 420 000. kenarda düşer.
   b.place("74HC74", {
-    "1D": "V_VBL", "1CLK": "VID_OSC", "~1PRE": "VCC", "~1CLR": "VCC", "1Q": "V_VBQ", "~1Q": "~V_VBQ",
+    "1D": "V_VBL", "1CLK": "V_H2N", "~1PRE": "VCC", "~1CLR": "VCC", "1Q": "V_VBQ", "~1Q": "~V_VBQ",
     "2D": "VCC", "2CLK": "V_VBQ", "~2PRE": "VCC", "~2CLR": "~V_FCLR", "2Q": "VSYNC_REQ",
   }, "vblank (VSTAT bit0, eşzamanlı), vsync bayrağı (VSTAT bit1 = VSYNC_REQ)");
   b.place("74HC393", {
@@ -135,10 +154,10 @@ export function buildVideoCard(b: Board): VideoCard {
   // =========================================================================== tarama adresi
   b.block = "Tarama adresi";
   // MA: H2'nin yükselen kenarında (p4) sayar; görünür karakterlerde artar, karakter 99'da satır
-  // başını yükler; dikey karartmada 0. Satır başı (ROWSTART) karakter satırının son tarama
-  // satırında (ya da karartmada) karakter 98'de MA'dan alınır.
+  // başını yükler; dikey karartmada 0 (~MR p0'da değişir, p4'ten uzak). Satır başı (ROWSTART)
+  // karakter satırının son tarama satırında (ya da karartmada) karakter 98'in p4'ünde MA'dan alınır.
   const ma = (k: number, conn: Conn) => {
-    const c: Conn = { CP: "V_H2", "~MR": "~V_VBQ", "~PE": "~V_HC99", CEP: "V_HVIS", ...conn };
+    const c: Conn = { CP: "V_H2", "~MR": "~V_VBQ", "~PE": "~V_HEND", CEP: "V_HVIS", ...conn };
     range(4).forEach((i) => {
       c[`D${i}`] = `V_RS${4 * k + i}`;
       c[`Q${i}`] = `V_MA${4 * k + i}`;
@@ -148,8 +167,10 @@ export function buildVideoCard(b: Board): VideoCard {
   ma(0, { CET: "V_HVIS", TC: "V_MATC0" });
   ma(1, { CET: "V_MATC0", TC: "V_MATC1" });
   ma(2, { CET: "V_MATC1" });
-  b.and("V_HC98", b.or("V_SL15", "V_VBQ"), "V_ENRS", "satır başını güncelle");
-  b.and("V_H2", "V_ENRS", "V_RSCLK", "satır başı saati");
+  // satır başı saati = H2 ∨ ¬ENRS: ENRS p4'te (H2 = 1 iken) değişir, kapı yalnızca H2 = 0 iken
+  // geçirgendir; ENRS = 1 olan karakterin sonundaki p4'te tek bir yükselen kenar çıkar
+  b.nand("V_HC98", b.or("V_SL15", "V_VBL"), "~V_ENRS", "satır başını güncelle (karakter 98)");
+  b.or("V_H2", "~V_ENRS", "V_RSCLK", "satır başı saati (p4)");
   for (const k of [0, 1]) {
     const c: Conn = { "~OE": "GND", CP: "V_RSCLK" };
     range(8).forEach((i) => {
@@ -199,7 +220,7 @@ export function buildVideoCard(b: Board): VideoCard {
   };
   reg((i) => `V_CD${i}`, (i) => `V_CHR${i}`, "V_H2", "karakter kodu (p4'te VRAM'den)");
   reg((i) => `V_AD${i}`, (i) => `V_AT${i}`, "V_H2", "renk baytı (p4'te VRAM'den)");
-  reg((i) => `V_AT${i}`, (i) => `V_ATD${i}`, "V_CLKA", "renk baytı (karakter sınırında, gösterilen karakterinki)");
+  reg((i) => `V_AT${i}`, (i) => `V_ATD${i}`, "~V_LD7", "renk baytı (p7 → p0 kenarında, gösterilen karakterinki)");
   const rom: Conn = { "~CE": "GND", "~OE": "GND", "~WE": "VCC" };
   range(17).forEach((i) => (rom[`A${i}`] = i < 4 ? `V_V${i}` : i < 12 ? `V_CHR${i - 4}` : "GND"));
   range(8).forEach((i) => (rom[`DQ${i}`] = `V_FD${i}`));
@@ -208,10 +229,16 @@ export function buildVideoCard(b: Board): VideoCard {
   range(8).forEach((i) => (sh[`D${i}`] = `V_FD${i}`)); // bit 7 en soldaki piksel, ilk çıkar
   b.place("74HC166", sh, "piksel kaydırıcı (p7 → p0 kenarında yüklenir)");
 
+  // karartma, senkronlar ve imleç: karakter sayacından çözülür, p4'te ön register'a (sayacın
+  // kenardan önceki değeri = bu karakter), p7 → p0 kenarında piksellerle birlikte çıkışa alınır
   b.place("74HC175", {
-    "~MR": "VCC", CP: "V_CLKA", D0: "V_BLANK", D1: "V_HSYNC_A", D2: "~V_VSYNC_A", D3: "V_CURR",
+    "~MR": "VCC", CP: "V_H2", D0: "V_BLANK", D1: "V_HSYNC_A", D2: "~V_VSYNC_A", D3: "V_CURR",
+    Q0: "V_BLANKP", Q1: "V_HSYNCP", Q2: "~V_VSYNCP", Q3: "V_CURP",
+  }, "karartma, senkronlar, imleç: ön register (p4)");
+  b.place("74HC175", {
+    "~MR": "VCC", CP: "~V_LD7", D0: "V_BLANKP", D1: "V_HSYNCP", D2: "~V_VSYNCP", D3: "V_CURP",
     Q0: "V_BLANKD", "~Q1": "VGA_HSYNC", Q2: "VGA_VSYNC", Q3: "V_CURD",
-  }, "karartma, senkronlar (negatif) ve imleç: piksellerle aynı karakter sınırında");
+  }, "karartma, senkronlar (negatif) ve imleç: piksellerle aynı karakter sınırında (p7 → p0)");
 
   // imleç: VCTRL ∧ yanık yarı ∧ (sütun, satır) eşit ∧ tarama satırı 14–15
   const cmp = (p: string[], q: string, out: string, role: string) => {
