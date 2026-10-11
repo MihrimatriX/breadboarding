@@ -1,42 +1,76 @@
 # Deney 7: Mikrokod ve kontrol birimi
 
-> **Video:** "Mikrokod: CPU'nun içindeki küçük program" · **Önce:** Deney 3 (mikrokod ROM'ları), 4–6 · **Kart:** CPU kartının kalanı: "Kontrol", "Sabit birimi" ve yapıştırıcı lojik
+> **Video:** "Mikrokod: CPU'nun içindeki küçük program" · **Önce:** Deney 4–6 · **Kart:** CPU kartının kalanı: "Kontrol", "Kontrol birimi", "Sabit birimi" ve yapıştırıcı lojik
 
 Bu deneyin sonunda CPU kartı tamamdır: elle sürdüğün bütün `CW` anahtarlarını çıkarırsın, artık
-onları mikrokod sürer.
+onları mikrokod sürer. Kartta ROM yok: mikrokod tablosu 74HC kod çözücüleri, seçicileri ve
+kapılarıyla kurulmuş bir **kontrol birimi**dir. Deneyin en büyük parçası budur; bit bit kur ve sına.
 
 ## Ne öğreneceksin
 
 - Bir komutun mikro adımlara bölünmesi ve her adımın 32 bitlik bir **kontrol kelimesi** olması.
-- Mikrokod ROM'unun adresi: mikro adım sayacı + komutun op ve f3 alanları + koşul + kesme biti (13 bit).
+- Kontrol kelimesinin girişleri: mikro adım sayacı + komutun op ve f3 alanları + koşul + kesme biti
+  (13 bit: 8192 satırlık bir doğruluk tablosu).
+- Bu tabloyu ROM'suz kurmak: kod çözücüler (74HC138) "hangi komut", "hangi adım" hatlarını açar; her kontrol
+  biti, o adımda biti 1 olan komutların VEYA'sıdır. Çok adımda kullanılan bitlerde adımı bir 74HC151 seçer.
 - Kontrol kelimesini düşen kenarda bir register'a (CR) almak: sinyaller yükselen kenara kadar sabit, parazitsiz.
 - HALT, yasadışı komut (FAULT) ve kesmeyle (IRQ) uyanma.
 
 ## Nasıl çalışır
 
-- **Mikro adım sayacı** (74HC161): her saatte +1, kontrol kelimesinde `END` (CW31) varsa 0'a döner.
-- **Mikrokod ROM'ları** (4 × SST39SF010A, `mikrokod-0..3.hex`): adres
-  `[STEP0..3, COND, IR0..2 (f3), IR12..15 (op), INT]`, çıkış 4 × 8 = 32 kontrol biti.
-- **Kontrol register'ı** (4 × 74HC574) ROM çıkışını CLK'nin düşen kenarında alır: `CW0..CW31`.
-- `CW0..2` bir 74HC138 ile veriyolu sürücüsünü seçer (`~SRC_REG/ALU/PC/MEM/IMM/FLAGS`): aynı anda tek sürücü
-  donanımla garanti edilir.
+- **Mikro adım sayacı** (74HC161, U9): her saatte +1, kontrol kelimesinde `END` (CW31) varsa 0'a döner.
+- **Kod çözücüler** (74HC138): adım çözücü U10 (`STEP0..2` → `~ADIM0..7`, `STEP3` = 1 iken pasif); komut
+  çözücüler U1 (op 0..7) ve U3 (op 8..15) → `~KOP0..15`, `INT` = 1 iken hepsi pasif; f3'e göre dallanan
+  komutların alt çözücüleri U5 (op 13) ve U7 (op 14) → `~KOP13_F0..7`, `~KOP14_F0..7`. Adım 8..15'e
+  yalnızca SWI ulaşır: U68 SWI'ın hattıyla açılır, çıkışları doğrudan "SWI ∧ adım" terimleridir.
+- **Komut sınıfları:** aynı mikro programı çalıştıran komutlar tek hatta toplanır (ör. bütün yasadışı
+  komutlar; op 9'da koşulun doğru ya da yanlış olması: `~KOP9_C0`, `~KOP9_C1`).
+- **VEYA ağı** (yapıştırıcı kapılar, "Kontrol birimi" bloğu): her kontrol biti ve her adım için "bu biti 1
+  olan komut sınıfları" kümesi. Hatlar aktif düşük olduğu için kümedekilerin NAND'ı VEYA'dır; küme büyükse
+  kümede olmayanların AND'ı ("hiçbiri değil") daha az kapı ister. Kümelerin ortak parçaları bir kez kurulur
+  ("ortak alt küme" kapıları).
+- **Adım seçicileri** (10 × 74HC151, U147–U156): adım 0..7'nin çoğunda kullanılan bitlerde (`CW0..4`, `CW7`,
+  `CW16`, `CW17`, `CW21`, `CW31`) seçici `STEP0..2`, veri girişleri her adımın kümesi. Seyrek bitler
+  "adım ∧ küme" terimlerinin VEYA'sıdır.
+- Kontrol biriminin çıkışları `MK0..MK31`; **kontrol register'ı** (4 × 74HC574: U2, U4, U6, U8) onları CLK'nin
+  düşen kenarında alır: `CW0..CW31`.
+- `CW0..2` bir 74HC138 (U13) ile veriyolu sürücüsünü seçer (`~SRC_REG/ALU/PC/MEM/IMM/FLAGS`): aynı anda tek
+  sürücü donanımla garanti edilir.
 - **Sabit birimi** (16 × 74HC151): komut kelimesinden 8 biçimden birini çıkarır (IMM6, IMM6×2, IMM8, IMM9,
   OFF8×2, OFF12×2, 2, 4), `~SRC_IMM` ile veriyoluna.
-- **Çalışma izni:** HALT ya da FAULT'ta `RUN_R` düşer, kapılı saat (`CLKR`) durur. `IRQ` ∧ I bayrağı CPU'yu uyandırır;
-  adım 0'da kesme varsa ROM adresinin `INT` biti 1 olur ve mikrokod kesme girişini çalıştırır.
+- **Çalışma izni:** HALT ya da FAULT'ta `RUN_R` düşer, kapılı saat (`CLKR`) durur. `IRQ` ∧ I bayrağı CPU'yu
+  uyandırır; adım 0'da (`~ADIM0`) kesme varsa `INT` 1 olur ve kontrol birimi kesme girişini çalıştırır.
 
-Mikrokodun okunur kaynağı `cpu16/micro/cpu16.ucode`; `npm run cpu16 -- ucode` ROM imajlarını üretir.
+Mikrokodun okunur kaynağı `cpu16/micro/cpu16.ucode`; kontrol birimi bu dosyadan üretilir
+(`cpu16/board/kontrol.ts`, `npm run cpu16 -- kontrol`). Mikrokod değişirse kart da değişir: şemayı ve bu
+rehberi yeniden üret (`npm run cpu16 -- board kicad`, `npm run cpu16 -- kit`).
 
 ## Kurulum adımları
 
 1. Geçici saat sürücüsünü ve bütün `CW`/`~SRC` anahtarlarını çıkar.
-2. Mikro adım sayacı, adım çözücü, 4 mikrokod ROM'u (etiketlerine dikkat) ve 4 kontrol register'ı.
-3. Veriyolu kaynağı çözücü, INT/HALT ve FAULT/çalışma izni flip-flopları, HALTED ve FAULT LED'leri.
-4. Sabit birimi ve sabit → veriyolu tamponları.
-5. Kalan yapıştırıcı kapılar (aşağıdaki listede "bu deneyde takılır" olanlar ve önceki çiplerin boş kapıları).
-6. `IRQ` girişini 10 kΩ ile GND'ye çek (G/Ç kartı Deney 10'da sürer). Sahte bellek (Deney 6) hâlâ takılı.
+2. Mikro adım sayacı (U9), kontrol register'ı (U2, U4, U6, U8), INT/HALT ve FAULT/çalışma izni
+   flip-flopları (U11, U12), veriyolu kaynağı çözücü (U13), HALTED ve FAULT LED'leri.
+3. Kod çözücüler: U10 (adım), U1 ve U3 (komut), U5 ve U7 (alt çözücüler), U68 (adım 8..15).
+4. Kontrol biriminin kapıları ve adım seçicileri, bir seferde bir kontrol biti: aşağıdaki kapı listesinde
+   her kapının rolü hangi `CW` bitine ait olduğunu söyler ("ortak alt küme" kapıları birden çok bite gider).
+   Her biti kurunca aşağıdaki tabloyla sına.
+5. Sabit birimi ve sabit → veriyolu tamponları.
+6. Kalan yapıştırıcı kapılar (aşağıdaki listede "bu deneyde takılır" olanlar ve önceki çiplerin boş kapıları).
+7. `IRQ` girişini 10 kΩ ile GND'ye çek (G/Ç kartı Deney 10'da sürer). Sahte bellek (Deney 6) hâlâ takılı.
 
 ## Test: beklenen sonuç
+
+Önce kontrol birimini tek başına sına: YAVAŞ saatte `CW0..CW31`'e LED gösterge modülü bağla.
+
+| Adım (STEP) | Sahte bellek | `CW31..CW0` | Anlamı |
+|---|---|---|---|
+| 0 | herhangi | `0x00200003` | PC → veriyolu, MAR_L (getirme) |
+| 1 | herhangi | `0x00900004` | bellek → veriyolu, IR_L, PC += 2 |
+| 2 | `0xE000` (NOP) | `0x80000000` | END |
+| 2 | `0xE001` (HALT) | `0xA0000000` | HALT, END |
+| 2 | `0xF000` (yasadışı op) | `0xC0000000` | ILLEGAL, END |
+
+Sonra bütün CPU:
 
 | Sahte bellek | Beklenen |
 |---|---|
@@ -49,19 +83,22 @@ Adres LED'lerindeki sayaç 0xFFFE'den 0x0000'a sarar: CPU tüm adres alanında N
 
 ## Simülatörde
 
+- `npx vitest run cpu16/tests/kontrol.test.ts`: kontrol birimi tek başına, gerçek çip modelleriyle 8192
+  satırın hepsinde mikrokod tablosuyla aynı kelimeyi verir (ALU kod çözücünün 128 satırı da).
 - `npx vitest run cpu16/tests/board.test.ts`: kapı seviyesi CPU (bu kartın kendisi) hello, fib, add32, bubble
   ve irq programlarını her saat döngüsünde mikrokod modeliyle aynı çalıştırır.
 - 3D: `kart.program("hello")`, `kart.calistir()`: UART çıkışında "Merhaba, CPU16!". `kart.secCip("U2")`
-  kontrol register'ı 0, `kart.secCip("U1")` mikrokod ROM'u 0.
-- Mikrokod tablosu ve döngü sayıları: `cpu16/docs/mikromimari.md`.
+  kontrol register'ı 0, `kart.secCip("U1")` komut çözücü (op 0..7).
+- Mikrokod tablosu, döngü sayıları ve kontrol biriminin yapısı: `cpu16/docs/mikromimari.md`.
 
 ## Sorun giderme
 
 | Belirti | Bak |
 |---|---|
 | Hiçbir şey olmuyor | `RUN_R` = 1 mi; `~RESET` bırakıldı mı; IR'ye ilk komut geldi mi (adım 1) |
-| NOP 3 değil 16 döngü sürüyor | `END` (CW31) sayacın `~PE`'sine NAND ile gidiyor mu; ROM 3 doğru sokette mi |
-| Rastgele FAULT | ROM'lar yanlış soketlerde (etiketler) ya da `IR12..15` adres sırası |
+| NOP 3 değil 16 döngü sürüyor | `END` (CW31) sayacın `~PE`'sine NAND ile gidiyor mu; U156 (CW31 adım seçicisi) |
+| Bir `CW` biti tabloda yanlış | o bitin rolündeki kapılar (aşağıdaki liste); 74HC151'de `S0..S2` = `STEP0..2`, `~E` = `STEP3` |
+| Rastgele FAULT | komut çözücülerin adres sırası (`IR12..15` → `A0..A2`, `IR15` izin girişinde) ve `INT` |
 | HALT'tan çıkmıyor | `IRQ` GND'de olduğu için normal; RESET ile çık |
 
 ## Malzeme ve bağlantılar

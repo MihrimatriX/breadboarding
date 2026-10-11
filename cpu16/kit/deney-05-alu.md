@@ -1,9 +1,9 @@
 # Deney 5: ALU ve bayraklar
 
-> **Video:** "16 bit ALU: toplayıcıdan doğruluk tablosuna" · **Önce:** Deney 3 (ALU ROM'ları), Deney 4 · **Kart:** CPU kartı, "Geçici register'lar", "ALU", "Bayraklar ve koşul" blokları
+> **Video:** "16 bit ALU: toplayıcıdan doğruluk tablosuna" · **Önce:** Deney 4 · **Kart:** CPU kartı, "Geçici register'lar", "ALU", "ALU kod çözücü", "Bayraklar ve koşul" blokları
 
-Bu deney büyüktür; dört parçada kur ve her parçayı ayrı test et: (a) TA, TB ve toplayıcı,
-(b) mantık birimi, (c) kaydırıcı ve sonuç seçici, (d) bayraklar ve koşul birimi.
+Bu deney büyüktür; beş parçada kur ve her parçayı ayrı test et: (a) işlem seçici ve ALU kod çözücü,
+(b) TA, TB ve toplayıcı, (c) mantık birimi, (d) kaydırıcı ve sonuç seçici, (e) bayraklar ve koşul birimi.
 
 ## Ne öğreneceksin
 
@@ -11,7 +11,8 @@ Bu deney büyüktür; dört parçada kur ve her parçayı ayrı test et: (a) TA,
 - 4 × 74HC283 ile 16 bit dalgalı elde (ripple carry) ve taşma (V) bayrağının mantığı.
 - Mantık işlemlerini (AND, OR, XOR, NOT …) **doğruluk tablosu** olarak üretmek: her bit bir 74HC151,
   seçici girişleri a ve b, veri girişleri işlemin 4 bitlik doğruluk tablosu.
-- Mikrokodun yükünü azaltmak için bir **kod çözme ROM'u**: 5 bitlik işlem kodu 24 kontrol bitine açılır.
+- Mikrokodun yükünü azaltmak için bir **kod çözücü**: 5 bitlik işlem kodu (h biti ve C bayrağıyla) 24 kontrol
+  bitine açılır. ROM yerine 74HC138'ler ve kapılar: her kontrol biti "bu biti isteyen işlemlerin VEYA'sı".
 - NZCV bayrakları ve koşullu dallanmanın 14 koşulunu tek bir 74HC151'den üretmek.
 
 ## Nasıl çalışır
@@ -20,9 +21,11 @@ Bu deney büyüktür; dört parçada kur ve her parçayı ayrı test et: (a) TA,
 - **İşlem kodu** `AOP0..4`: `CW11` (ALU_IR) 0 ise mikrokoddan (`CW6..CW10`), 1 ise komuttan (`IR0..2`,
   `IR12`) gelir. İşlemler: 0 ADD, 1 ADC, 2 SUB, 3 SBC, 4 AND, 5 OR, 6 XOR, 7 CMP, 8 MOV, 9 NOT,
   10 NEG, 11 SHL, 12 SHR, 13 SAR, 14 ROL, 15 ROR, 17 SXB, 18 MERGE.
-- **ALU ROM'ları** (U69–U71, `alu-0..2.hex`): adres = işlem kodu, `IR8` (h biti) ve C bayrağı; çıkış
-  `AD0..AD23`: toplayıcı girişlerinin terslenmesi, elde girişi, mantık tablosu, kaydırmada giren bit,
-  sonuç seçimi ve "bu işlem C/V'yi değiştirir mi".
+- **ALU kod çözücü** (3 × 74HC138: U69–U71, ve kapılar): girişler işlem kodu, `IR8` (h biti) ve C bayrağı;
+  çıkış `AD0..AD23`: toplayıcı girişlerinin terslenmesi, elde girişi, mantık tablosu, kaydırmada giren bit,
+  sonuç seçimi ve "bu işlem C/V'yi değiştirir mi". 74HC138'ler işlem kodunu `~AIS0..23` hatlarına açar; her
+  `AD` biti bu hatların (ve işlem bitlerinin) VEYA'sıdır, ADC/SBC gibi işlemlerde C ile, kaydırmalarda h ile
+  birleşir. Tablo `cpu16/board/alu-kod.ts`'de; devre ondan üretilir (`cpu16/board/kontrol.ts`).
 - **Toplayıcı:** `X = TA ⊕ INVA`, `Y = (TB ∧ PASSB) ⊕ INVB`, 4 × 74HC283. Taşma: işaretler aynıyken
   sonucun işareti farklıysa.
 - **Mantık birimi:** 16 × 74HC151, her bit kendi doğruluk tablosu; yüksek baytta `TA7` de seçiciye girer
@@ -33,14 +36,28 @@ Bu deney büyüktür; dört parçada kur ve her parçayı ayrı test et: (a) TA,
 
 ## Kurulum adımları
 
-1. ROM'ları Deney 3'teki programlayıcıyla yaz, etiketle ve soketlerine tak (aşağıdaki listede).
-2. (a) TA, TB, toplayıcı ve giriş XOR'ları. Geçici saat sürücüsünden `CLKR`'yi (CLK'nin kendisi) ver.
-3. (b) Mantık birimi, (c) 74HC157 işlem seçici, sonuç seçici, sıfır algılama ve ALU → veriyolu tamponları.
-4. (d) Bayrak flip-flopları, bayrak → veriyolu tamponları ve koşul birimi.
+1. (a) 74HC157 işlem seçici (U67) ve ALU kod çözücü: U69–U71 ve aşağıdaki listede rolü "ALU kontrol biti",
+   "ortak alt küme" (ALU kod çözücü bloğu) ve "ALU işlem seçici" olan kapılar. `AD0..AD23`'e LED gösterge
+   modülü bağla ve aşağıdaki ilk tabloyla sına.
+2. (b) TA, TB, toplayıcı ve giriş XOR'ları. Geçici saat sürücüsünden `CLKR`'yi (CLK'nin kendisi) ver.
+3. (c) Mantık birimi, (d) sonuç seçici, sıfır algılama ve ALU → veriyolu tamponları.
+4. (e) Bayrak flip-flopları, bayrak → veriyolu tamponları ve koşul birimi.
 5. Elle sürülecek girişler: `CW6..CW11`, `CW17`, `CW18`, `CW24..CW27`, `IR0..2`, `IR8..IR12`,
    `~SRC_ALU`, `~SRC_FLAGS` anahtarlara.
 
 ## Test: beklenen sonuç
+
+ALU kod çözücü (`CW11` = 0, işlem kodu `CW10..6`'dan). C/V flip-flopu (U107) henüz takılı değilse
+`CFLAG`'ı bir anahtarla, `~CFLAG`'ı onun tersiyle sür:
+
+| İşlem | `CW10..6` | C bayrağı | `AD23..AD0` |
+|---|---|---|---|
+| ADD | 00000 | — | `0x000012` (PASSB, SETSCV) |
+| ADC | 00001 | 1 | `0x00001A` (+ CIN) |
+| SUB | 00010 | — | `0x00001E` (PASSB, INVB, CIN, SETSCV) |
+| AND | 00100 | — | `0x881802` (mantık tablosu 1000) |
+
+Bütün ALU:
 
 | Adım | Anahtarlar | Beklenen |
 |---|---|---|
@@ -66,7 +83,8 @@ Her işlemin bit bit tanımı: `cpu16/docs/isa-ayrintilari.md`.
 
 | Belirti | Bak |
 |---|---|
-| Toplama doğru, çıkarma 1 eksik | elde girişi (`CIN`) ALU ROM'undan geliyor mu; ROM doğru sokette mi |
+| Toplama doğru, çıkarma 1 eksik | elde girişi (`CIN` = `AD3`) kod çözücüden geliyor mu; SUB'da `AD3` = 1 mi |
+| Bir `AD` biti tabloda yanlış | o bitin rolündeki kapılar (aşağıdaki liste); U69–U71'in izin girişleri (`AOP3`, `AOP4`) |
 | Mantık işlemleri saçma | 74HC151'lerin `I0..I7` sırası (doğruluk tablosu bitleri) ve `S0` = TA, `S1` = TB |
 | Z bayrağı hep 0 | 74HC688'lerin `Q` girişleri GND, `~E` GND |
 | C/V değişmiyor | `CV_LD` = (FLAGS_L ∧ SETSCV) ∨ FLAGS_BUS_L: MOV gibi işlemler C/V'yi bilerek değiştirmez |
