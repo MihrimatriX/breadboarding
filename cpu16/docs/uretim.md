@@ -52,7 +52,7 @@ U104  74HC541      ALU → veriyolu                                      +33
 ### Sonuç: bütün anakart
 
 ```
-npm run cpu16 -- zamanlama --anakart [--tip]   # CPU + saat + bellek + önbellek + G/Ç + video, 5 saat alanı
+npm run cpu16 -- zamanlama --anakart [--tip]   # CPU + saat + bellek + önbellek + G/Ç + video, 6 saat kökü
 ```
 
 | Saat alanı | En kötü (maks) | Tipik | Gereken |
@@ -61,7 +61,8 @@ npm run cpu16 -- zamanlama --anakart [--tip]   # CPU + saat + bellek + önbellek
 | TCLK (bekleme turları, önbellek ve G/Ç kartları) | 758 ns → 1,32 MHz | 302 ns → 3,31 MHz | 1 MHz |
 | Osilatör (OSC, önbellek temizleme sayacı) | 87 ns → 11,5 MHz | 37 ns → 27 MHz | 8 MHz |
 | PS/2 saati (klavye) | 150 ns → 6,7 MHz | 60 ns → 16,7 MHz | 16,7 kHz |
-| Piksel saati (VID_OSC) | VIDEO_MAKS | VIDEO_TIP | 25,175 MHz |
+| Piksel saati (VID_OSC: 74AC161, 74AC74, 74HC166) | 31 ns → **32,8 MHz** | 17 ns → 59,5 MHz | 25,175 MHz |
+| Karakter saati (piksel / 8, video kartının kalanı) | 262 ns → 3,82 MHz | 104 ns → 9,6 MHz | 3,15 MHz |
 
 Anakartta CPU'nun kritik yolu ALU değil, önbellek isabetidir: kontrol register'ı → `~MRD` →
 etiket karşılaştırması (74HC688) → `C_HIT` → veri SRAM'i `DE`/`DO`'yu sürer → CPU veriyolu, yine
@@ -69,11 +70,18 @@ yarım periyotta (475 ns). 1 MHz'de pay %5'tir: en kötü durum değerleri 25 °
 mantıksal olarak her döngüde koşulmaz (araç kapıların koşullarını değil, en uzun bağlantıyı sayar),
 ama ilk kurulumda 1 MHz'in üstüne çıkmadan önce kart testi koşulmalı.
 
+Video kartında piksel saatiyle yalnızca üç çip çalışır: faz sayacı (74AC161), karakter saatini
+üreten 74AC74 ve kaydırma register'ı (74HC166); kartın geri kalanı piksel / 8 karakter saatindedir.
+İki AC çipi zorunludur: HC161 ile yol 49 ns (piksel periyodu 39,7 ns), HC74 ile iki saat arasındaki
+ön okuma geçişinin payı eksiye düşer. İki saat alanı arasındaki geçişlerin elle hesabı:
+[anakart-gc-video.md](anakart-gc-video.md) ("Statik zamanlama").
+
 Araç, veriyolu üzerinden giden yanlış yolları (bir kartın okuma sürücüsünden başka bir kartın
 yazma girişine: aynı döngüde okuma ve yazma olmaz) ve G/Ç kartının zamanlayıcı yükleme
 darbesindeki bir yayı adlı istisnalarla analiz dışı bırakır; rapor her istisnayı sayısıyla yazar.
 Kapılı saatlerin izinlerinden saat açıkken değişebilenler test edilir ve listelenir:
-`~WSEL` ve `C_MEMACC` (CLK), `C_CB`, `C_INVL`, `C_RAMHIT` (TCLK). Bunlar mantık olarak güvenlidir:
+`~WSEL` ve `C_MEMACC` (CLK), `C_CB`, `C_INVL`, `C_RAMHIT` (TCLK), `V_OPW` (karakter saati: yalnızca
+VRAM'in `~OE`/`~WE`'sini kapılar). Bunlar mantık olarak güvenlidir:
 `~WSEL` aşağıdaki mikrokod kuralıyla; `C_MEMACC`'ın kapıladığı bekleme isteği saat değildir,
 yalnızca s7'nin ortasında örneklenir; TCLK tarafındakiler yazma evresi boyunca sabittir ya da
 değiştikleri kenarda kapı zaten kapalıdır (gerekçeleri `tests/zamanlama.test.ts`'te). Test listeyi sabit

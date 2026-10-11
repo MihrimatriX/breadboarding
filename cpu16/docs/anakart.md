@@ -226,7 +226,7 @@ komut (≥ 1 µs) olduğundan CPU hiç beklemez ve ekranda "kar" oluşmaz. Model
 anlıktır.
 
 **Piksel hattı.** VRAM karakter + renk → latch → karakter ROM'u (adres = kod·16 + tarama
-satırı) → 74HC165 kaydırma register'ı (8 piksel) → 74HC157 (bit 1 ise yazı, 0 ise zemin
+satırı) → 74HC166 kaydırma register'ı (8 piksel) → 74HC157 (bit 1 ise yazı, 0 ise zemin
 rengi nibble'ı) → IRGB → dirençli DAC → VGA R/G/B. Kahverengi için CGA'daki gibi küçük bir
 düzeltme (I = 0, R = G = 1, B = 0 iken yeşil yarıya). İmleç: iki 74HC688 sütun/satır
 sayaçlarını `CURSOR_X/Y` ile karşılaştırır; eşleşmede 14–15. tarama satırları zorla yazı

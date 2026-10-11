@@ -107,6 +107,11 @@ describe("Faz 9: bütün anakartın zamanlaması (6 kart, 5 saat alanı)", () =>
     expect(kok(m, "OSC").fmaxMHz).toBeGreaterThanOrEqual(8);
     expect(kok(t, "CLK").fmaxMHz).toBeGreaterThanOrEqual(2);
     expect(kok(m, "PS2_CLK").fmaxMHz).toBeGreaterThan(1);
+    // video kartı: piksel saatinde yalnız 74AC161 + 74AC74 + 74HC166, gerisi karakter saatinde
+    for (const r of [m, t]) {
+      expect(kok(r, "VID_OSC").fmaxMHz).toBeGreaterThanOrEqual(25.175);
+      expect(kok(r, "V_H2").fmaxMHz).toBeGreaterThanOrEqual(25.175 / 8);
+    }
   });
 
   it("kapılı saatlerde tutma payı (tipik ≥ 5 ns)", () => {
@@ -121,6 +126,8 @@ describe("Faz 9: bütün anakartın zamanlaması (6 kart, 5 saat alanı)", () =>
     // Önbellek kartının yazma evresi TAGPH = TCLK ∧ CB ∧ ¬CBF: CB'nin düştüğü kenarda CBF zaten 1
     // (sıçrama yok); INVL ve RAMHIT evre [14, 18) boyunca sabit (cache-card.ts, anakart-kartlari.md).
     expect(acikta("TCLK")).toEqual(new Set(["C_CB", "C_INVL", "C_RAMHIT"]));
+    // V_OPW yalnızca VRAM'in ~OE / ~WE'sini kapılar (saat değil); değiştiği kenarda yazma darbesi 0
+    expect(acikta("V_H2")).toEqual(new Set(["V_OPW"]));
     for (const k of ["OSC", "PS2_CLK", "VID_OSC"]) expect(acikta(k), k).toEqual(new Set());
   });
 });
