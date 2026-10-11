@@ -188,8 +188,9 @@ function buildUart(b: Board): void {
   b.and("~RESET", "~GC_RDU_Q", "~GC_RXCLR", "RX_READY sil: UART_DATA okundu");
 
   b.block = "UART konnektörü";
-  // RTS# = RX_READY: bayt bekliyorken köprü göndermez
-  b.passive("CONN_CH340", { "1": "GND", "2": "GC_RXRDY", "3": "VCC", "4": "UART_RXD", "5": "UART_TXD" },
+  // RTS# = RX_READY: bayt bekliyorken köprü göndermez. 3. pin (modülün VCC'si) boş: kart kendi
+  // adaptöründen beslenir, USB'nin 5 V'u kartın 5 V'una bağlanmaz.
+  b.passive("CONN_CH340", { "1": "GND", "2": "GC_RXRDY", "4": "UART_RXD", "5": "UART_TXD" },
     "CH340 USB-UART modülü (TXD → kart RX, RXD ← kart TX, CTS# ← RTS# = RX_READY)");
 }
 

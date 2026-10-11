@@ -4,6 +4,9 @@
 //   machine [dosya.s] [--flash] [--cycles N] [--screen]
 //                                           BIOS'u aç, programı UART önyükleyicisiyle yükleyip
 //                                           çalıştır; UART stdin/stdout'a bağlı (çıkış: Ctrl-])
+//   machine dosya.s --rom [--cycles N] [--screen]
+//                                           BIOS'suz: program Flash bank 0'a yazılmış gibi reset'ten
+//                                           çalışır (BIOS'tan önceki deneylerin programları, .org 0)
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { assemble } from "../asm/assembler.ts";
@@ -47,20 +50,36 @@ export function charromCommand(args: string[]): void {
   console.log(`${out}: ${FONT_8X16.length} bayt (256 karakter × 16 satır; adres = kod·16 + satır)`);
 }
 
+/** BIOS'suz çalışan bir programın 128 KB Flash imajı (program bank 0'da, CPU adresi 0x0000–0x3FFF) */
+export function romImage(file: string): Uint8Array {
+  const asm = assemble(readFileSync(file, "utf8"));
+  if (asm.errors.length) throw new Error(asm.errors.map((e) => `${file}:${e.line}: ${e.message}`).join("\n"));
+  const img = new Uint8Array(0x20000).fill(0xff);
+  for (const [s, e] of asm.ranges) {
+    if (e > 0x4000) throw new Error(`${file}: --rom programı 0x0000–0x3FFF içinde olmalı`);
+    img.set(asm.image.subarray(s, e), s);
+  }
+  return img;
+}
+
 export async function machineCommand(args: string[]): Promise<void> {
   const file = args.find((a, i) => !a.startsWith("-") && !["--cycles"].includes(args[i - 1] ?? ""));
   const cyclesArg = opt(args, "--cycles");
+  const rom = args.includes("--rom");
   const m = new Machine();
-  m.loadFlash(loadBios().flash);
+  if (rom) {
+    if (!file) throw new Error("--rom bir program dosyası ister");
+    m.loadFlash(romImage(file));
+  } else m.loadFlash(loadBios().flash);
   m.reset();
   const link = new MachineLink(m, true);
   m.uartOnOutput = (b) => {
     link.push(b);
     process.stdout.write(decode(b));
   };
-  m.runUntil(() => m.uartOutput.endsWith("> "), 2_000_000);
+  if (!rom) m.runUntil(() => m.uartOutput.endsWith("> "), 2_000_000);
 
-  if (file) {
+  if (file && !rom) {
     const asm = assemble(readFileSync(file, "utf8"));
     if (asm.errors.length) {
       for (const e of asm.errors) console.error(`${file}:${e.line}: ${e.message}`);
