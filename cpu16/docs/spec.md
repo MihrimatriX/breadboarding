@@ -36,7 +36,7 @@ Kalanlar aynı: load/store, sabit 16 bit komut, 8 register, NZCV, byte adresli 6
 | Bayraklar | 74HC74 / 74HC175 | |
 | PC, MAR, IR | 74HC161 ×4 (PC), 74HC574 ×2+2 | |
 | Mikrokod | 3–4 adet SST39SF010 Flash (8 bit çıkış) + mikro-adım sayacı 74HC161 | 24–32 kontrol sinyali |
-| Bellek | 32 KB ROM (Flash) + 32 KB RAM (62256) | |
+| Bellek | 32 KB ROM (28C256 EEPROM) + 32 KB RAM (62256) | |
 | Adres çözümleme | 74HC138 / 74HC688 | `0xFF00+` G/Ç |
 | Ekran | VGA metin modu 80×30, 640×480@60 Hz; video kartında kendi VRAM'i (karakter + renk), font ROM, 74HC161 sayaçlarla zamanlama | CPU, VRAM'e G/Ç penceresinden yazar |
 | Klavye | PS/2: 74HC595/164 kaydırma register'ı | |
@@ -59,9 +59,13 @@ Kaba toplam: **60–90 entegre** (cache ve MMU hariç).
 **Cache**: 1–2 KB, direct-mapped, write-through. Hızlı SRAM (IS61C256, 15 ns) + tag SRAM + 74HC688 karşılaştırıcı + hit/miss mantığı (~10–15 çip).
 - Dürüst not: 74HC hızlarında RAM zaten CPU kadar hızlı, cache kendiliğinden fark yaratmaz. Cache'in anlamlı olması için ana bellek **bekleme durumlu (wait state)** yavaş bir veriyolunda olur (ör. 2 bekleme durumu). Böylece hit = 1 döngü, miss = 3 döngü; sayaçla hit oranı ölçülüp videoda gösterilir.
 
-**Ana bellek**: 512 KB RAM (AS6C4008) + 32 KB ROM; CPU 64 KB görür, 16 KB'lık 4 pencere **bank register'larıyla** fiziksel 1 MB alana eşlenir (basit MMU).
+**Ana bellek**: 128 KB RAM (4 × 62256) + 32 KB EEPROM (28C256); CPU 64 KB görür, 16 KB'lık 4 pencere **bank register'larıyla** fiziksel 1 MB alana eşlenir (basit MMU). Alanın geri kalanı boştur (`0xFF` okunur).
 
-**G/Ç**: bellek eşlemeli `0xFF00–0xFFFF`; klavye ve UART kesme (IRQ) ile, öncelik kodlayıcı 74HC148.
+**G/Ç**: bellek eşlemeli `0xFF00–0xFFFF`; klavye ve UART kesme (IRQ) ile, öncelik kodlayıcı kapılarla.
+
+✅ **Parçalar (AFU)**: bilgisayar yalnızca yaygın 7400 serisi lojikle ve iki bellek çipiyle kurulur: 62256 (32 KB SRAM) ve 28C256 (32 KB EEPROM). Nadir ya da tek kaynaklı parça yok: 512 KB'lık RAM (AS6C4008), Flash (SST39SF010A), 74HC590, 74HC193 ve 74HC148 bu yüzden çıkarıldı (yerlerine 74HC161 + 74HC541 ve kapılar). Tek istisna gibi görünen 74HC166 yaygın bir parçadır ve kalır: 74HC165'in eşzamansız yüklemesi video kartının piksel saatine sığmaz ([anakart-gc-video.md](anakart-gc-video.md)).
+
+**Kendin yap bellek kartı**: G/Ç alanında `FF40–FF4F`'te 16 baytlık bir eğitim kartı; her bayt bir 74HC574, adres çözme 74HC138'lerle. Bir 62256'nın içindeki hücre / çözücü / ortak veri hattı düzeni açıkta görünür (Deney 14).
 
 **Kart düzeni**: backplane + takılabilir kartlar (RC2014 tarzı): CPU kartı, cache kartı, bellek kartı, video kartı, G/Ç kartı (klavye + UART + zamanlayıcı), saat/reset kartı. Her kart ayrı bir deney ve ayrı bir KiCad şeması.
 
@@ -75,13 +79,13 @@ Kaba toplam: **60–90 entegre** (cache ve MMU hariç).
 | `0xC000–0xFEFF` | ~16 KB | Pencere 3: RAM bankı (yığın burada) |
 | `0xFF00–0xFFFF` | 256 B | G/Ç: bank register'ları, klavye, UART, zamanlayıcı, video, cache sayaçları |
 
-Vektör tablosu (ARM tarzı, her biri bir `JAL`): `0x0000` reset, `0x0002` IRQ, `0x0004` SWI. Fiziksel adres = 6 bit bank numarası + 14 bit ofset = 20 bit (1 MB): ROM `0x00000–0x07FFF`, RAM `0x80000–0xFFFFF`.
+Vektör tablosu (ARM tarzı, her biri bir `JAL`): `0x0000` reset, `0x0002` IRQ, `0x0004` SWI. Fiziksel adres = 6 bit bank numarası + 14 bit ofset = 20 bit (1 MB): EEPROM `0x00000–0x07FFF`, RAM `0x80000–0x9FFFF`, gerisi boş.
 
 ## 2c. Programlama ve yükleme (AFU, 09:36)
 
 ✅ Program **iki yoldan** yüklenir:
 - **Web**: tarayıcıdaki IDE'de yaz → derle → simülatöre yükle. Gerçek kart bağlıysa **Web Serial API** ile USB-UART üzerinden karttaki bootloader'a gönder (çip sökmeden).
-- **Fiziksel**: aynı .bin / Intel HEX dosyası EEPROM/Flash programlayıcıyla ROM'a yazılır. Deney setine kendi programlayıcımız dahil (Arduino Nano + 2×74HC595 ile, Ben Eater tarzı); hazır TL866/T48 de çalışır.
+- **Fiziksel**: aynı .bin / Intel HEX dosyası EEPROM programlayıcıyla 28C256'ya yazılır. Deney setine kendi programlayıcımız dahil (Arduino Nano + 2×74HC595 ile, Ben Eater tarzı); hazır TL866/T48 de çalışır.
 
 ✅ **C ile programlanacak, derleyiciyi kendimiz yazacağız.**
 
@@ -174,7 +178,8 @@ Bit bit davranış (bayraklar, dallanma hesabı, kesme girişi): [isa-ayrintilar
 | Gerçekleme | 74HC entegreleri; önce simülasyon, sonra aynı şemadan gerçek kart |
 | Ekran | VGA metin modu 80×30 |
 | Kart düzeni | Backplane + kartlar |
-| Bellek | 1 MB fiziksel, 4×16 KB bank penceresi |
+| Bellek | 1 MB fiziksel adres alanı, 4×16 KB bank penceresi; 32 KB EEPROM + 128 KB RAM takılı |
+| Parçalar | yalnız yaygın 7400 serisi lojik + 62256 ve 28C256 bellekler |
 | Programlama | Web (IDE + Web Serial) ve fiziksel (EEPROM programlayıcı) |
 | Derleyici | Kendi C derleyicimiz (cc16), araç zinciri TypeScript |
 | Şema aracı | KiCad (tek kaynak) |
