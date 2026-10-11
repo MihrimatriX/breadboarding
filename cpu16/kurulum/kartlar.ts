@@ -9,9 +9,10 @@ import { buildComputerBoard } from "../board/computer.ts";
 import { boardLayout, type BoardLayout } from "../board/layout.ts";
 import { buildFullMachineBoard } from "../board/machine-board.ts";
 import { buildProgrammerBoard } from "../board/programmer-card.ts";
+import { buildHesapBoard } from "../../hesap8/kart.ts";
 import { kurulumPlani, type KurulumPlani } from "./plan.ts";
 
-export type KurulumKaynagi = "anakart" | "bilgisayar" | "programlayici";
+export type KurulumKaynagi = "anakart" | "bilgisayar" | "programlayici" | "hesap";
 
 export interface KurulumKarti {
   kart: string;
@@ -63,6 +64,10 @@ export const KURULUM_KARTLARI: KurulumKarti[] = [
     kart: "kyb", kaynak: "anakart", yol: "PCB",
     aciklama: "Kendin yap bellek kartı (eğitim kartı, FF40–FF4F): 16 baytlık RAM, her bayt bir 74HC574; adres çözme ve veriyolu tamponu. Bir 62256'nın içinde olanı açıkta gösterir. Bilgisayarın çalışması için gerekmez.",
   },
+  {
+    kart: "hesap", kaynak: "hesap", yol: "PCB",
+    aciklama: "8 bit hesap makinesi (bilgisayardan bağımsız): A ve B sayıları 8'li DIP anahtarlarla, işlem 2'li DIP anahtarla seçilir; toplama, çıkarma, çarpma ve bölme tamamen 74HC kapılarıyla, program ve saat olmadan yapılır. Sayılar ve sonuç onluk 7 segment göstergelerde (A, B, işaret + 5 haneli sonuç, bölmede kalan). Bloklar ayrı ayrı breadboard'da denenebilir; bütün kart PCB içindir.",
+  },
 ];
 
 export const kurulumKarti = (kart: string): KurulumKarti => {
@@ -78,7 +83,11 @@ export class KurulumVerisi {
   board(k: KurulumKaynagi): { board: Board; layout: BoardLayout } {
     let x = this.boards.get(k);
     if (!x) {
-      const board = k === "anakart" ? buildFullMachineBoard().board : k === "bilgisayar" ? buildComputerBoard().board : buildProgrammerBoard().board;
+      const board =
+        k === "anakart" ? buildFullMachineBoard().board
+        : k === "bilgisayar" ? buildComputerBoard().board
+        : k === "hesap" ? buildHesapBoard().board
+        : buildProgrammerBoard().board;
       x = { board, layout: boardLayout(board) };
       this.boards.set(k, x);
     }
