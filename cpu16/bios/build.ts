@@ -1,8 +1,8 @@
-// BIOS imajı üretimi: bios.s → 16 KB'lık bank 0 ve 128 KB'lık Flash imajı.
+// BIOS imajı üretimi: bios.s → 16 KB'lık bank 0 ve 32 KB'lık EEPROM (28C256) imajı.
 // Tarayıcı (Web IDE) ve Node (CLI, testler) aynı kodu kullanır; kaynağı okumak çağırana kalır.
 
 import { assemble, type AsmResult } from "../asm/assembler.ts";
-import { FLASH_SIZE } from "../emu/devices/flash.ts";
+import { FLASH_SIZE } from "../emu/devices/eeprom.ts";
 
 /** Atlama tablosu (bios.md): her yuva 8 bayt, LI r3, adres + JALR lr, r3, 0 ile çağrılır. */
 export const BIOS = {
@@ -30,7 +30,7 @@ export const BIOS_BANK_SIZE = 0x4000;
 export interface BiosBuild {
   /** Bank 0 imajı (16 KB, kullanılmayan baytlar 0xFF). */
   bank0: Uint8Array;
-  /** Bütün Flash imajı (128 KB, BIOS ilk 16 KB'ta, gerisi silinmiş: 0xFF). */
+  /** Bütün EEPROM imajı (32 KB, BIOS ilk 16 KB'ta = bank 0, bank 1 boş: 0xFF). */
   flash: Uint8Array;
   /** BIOS'un kapladığı bayt. */
   size: number;

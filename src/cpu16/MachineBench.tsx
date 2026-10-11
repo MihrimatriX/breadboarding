@@ -252,7 +252,7 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
     const link = new MachineLink(m, false);
     linkRef.current = link;
     setFlashRun(null);
-    const what = mode === "ram" ? "RAM'e yükleniyor" : "Flash'a yazılıyor";
+    const what = mode === "ram" ? "RAM'e yükleniyor" : "EEPROM'a yazılıyor";
     setBusy(what);
     start();
     const r = await uploadHex(link, hex, {
@@ -271,12 +271,12 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
       return;
     }
     const w = entry >> 14;
-    if (w === 1 || w === 2) {
+    if (w === 1) {
       const cmd = `B ${w} ${w}\rG ${hex4(entry)}\r`;
       setFlashRun(cmd);
-      setInfo(`Flash'a yazıldı (${size} bayt, Flash ofseti = CPU adresi). Çalıştırmak için monitörde: B ${w} ${w} (pencere ${w} → Flash bank ${w}), sonra G ${hex4(entry)}.`);
+      setInfo(`EEPROM'a yazıldı (${size} bayt, EEPROM ofseti = CPU adresi). Çalıştırmak için monitörde: B ${w} ${w} (pencere ${w} → EEPROM bank ${w}), sonra G ${hex4(entry)}.`);
     } else {
-      setInfo(`Flash'a yazıldı (${size} bayt). Pencere 0 BIOS'a, pencere 3 yığına ayrıldığı için Flash'tan çalıştırılacak program 0x4000–0xBFFF'e yerleştirilmeli.`);
+      setInfo(`EEPROM 32 KB'tır (bank 0 BIOS'un, bank 1 programların): EEPROM'dan çalıştırılacak program 0x4000–0x7FFF'e yerleştirilmeli.`);
     }
   };
 
@@ -467,7 +467,7 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
         <div className="clock">
           <button onClick={step} disabled={running || !!busy} title="Bir komut çalıştır">Adım</button>
           <button className="primary" onClick={running ? pause : start} disabled={!!busy || !!bad}>{running ? "Durdur" : "Çalıştır"}</button>
-          <button onClick={resetMachine} disabled={!!busy} title="Reset düğmesi: CPU ve cihazlar sıfırlanır, RAM ve Flash kalır">Sıfırla</button>
+          <button onClick={resetMachine} disabled={!!busy} title="Reset düğmesi: CPU ve cihazlar sıfırlanır, RAM ve EEPROM kalır">Sıfırla</button>
           <select value={speed} onChange={(e) => pickSpeed(Number(e.target.value))} aria-label="Saat hızı">
             {SPEEDS.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
           </select>
@@ -543,8 +543,8 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
           )}
           <div className="row wrap">
             <button className="primary" onClick={() => void upload("ram")} disabled={!!busy}>Derle ve RAM'e yükle</button>
-            <button onClick={() => void upload("flash")} disabled={!!busy} title="F komutu: SST39SF010 komut dizileriyle Flash'a yazar (bank 0 korumalı)">Flash'a yaz</button>
-            {flashRun && <button onClick={runFromFlash} disabled={!!busy}>Flash'tan çalıştır</button>}
+            <button onClick={() => void upload("flash")} disabled={!!busy} title="F komutu: 28C256 EEPROM'a korumalı sayfa yazmasıyla yazar (yalnız bank 1, 0x4000–0x7FFF; bank 0 BIOS'un)">EEPROM'a yaz</button>
+            {flashRun && <button onClick={runFromFlash} disabled={!!busy}>EEPROM'dan çalıştır</button>}
             <button
               onClick={() => void sendToBoard()}
               disabled={!serialOk || !!busy}

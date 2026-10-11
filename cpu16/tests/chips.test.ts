@@ -5,7 +5,8 @@ import { kicadSymbolLibrary, parseSExpr, type SExpr } from "../chips/kicad.ts";
 import { CHIPS, CHIP_BY_PART, chip } from "../chips/library.ts";
 import { PASSIVES } from "../board/passives.ts";
 import { L0, L1, LZ, levelChar } from "../chips/logic.ts";
-import type { MemoryHandle } from "../chips/parts/memory.ts";
+import type { EepromHandle, MemoryHandle } from "../chips/parts/memory.ts";
+import { TBLC_NS, TWC_NS } from "../emu/devices/eeprom.ts";
 import { TransistorBench } from "../chips/transistor-bench.ts";
 import { range, type ChipDef, type RefIn, type RefOut } from "../chips/types.ts";
 
@@ -130,8 +131,8 @@ describe("parça kütüphanesi: pin düzenleri", () => {
     expect(def.pins.filter((p) => p.dir === "power")).toHaveLength(2);
   });
 
-  it("kütüphanede 40 çip var", () => {
-    expect(CHIPS).toHaveLength(40);
+  it("kütüphanede 37 çip var", () => {
+    expect(CHIPS).toHaveLength(37);
   });
 });
 
@@ -155,15 +156,6 @@ describe("veri sayfası fonksiyon tablosu satırları", () => {
     expect(c.read(range("~Y", 8))).toBe(0xff & ~(1 << 5));
     c.set("~E2", 1);
     expect(c.read(range("~Y", 8))).toBe(0xff);
-  });
-
-  it("74HC148: I5 ve I2 aktif → A = ~5, GS düşük, EO yüksek", () => {
-    const c = new ChipBench(chip("74HC148"));
-    c.write(range("~I", 8), 0xff & ~((1 << 5) | (1 << 2)));
-    c.set("~EI", 0);
-    expect(c.read(["~A0", "~A1", "~A2"])).toBe(~5 & 7);
-    expect(c.get("~GS")).toBe(L0);
-    expect(c.get("~EO")).toBe(L1);
   });
 
   it("74HC283: 9 + 8 + 1 = 18 → toplam 2, elde 1", () => {
@@ -244,45 +236,6 @@ describe("veri sayfası fonksiyon tablosu satırları", () => {
     c.set("~MR", 0);
     expect(c.read(range("Q", 8))).toBe(0);
   });
-
-  it("74HC590: say, register'a al, 255'te ~RCO düşük, iki çip zinciri 16 bit sayar", () => {
-    // iki 590: üst çipin ~CEC'si = ~CEC_alt ∨ ~RCO_alt (anakart önbellek kartındaki gibi)
-    const lo = new ChipBench(chip("74HC590"));
-    const hi = new ChipBench(chip("74HC590"));
-    for (const c of [lo, hi]) c.write(["CPC", "CPR", "~OE", "~CEC", "~MRC"], 0b00000);
-    for (const c of [lo, hi]) c.set("~MRC", 1);
-    const tick = (en: boolean) => {
-      lo.set("~CEC", !en);
-      hi.set("~CEC", !en || lo.get("~RCO") === L1);
-      for (const c of [lo, hi]) c.set("CPC", 1);
-      for (const c of [lo, hi]) c.set("CPC", 0);
-    };
-    const read = () => {
-      for (const c of [lo, hi]) {
-        c.set("CPR", 1);
-        c.set("CPR", 0);
-      }
-      return lo.read(range("Q", 8))! | (hi.read(range("Q", 8))! << 8);
-    };
-    expect(read()).toBe(0);
-    for (let i = 0; i < 300; i++) tick(i % 3 !== 2); // 200 sayım
-    expect(read()).toBe(200);
-    for (let i = 0; i < 55; i++) tick(true);
-    expect(lo.get("~RCO")).toBe(L0);
-    expect(read()).toBe(255);
-    tick(false);
-    expect(read()).toBe(255); // izin yok: üst çip de saymaz
-    tick(true);
-    expect(read()).toBe(256);
-    expect(lo.get("~RCO")).toBe(L1);
-    lo.set("~OE", 1);
-    expect(lo.get("Q3")).toBe(LZ);
-    lo.set("~MRC", 0);
-    lo.set("~OE", 0);
-    expect(lo.read(range("Q", 8))).toBe(0); // sayıcı sıfır ama register eski değerde
-    lo.set("CPR", 1);
-    expect(lo.read(range("Q", 8))).toBe(0);
-  });
 });
 
 describe("bellek çipleri (davranışsal)", () => {
@@ -322,12 +275,43 @@ describe("bellek çipleri (davranışsal)", () => {
     expect(m.c.get("IO0")).toBe(LZ);
   });
 
-  it("AS6C4008: 19 bit adres", () => {
-    const m = memBench("AS6C4008", range("DQ", 8), 19);
-    m.write(0x7ffff, 0x81);
-    m.write(0x00001, 0x18);
-    expect(m.read(0x7ffff)).toBe(0x81);
-    expect(m.read(0x00001)).toBe(0x18);
+  it("28C256: sayfa yazma; yazma sürerken DATA yoklaması (D7 ters) ve toggle biti (D6); yazılım koruması", () => {
+    const m = memBench("28C256", range("IO", 8), 15);
+    const h = m.c.handle as EepromHandle;
+    let t = 0;
+    h.now = () => t;
+    const settle = () => (t += TBLC_NS + TWC_NS);
+    expect(m.read(0x1234)).toBe(0xff); // fabrikadan boş ve korumasız
+    m.write(0x1234, 0xa5);
+    m.write(0x1235, 0x5a);
+    const [s1, s2] = [m.read(0x1234)!, m.read(0x1234)!];
+    expect(s1 & 0x80).toBe(0x80); // son yazılan 0x5A'nın D7'si 0 → durum D7 = 1
+    expect((s1 ^ s2) & 0x40).toBe(0x40);
+    t += TBLC_NS; // bayt yükleme penceresi kapandı: iç yazma döngüsü
+    expect(m.read(0x1234)! & 0x80).toBe(0x80);
+    m.write(0x1236, 0x77); // yazma döngüsünde yok sayılır
+    t += TWC_NS;
+    expect([m.read(0x1234), m.read(0x1235), m.read(0x1236)]).toEqual([0xa5, 0x5a, 0xff]);
+    expect([h.core.writeCycles, h.core.bytesWritten]).toEqual([1, 2]);
+    // AA 55 A0 dizisi korumayı açar ve ardından yüklenen sayfayı yazar; komut baytları veri değildir
+    const cmd = (...pairs: number[]) => {
+      for (let i = 0; i < pairs.length; i += 2) m.write(pairs[i], pairs[i + 1]);
+    };
+    cmd(0x5555, 0xaa, 0x2aaa, 0x55, 0x5555, 0xa0, 0x0100, 0x11);
+    settle();
+    expect([m.read(0x100), m.read(0x5555), m.read(0x2aaa)]).toEqual([0x11, 0xff, 0xff]);
+    expect(h.core.sdp).toBe(true);
+    m.write(0x0100, 0x22); // korumalı: dizisiz yazma yok sayılır
+    settle();
+    expect(m.read(0x100)).toBe(0x11);
+    // AA 55 80 AA 55 20: korumayı kapatır
+    cmd(0x5555, 0xaa, 0x2aaa, 0x55, 0x5555, 0x80, 0x5555, 0xaa, 0x2aaa, 0x55, 0x5555, 0x20);
+    settle();
+    expect(h.core.sdp).toBe(false);
+    m.write(0x0100, 0x22);
+    settle();
+    expect(m.read(0x100)).toBe(0x22);
+    expect(m.c.get("IO0")).toBe(LZ);
   });
 
   it("SST39SF010A: düz yazma yok sayılır; komutla programla, kimlik oku, sektör ve çip sil", () => {

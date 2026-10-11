@@ -1,9 +1,9 @@
 ; =============================================================================
-; bios.s — CPU16 BIOS v1 (ROM bank 0: Flash 0x00000–0x03FFF, CPU 0x0000–0x3FFF)
+; bios.s — CPU16 BIOS v1 (ROM bank 0: EEPROM 0x00000–0x03FFF, CPU 0x0000–0x3FFF)
 ;
 ; Vektörler, açılış, atlama tablosu (programlar için BIOS rutinleri), kesme
 ; işleyici (zamanlayıcı + PS/2 klavye), VGA metin sürücüsü, UART, monitör ve
-; Intel HEX önyükleyicisi (RAM'e ya da SST komut dizisiyle Flash'a).
+; Intel HEX önyükleyicisi (RAM'e ya da korumalı sayfa yazmasıyla EEPROM'a).
 ; Belge: cpu16/docs/bios.md · Donanım: cpu16/docs/anakart.md
 ;
 ; Çağrı kuralı (atlama tablosu): argümanlar r0–r2, dönüş r0 (TICKS: r0:r1).
@@ -42,7 +42,7 @@ KBUF     = VARS + 16    ; klavye halka tamponu (16 bayt)
 LINEBUF  = 0xF840       ; komut satırı (80 bayt)
 ROWBUF   = 0xF8A0       ; kaydırma için satır tamponu (160 bayt)
 RECBUF   = 0xF940       ; HEX kaydı verisi (256 bayt)
-FLASHRT  = 0xFA40       ; Flash komut rutinlerinin RAM kopyası
+FLASHRT  = 0xFA40       ; EEPROM yazma rutinlerinin RAM kopyası
 STACK    = 0xFF00       ; yığın 0xFEFF'ten aşağı (0xFC00'e kadar)
 USER_LO  = 0x4000       ; kullanıcı RAM'i: 0x4000–0xF7FF
 USER_END = 0xF800
@@ -60,7 +60,7 @@ V_KCAPS  = 7
 V_KHEAD  = 8            ; halka tamponu: ISR yazar
 V_KTAIL  = 9            ; okuyan
 V_LASTCR = 10           ; önceki satır CR ile bitti
-V_MODE   = 11           ; HEX yükleme: 0 RAM, 1 Flash
+V_MODE   = 11           ; HEX yükleme: 0 RAM, 1 EEPROM
 V_CCSAVE = 12           ; önbellek denetiminin eski değeri
 V_TLO    = 32           ; 10 ms tık sayacı (32 bit)
 V_THI    = 34
@@ -71,7 +71,6 @@ V_COUNT  = 42           ; yüklenen bayt
 V_RLEN   = 44           ; geçerli kayıt: uzunluk, adres, tür
 V_RADDR  = 46
 V_RTYPE  = 48
-V_ERASED = 50           ; silinen Flash sektörleri (32 bit eşlem: 50 = ofset 0–64 KB, 52 = 64–128 KB)
 V_UHOOK  = 54           ; kullanıcı IRQ kancası (0: yok)
 
 ATTR_NORMAL = 0x07      ; açık gri / siyah
@@ -250,7 +249,7 @@ rs_clr: SW   r0, [r1]
         SW   r0, [r4+V_ENTRY]
         LI   r0, USER_LO
         SW   r0, [r4+V_DUMP]
-        ; Flash rutinlerini RAM'e kopyala (Flash komut modundayken ROM'dan komut okunamaz)
+        ; EEPROM yazma rutinlerini RAM'e kopyala (yazma döngüsünde EEPROM'dan komut okunamaz)
         LI   r1, flashrt
         LI   r2, FLASHRT
         LI   r0, flashrt_end
@@ -513,32 +512,24 @@ cc_show:
         POP  lr
         RET
 
-; ---- I: Flash kimliği (yazılımla ID modu)
+; ---- I: EEPROM bilgisi: yazma koruması (SDP) açık mı (28C256'nın yazılımla okunan kimliği yok)
 cmd_id: PUSH lr
         CALL cache_off
-        LI   r3, FLASHRT + fr_id - flashrt
-        JALR lr, r3, 0          ; r0 = üretici, r1 = çip
+        LI   r3, FLASHRT + fr_sdp - flashrt
+        JALR lr, r3, 0          ; r0 = 1 korumalı
         CALL cache_restore
         MOV  r4, r0
-        LI   r0, s_flashid
+        LI   r0, s_eeprom
         CALL puts
-        MOV  r0, r4
-        CALL puthex2
-        LI   r0, ' '
-        CALL putc
-        MOV  r0, r1
-        CALL puthex2
-        CMPI r4, 0xBF
-        BNE  ci_end
-        CMPI r1, 0xB5
-        BNE  ci_end
-        LI   r0, s_sst
-        CALL puts
-ci_end: CALL newline
+        LI   r0, s_sdpoff
+        CMPI r4, 0
+        BEQ  ci_p
+        LI   r0, s_sdpon
+ci_p:   CALL puts
         POP  lr
         RET
 
-; ---- T: RAM testi. Bank 32–63 (34 hariç: BIOS ve yığın) pencere 2 üzerinden;
+; ---- T: RAM testi. Bank 32–39 (34 hariç: BIOS ve yığın) pencere 2 üzerinden;
 ; önce hepsine yazar, sonra hepsini doğrular (bankların birbirine karışmasını da yakalar).
 cmd_test:
         PUSH lr
@@ -559,7 +550,7 @@ ct_w:   ADD  r0, r1, r5
         ADDI r2, r2, -1
         BNE  ct_w
 ct_wn:  ADDI r4, r4, 1
-        CMPI r4, 64
+        CMPI r4, 40
         BNE  ct_wb
         LI   r4, 32
 ct_rb:  CALL ct_map
@@ -577,7 +568,7 @@ ct_r:   LW   r0, [r1]
         LI   r0, '.'
         CALL putc
 ct_rn:  ADDI r4, r4, 1
-        CMPI r4, 64
+        CMPI r4, 40
         BNE  ct_rb
         LI   r0, s_testok
         CALL puts
@@ -612,12 +603,12 @@ ct_map: LI   r3, IOB            ; pencere 2 = bank r4; r5 = r4 · 0x0101
 
 ; =============================================================================
 ; Intel HEX önyükleyici (UART). Protokol (bios.md):
-;   ana makine "L\r" (RAM) ya da "F\r" (Flash) gönderir, "HEX ..." satırını bekler;
+;   ana makine "L\r" (RAM) ya da "F\r" (EEPROM) gönderir, "HEX ..." satırını bekler;
 ;   her kayıttan sonra BIOS tek karakter yanıt verir: '.' tamam, '!' sağlama
 ;   hatası (kayıt yeniden gönderilebilir), 'X' reddedildi (yükleme biter).
 ;   01 (EOF) kaydından sonra özet satırı ve "> " istemi gelir. ESC / Ctrl-C iptal.
-; Kayıt türleri: 00 veri, 01 son, 04 genişletilmiş doğrusal adres (Flash için
-; ofset bit 16), 05 / 03 başlangıç adresi (G'nin varsayılanı).
+; Kayıt türleri: 00 veri, 01 son, 04 genişletilmiş doğrusal adres (EEPROM'da
+; yalnız 0), 05 / 03 başlangıç adresi (G'nin varsayılanı).
 ; =============================================================================
 cmd_load:
         PUSH lr
@@ -626,13 +617,11 @@ cmd_load:
         LI   r1, 0
         SW   r1, [r4+V_EXT]
         SW   r1, [r4+V_COUNT]
-        SW   r1, [r4+V_ERASED]
-        SW   r1, [r4+V_ERASED+2]
         LI   r1, -1
         SW   r1, [r4+V_ENTRY]
         CMPI r0, 0
         BEQ  hl_ram
-        CALL cache_off          ; Flash'a yazarken önbellek kapalı (yoklama okumaları Flash'a gitmeli)
+        CALL cache_off          ; EEPROM'a yazarken önbellek kapalı (yoklama okumaları EEPROM'a gitmeli)
         LI   r0, s_hexflash
         B    hl_msg
 hl_ram: LI   r0, s_hexram
@@ -766,7 +755,7 @@ hl_reject:                      ; r0 = hata metni
         CALL puts
         B    hl_end
 
-; Veri kaydı: RECBUF'taki V_RLEN baytı V_RADDR'a (RAM) ya da Flash'a yaz.
+; Veri kaydı: RECBUF'taki V_RLEN baytı V_RADDR'a (RAM) ya da EEPROM'a yaz.
 hl_data:
         LW   r2, [r4+V_RLEN]
         LBU  r0, [r4+V_MODE]
@@ -804,33 +793,46 @@ hl_cnt: LW   r0, [r4+V_COUNT]
         SW   r0, [r4+V_COUNT]
         B    hl_ack
 
-; Flash: ofset = V_EXT:V_RADDR (17 bit). Bank 0 (BIOS) korunur.
+; EEPROM: ofset = V_RADDR (V_EXT = 0); yalnızca bank 1 (0x4000–0x7FFF), bank 0 (BIOS) korunur.
+; Pencere 1 yazma sırasında bank 1'e eşlendiğinden ofset aynı zamanda CPU adresidir. Kayıt 64 baytlık
+; sayfa sınırlarında parçalanır; her parça bir korumalı sayfa yazmasıdır (~10 ms).
 hl_fdata:
         LW   r1, [r4+V_EXT]
-        CMPI r1, 1
-        BHI  hl_range           ; 128 KB dışında
+        CMPI r1, 0
+        BNE  hl_range           ; EEPROM 32 KB: 64 KB üstü yok
         LW   r0, [r4+V_RADDR]
         CMPI r2, 0
         BEQ  hl_dok
-        CMPI r1, 0
-        BNE  hf_1
         LI   r3, 0x4000
         CMP  r0, r3
         BCC  hl_range           ; bank 0: BIOS'un üstüne yazılmaz
-hf_1:   ADDI r3, r2, -1
-        ADD  r3, r0, r3
-        BCS  hl_range           ; kayıt 64 KB sınırını aşıyor
-        LI   r5, RECBUF
-hf_lp:  LBU  r2, [r5]
-        CALL fl_byte            ; r0 = ofset, r1 = ext, r2 = veri → r3 = 0 tamam
+        ADD  r3, r0, r2
+        LI   r1, 0x8000
+        CMP  r1, r3
+        BCC  hl_range           ; son > 0x8000: EEPROM'un dışında
+        LI   r1, RECBUF
+hf_lp:  LI   r3, 63             ; r0 = hedef, r1 = kaynak, r2 = kalan
+        AND  r3, r3, r0
+        LI   r5, 64
+        SUB  r5, r5, r3         ; sayfada kalan yer
+        CMP  r2, r5
+        BCS  hf_n               ; kalan ≥ yer: bu parça sayfanın sonuna kadar
+        MOV  r5, r2
+hf_n:   PUSH r0
+        PUSH r1
+        PUSH r2
+        MOV  r2, r5
+        LI   r3, FLASHRT + fr_page - flashrt
+        JALR lr, r3, 0          ; r0 = 0 tamam
+        MOV  r3, r0
+        POP  r2
+        POP  r1
+        POP  r0
         CMPI r3, 0
         BNE  hf_fail
-        ADDI r0, r0, 1
-        ADDI r5, r5, 1
-        LW   r2, [r4+V_RLEN]
-        LI   r3, RECBUF
-        ADD  r3, r3, r2
-        CMP  r5, r3
+        ADD  r0, r0, r5
+        ADD  r1, r1, r5
+        SUB  r2, r2, r5
         BNE  hf_lp
         B    hl_dok
 hf_fail:
@@ -860,137 +862,63 @@ hb_ret: POP  lr
         POP  r1
         RET
 
-; fl_byte: Flash ofseti (r1:r0, 17 bit) = r2. Sektör bu yüklemede silinmediyse önce siler.
-; → r3 = 0 tamam, 1 hata. Korur: r0, r1, r2, r4, r5.
-fl_byte:
-        PUSH r0
-        PUSH r1
-        PUSH r2
-        PUSH r4
-        PUSH r5
-        PUSH lr
-        ; sektör biti: kelime = V_ERASED + 2·ext, bit = ofset >> 12
-        LI   r4, VARS
-        ADD  r4, r4, r1
-        ADD  r4, r4, r1
-        MOV  r5, r0
-        SHR  r5, r5
-        SHR  r5, r5
-        SHR  r5, r5
-        SHR  r5, r5
-        SHR  r5, r5
-        SHR  r5, r5
-        SHR  r5, r5
-        SHR  r5, r5
-        SHR  r5, r5
-        SHR  r5, r5
-        SHR  r5, r5
-        SHR  r5, r5
-        LI   r3, 1
-fb_sh:  CMPI r5, 0
-        BEQ  fb_tst
-        SHL  r3, r3
-        ADDI r5, r5, -1
-        B    fb_sh
-fb_tst: LW   r5, [r4+V_ERASED]
-        PUSH r5
-        AND  r5, r5, r3
-        POP  r5
-        BNE  fb_prog
-        OR   r5, r5, r3         ; işaretle ve sil
-        SW   r5, [r4+V_ERASED]
-        CALL fl_map             ; r0 → pencere 2 adresi (BANK2 ayarlı, eskisi yığında değil r4'te)
-        LI   r3, FLASHRT + fr_erase - flashrt
-        JALR lr, r3, 0
-        CALL fl_unmap
-        CMPI r0, 0
-        BNE  fb_fail
-        LW   r0, [sp+10]        ; ofset (yığındaki r0)
-        LW   r1, [sp+8]
-fb_prog:
-        LW   r2, [sp+6]         ; veri
-        CALL fl_map
-        MOV  r1, r2
-        LI   r3, FLASHRT + fr_prog - flashrt
-        JALR lr, r3, 0
-        CALL fl_unmap
-        MOV  r3, r0
-        B    fb_ret
-fb_fail:
-        LI   r3, 1
-fb_ret: POP  lr
-        POP  r5
-        POP  r4
-        POP  r2
-        POP  r1
-        POP  r0
-        RET
-
-; fl_map: r1:r0 Flash ofseti → BANK2 = ofset >> 14, r0 = 0x8000 | (ofset & 0x3FFF).
-; Eski BANK2 r4'e. Bozar r3.
-fl_map: LI   r3, IOB
-        LBU  r4, [r3+O_BANK2]
-        PUSH r0
-        SHR  r0, r0
-        SHR  r0, r0
-        SHR  r0, r0
-        SHR  r0, r0
-        SHR  r0, r0
-        SHR  r0, r0
-        SHR  r0, r0
-        SHR  r0, r0
-        SHR  r0, r0
-        SHR  r0, r0
-        SHR  r0, r0
-        SHR  r0, r0
-        SHR  r0, r0
-        SHR  r0, r0             ; ofset >> 14 (0..3)
-        CMPI r1, 0
-        BEQ  fm_1
-        ADDI r0, r0, 4          ; 64 KB üstü: bank 4..7
-fm_1:   SB   r0, [r3+O_BANK2]
-        POP  r0
-        LI   r3, 0x3FFF
-        AND  r0, r0, r3
-        LI   r3, 0x8000
-        OR   r0, r0, r3
-        RET
-
-fl_unmap:                       ; BANK2 = r4. Bozar r3.
-        LI   r3, IOB
-        SB   r4, [r3+O_BANK2]
-        RET
-
 ; =============================================================================
-; Flash komut rutinleri. RAM'e (FLASHRT) kopyalanıp orada çalışır: Flash komut
-; ya da ID modundayken Flash'tan komut okunamaz. Sadece göreli dallanma kullanır.
-; Ön koşul: önbellek kapalı, BANK0 = 0 (2AAAh), hedef pencere 2'de. 5555h için
-; pencere 1 geçici olarak Flash bank 1'e eşlenir.
+; EEPROM (28C256) yazma rutinleri. RAM'e (FLASHRT) kopyalanıp orada çalışır: yazma
+; döngüsü sürerken (~10 ms) EEPROM'dan okunan her bayt durum baytıdır, BIOS'tan komut
+; okunamaz. Bu yüzden kesmeler de kapalıdır (IRQ vektörü EEPROM'da). Sadece göreli
+; dallanma kullanır. Ön koşul: önbellek kapalı (yoklama okumaları EEPROM'a gitmeli),
+; BANK0 = 0 (2AAAh). 5555h için pencere 1 geçici olarak EEPROM bank 1'e eşlenir.
 ; =============================================================================
 flashrt:
-; fr_prog: r0 = hedef CPU adresi, r1 = veri → r0 = 0 tamam, 1 hata. Bozar r3.
-fr_prog:
+; fr_page: r0 = hedef CPU adresi (pencere 1 = bank 1), r1 = kaynak, r2 = bayt sayısı (1..64,
+; hepsi aynı 64 baytlık sayfada) → r0 = 0 tamam, 1 hata. Korumalı sayfa yazması (AA 55 A0 +
+; baytlar, aralarında ≤ 150 µs), D7 veri yoklaması, sonra baytlar tek tek doğrulanır. Bozar r1, r3.
+fr_page:
         PUSH lr
         PUSH r2
         PUSH r4
-        CALL fr_unlock          ; JAL göreli: RAM'de de çalışır
-        LI   r2, 0xA0
-        SB   r2, [r3]           ; r3 = 0x5555 (fr_unlock bırakır)
-        SB   r1, [r0]           ; veri
-        LI   r4, 0              ; zaman aşımı sayacı
-fp_poll: LBU  r2, [r0]          ; DQ7 veri yoklaması: bitince DQ7 = verinin bit 7'si
-        XOR  r2, r2, r1
-        LI   r3, 0x80
-        AND  r2, r2, r3
-        BEQ  fp_done
-        ADDI r4, r4, -1
-        BNE  fp_poll
-fp_done:
-        LBU  r2, [r0]
-        CMP  r2, r1
+        DI
+        CALL fr_unlock          ; JAL göreli: RAM'de de çalışır. r3 = 0x5555
+        LI   r4, 0xA0
+        SB   r4, [r3]           ; korumalı yazma: sonraki baytlar sayfa tamponuna
+        LW   r2, [sp+4]         ; bayt sayısı ([sp] eski BANK1, [sp+2] r4, [sp+4] r2)
+        PUSH r0
+        PUSH r1
+fpg_ld: LBU  r4, [r1]
+        SB   r4, [r0]
+        ADDI r0, r0, 1
+        ADDI r1, r1, 1
+        ADDI r2, r2, -1
+        BNE  fpg_ld
+        ADDI r0, r0, -1         ; son yazılan bayt (r4): yoklama adresi
+        LI   r2, 0              ; zaman aşımı: 65536 tur ≈ 0,8 s
+fpg_poll:
+        LBU  r3, [r0]           ; yazma sürerken D7 = yazılan D7'nin tersi
+        XOR  r3, r3, r4
+        LI   r1, 0x80
+        AND  r3, r3, r1
+        BEQ  fpg_vfy
+        ADDI r2, r2, -1
+        BNE  fpg_poll
+fpg_vfy:
+        POP  r1                 ; kaynak başı
+        POP  r0                 ; hedef başı
+        LW   r2, [sp+4]
+fpg_cmp:
+        LBU  r3, [r0]
+        LBU  r4, [r1]
+        CMP  r3, r4
+        BNE  fpg_bad
+        ADDI r0, r0, 1
+        ADDI r1, r1, 1
+        ADDI r2, r2, -1
+        BNE  fpg_cmp
         LI   r0, 0
-        BEQ  fr_out
+        B    fpg_out
+fpg_bad:
         LI   r0, 1
+fpg_out:
+        EI
 fr_out: POP  r3                 ; fr_unlock'ın yığına bıraktığı eski BANK1
         LI   r2, IOB
         SB   r3, [r2+O_BANK1]
@@ -998,46 +926,41 @@ fr_out: POP  r3                 ; fr_unlock'ın yığına bıraktığı eski BAN
         POP  r2
         POP  lr
         RET
-; fr_erase: r0 = sektör içindeki hedef CPU adresi → r0 = 0 tamam. Bozar r3.
-fr_erase:
-        PUSH lr
+; fr_sdp: yazma koruması açık mı? EEPROM'un son baytı (bank 1, 0x7FFF) komut dizisi olmadan
+; kendi değeriyle yeniden yazılır: korumalıysa yok sayılır; değilse yazma döngüsü başlar ve
+; D7 ters okunur (içerik değişmez, döngünün bitmesi beklenir). → r0 = 1 korumalı, 0 değil.
+; Bozar r1, r3.
+fr_sdp: PUSH lr
         PUSH r2
         PUSH r4
-        CALL fr_unlock
-        LI   r2, 0x80
-        SB   r2, [r3]
-        LI   r2, 0xAA
-        SB   r2, [r3]
-        LI   r3, 0x2AAA
-        LI   r2, 0x55
-        SB   r2, [r3]
-        LI   r2, 0x30
-        SB   r2, [r0]
-        LI   r4, 0
-fe_poll: LBU  r2, [r0]          ; silme bitince 0xFF okunur
-        CMPI r2, 0xFF
-        BEQ  fe_done
-        ADDI r4, r4, -1
-        BNE  fe_poll
-fe_done:
-        LBU  r2, [r0]
-        CMPI r2, 0xFF
-        LI   r0, 0
-        BEQ  fr_out
+        DI
+        LI   r4, IOB
+        LBU  r2, [r4+O_BANK1]
+        PUSH r2                 ; fr_out geri alır
+        LI   r2, 1
+        SB   r2, [r4+O_BANK1]
+        LI   r3, 0x7FFF
+        LBU  r1, [r3]
+        SB   r1, [r3]           ; komutsuz yazma
+        LI   r2, 100            ; ≥ 150 µs: yükleme penceresi kapansın
+fs_dly: ADDI r2, r2, -1
+        BNE  fs_dly
+        LBU  r2, [r3]
+        XOR  r2, r2, r1
+        LI   r0, 0x80
+        AND  r2, r2, r0
         LI   r0, 1
-        B    fr_out
-; fr_id: → r0 = üretici kimliği, r1 = çip kimliği. Bozar r3.
-fr_id:  PUSH lr
-        PUSH r2
-        PUSH r4
-        CALL fr_unlock
-        LI   r2, 0x90
-        SB   r2, [r3]
-        LI   r3, 0
-        LBU  r0, [r3]           ; 0x0000 (pencere 0 = Flash bank 0)
-        LBU  r1, [r3+1]
-        LI   r2, 0xF0
-        SB   r2, [r3]           ; ID modundan çık
+        BEQ  fs_out             ; D7 doğru: yazma başlamadı, korumalı
+        LI   r2, 0
+fs_poll: LBU  r0, [r3]
+        XOR  r0, r0, r1
+        LI   r4, 0x80
+        AND  r0, r0, r4
+        BEQ  fs_done
+        ADDI r2, r2, -1
+        BNE  fs_poll
+fs_done: LI   r0, 0
+fs_out: EI
         B    fr_out
 ; fr_unlock: BANK1 = 1 yapar (eskisini yığına iter, fr_out geri alır), AA→5555, 55→2AAA.
 ; Çıkışta r3 = 0x5555. Bozar r2, r4.
@@ -1071,7 +994,7 @@ cache_off:
         RET
 
 ; Önbelleği yazılımla boşalt ve eski durumuna getir: açıkken 2 KB'lık bitişik
-; RAM okunur, her satır taze bir RAM satırıyla değişir (Flash'ın bayat kopyaları gider).
+; RAM okunur, her satır taze bir RAM satırıyla değişir (EEPROM'un bayat kopyaları gider).
 cache_restore:
         PUSH r0
         PUSH r1
@@ -1696,7 +1619,7 @@ kmap_shift:
 
 ; ---- metinler (ASCII; Türkçe harfler UART terminallerinde sorun çıkarmasın diye yok)
 s_banner:  .asciz " CPU16 BIOS v1                                                                  \n"
-s_info:    .asciz "512 KB RAM, 128 KB Flash, VGA 80x30, PS/2 klavye, UART 115200\nKomutlar icin ? yazin.\n"
+s_info:    .asciz "128 KB RAM, 32 KB EEPROM, VGA 80x30, PS/2 klavye, UART 115200\nKomutlar icin ? yazin.\n"
 s_prompt:  .asciz "> "
 s_unknown: .asciz "? Bilinmeyen komut (yardim: ?)\n"
 s_syntax:  .asciz "? Sozdizimi\n"
@@ -1706,26 +1629,27 @@ s_swi:     .asciz "\nSWI @ "
 s_cache1:  .asciz "Onbellek: isabet "
 s_cache2:  .asciz ", iskalama "
 s_cache3:  .asciz ", denetim "
-s_flashid: .asciz "Flash kimligi: "
-s_sst:     .asciz " (SST39SF010)"
-s_test:    .asciz "RAM testi (bank 20-3F, 22 haric) "
+s_eeprom:  .asciz "EEPROM 28C256, yazma korumasi: "
+s_sdpon:   .asciz "acik\n"
+s_sdpoff:  .asciz "kapali (F ilk yazmada acar)\n"
+s_test:    .asciz "RAM testi (bank 20-27, 22 haric) "
 s_testok:  .asciz " Tamam\n"
 s_testbad: .asciz "\nHata: bank "
 s_hexram:  .asciz "HEX bekleniyor (RAM), iptal: ESC\n"
-s_hexflash: .asciz "HEX bekleniyor (Flash), iptal: ESC\n"
+s_hexflash: .asciz "HEX bekleniyor (EEPROM), iptal: ESC\n"
 s_abort:   .asciz "\nIptal\n"
 s_loaded:  .asciz "Yuklendi: "
 s_entry:   .asciz " bayt, giris "
 s_range:   .asciz "Hata: adres izinli degil\n"
-s_flfail:  .asciz "Hata: Flash yazilamadi\n"
+s_flfail:  .asciz "Hata: EEPROM yazilamadi\n"
 s_help:    .ascii "Komutlar (sayilar hex):\n"
            .ascii " D [adres] [uzunluk]  bellegi goster\n"
            .ascii " W adres bayt ...     bellege yaz\n"
            .ascii " G [adres]            calistir (RET ile doner)\n"
            .ascii " B [pencere bank]     bank goster / sec (pencere 1-2)\n"
            .ascii " L                    Intel HEX yukle: UART -> RAM\n"
-           .ascii " F                    Intel HEX yukle: UART -> Flash\n"
-           .ascii " I                    Flash kimligi\n"
+           .ascii " F                    Intel HEX yukle: UART -> EEPROM (bank 1)\n"
+           .ascii " I                    EEPROM yazma korumasi\n"
            .ascii " C [0|1]              onbellek sayaclari / kapat-ac\n"
            .asciz " T                    RAM testi\n"
 bios_end:

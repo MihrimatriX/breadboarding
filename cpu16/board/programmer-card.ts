@@ -1,6 +1,7 @@
-// Flash programlayıcı kartı (Faz 9): Arduino Nano + 2 × 74HC595 + ZIF soketteki SST39SF010A.
+// EEPROM programlayıcı kartı (Faz 9): Arduino Nano + 2 × 74HC595 + ZIF soketteki 28C256.
 // Arduino'nun yazılımı cpu16/programlayici/ altındadır; testler o yazılımı bu kartın kapı
-// seviyesi modeliyle birlikte çalıştırıp ROM imajlarının doğru yazıldığını doğrular.
+// seviyesi modeliyle birlikte çalıştırıp imajların doğru yazıldığını doğrular.
+// Yazılanlar: BIOS EEPROM'u (bellek kartı) ve video kartının karakter ROM'u; ikisi de 28C256.
 
 import { Board, type ChipInstance } from "./board.ts";
 
@@ -8,11 +9,12 @@ import { Board, type ChipInstance } from "./board.ts";
 export const ARDUINO_NETS: Record<number, string> = {
   2: "SER", 3: "SRCLK", 4: "RCLK",
   5: "FD0", 6: "FD1", 7: "FD2", 8: "FD3", 9: "FD4", 10: "FD5", 11: "FD6", 12: "FD7",
-  14: "FA16", 15: "~FOE", 16: "~FWE", 17: "~FCE",
+  15: "~FOE", 16: "~FWE", 17: "~FCE",
 };
 
 export interface ProgrammerCard {
   board: Board;
+  /** ZIF soketteki 28C256 */
   flash: ChipInstance;
 }
 
@@ -32,14 +34,14 @@ export function buildProgrammerBoard(): ProgrammerCard {
   const hi: Record<string, string> = { DS: "SER2", SHCP: "SRCLK", STCP: "RCLK", "~MR": "VCC", "~OE": "GND" };
   for (let i = 0; i < 8; i++) {
     lo[`Q${i}`] = `FA${i}`;
-    hi[`Q${i}`] = `FA${i + 8}`;
+    if (i < 7) hi[`Q${i}`] = `FA${i + 8}`; // Q7 (A15) boş: 28C256'da 15 adres biti var
   }
   b.place("74HC595", lo, "adres A0..A7 (kaydırmalı register)");
-  b.place("74HC595", hi, "adres A8..A15 (zincirin ikincisi)");
+  b.place("74HC595", hi, "adres A8..A14 (zincirin ikincisi)");
   const conn: Record<string, string> = { "~CE": "~FCE", "~OE": "~FOE", "~WE": "~FWE" };
-  for (let i = 0; i < 17; i++) conn[`A${i}`] = `FA${i}`;
-  for (let i = 0; i < 8; i++) conn[`DQ${i}`] = `FD${i}`;
-  const flash = b.place("SST39SF010A", conn, "programlanan Flash (ZIF soket)", { footprint: "Package_DIP:DIP-32_W15.24mm_Socket" });
+  for (let i = 0; i < 15; i++) conn[`A${i}`] = `FA${i}`;
+  for (let i = 0; i < 8; i++) conn[`IO${i}`] = `FD${i}`;
+  const flash = b.place("28C256", conn, "programlanan EEPROM (ZIF-28 soket)", { footprint: "Package_DIP:DIP-28_W15.24mm_Socket" });
   b.finish({ backplane: false });
   return { board: b, flash };
 }

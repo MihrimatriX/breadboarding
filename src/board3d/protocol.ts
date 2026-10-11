@@ -4,9 +4,9 @@ import type { GateState } from "../../cpu16/board/computer";
 import type { ScreenFrame } from "./screen";
 
 export type ToWorker =
-  /** flash: Flash imajı (program bank 0'da) */
+  /** flash: EEPROM imajı (28C256) (program bank 0'da) */
   | { type: "init"; flash: Uint8Array }
-  /** Flash'a yeni imaj yaz (programlayıcı) ve RESET'e bas */
+  /** EEPROM'a yeni imaj yaz (programlayıcı) ve RESET'e bas */
   | { type: "load"; flash: Uint8Array; run: boolean }
   /** hz = 0: olabildiğince hızlı */
   | { type: "run"; hz: number }

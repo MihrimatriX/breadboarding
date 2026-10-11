@@ -1,6 +1,6 @@
 // Test için en küçük Arduino çekirdeği: pin işlemleri satır satır stdout'a yazılır, okumalar
 // stdin'den yanıtlanır. Karşı tarafta Node testi programlayıcı kartını kapı seviyesinde çalıştırır
-// (74HC595 × 2 + SST39SF010A modeli). Seri giriş bir dosyadan okunur.
+// (74HC595 × 2 + 28C256 modeli). Seri giriş bir dosyadan okunur.
 #pragma once
 #include <cstdint>
 #include <cstdio>

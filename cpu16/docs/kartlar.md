@@ -7,7 +7,7 @@ Aynı tanımdan dört şey üretilir:
 | Çıktı | Nereden | Ne işe yarar |
 |---|---|---|
 | Kapı seviyesi simülasyon | `board/computer.ts`, `board/machine-board.ts` → `LogicSim` | Testler, 3D görünümdeki canlı sinyaller |
-| KiCad 7 şemaları | `board/kicad-sch.ts` → `kicad/cpu/`, `kicad/mem/`, `kicad/clk/`, `kicad/prog/`, `kicad/bellek/`, `kicad/onbellek/`, `kicad/gc/`, `kicad/video/` | KiCad'de açılır, PCB'ye aktarılır |
+| KiCad 7 şemaları | `board/kicad-sch.ts` → `kicad/cpu/`, `kicad/mem/`, `kicad/clk/`, `kicad/prog/`, `kicad/bellek/`, `kicad/onbellek/`, `kicad/gc/`, `kicad/video/`, `kicad/kyb/` | KiCad'de açılır, PCB'ye aktarılır |
 | Malzeme listesi | `board/kicad-sch.ts` → `kicad/bom.csv` (CPU, test bellek, saat), `kicad/<kart>/bom.csv` (anakart kartları) | Sipariş |
 | Elektriksel kural denetimi | `board/board.ts` → `erc()` | Çakışan çıkış, sürülmeyen giriş |
 
@@ -58,11 +58,13 @@ HALTED ve FAULT LED'leri, 2 × 32 arka panel konnektörü.
 çıkış mandalı (74HC574 + 2 × 74HC688 adres karşılaştırıcı). Emülatördeki `SimpleBus` ile birebir aynı
 davranır; asıl anakart (bank'lı 1 MB bellek, ROM, G/Ç, video) Faz 6'da bunun yerini alır.
 
-**Anakart kartları (Faz 6):** bellek kartı 31 entegre (bank register'ları, Flash + RAM, bayt
-sıralayıcı), önbellek kartı 37 entegre (2 KB, bekleme üreteci, sayaçlar), G/Ç kartı 65 entegre
-(UART, PS/2, zamanlayıcı, kesme denetleyicisi), video kartı 69 entegre (VGA 80 × 30 metin); saat
-kartı bekleme durumuyla 10 entegre. `buildFullMachineBoard()` bunları CPU kartıyla birleştirir
-(bütün anakart: 406 entegre), `GateMachine` kapı seviyesinde çalıştırır; test bilgisayarı
+**Anakart kartları (Faz 6):** bellek kartı 34 entegre (bank register'ları, 32 KB EEPROM (28C256) +
+128 KB RAM (4 × 62256), bayt sıralayıcı), önbellek kartı 46 entegre (2 KB, bekleme üreteci, sayaçlar),
+G/Ç kartı 65 entegre (UART, PS/2, zamanlayıcı, kesme denetleyicisi), video kartı 73 entegre (VGA 80 × 30
+metin), kendin yap bellek kartı 22 entegre (FF40–FF4F, 16 bayt, her bayt bir 74HC574; Deney 14); saat
+kartı bekleme durumuyla 10 entegre. Anakart yalnız yaygın 7400 serisi lojikle ve iki bellek çipiyle
+(62256, 28C256) kurulur ([spec.md](spec.md), "Parçalar"). `buildFullMachineBoard()` bunları CPU
+kartıyla birleştirir (bütün anakart: 444 entegre), `GateMachine` kapı seviyesinde çalıştırır; test bilgisayarı
 (`buildComputerBoard`, `GateComputer`) olduğu gibi kalır ve deney setinde CPU'nun kurulduğu ilk
 sahnedir (test kartının FF00 mandalı Deney 8'de LED çıkışı olur). Ayrıntı:
 [anakart-kartlari.md](anakart-kartlari.md), [anakart-gc-video.md](anakart-gc-video.md).

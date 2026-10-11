@@ -1,8 +1,8 @@
 # CPU16 bilgisayarı 3D
 
 Silikon3D'de üçüncü bölüm: **CPU16 kartı 3D** (`#kart`). Bütün bilgisayar tek sahnede: CPU kartı,
-saat ve reset kartı, bellek kartı, önbellek kartı, G/Ç kartı ve video kartı, arka panelleriyle
-birlikte. Bugünkü anakartta 358 entegre, 407 pasif eleman, ~4 200 kapı. Hepsi kapı seviyesinde bir
+saat ve reset kartı, bellek kartı, önbellek kartı, G/Ç kartı, video kartı ve kendin yap bellek kartı,
+arka panelleriyle birlikte. Bugünkü anakartta 444 entegre, 495 pasif eleman, ~5 000 kapı. Hepsi kapı seviyesinde bir
 Web Worker'da saat saat çalışır. Ekranda bilgisayar → kart → çip → kapı → transistör diye
 inilir ve her seviyede sinyaller canlıdır. Kartlar elle yazılmış bir listeden gelmez: görünüm
 `board.chips` ve `board.passives` içinde ne varsa onu yerleştirir. Yeni bir kart takılınca (ör.
@@ -62,7 +62,7 @@ Sahnenin sağ üstünde **VGA** paneli, sahnede de aynı görüntüyü gösteren
 
 ### Bellek çipinin içi
 
-Bir bellek çipine (62256 SRAM, 28C256 EEPROM, SST39SF010A Flash…) tıklayınca alt panelde dizisi
+Bir bellek çipine (62256 SRAM, 28C256 EEPROM) tıklayınca alt panelde dizisi
 açılır:
 
 - satır adresi pinleri → **satır çözücü** (ör. 9 → 512) → word line'lar;
@@ -86,7 +86,7 @@ Alt paneldeki **Program** sekmesi:
 - **Dil**: Otomatik (C ya da assembly, kaynaktaki izlerden), Assembly ya da C.
 - **Derle**: yalnızca derler. Hatalar satır numarasıyla listelenir ve satır kenarında işaretlenir.
   Hataya tıklayınca o satıra gidilir.
-- **Yükle ve çalıştır** (Ctrl+Enter): derler, imajı G/Ç kartının Flash'ına (bank 0, CPU adresi
+- **Yükle ve çalıştır** (Ctrl+Enter): derler, imajı bellek kartının EEPROM'una (28C256, bank 0, CPU adresi
   0x0000–0x3FFF) programlayıcıyla yazılmış gibi yazar, RESET verir ve çalıştırır. Kart yeniden
   kurulmaz: VRAM ve RAM'in içeriği, gerçek kartta olduğu gibi, RESET'ten sonra da kalır.
 
@@ -104,7 +104,7 @@ Tarayıcı konsolunda `kart`:
 | `kart.durum()`, `kart.uart()`, `kart.ekran()`, `kart.olc()` | CPU durumu, UART çıktısı, ekrandaki metin, ölçülen hız (Hz) ve döngü |
 | `kart.calistir()`, `kart.duraklat()`, `kart.sifirla()`, `kart.adim("cycle" \| "instr")`, `kart.hiz(hz)` | saat |
 | `kart.ornekler()`, `kart.ornek("merhaba-vga.c")` | örneği yükle ve çalıştır |
-| `kart.yukle(kaynak?, "asm" \| "c")` | kaynağı (verilmezse düzenleyicidekini) derle, Flash'a yaz, çalıştır. Hataları döndürür |
+| `kart.yukle(kaynak?, "asm" \| "c")` | kaynağı (verilmezse düzenleyicidekini) derle, EEPROM'a yaz, çalıştır. Hataları döndürür |
 | `kart.teller("yok" \| "secili" \| "hepsi")`, `kart.besleme(true)` | tel kipi, GND/VCC telleri |
 | `kart.isin(true)` | ışın modu |
 | `kart.tus("dir\n")`, `kart.uartGonder("merhaba")` | PS/2 klavye ve UART girişi |
@@ -148,7 +148,7 @@ Saat seçicisinden 1 Hz ile 1 kHz arası sabit hızlar da seçilebilir.
   - VRAM → ekran ve ekran kaynağı;
   - VGA konnektörü ve DAC;
   - PS/2 ve UART çerçeveleri;
-  - dil tanıma ve Flash imajı (`romImage()` ile bayt bayt aynı);
+  - dil tanıma ve EEPROM imajı (`romImage()` ile bayt bayt aynı);
   - C örneğinin derlenip çalışması;
   - 62256, 28C256 ve SST39SF010A bellek düzeni.
 

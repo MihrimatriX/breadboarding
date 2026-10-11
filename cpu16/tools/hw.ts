@@ -6,7 +6,7 @@
 //   kontrol                     mikrokodun gömülü kopyasını (micro/cpu16-ucode.ts) yenile, kontrol
 //                               birimi devresini üret, 8192 + 128 adreste denetle, çip dökümünü yaz
 //   zamanlama [--tip] [--yol N] şemadan statik zamanlama analizi: en uzun yollar, en yüksek saat hızı
-//   zamanlama --anakart [--tip] bütün anakart (6 kart, 6 saat kökü)
+//   zamanlama --anakart [--tip] bütün anakart (7 kart, 6 saat kökü)
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { erc, type Board } from "../board/board.ts";
@@ -62,7 +62,7 @@ else if (cmd === "board") {
       console.log(problems.length ? problems.join("\n") : "ERC: sorun yok");
     };
     show("Test bilgisayarı: CPU + test bellek + saat (buildComputerBoard)", board);
-    show("Anakart: CPU + saat + bellek + önbellek + G/Ç + video (buildFullMachineBoard)", buildFullMachineBoard().board);
+    show("Anakart: CPU + saat + bellek + önbellek + G/Ç + video + kendin yap bellek (buildFullMachineBoard)", buildFullMachineBoard().board);
     console.log(`KiCad kartları: ${KICAD_CARDS.map((c) => c.card).join(", ")}`);
   }
 }

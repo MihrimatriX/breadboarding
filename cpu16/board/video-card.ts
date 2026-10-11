@@ -10,7 +10,7 @@
 //     piksel kaydırıcı (74HC166); aralarında kapı yoktur
 //   karakter saati (H2 = piksel / 8, 318 ns): karakter ve satır sayaçları, tarama adresi, çözümleme,
 //     VRAM yuvaları, CPU istekleri. H2'nin yükselen kenarı p4, düşen kenarı p0'dır.
-// Alanlar arasındaki geçişler (karakter ROM'u → kaydırıcı, VRAM yuvaları, yazma darbesi) aynı
+// Alanlar arasındaki geçişler (font register'ı → kaydırıcı, VRAM yuvaları, yazma darbesi) aynı
 // belgede elle hesaplanmıştır.
 //
 // Bir karakter = 8 piksel saati (p0..p7). VRAM erişimi iki yuvaya bölünür:
@@ -18,15 +18,18 @@
 //   p4..p7 (H2 = 1) CPU: adres = VADDR; bekleyen bir yazma ya da ön okuma (prefetch) burada yapılır
 // Bu yüzden CPU erişimi taramayı hiç bozmaz (kar / "snow" yok) ve CPU'yu bekletmez.
 //
-// Ardışık düzen (pipeline): H karakteri j'de MA'daki karakter okunur, karakter ROM'una girer ve
-// j'nin sonunda (p7 → p0) piksel kaydırıcısına yüklenir; j + 1 boyunca ekrana çıkar. Görüntü bu
-// yüzden sayaca göre 8 piksel geride başlar: görünür piksel x, satırın hc = x + 8 anındadır (hc =
-// 8 × karakter + p). Senkron ve karartma sinyalleri p4'te bir ön register'a, p7 → p0 kenarında
-// piksellerle birlikte çıkış register'ına alındığı için hepsi birlikte kayar; VGA zamanlaması
-// (ön/arka sundurma, senkron genişliği) görünür alana göre standarttır.
+// Ardışık düzen (pipeline): H karakteri j'de MA'daki karakter okunur (p4'te CHR register'ı) ve
+// karakter ROM'una (28C256, 150 ns) girer; ROM'un çıkışı bir karakter sonra, j + 1'in p4'ünde font
+// register'ına alınır (ROM'a tam bir karakter periyodu, 318 ns kalır). Font baytı j + 1'in sonunda
+// (p7 → p0) piksel kaydırıcısına yüklenir ve j + 2 boyunca ekrana çıkar. Görüntü bu yüzden sayaca
+// göre 16 piksel geride başlar: görünür piksel x, satırın hc = x + 16 anındadır (hc = 8 × karakter
+// + p). Renk baytı, karartma, senkron ve imleç sinyalleri de aynı iki kademeden (p4, p4) geçip
+// p7 → p0 kenarında piksellerle birlikte çıkış register'ına alındığı için hepsi birlikte kayar; VGA
+// zamanlaması (ön/arka sundurma, senkron genişliği) görünür alana göre standarttır ve resim
+// Machine'inkiyle aynıdır.
 //
 // CPU arayüzü (Machine ile aynı register'lar):
-//   FF20/21 VADDR (13 bit, 4 × 74HC193, ~PL ile asenkron yükleme)    yalnız yazılır (okuma 0xFF)
+//   FF20/21 VADDR (13 bit, 4 × 74HC161, yazma darbesinin sonunda yüklenir)    yalnız yazılır (okuma 0xFF)
 //   FF22    VDATA: yazma → yazma isteği; okuma → ön okuma latch'i (aynı veriyolu döngüsünde)
 //           her ikisi de VADDR'i artırır
 //   FF23    VCTRL bit0 imleç açık          FF24/25 CURSOR_X / CURSOR_Y
@@ -47,11 +50,11 @@ export interface VideoCard {
   /** VRAM: karakter (çift adresler) ve renk (tek adresler) şeritleri, 62256 */
   vramChar: ChipInstance;
   vramAttr: ChipInstance;
-  /** karakter ROM'u (SST39SF010A, 4 KB font: adres = karakter × 16 + tarama satırı) */
+  /** karakter ROM'u (28C256, 4 KB font: adres = karakter × 16 + tarama satırı) */
   fontRom: ChipInstance;
   /** kare sayacı (74HC393): bit 4 imleç yanıp sönmesi */
   frames: ChipInstance;
-  /** VADDR (4 × 74HC193, düşük basamak önce) */
+  /** VADDR (4 × 74HC161, düşük basamak önce) */
   vaddr: ChipInstance[];
 }
 
@@ -73,7 +76,6 @@ export function buildVideoCard(b: Board): VideoCard {
   decoder("~MRD", { 1: "~V_RD1", 2: "~V_RD2", 3: "~V_RD3" }, "okuma: FF22/23, FF24/25, FF26");
   decoder("~MWE_E", { 0: "~V_WE0", 1: "~V_WE1", 2: "~V_WE2", 3: "~V_WE3" }, "çift bayt yazma: FF20, FF22, FF24, FF26");
   decoder("~MWE_O", { 0: "~V_WO0", 1: "~V_WO1", 2: "~V_WO2" }, "tek bayt yazma: FF21, FF23, FF25");
-  b.not("~RESET", "V_RST", "reset (aktif yüksek)");
 
   // =========================================================================== zamanlama
   b.block = "Piksel saati ve sayaçlar";
@@ -218,25 +220,34 @@ export function buildVideoCard(b: Board): VideoCard {
     });
     b.place("74HC574", c, role);
   };
+  // karakter j: p4'te CHR / AT; j + 1'in p4'ünde font baytı (ROM'un çıkışı) ve AT2; j + 1'in sonunda
+  // (p7 → p0) kaydırıcı ve ATD. ROM'un adresi (CHR, tarama satırı V0–V3) bir karakter boyunca sabit.
   reg((i) => `V_CD${i}`, (i) => `V_CHR${i}`, "V_H2", "karakter kodu (p4'te VRAM'den)");
   reg((i) => `V_AD${i}`, (i) => `V_AT${i}`, "V_H2", "renk baytı (p4'te VRAM'den)");
-  reg((i) => `V_AT${i}`, (i) => `V_ATD${i}`, "~V_LD7", "renk baytı (p7 → p0 kenarında, gösterilen karakterinki)");
   const rom: Conn = { "~CE": "GND", "~OE": "GND", "~WE": "VCC" };
-  range(17).forEach((i) => (rom[`A${i}`] = i < 4 ? `V_V${i}` : i < 12 ? `V_CHR${i - 4}` : "GND"));
-  range(8).forEach((i) => (rom[`DQ${i}`] = `V_FD${i}`));
-  const fontRom = b.place("SST39SF010A", rom, "karakter ROM'u: 256 × 16 satır (adres = kod × 16 + tarama satırı)");
+  range(15).forEach((i) => (rom[`A${i}`] = i < 4 ? `V_V${i}` : i < 12 ? `V_CHR${i - 4}` : "GND"));
+  range(8).forEach((i) => (rom[`IO${i}`] = `V_FD${i}`));
+  const fontRom = b.place("28C256", rom, "karakter ROM'u: 256 × 16 satır (adres = kod × 16 + tarama satırı; 4 KB kullanılır)");
+  reg((i) => `V_FD${i}`, (i) => `V_FP${i}`, "V_H2", "font baytı (bir sonraki karakterin p4'ünde ROM'dan)");
+  reg((i) => `V_AT${i}`, (i) => `V_AT2${i}`, "V_H2", "renk baytı, ikinci kademe (font baytıyla birlikte)");
+  reg((i) => `V_AT2${i}`, (i) => `V_ATD${i}`, "~V_LD7", "renk baytı (p7 → p0 kenarında, gösterilen karakterinki)");
   const sh: Conn = { CP: "VID_OSC", "~CE": "GND", "~PE": "~V_LD7", DS: "GND", "~MR": "VCC", Q7: "V_PIX" };
-  range(8).forEach((i) => (sh[`D${i}`] = `V_FD${i}`)); // bit 7 en soldaki piksel, ilk çıkar
+  range(8).forEach((i) => (sh[`D${i}`] = `V_FP${i}`)); // bit 7 en soldaki piksel, ilk çıkar
   b.place("74HC166", sh, "piksel kaydırıcı (p7 → p0 kenarında yüklenir)");
 
   // karartma, senkronlar ve imleç: karakter sayacından çözülür, p4'te ön register'a (sayacın
-  // kenardan önceki değeri = bu karakter), p7 → p0 kenarında piksellerle birlikte çıkışa alınır
+  // kenardan önceki değeri = bu karakter), bir sonraki p4'te ikinci kademeye (font baytıyla aynı
+  // gecikme), p7 → p0 kenarında piksellerle birlikte çıkışa alınır
   b.place("74HC175", {
     "~MR": "VCC", CP: "V_H2", D0: "V_BLANK", D1: "V_HSYNC_A", D2: "~V_VSYNC_A", D3: "V_CURR",
     Q0: "V_BLANKP", Q1: "V_HSYNCP", Q2: "~V_VSYNCP", Q3: "V_CURP",
   }, "karartma, senkronlar, imleç: ön register (p4)");
   b.place("74HC175", {
-    "~MR": "VCC", CP: "~V_LD7", D0: "V_BLANKP", D1: "V_HSYNCP", D2: "~V_VSYNCP", D3: "V_CURP",
+    "~MR": "VCC", CP: "V_H2", D0: "V_BLANKP", D1: "V_HSYNCP", D2: "~V_VSYNCP", D3: "V_CURP",
+    Q0: "V_BLANKQ", Q1: "V_HSYNCQ", Q2: "~V_VSYNCQ", Q3: "V_CURQ",
+  }, "karartma, senkronlar, imleç: ikinci kademe (bir sonraki p4)");
+  b.place("74HC175", {
+    "~MR": "VCC", CP: "~V_LD7", D0: "V_BLANKQ", D1: "V_HSYNCQ", D2: "~V_VSYNCQ", D3: "V_CURQ",
     Q0: "V_BLANKD", "~Q1": "VGA_HSYNC", Q2: "VGA_VSYNC", Q3: "V_CURD",
   }, "karartma, senkronlar (negatif) ve imleç: piksellerle aynı karakter sınırında (p7 → p0)");
 
@@ -277,26 +288,36 @@ export function buildVideoCard(b: Board): VideoCard {
 
   // =========================================================================== CPU arayüzü
   b.block = "CPU arayüzü";
-  // VADDR: yazmada asenkron yüklenir; VDATA okumasından sonraki döngüde ya da VRAM yazmasının
-  // sonunda (p7 → p0) bir artar
+  // VADDR: 4 × 74HC161, tek saat V_PFCLK = ~V_WE0 ∧ ~V_WO0 ∧ V_INC. Saatin yükselen kenarı ya
+  // yazma darbesinin sonudur (FF20 / FF21 yazması: yükleme) ya da artırma saatinin (V_INC) yükselen
+  // kenarı: VDATA okumasından sonraki döngünün sonu, ya da VRAM yazmasının sonu (p7 → p0). Hangi
+  // yarının yükleneceğini iki bayrak söyler: yazma darbesi bayrağını asenkron kurar (~PRE), aynı
+  // saat kenarı D = 0 ile siler. Yüklenmeyen yarı o kenarda saymaz (CEP = diğer yarının bayrağı
+  // yok); bayrak yokken iki yarı birlikte sayar (CET zinciri). Bir yazma darbesi sırasında V_INC
+  // düşük olamaz: G/Ç erişimleri en az 6 döngü arayla gelir, artırmalar en geç ~3,5 döngüde biter.
   b.nor("~V_RD1", "A0", "V_RDD", "VDATA okunuyor (A0 = 0)");
   b.nand("V_OPW", "V_LD7", "~V_WINC", "yazma bitti: VADDR + 1 (p7)");
   b.and("~V_RDDQ", "~V_WINC", "V_INC", "VADDR artırma saati");
+  b.and(b.and("~V_WE0", "~V_WO0"), "V_INC", "V_PFCLK", "VADDR saati: yükleme ya da artırma; ön okuma iste");
+  b.place("74HC74", {
+    "1D": "GND", "1CLK": "V_PFCLK", "~1PRE": "~V_WE0", "~1CLR": "~RESET", "~1Q": "~V_LLO",
+    "2D": "GND", "2CLK": "V_PFCLK", "~2PRE": "~V_WO0", "~2CLR": "~RESET", "~2Q": "~V_LHI",
+  }, "VADDR yükleme bayrakları: düşük bayt (FF20), yüksek bayt (FF21)");
   const vaddr: ChipInstance[] = [];
   for (let k = 0; k < 4; k++) {
-    const lane = k < 2 ? "DE" : "DO";
+    const lo = k < 2;
     const c: Conn = {
-      MR: "V_RST", "~PL": k < 2 ? "~V_WE0" : "~V_WO0", CPD: "VCC", CPU: k === 0 ? "V_INC" : `~V_VTCU${k - 1}`,
-      "~TCU": `~V_VTCU${k}`,
+      CP: "V_PFCLK", "~MR": "~RESET", "~PE": lo ? "~V_LLO" : "~V_LHI", CEP: lo ? "~V_LHI" : "~V_LLO",
+      CET: k === 0 ? "VCC" : `V_ATC${k - 1}`,
     };
+    if (k < 3) c.TC = `V_ATC${k}`;
     range(4).forEach((i) => {
-      c[`D${i}`] = `${lane}${(4 * k + i) % 8}`;
+      c[`D${i}`] = `${lo ? "DE" : "DO"}${(4 * k + i) % 8}`;
       if (4 * k + i < 13) c[`Q${i}`] = `V_ADR${4 * k + i}`;
     });
-    vaddr.push(b.place("74HC193", c, `VADDR bit ${4 * k}–${Math.min(4 * k + 3, 12)}`));
+    vaddr.push(b.place("74HC161", c, `VADDR bit ${4 * k}–${Math.min(4 * k + 3, 12)}`));
   }
   // istekler: yazma (WREQ) ve ön okuma (PREF); piksel alanında iki kademe eşzamanlama, p4'te işlem
-  b.and(b.and("~V_WE0", "~V_WO0"), "V_INC", "V_PFCLK", "VADDR değişti: ön okuma iste");
   b.and("~V_OPW", "~RESET", "~V_WRCLR", "yazma isteği alındı");
   b.place("74HC74", {
     "1D": "VCC", "1CLK": "~V_WE1", "~1PRE": "VCC", "~1CLR": "~V_WRCLR", "1Q": "V_WREQ",

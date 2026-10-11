@@ -1,5 +1,5 @@
 // Anakart G/Ç kartı (Faz 6, kapı seviyesi): UART (115200 8N1, RTS/CTS), PS/2 klavye alıcısı,
-// 1 kHz zamanlayıcı ve 74HC148'li kesme denetleyicisi. FF00–FF0A register'ları; davranış modeli
+// 1 kHz zamanlayıcı ve kapılarla kurulmuş öncelikli kesme denetleyicisi. FF00–FF0A register'ları; davranış modeli
 // emu/machine.ts (ioRead / ioWrite / events) ile döngüsü döngüsüne aynıdır.
 // Tasarım belgesi: cpu16/docs/anakart-gc-video.md
 //
@@ -28,7 +28,7 @@ export const IO_CARD_INPUTS = [
 ];
 
 export interface IoCard {
-  /** Zamanlayıcının 4 × 74HC193 aşağı sayıcısı (düşük basamak önce) */
+  /** Zamanlayıcının 4 × 74HC161 sayıcısı (düşük basamak önce): sayacın tersini tutar (u = ~c) */
   timer: ChipInstance[];
   /** 1 kHz ön bölücü (3 × 74HC161) */
   prescaler: ChipInstance[];
@@ -39,15 +39,10 @@ export interface IoCard {
 
 /**
  * Zamanlama analizinde G/Ç kartının yanlış yolları (TCLK ve PS/2 alanları için):
- * - okuma sürücülerinin veriyoluna sürdüğü değer TCLK'deki yazma mantığına gidemez;
- * - TRL2 yalnızca yeniden yükleme darbesini bitirir: ~PL'nin kalkması sayaç çıkışını değiştirmez
- *   (üstelik o döngüde tık yoktur, GC_DECP 0'dır).
+ * okuma sürücülerinin veriyoluna sürdüğü değer TCLK'deki yazma mantığına gidemez.
  */
 export function ioCardYanlisYollar(b: Board): KapaliYay[] {
-  return [
-    okumaSuruculeri(b, ["gc"]),
-    { neden: "TRL2 yalnızca sayaç yüklemesini bitirir (~PL kalkarken çıkış değişmez)", yay: (ch, _from, to) => ch.card === "gc" && ch.nets[to] === b.n("~GC_TRL2") },
-  ];
+  return [okumaSuruculeri(b, ["gc"])];
 }
 
 const range = (n: number) => Array.from({ length: n }, (_, i) => i);
@@ -239,14 +234,14 @@ function buildPs2(b: Board): ChipInstance {
 // yükletip 0'a döner. Bu kenar 0. kenar sayılırsa tıklar 4000, 8000, … kenarlarındadır
 // (Machine: TICK_CYCLES).
 //
-// Sayaç: 4 × 74HC193, gerçek değeri tutar (c). Machine'deki gibi:
-//   - EN 0 → 1 yazılırken (yazma darbesi içinde) c ← RELOAD asenkron yüklenir;
-//   - tıkta EN ise c > 1: c ← c − 1 (TDCLK, tıktan önceki döngünün TCLK-düşük yarısında düşer,
-//     tık kenarında yükselir); c = 1: azaltmak yerine yeniden yükle ve EXPIRED kur (aynı kenarda).
-//   c = 1 iki 74HC688 ile algılanır. Yeniden yükleme tık kenarını izleyen yarım döngüde (TCLK
-//   yüksekken, aynı döngüdeki bir yazma darbesinden önce) asenkron (~PL) yapılır; sayaç değeri
-//   dışarıdan okunamadığı için bu yarım döngülük gecikme görünmez. Darbeyi iki flip-flop üretir
-//   (tık kenarında kurulan TRL, düşen kenarda kurulan TRL2): TCLK ile kapılanmadığı için sıçramasızdır.
+// Sayaç: 4 × 74HC161 eşzamanlı yukarı sayıcı, kalan tık sayısının (c, Machine.timer.counter) bit bit
+// tersini tutar: u = ~c. Aşağı saymak (c − 1) yukarı saymaktır (u + 1); RELOAD'un tersi 16 evirici
+// ile sayıcının paralel girişlerine gelir. Hepsi TCLK'nin yükselen kenarında, eşzamanlı:
+//   - EN = 0 iken her kenarda u ← ~RELOAD yüklenir (sayaç durur ama hep RELOAD'a hazırdır). Böylece
+//     EN 0 → 1 yazıldığında sayaç zaten RELOAD'dadır (Machine: açılırken yükle); yazma bir tık
+//     kenarından hemen önceki döngüde olsa bile o tık sayılır.
+//   - tıkta EN ise c > 1 (ya da 0): u ← u + 1; c = 1 (u = 0xFFFE, iki 74HC688): yeniden yükle,
+//     EXPIRED kur (aynı kenarda). Yükleme sayımdan önceliklidir (74HC161'in ~PE'si).
 function buildTimer(b: Board): { timer: ChipInstance[]; prescaler: ChipInstance[] } {
   b.block = "Zamanlayıcı";
   const prescaler = [
@@ -285,60 +280,51 @@ function buildTimer(b: Board): { timer: ChipInstance[]; prescaler: ChipInstance[
   readBuf(b, ["GC_TEN", "GC_TIRQEN"], "DE", "~GC_RD3", "GND", "TIMER_CTRL okuma");
   readBuf(b, ["GC_EXPIRED"], "DO", "~GC_RD3", "GND", "TIMER_STAT okuma");
 
-  // EN 0 → 1 yazılırken sayaç RELOAD'u yükler (yazma darbesi boyunca)
-  b.and(b.and(b.not("~GC_WE3"), "DE0"), "~GC_TEN", "GC_TLDEN", "açılırken yükle");
   b.and("GC_TICKP", "GC_TEN", "GC_TTICK", "bu döngünün sonu sayaç tıkı");
   b.and("GC_TTICK", "GC_Z1", "GC_RLD", "tıkta c = 1: yeniden yükle, EXPIRED");
-  b.and("GC_TTICK", "~GC_Z1", "GC_DECP", "tıkta c > 1 (ya da 0): azalt");
-  b.nand("GC_DECP", "GC_TCLKN", "GC_TDCLK", "azaltma saati (tık kenarında yükselir)");
-  // Darbe = GC_TRL ∧ ¬GC_TRL2: TRL tık kenarında, TRL2 (aynı bilginin düşen kenardaki kopyası) yarım
-  // döngü sonra kurulur. Girişler hiçbir zaman aynı anda değişmediği için darbe parazitsizdir; TCLK ile
-  // kapılanmış (TRL ∧ TCLK) bir darbe, sonraki kenarda TRL düşmeden önce kısa bir sıçrama üretirdi.
-  b.and("GC_TRL", "~GC_TRL2", "GC_RLPULSE", "yeniden yükleme darbesi (tık kenarını izleyen yarım döngü)");
-  b.nor("GC_TLDEN", "GC_RLPULSE", "~GC_TPL", "sayaç yükleme");
+  // ~PE = ¬(¬EN ∨ RLD) = EN ∧ ¬RLD: kapalıyken ve yeniden yüklemede yükle, açıkken tıkta say
+  b.and("GC_TEN", b.nand("GC_TTICK", "GC_Z1", "~GC_RLD", "yeniden yükleme yok"), "~GC_TPE", "sayaç yükleme (aktif düşük)");
   b.or("GC_RLD", "GC_EXPIRED", "GC_EXP_D", "EXPIRED kur / tut");
   b.and("~RESET", b.nand(b.not("~GC_WO3"), "DO0"), "~GC_EXPCLR", "TIMER_STAT'a 1 yazınca sil");
   b.place("74HC74", {
-    "1D": "GC_RLD", "1CLK": "TCLK", "~1PRE": "VCC", "~1CLR": "~RESET", "1Q": "GC_TRL",
-    "2D": "GC_EXP_D", "2CLK": "TCLK", "~2PRE": "VCC", "~2CLR": "~GC_EXPCLR", "2Q": "GC_EXPIRED",
-  }, "yeniden yükleme isteği, EXPIRED (FF07)");
-  b.place("74HC74", {
-    "1D": "GC_TRL", "1CLK": "GC_TCLKN", "~1PRE": "VCC", "~1CLR": "~RESET", "1Q": "GC_TRL2", "~1Q": "~GC_TRL2",
+    "1D": "GC_EXP_D", "1CLK": "TCLK", "~1PRE": "VCC", "~1CLR": "~GC_EXPCLR", "1Q": "GC_EXPIRED",
     // TCLK reset sırasında durur (saat kartı): ön bölücü 96'yı resetten sonraki ilk kenarda yükler
     "2D": "GND", "2CLK": "TCLK", "~2PRE": "~RESET", "~2CLR": "VCC", "2Q": "GC_RSTD",
-  }, "yeniden yükleme darbesinin sonu (TCLK düşen kenarı); resetten sonraki ilk TCLK kenarı");
+  }, "EXPIRED (FF07); resetten sonraki ilk TCLK kenarı");
 
   const timer: ChipInstance[] = [];
   for (let k = 0; k < 4; k++) {
     const conn: Conn = {
-      MR: "GC_RST", "~PL": "~GC_TPL", CPU: "VCC", CPD: k === 0 ? "GC_TDCLK" : `~GC_TBR${k - 1}`, "~TCD": `~GC_TBR${k}`,
+      "~MR": "~RESET", CP: "TCLK", "~PE": "~GC_TPE", CEP: "GC_TTICK", CET: k === 0 ? "VCC" : `GC_UTC${k - 1}`,
     };
+    if (k < 3) conn.TC = `GC_UTC${k}`;
     range(4).forEach((i) => {
-      conn[`D${i}`] = `GC_R${4 * k + i}`;
-      conn[`Q${i}`] = `GC_C${4 * k + i}`;
+      const bit = 4 * k + i;
+      conn[`D${i}`] = b.not(`GC_R${bit}`, `~GC_R${bit}`, `RELOAD bit ${bit} tersi`);
+      conn[`Q${i}`] = `GC_U${bit}`;
     });
-    timer.push(b.place("74HC193", conn, `zamanlayıcı sayacı bit ${4 * k}–${4 * k + 3}`));
+    timer.push(b.place("74HC161", conn, `zamanlayıcı sayacı (tersi) bit ${4 * k}–${4 * k + 3}`));
   }
   const cmp = (base: number, value: number, out: string, role: string) => {
     const conn: Conn = { "~E": "GND", "~EQ": out };
     range(8).forEach((i) => {
-      conn[`P${i}`] = `GC_C${base + i}`;
+      conn[`P${i}`] = `GC_U${base + i}`;
       conn[`Q${i}`] = (value >> i) & 1 ? "VCC" : "GND";
     });
     b.place("74HC688", conn, role);
   };
-  cmp(0, 1, "~GC_Z1L", "sayaç = 1 algılama (düşük bayt = 01)");
-  cmp(8, 0, "~GC_Z1H", "sayaç = 1 algılama (yüksek bayt = 00)");
-  b.nor("~GC_Z1L", "~GC_Z1H", "GC_Z1", "sayaç = 1");
-  b.not("GC_Z1", "~GC_Z1", "sayaç ≠ 1");
+  cmp(0, 0xfe, "~GC_Z1L", "c = 1 algılama: u düşük bayt = FE");
+  cmp(8, 0xff, "~GC_Z1H", "c = 1 algılama: u yüksek bayt = FF");
+  b.nor("~GC_Z1L", "~GC_Z1H", "GC_Z1", "c = 1 (u = 0xFFFE)");
   return { timer, prescaler };
 }
 
 // ============================================================================= kesme denetleyicisi
 //
 // IRQ_PEND = {vsync, UART RX_READY, klavye READY, EXPIRED ∧ IRQ_EN}; IRQ_MASK bir 74HC175 (reset 0).
-// Maskeli istekler 74HC148'e girer: ~GS düşükse IRQ = 1 ve IRQ_SRC = en yüksek numara. Hiç istek
-// yokken (~GS yüksek) IRQ_SRC tamponu kapalı kalır, veriyolu çekme dirençleri 0xFF okutur.
+// Maskeli istekler P0..P3 dört girişli bir öncelik kodlayıcısına girer (kapılarla):
+//   IRQ = P0 ∨ P1 ∨ P2 ∨ P3,  SRC1 = P3 ∨ P2,  SRC0 = P3 ∨ (P1 ∧ ¬P2)
+// Hiç istek yokken (IRQ = 0) IRQ_SRC tamponu kapalı kalır, veriyolu çekme dirençleri 0xFF okutur.
 function buildIrq(b: Board): void {
   b.block = "Kesme denetleyicisi";
   b.place("74HC175", {
@@ -347,13 +333,12 @@ function buildIrq(b: Board): void {
   }, "IRQ_MASK (FF09)");
   b.and("GC_EXPIRED", "GC_TIRQEN", "GC_P0", "kaynak 0: zamanlayıcı");
   const pend = ["GC_P0", "GC_KRDY", "GC_RXRDY", "VSYNC_REQ"];
-  const conn: Conn = { "~EI": "GND", "~A0": "~GC_SA0", "~A1": "~GC_SA1", "~GS": "~GC_GS" };
-  pend.forEach((p, k) => (conn[`~I${k}`] = b.nand(p, `GC_M${k}`, `~GC_I${k}`, `kaynak ${k} maskeli`)));
-  for (let k = 4; k < 8; k++) conn[`~I${k}`] = "VCC";
-  b.place("74HC148", conn, "öncelik kodlayıcı: IRQ_SRC, IRQ");
-  b.not("~GC_GS", "IRQ", "IRQ hattı = OR(bekleyen ∧ maske)");
-  readBuf(b, [b.not("~GC_SA0", "GC_SA0"), b.not("~GC_SA1", "GC_SA1")], "DE", "~GC_RD5", "~GC_GS",
-    "IRQ_SRC okuma (istek yoksa sürülmez: 0xFF)");
+  pend.forEach((p, k) => b.and(p, `GC_M${k}`, `GC_I${k}`, `kaynak ${k} maskeli`));
+  b.or(b.or("GC_I0", "GC_I1", undefined, "kaynak 0 ya da 1"), b.or("GC_I2", "GC_I3", undefined, "kaynak 2 ya da 3"), "IRQ", "IRQ hattı = OR(bekleyen ∧ maske)");
+  b.not("IRQ", "~GC_GS", "istek yok: IRQ_SRC sürülmez");
+  b.or("GC_I3", "GC_I2", "GC_SA1", "IRQ_SRC bit 1: kaynak 3 ya da 2");
+  b.or("GC_I3", b.and("GC_I1", b.not("GC_I2", "~GC_I2", "kaynak 2 yok"), undefined, "kaynak 1, 2 yok"), "GC_SA0", "IRQ_SRC bit 0: kaynak 3 ya da (1 ve 2 yok)");
+  readBuf(b, ["GC_SA0", "GC_SA1"], "DE", "~GC_RD5", "~GC_GS", "IRQ_SRC okuma (istek yoksa sürülmez: 0xFF)");
   readBuf(b, pend, "DE", "~GC_RD4", "GND", "IRQ_PEND okuma");
   readBuf(b, ["GC_M0", "GC_M1", "GC_M2", "GC_M3"], "DO", "~GC_RD4", "GND", "IRQ_MASK okuma");
 

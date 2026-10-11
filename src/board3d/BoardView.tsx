@@ -45,7 +45,7 @@ function Toolbar() {
         <button className="primary" onClick={() => (s.running ? s.pause() : s.run())} disabled={!s.ready} title="Kısayol: Boşluk">
           {s.running ? "Duraklat" : "Çalıştır"}
         </button>
-        <button onClick={s.reset} disabled={!s.ready} title="RESET butonu: program Flash'ta kalır">Sıfırla</button>
+        <button onClick={s.reset} disabled={!s.ready} title="RESET butonu: program EEPROM'da kalır">Sıfırla</button>
         <label className="speed">
           Saat
           <select value={s.hz} onChange={(e) => s.setHz(+e.target.value)} aria-label="Saat hızı">
@@ -154,7 +154,7 @@ function StatePanel() {
     <section>
       <div className="row between">
         <h2>CPU durumu</h2>
-        <span className="muted small">Flash: {loaded || "-"}</span>
+        <span className="muted small">EEPROM: {loaded || "-"}</span>
       </div>
       <div className="regs">
         {st.regs.map((v, i) => (
@@ -357,7 +357,7 @@ function Editor() {
           ))}
         </span>
         <button onClick={() => s.check()} title={lang === "c" ? "cc16 (rom hedefi) ile derle" : "as16 ile derle"}>Derle</button>
-        <button className="primary" onClick={() => s.compileAndLoad(true)} disabled={!s.ready} title="Derle, Flash bank 0'a yaz, RESET ve çalıştır">
+        <button className="primary" onClick={() => s.compileAndLoad(true)} disabled={!s.ready} title="Derle, EEPROM bank 0'a yaz, RESET ve çalıştır">
           Yükle ve çalıştır
         </button>
         <span className={`muted small${s.errors.length ? " err" : ""}`}>{s.info}</span>
@@ -541,13 +541,13 @@ function installKartApi() {
     /** ölçülen saat hızı (döngü/sn) ve döngü sayısı */
     olc: () => ({ hz: Math.round(st().rate), dongu: st().cycles }),
     ornekler: () => EXAMPLES.map((e) => e.name),
-    /** örneği düzenleyiciye al, derle, Flash'a yaz ve çalıştır */
+    /** örneği düzenleyiciye al, derle, EEPROM'a yaz ve çalıştır */
     ornek: (ad: string) => {
       st().loadExample(ad);
       return api.yukle();
     },
     program: (ad: string) => api.ornek(ad),
-    /** kaynağı (verilmezse düzenleyicidekini) derle, Flash bank 0'a yaz, RESET ve çalıştır */
+    /** kaynağı (verilmezse düzenleyicidekini) derle, EEPROM bank 0'a yaz, RESET ve çalıştır */
     yukle: (kaynak?: string, dil?: "asm" | "c") => {
       if (kaynak !== undefined) useKart.setState({ source: kaynak, example: "", langMode: dil ?? "otomatik" });
       const ok = st().compileAndLoad(true);

@@ -1,21 +1,22 @@
 # CPU16 BIOS v1 (Faz 7)
 
-> Flash bank 0'daki yazılım: vektörler, açılış, programlar için **atlama tablosu**, kesme
+> EEPROM bank 0'daki yazılım: vektörler, açılış, programlar için **atlama tablosu**, kesme
 > işleyici (zamanlayıcı + klavye), VGA metin sürücüsü, UART, **monitör** ve UART üzerinden
-> **Intel HEX önyükleyicisi** (RAM'e ya da SST komut dizileriyle Flash'a).
+> **Intel HEX önyükleyicisi** (RAM'e ya da korumalı sayfa yazmasıyla EEPROM'a).
 > Kaynak: `bios/bios.s` (as16). İmaj: `bios/build.ts`. Yükleyici istemcisi: `bios/uploader.ts`.
 > Testler: `tests/bios.test.ts`. Donanım: [anakart.md](anakart.md).
 
 ## ROM imajını üretmek
 
 ```sh
-npm run cpu16 -- bios -o bios.bin       # 128 KB SST39SF010 imajı (BIOS bank 0'da, kalanı 0xFF)
+npm run cpu16 -- bios -o bios.bin       # 32 KB 28C256 imajı (BIOS bank 0'da, bank 1 0xFF)
 npm run cpu16 -- bios -o bios.hex       # sadece BIOS baytları, Intel HEX (ofset 0)
 npm run cpu16 -- charrom -o charrom.bin # video kartının 4 KB karakter ROM'u
 ```
 
-`bios.bin` EEPROM/Flash programlayıcıyla (TL866/T48 ya da deney setinin Arduino + 74HC595
-programlayıcısı) anakarttaki SST39SF010'a yazılır. BIOS v1 4345 bayttır (bank 0'ın %27'si).
+`bios.bin` ya da `bios.hex` EEPROM programlayıcıyla (TL866/T48 ya da deney setinin Arduino + 74HC595
+programlayıcısı, Deney 3) anakarttaki 28C256'ya (bellek kartı U420) yazılır. Deney setinin
+programlayıcısı çipi yazılım veri korumasıyla (SDP) bırakır. BIOS v1 4248 bayttır (bank 0'ın %26'sı).
 Komut satırı her iki durumda da atlama tablosunu yazar.
 
 Simülatörde denemek için:
@@ -23,7 +24,7 @@ Simülatörde denemek için:
 ```sh
 npm run cpu16 -- machine                          # BIOS açılır; UART terminale bağlı (çıkış: Ctrl-])
 npm run cpu16 -- machine program.s                # program önyükleyiciyle RAM'e yüklenir ve G ile çalışır
-npm run cpu16 -- machine program.s --flash        # F ile Flash'a yazar (çalıştırmaz)
+npm run cpu16 -- machine program.s --flash        # F ile EEPROM'a (bank 1) yazar (çalıştırmaz)
 echo "D 4000" | npm run cpu16 -- machine program.s --cycles 3000000 --screen
                                                   # toplu mod: stdin UART'a, N döngü çalış, VGA ekranını yaz
 ```
@@ -35,12 +36,12 @@ stdout'a yazılır (0x80 üstü baytlar CP857 olarak çözülür).
 
 1. Reset: bank register'ları 0/32/33/34, önbellek temiz ve açık, `PC = 0x0000` → `B reset`.
 2. `init`: yığın `0xFF00`, kesmeler maskeli, bank register'ları yeniden yazılır, önbellek açılır,
-   değişkenler sıfırlanır, Flash rutinleri RAM'e (`0xFA40`) kopyalanır, ekran temizlenir, imleç
+   değişkenler sıfırlanır, EEPROM yazma rutinleri RAM'e (`0xFA40`) kopyalanır, ekran temizlenir, imleç
    açılır, zamanlayıcı 10 ms'ye (100 Hz) kurulur, maske = zamanlayıcı + klavye.
 3. Afiş: ilk satır mavi zemin üzerine beyaz `CPU16 BIOS v1`, ardından donanım özeti.
 4. Monitör: `EI`, istem `> `.
 
-Açılış ≈ 126 000 döngü (4 MHz'te 32 ms) sürer; çoğu ekran temizleme.
+Açılış ≈ 128 000 döngü (4 MHz'te 32 ms) sürer; çoğu ekran temizleme.
 
 ## Bellek yerleşimi
 
@@ -50,7 +51,7 @@ Açılış ≈ 126 000 döngü (4 MHz'te 32 ms) sürer; çoğu ekran temizleme.
 | `0x0006` | BIOS sürümü (`0x0100` = 1.0) |
 | `0x0008–0x000F` | imza `"CPU16 B1"` |
 | `0x0010–0x0097` | atlama tablosu (aşağıda) |
-| `0x0098–0x10F8` | BIOS kodu ve metinleri (pencere 0 = Flash bank 0) |
+| `0x0098–0x1097` | BIOS kodu ve metinleri (pencere 0 = EEPROM bank 0) |
 | `0x4000–0xF7FF` | **kullanıcı RAM'i** (pencere 1–3 = RAM bank 32–34); `L` sadece buraya yükler |
 | `0xC000–0xC7FF` | önbellek boşaltmada okunur (içerik değişmez) |
 | `0xF800–0xF83F` | BIOS değişkenleri (`0xF820`: 32 bit tık sayacı, düşük kelime önce) |
@@ -58,7 +59,7 @@ Açılış ≈ 126 000 döngü (4 MHz'te 32 ms) sürer; çoğu ekran temizleme.
 | `0xF840–0xF89F` | komut satırı tamponu |
 | `0xF8A0–0xF93F` | kaydırma satır tamponu |
 | `0xF940–0xFA3F` | HEX kaydı tamponu |
-| `0xFA40–…` | Flash komut rutinlerinin RAM kopyası |
+| `0xFA40–…` | EEPROM yazma rutinlerinin RAM kopyası |
 | `…–0xFEFF` | yığın (`0xFF00`'dan aşağı) |
 | `0xFF00–0xFFFF` | G/Ç |
 
@@ -150,12 +151,12 @@ Sayılar hex; küçük harf de olur; argümanlar boşlukla ayrılır.
 | `D [adres] [uzunluk]` | bellek dökümü (hex + ASCII), varsayılan uzunluk `80`; argümansız `D` kaldığı yerden devam eder. Açılışta `4000` |
 | `W adres bayt ...` | baytları sırayla belleğe yazar (`W 4000 A6 46 01`) |
 | `G [adres]` | adresi alt program olarak çağırır (`JALR lr`); program `RET` ile monitöre döner. Adres verilmezse son yüklenen programın girişi |
-| `B` / `B pencere bank` | bank register'larını gösterir / pencere 1 ya da 2'yi banka eşler (`B 1 01` → pencere 1 = Flash bank 1). Pencere 0 (BIOS) ve 3 (yığın) değiştirilemez |
+| `B` / `B pencere bank` | bank register'larını gösterir / pencere 1 ya da 2'yi banka eşler (`B 1 01` → pencere 1 = EEPROM bank 1). Pencere 0 (BIOS) ve 3 (yığın) değiştirilemez |
 | `L` | Intel HEX yükle: UART → RAM (`0x4000–0xF7FF`) |
-| `F` | Intel HEX yükle: UART → Flash (bank 0 hariç) |
-| `I` | Flash kimliği: `BF B5 (SST39SF010)` |
+| `F` | Intel HEX yükle: UART → EEPROM (yalnız bank 1: `0x4000–0x7FFF`) |
+| `I` | EEPROM bilgisi: `EEPROM 28C256, yazma korumasi: acik` (ya da `kapali`). 28C256'nın yazılımla okunan kimliği yoktur; koruma, son bayt komutsuz yeniden yazılarak sınanır (içerik değişmez) |
 | `C [0\|1]` | önbellek isabet / ıskalama sayaçlarını ve denetim register'ını yazar, sonra sayaçları sıfırlar; `C 0` önbelleği kapatır, `C 1` açar |
-| `T` | RAM testi: bank 32–63 (34 hariç: BIOS değişkenleri ve yığın) pencere 2 üzerinden; önce hepsine banka özgü desen yazar, sonra hepsini doğrular (adres hatlarının karışmasını da yakalar). 4 MHz'te ≈ 4 s. Sonunda pencere 2 eski bankına döner |
+| `T` | RAM testi: bank 32–39 (4 × 62256; 34 hariç: BIOS değişkenleri ve yığın) pencere 2 üzerinden; önce hepsine banka özgü desen yazar, sonra hepsini doğrular (adres hatlarının ve çip seçiminin karışmasını da yakalar). 4 MHz'te ≈ 0,9 s. Sonunda pencere 2 eski bankına döner |
 | `?` / `H` | yardım |
 
 `D` G/Ç alanını (`FF00–FFFF`) da okur; bazı register'ları okumanın yan etkisi vardır (UART ve
@@ -185,13 +186,13 @@ Kurallar:
   sonra sonu `\n` olan `HEX…` satırı, her kayıttan sonra tek karakterlik yanıt.
 - Yanıtlar: **`.`** kayıt kabul edildi · **`!`** sağlama toplamı ya da hex hatası: kayıt aynen
   yeniden gönderilebilir (istemci 3 kez dener) · **`X`** reddedildi: yükleme biter, BIOS bir
-  satır hata iletisi ve `"> "` yazar (`Hata: adres izinli degil`, `Hata: Flash yazilamadi`).
+  satır hata iletisi ve `"> "` yazar (`Hata: adres izinli degil`, `Hata: EEPROM yazilamadi`).
 - Kayıtlar `:` ile başlar; araya giren diğer karakterler (CR, LF, boşluk) yok sayılır. Kayıt
   sonu için ayrıca bir karakter beklenmez; istemci yine de `\r\n` ekler.
 - `ESC` (27) ya da `Ctrl-C` (3), kayıtlar arasında yüklemeyi iptal eder (`Iptal`).
-- Kayıt türleri: `00` veri · `01` dosya sonu · `04` genişletilmiş doğrusal adres (sadece Flash:
-  ofsetin 16. biti, `0000` ya da `0001`) · `05` / `03` başlangıç adresi (son 16 bit, `G`'nin
-  varsayılanı). Başlangıç kaydı yoksa giriş = ilk veri kaydının adresi.
+- Kayıt türleri: `00` veri · `01` dosya sonu · `04` genişletilmiş doğrusal adres (RAM'de yok
+  sayılır; EEPROM'da yalnız `0000`: 28C256 32 KB'tır) · `05` / `03` başlangıç adresi (son 16 bit,
+  `G`'nin varsayılanı). Başlangıç kaydı yoksa giriş = ilk veri kaydının adresi.
 - Kayıt verisi en çok 255 bayt; istemci 16'şar bayt gönderir.
 - BIOS bir kayıt boyunca yankı yapmaz ve karakter başına ≈ 120 döngü harcar (bayt süresi 347
   döngü): ana makine bir kaydın karakterlerini arka arkaya gönderebilir. Yanıt önce ekrana,
@@ -200,22 +201,23 @@ Kurallar:
 **RAM (`L`)**: adresler CPU adresidir, `0x4000–0xF7FF` dışı reddedilir (`X`): BIOS'un değişken ve
 yığın alanı ile ROM korunur. Özet satırındaki sayılar hex'tir.
 
-**Flash (`F`)**: adresler **Flash ofsetidir** (`04` kaydıyla 17 bit, 0–128 KB). Bank 0
-(`0x0000–0x3FFF`, BIOS) reddedilir. Bir 4 KB sektöre bu yüklemede ilk kez yazılırken sektör
-önce silinir (aynı yüklemedeki diğer kayıtlar silinmez); yazılmayan sektörler korunur. Yükleme
-boyunca önbellek kapalıdır, sonunda önbellek boşaltılıp eski durumuna getirilir. `F` programı
-çalıştırmaz.
+**EEPROM (`F`)**: adresler **EEPROM ofsetidir** ve yalnız bank 1 (`0x4000–0x7FFF`) yazılabilir;
+bank 0 (`0x0000–0x3FFF`, BIOS) ve `0x8000` üstü reddedilir (`X`). Silme yoktur: 28C256 her baytı
+doğrudan yeniden yazar, yazılmayan baytlar korunur. Kayıt 64 baytlık sayfa sınırlarında parçalanır;
+her parça bir korumalı sayfa yazmasıdır (≈ 10 ms, bkz. "EEPROM'a yazma"), yazılan baytlar sonra
+geri okunup doğrulanır. Korumasız bir çip ilk yazmada korumalı olur. Yükleme boyunca önbellek
+kapalıdır, sonunda önbellek boşaltılıp eski durumuna getirilir. `F` programı çalıştırmaz.
 
-Flash'taki programı çalıştırmak: `0x4000`'e derlenmiş bir program `F` ile Flash ofseti
-`0x4000`'e (bank 1) yazılır; sonra monitörde `B 1 1` (pencere 1 = Flash bank 1) ve `G 4000`.
-Program bu durumda kendi bölgesine yazamaz (Flash); değişkenleri pencere 2/3'teki RAM'de
-tutmalıdır. Reset bank'ları yeniden RAM'e döndürür, Flash içeriği kalır.
+EEPROM'daki programı çalıştırmak: `0x4000`'e derlenmiş bir program `F` ile EEPROM ofseti
+`0x4000`'e (bank 1) yazılır; sonra monitörde `B 1 1` (pencere 1 = EEPROM bank 1) ve `G 4000`.
+Program bu durumda kendi bölgesine yazamaz (EEPROM); değişkenleri pencere 2/3'teki RAM'de
+tutmalıdır. Reset bank'ları yeniden RAM'e döndürür, EEPROM içeriği kalır.
 
 ### İstemciler
 
 - **Web IDE** (`#cpu16`, "Anakart + BIOS" kipi): "Derle ve RAM'e yükle" gerçek karttaki akışı
-  yapar: reset → BIOS açılır → `L` → kayıtlar → `G`. "Flash'a yaz" `F` ile yazar ve
-  "Flash'tan çalıştır" düğmesi `B 1 1` + `G 4000` gönderir.
+  yapar: reset → BIOS açılır → `L` → kayıtlar → `G`. "EEPROM'a yaz" `F` ile yazar ve
+  "EEPROM'dan çalıştır" düğmesi `B 1 1` + `G 4000` gönderir.
 - **Web Serial** ("Karta gönder (Web Serial)", Chrome / Edge masaüstü, https ya da localhost):
   tarayıcı kartın CH340 seri portunu 115200 8N1 açar ve tam olarak yukarıdaki diziyi gönderir:
   `"\r"`, `"L\r"`, her kayıt + `"\r\n"`, en sonda `"G\r"`; port sonra kapatılır. Kartın
@@ -225,20 +227,29 @@ tutmalıdır. Reset bank'ları yeniden RAM'e döndürür, Flash içeriği kalır
 - Elle: herhangi bir seri terminalde `L` yazıp `.hex` dosyasını metin olarak yapıştırmak da
   çalışır (akış denetimi açık olmalı ya da terminal satır başına gecikme eklemeli).
 
-## Flash'a yazma (BIOS içi)
+## EEPROM'a yazma (BIOS içi)
 
-SST39SF010 programlanırken ve kimlik modundayken okunamaz; BIOS'un kendisi de Flash'ta
-olduğundan komut dizilerini Flash'tan çalıştıramaz. Bu yüzden `flashrt` rutinleri açılışta
-RAM'e (`0xFA40`) kopyalanır ve oradan çağrılır (sadece göreli dallanma kullanırlar). Komut
-adresleri pencerelerle üretilir:
+28C256 bir yazma döngüsü sürerken (≈ 10 ms) okunamaz: her okuma bir durum baytı verir (D7 yazılan
+baytın D7'sinin tersi, D6 her okumada değişir). BIOS'un kendisi de EEPROM'da olduğundan bu sırada
+oradan komut çekemez. Bu yüzden `flashrt` rutinleri açılışta RAM'e (`0xFA40`) kopyalanır ve
+oradan, kesmeler kapalıyken çağrılır (sadece göreli dallanma kullanırlar; IRQ vektörü EEPROM'da).
 
-- `5555h`: pencere 1 geçici olarak Flash bank 1'e eşlenir, CPU `0x5555` (çip adresi `0x5555`).
-- `2AAAh`: pencere 0 (bank 0), CPU `0x2AAA`.
-- hedef bayt: pencere 2 hedef banka eşlenir (`fl_map`), CPU `0x8000 + (ofset & 0x3FFF)`.
+Çip **yazılım veri korumasıyla** (SDP) kullanılır: komut dizisi olmadan gelen yazmalar yok sayılır,
+çalışan bir program BIOS'u yanlışlıkla bozamaz. Her sayfa korumalı yazılır (`fr_page`):
 
-İş bitince DQ7 veri yoklamasıyla beklenir (zaman aşımında hata). Bu sırada önbellek kapalıdır:
-yoklama okumaları önbellekten değil Flash'tan gelmeli. Sonrasında pencereler ve önbellek eski
-haline döner.
+1. `AA → 5555h`, `55 → 2AAAh`, `A0 → 5555h`; ardından 1–64 bayt aynı 64 baytlık sayfaya, aralarında
+   en çok 150 µs (tBLC). Son bayttan 150 µs sonra çip yazma döngüsüne girer.
+2. Son yazılan adres D7 yoklamasıyla beklenir (zaman aşımı ≈ 0,8 s).
+3. Baytlar geri okunup kaynakla karşılaştırılır; fark varsa `Hata: EEPROM yazilamadi`.
+
+Komut adresleri pencerelerle üretilir: `5555h` için pencere 1 geçici olarak EEPROM bank 1'e
+eşlenir (CPU `0x5555`), `2AAAh` pencere 0'dadır (bank 0, CPU `0x2AAA`); hedef de pencere 1'dedir
+(ofset = CPU adresi). Yoklama ve doğrulama okumaları önbellekten değil EEPROM'dan gelmeli:
+önbellek bu sırada kapalıdır. Sonrasında pencereler ve önbellek eski haline döner.
+
+`I` komutu korumayı `fr_sdp` ile sınar: EEPROM'un son baytı (`0x7FFF`) kendi değeriyle, komut
+dizisi olmadan yeniden yazılır. Çip korumalıysa yazma yok sayılır ve D7 doğru okunur; değilse
+yazma döngüsü başlar (D7 ters), döngünün bitmesi beklenir; içerik değişmez.
 
 ## Bilinen sınırlar (v1)
 

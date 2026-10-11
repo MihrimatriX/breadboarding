@@ -1,5 +1,5 @@
 // Bütün bilgisayar (anakart: CPU, saat, bellek, önbellek, G/Ç, video kartları; ~360 çip, ~4 200 kapı)
-// bu worker'da kapı seviyesinde, osilatör periyodu periyodu çalışır. Program Flash bank 0'dadır
+// bu worker'da kapı seviyesinde, osilatör periyodu periyodu çalışır. Program EEPROM bank 0'dadır
 // (BIOS'suz deneme programları gibi), RESET'ten çalışır. Video kartının kendi piksel saati
 // (VID_OSC, 25,175 MHz) CPU saatine oranla (her CPU döngüsünde ≈ 6,3 piksel) ilerletilir.
 // Ana iş parçacığı en fazla saniyede ~30 kez net değerlerinin kopyasını, ~10 kez ekranı alır.
@@ -269,7 +269,7 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
         break;
       }
       case "load":
-        // programlayıcı Flash'a yazar, sonra RESET (RAM ve VRAM gerçek kartta olduğu gibi kalır)
+        // programlayıcı EEPROM'a yazar, sonra RESET (RAM ve VRAM gerçek kartta olduğu gibi kalır)
         flash = m.flash;
         running = false;
         out = [];

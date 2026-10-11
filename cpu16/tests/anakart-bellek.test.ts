@@ -2,7 +2,8 @@
 //  1. Veri yolu izi: Machine'in her read8/write8'i (onAccess) kelime/bayt veri yolu döngülerine
 //     gruplanır ve BusMaster ile gerçek saat + bellek + önbellek kartlarında yeniden oynatılır.
 //     Her okunan değer, her erişimin bekleme turu, bank register'ları, sayaçlar ve CACHE_CTRL
-//     her döngüden sonra; Flash/RAM içeriği, etiketler ve önbellek verisi sonda karşılaştırılır.
+//     her döngüden sonra; EEPROM/RAM içeriği (EEPROM'un iç durumu dahil), etiketler ve önbellek verisi
+//     sonda karşılaştırılır. EEPROM'un saati her erişimde izdeki komut başı döngüsüdür (bm.time).
 //  Tam sistem (CPU kartı dahil) ve saat kartının bekleme turları: anakart-sistem.test.ts.
 
 import { describe, expect, it } from "vitest";
@@ -13,7 +14,8 @@ import { erc } from "../board/board.ts";
 import { BusMaster } from "../board/bus-master.ts";
 import { CLOCK_INPUTS } from "../board/clock-card.ts";
 import { buildFullMachineBoard, buildMachineBoard } from "../board/machine-board.ts";
-import { IO, Machine, MEM_WAIT } from "../emu/machine.ts";
+import { TBLC_NS, TWC_NS } from "../emu/devices/eeprom.ts";
+import { CYCLE_NS, IO, Machine, MEM_WAIT } from "../emu/machine.ts";
 import { bios, expectSameMemory, foreignIo, hex } from "./anakart-ortak.ts";
 
 // ---------------------------------------------------------------- veri yolu izi
@@ -100,6 +102,7 @@ function replay(bm: BusMaster, trace: Access[]): ReplayStats {
     const io = a.addr >= 0xff00;
     if (foreignIo(a.addr)) continue;
     const lanes = word ? "word" : a.addr & 1 ? "odd" : "even";
+    bm.time = a.cycle;
     const r = bm.access({ write: a.write, addr: a.addr, lanes, data: word ? a.value | (b.value << 8) : a.value });
     const waits = io ? 0 : a.write || !a.enabled || a.miss ? MEM_WAIT : 0;
     if (r.waits !== waits) throw new Error(`${at}: bekleme ${r.waits}, Machine ${waits}`);
@@ -123,9 +126,8 @@ function replay(bm: BusMaster, trace: Access[]): ReplayStats {
 
 /** Machine'in bellek durumunu kartlara yükle (izin ortasından başlamak için) */
 function loadFrom(bm: BusMaster, m: Machine) {
-  expect(m.flash.idMode).toBe(false);
   bm.probe.load({
-    flash: m.flash.data, ram: m.ram, banks: m.banks, cacheEnabled: m.cache.enabled,
+    flash: m.flash, ram: m.ram, banks: m.banks, cacheEnabled: m.cache.enabled,
     hits: m.cache.hits, misses: m.cache.misses, tags: m.cache.tags, data: m.cache.data,
   });
 }
@@ -152,18 +154,20 @@ describe("Faz 6 anakart: kartların yapısı", () => {
     expect(erc(board, ["IRQ", ...CLOCK_INPUTS])).toEqual([]);
     const s = board.summary();
     const count = (card: string) => Object.values(s[card]).reduce((a, b) => a + b, 0);
-    expect(count("bellek")).toBe(31);
-    expect(count("onbellek")).toBe(37);
+    expect(count("bellek")).toBe(34);
+    expect(count("onbellek")).toBe(46);
     expect(s.bellek["74HC273"]).toBe(4);
-    expect(s.onbellek["74HC590"]).toBe(4);
+    expect(s.bellek["28C256"]).toBe(1);
+    expect(s.bellek["62256"]).toBe(4);
+    expect(s.onbellek["74HC161"]).toBe(11); // 8 sayaç + 3 etiket temizleme
   });
 
-  it("bütün anakart (CPU, saat, bellek, önbellek, G/Ç, video): ERC temiz, her kartın çip sayısı", () => {
+  it("bütün anakart (CPU, saat, bellek, önbellek, G/Ç, video, kendin yap bellek): ERC temiz, her kartın çip sayısı", () => {
     const { board } = buildFullMachineBoard();
     expect(erc(board, ["IRQ", ...CLOCK_INPUTS, "VID_OSC"])).toEqual([]);
     const s = board.summary();
     const counts = Object.fromEntries(Object.entries(s).map(([card, parts]) => [card, Object.values(parts).reduce((a, b) => a + b, 0)]));
-    expect(counts).toEqual({ cpu: 194, clk: 10, bellek: 31, onbellek: 37, gc: 65, video: 69 });
+    expect(counts).toEqual({ cpu: 194, clk: 10, bellek: 34, onbellek: 46, gc: 65, video: 73, kyb: 22 });
   });
 });
 
@@ -174,7 +178,7 @@ describe("Faz 6 anakart: veri yolu izi kartlarda (BusMaster)", () => {
     expect(m.runUntil(() => m.uartOutput.endsWith("> "), 2_000_000)).toBe(true);
     const { trace, waits } = rec.stop();
     const bm = new BusMaster();
-    bm.probe.flash.set(bios.flash);
+    bm.probe.eeprom.load(bios.flash);
     const st = replay(bm, trace);
     expect(st.waits).toBe(waits); // izdeki bekleme toplamı = Machine.waitCycles
     expect(st.reads).toBeGreaterThan(20_000);
@@ -182,7 +186,7 @@ describe("Faz 6 anakart: veri yolu izi kartlarda (BusMaster)", () => {
     expect(expectSameMemory(bm.probe, m)).toBeGreaterThan(100);
   });
 
-  it("monitör komutları: C (sayaçlar), C 0 / C 1, D, W, B, I (Flash kimliği, önbellek kapalı)", { timeout: 60_000 }, () => {
+  it("monitör komutları: C (sayaçlar), C 0 / C 1, D, W, B, I (EEPROM koruması, önbellek kapalı)", { timeout: 60_000 }, () => {
     const m = bootedMachine();
     expect(m.runUntil(() => m.uartOutput.endsWith("> "), 2_000_000)).toBe(true);
     const bm = new BusMaster();
@@ -193,7 +197,8 @@ describe("Faz 6 anakart: veri yolu izi kartlarda (BusMaster)", () => {
       command(m, "B 2 5"), command(m, "B 2 21"), command(m, "I"), command(m, "C"),
     ].join("");
     expect(out).toContain("8000: 12 34");
-    expect(out).toContain("BF B5"); // Flash kimliği (SST39SF010A)
+    expect(out).toContain("yazma korumasi: acik"); // korumalıyken EEPROM'a dizisiz yazma yok sayılır
+    expect(m.flash.writeCycles).toBe(0);
     const { trace, waits } = rec.stop();
     const st = replay(bm, trace);
     expect(st.waits).toBe(waits);
@@ -201,7 +206,7 @@ describe("Faz 6 anakart: veri yolu izi kartlarda (BusMaster)", () => {
     expectSameMemory(bm.probe, m);
   });
 
-  it("F komutu: Intel HEX → Flash (sektör silme, bayt programlama, DQ7 yoklaması) ve okuma", { timeout: 60_000 }, async () => {
+  it("F komutu: Intel HEX → EEPROM (korumalı sayfa yazması, DATA yoklaması) ve okuma", { timeout: 60_000 }, async () => {
     const m = bootedMachine();
     expect(m.runUntil(() => m.uartOutput.endsWith("> "), 2_000_000)).toBe(true);
     const bm = new BusMaster();
@@ -213,8 +218,8 @@ describe("Faz 6 anakart: veri yolu izi kartlarda (BusMaster)", () => {
     const res = await uploadHex(link, programHex(asm).hex, { mode: "flash" });
     expect(res.ok, res.message).toBe(true);
     m.uartOnOutput = undefined;
-    expect(m.flash.sectorErases).toBe(1);
-    expect(m.flash.programs).toBe(16);
+    expect(m.flash.writeCycles).toBe(1); // 16 bayt tek sayfada
+    expect(m.flash.bytesWritten).toBe(16);
     command(m, "B 1 1");
     expect(command(m, "D 4000 10")).toContain("34 12 78 56");
     const { trace, waits } = rec.stop();
@@ -224,19 +229,19 @@ describe("Faz 6 anakart: veri yolu izi kartlarda (BusMaster)", () => {
     expect(Array.from(bm.probe.flash.subarray(0x4000, 0x4010))).toEqual(Array.from(asm.image.subarray(0x4000, 0x4010)));
   });
 
-  it("64 bank, bank register'ları, RAM/Flash/boş bölge gözetleme, önbellek kapalı/açık, sayaçlar, Flash komutları", { timeout: 60_000 }, () => {
+  it("64 bank, bank register'ları, RAM/EEPROM/boş bölge gözetleme, önbellek kapalı/açık, sayaçlar, EEPROM yazması", { timeout: 60_000 }, () => {
     const m = new Machine();
-    m.loadFlash(Uint8Array.from({ length: 0x20000 }, (_, i) => (i * 13 + (i >> 9)) & 0xff));
+    m.loadFlash(Uint8Array.from({ length: 0x8000 }, (_, i) => (i * 13 + (i >> 9)) & 0xff));
     m.reset();
     const bm = new BusMaster();
-    bm.probe.flash.set(m.flash.data);
+    bm.probe.eeprom.load(m.flash.data);
     const rec = recorder(m);
     const w16 = (a: number, v: number) => {
       m.write8(a, v & 0xff);
       m.write8(a + 1, v >> 8);
     };
     const r16 = (a: number) => m.read8(a) | (m.read8(a + 1) << 8);
-    // her bank pencere 2'de: kelime yaz, kelime ve bayt oku (Flash'ta yazma içerik değiştirmez)
+    // her bank pencere 2'de: kelime yaz, kelime ve bayt oku (EEPROM korumalı: dizisiz yazma yok sayılır)
     for (let bank = 0; bank < 64; bank++) {
       m.write8(IO.BANK2, bank);
       const off = 0x100 + bank * 4;
@@ -263,8 +268,8 @@ describe("Faz 6 anakart: veri yolu izi kartlarda (BusMaster)", () => {
     r16(0x4010);
     m.write8(0x4010, 0x66);
     r16(0x4010);
-    // Flash gözetleme: satır geçersiz kılınır (yazma bir komut baytıdır, içerik değil)
-    m.write8(IO.BANK2, 3);
+    // EEPROM gözetleme: satır geçersiz kılınır (korumalı çipte yazma içeriği değiştirmez)
+    m.write8(IO.BANK2, 1);
     r16(0x8020);
     r16(0x8020);
     m.write8(0x8021, 0x12);
@@ -275,7 +280,7 @@ describe("Faz 6 anakart: veri yolu izi kartlarda (BusMaster)", () => {
     w16(0x8040, 0x1234);
     r16(0x8040);
     // önbellek kapalı: okuma doldurmaz ve sayılmaz, ama yazma gözetlemesi sürer
-    m.write8(IO.BANK2, 40);
+    m.write8(IO.BANK2, 36);
     r16(0x8060);
     m.write8(IO.CACHE_CTRL, 0);
     m.read8(IO.CACHE_CTRL);
@@ -301,28 +306,29 @@ describe("Faz 6 anakart: veri yolu izi kartlarda (BusMaster)", () => {
     for (const a of [0xff14, 0xff1f, 0xff34, 0xff35, 0xff36, 0xff37, 0xff38, 0xff80, 0xfffe]) r16(a);
     m.write8(0xff35, 0); // tek bayt: CACHE_CTRL değil
     m.read8(IO.CACHE_CTRL);
-    // Flash komutları (BIOS'taki gibi): önbellek kapalı, pencere 1 = bank 1 (5555), pencere 0 = bank 0 (2AAA)
+    // EEPROM yazması (BIOS'taki gibi): önbellek kapalı, pencere 1 = bank 1 (5555), pencere 0 = bank 0
+    // (2AAA); korumalı sayfa yazması, yazma sürerken DATA yoklaması ve toggle biti, sonra okuma. Bu
+    // test CPU'suz olduğundan zaman (Machine.cycles) elle ilerletilir; kartlar izdeki döngüyü görür.
     m.write8(IO.CACHE_CTRL, 0);
+    m.write8(IO.BANK0, 0);
     m.write8(IO.BANK1, 1);
+    m.write8(IO.BANK2, 1); // hedef: fiziksel 0x4100–0x4105 (bank 1)
     const cmd = (...seq: [number, number][]) => seq.forEach(([a, v]) => m.write8(a, v));
-    const unlock: [number, number][] = [[0x5555, 0xaa], [0x2aaa, 0x55]];
-    cmd(...unlock, [0x5555, 0x90]); // kimlik kipi
-    m.read8(0x0000);
-    m.read8(0x0001);
-    cmd([0x0000, 0xf0]);
-    m.write8(IO.BANK2, 6); // hedef sektör: fiziksel 0x18000
-    cmd(...unlock, [0x5555, 0x80], ...unlock, [0x8000, 0x30]); // sektör sil
-    m.read8(0x8000);
-    for (let i = 0; i < 6; i++) {
-      cmd(...unlock, [0x5555, 0xa0], [0x8000 + i, 0x41 + i * 9]); // bayt programla
-      m.read8(0x8000 + i); // DQ7 yoklaması
-    }
+    cmd([0x5555, 0xaa], [0x2aaa, 0x55], [0x5555, 0xa0]);
+    for (let i = 0; i < 6; i++) m.write8(0x8100 + i, 0x41 + i * 9);
+    m.read8(0x8105); // sayfa yüklenirken: durum
+    m.cycles += Math.ceil(TBLC_NS / CYCLE_NS); // yükleme penceresi kapandı: iç yazma döngüsü
+    for (let i = 0; i < 3; i++) m.read8(0x8105); // D7 ters, D6 her okumada değişir
+    m.write8(0x8100, 0); // yazma döngüsünde yok sayılır
+    m.cycles += Math.ceil(TWC_NS / CYCLE_NS);
+    m.read8(0x8105);
     m.write8(IO.CACHE_CTRL, 1);
-    r16(0x8000);
-    r16(0x8002);
-    r16(0x8000);
-    expect(m.flash.programs).toBe(6);
-    expect(m.flash.sectorErases).toBe(1);
+    r16(0x8100);
+    r16(0x8102);
+    r16(0x8100);
+    expect(m.flash.writeCycles).toBe(1);
+    expect(m.flash.bytesWritten).toBe(6);
+    expect(m.peekPhys(0x4100)).toBe(0x41);
     const { trace } = rec.stop();
     const st = replay(bm, trace);
     expect(st.reads).toBeGreaterThan(700);
@@ -330,12 +336,12 @@ describe("Faz 6 anakart: veri yolu izi kartlarda (BusMaster)", () => {
   });
 
   for (const cache of [false, true]) {
-    it(`1 MB fiziksel alan kartlarda: Flash, boş alan 0xFF, RAM (önbellek ${cache ? "açık" : "kapalı"})`, { timeout: 60_000 }, () => {
+    it(`1 MB fiziksel alan kartlarda: EEPROM, boş alan 0xFF, RAM (önbellek ${cache ? "açık" : "kapalı"})`, { timeout: 60_000 }, () => {
       const m = new Machine();
-      m.loadFlash(Uint8Array.from({ length: 0x20000 }, (_, i) => (i * 7 + (i >> 14)) & 0xff));
+      m.loadFlash(Uint8Array.from({ length: 0x8000 }, (_, i) => (i * 7 + (i >> 14)) & 0xff));
       m.reset();
       const bm = new BusMaster();
-      bm.probe.flash.set(m.flash.data);
+      bm.probe.eeprom.load(m.flash.data);
       const rec = recorder(m);
       if (!cache) m.write8(IO.CACHE_CTRL, 0);
       for (const pass of ["yaz", "oku"]) {
@@ -347,13 +353,13 @@ describe("Faz 6 anakart: veri yolu izi kartlarda (BusMaster)", () => {
           }
         }
       }
-      expect(m.flash.programs).toBe(0);
+      expect(m.flash.writeCycles).toBe(0);
       const { trace } = rec.stop();
       const st = replay(bm, trace);
       expect(st.writes).toBe(64 * 64 + 2 * 64 + (cache ? 0 : 1));
       expectSameMemory(bm.probe, m);
-      // kartlardaki içerik: RAM bankları desenli, Flash değişmedi
-      for (let bank = 32; bank < 64; bank++) expect(bm.probe.physRead(bank * 0x4000 + 0x202)).toBe((bank * 3 + 0x202) & 0xff);
+      // kartlardaki içerik: RAM bankları (32–39) desenli, ötesi boş (0xFF), EEPROM değişmedi
+      for (let bank = 32; bank < 64; bank++) expect(bm.probe.physRead(bank * 0x4000 + 0x202)).toBe(bank < 40 ? (bank * 3 + 0x202) & 0xff : 0xff);
     });
   }
 });
