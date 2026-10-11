@@ -391,6 +391,7 @@ function akim(deger: string): { kalem: string; mA: number } | null {
   if (deger === "62256") return { kalem: "62256 SRAM (seçiliyken)", mA: 30 };
   if (deger === "28C256") return { kalem: "28C256 EEPROM (okurken)", mA: 30 };
   if (deger === "LED") return { kalem: "LED (330 Ω, yanarken)", mA: 9 };
+  if (deger === "DISP_7SEG_CC") return { kalem: "7 segment hane (7 × ≈ 6 mA, lamba testinde hepsi yanar)", mA: 42 };
   if (deger === "OSC_CAN" || deger === "OSC_25M175") return { kalem: "kristal osilatör modülü", mA: 25 };
   if (deger === "CONN_PS2") return { kalem: "PS/2 klavye (konnektörden beslenir)", mA: 100 };
   if (deger === "ARDUINO_NANO") return { kalem: "Arduino Nano (USB'den beslenir)", mA: 25 };

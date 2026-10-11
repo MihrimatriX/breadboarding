@@ -145,7 +145,9 @@ function kapak(p: KurulumPlani, kk: KurulumKarti, o: BelgeSecenekleri): string {
 ${olgu(p.cipler.length, "entegre")}${olgu(p.pasifler.length, "pasif eleman")}${olgu(sayi(p.teller.length), "sinyal teli (bağlantı)")}${olgu(sayi(p.beslemePinleri), "besleme pini (VCC / GND)")}
 ${olgu(p.bloklar.filter((b) => b.cipler.length || b.telSayisi).length, "işlev bloğu")}${olgu(`${mm(p.olcu.w)} × ${mm(p.olcu.h)}`, "önerilen yerleşim (mm)")}${olgu(`≈ ${sayi(p.gucButcesi.toplam)} mA`, "besleme (5 V, kaba hesap)")}${olgu(kk.yol, "kurulum yolu")}
 </div>
-<p><b>Deney:</b> ${deneyler || "—"}. Deney rehberi ne yapılacağını ve nasıl test edileceğini anlatır; bu belge hangi bacağın nereye gittiğini.</p>
+${kk.rehber
+    ? `<p><b>Kurulum rehberi:</b> <span class="mono">${esc(kk.rehber)}</span> (PDF hali bu belgenin yanında). Rehber kurma sırasını ve her aşamanın testini anlatır; bu belge hangi bacağın nereye gittiğini.</p>`
+    : `<p><b>Deney:</b> ${deneyler || "—"}. Deney rehberi ne yapılacağını ve nasıl test edileceğini anlatır; bu belge hangi bacağın nereye gittiğini.</p>`}
 ${haric}
 <h3>Bu belgede</h3>
 <ol class="icindekiler">

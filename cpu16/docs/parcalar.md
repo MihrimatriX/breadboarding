@@ -7,7 +7,7 @@
 | Dosya | İçerik |
 |---|---|
 | `chips/logic.ts` | Kapı seviyesi simülatör: 0/1/Z/X lojiği, çok sürücülü netler (veriyolu), dalga tabanlı zamanlama, DFF / mandal / üç durumlu tampon / davranışsal blok |
-| `chips/parts/*.ts` | 37 çipin tanımı: pinler (veri sayfasındaki numaralarla), kapı devresi, veri sayfası fonksiyon tablosu (referans model) |
+| `chips/parts/*.ts` | 38 çipin tanımı: pinler (veri sayfasındaki numaralarla), kapı devresi, veri sayfası fonksiyon tablosu (referans model) |
 | `chips/cmos.ts` | Kapı → CMOS transistör açılımı; çıktı Silikon3D'nin anahtar seviyesi motorunun okuduğu biçimde |
 | `chips/bench.ts`, `chips/transistor-bench.ts` | Tek çipi kapı veya transistör seviyesinde çalıştıran tezgâhlar |
 | `chips/kicad.ts` → `kicad/cpu16.kicad_sym` | KiCad 7+ sembol kütüphanesi (pin numaraları, footprint, açıklama) |
@@ -68,6 +68,7 @@ Güç verildiğinde flip-flopların değeri **bilinmiyor (X)** kabul edilir; ver
 | 74HC595 | DIP-16 | 25 | 643 | 8 bit seri giriş / paralel çıkış kaydırmalı register (çıkış mandallı) |
 | 74HC245 | DIP-20 | 20 | 144 | 8 bit çift yönlü veriyolu alıcı-vericisi |
 | 74HC541 | DIP-20 | 9 | 68 | 8 bit üç durumlu tampon (iki aktif düşük OE) |
+| 74HC4511 | DIP-16 | 37 | 368 | BCD'den 7 segmente kod çözücü / sürücü (mandallı, ortak katot) — 8 bit hesap makinesi (`hesap8/`) |
 | 62256 | DIP-28 | - | - | 32 KB statik RAM (32K × 8) |
 | 28C256 | DIP-28 | - | - | 32 KB paralel EEPROM (32K × 8, 5 V, bayt/sayfa yazma; 62256 ile aynı bacak düzeni) |
 | SST39SF010A | DIP-32 | - | - | 128 KB Flash (128K × 8, 5 V, komutla programlanır) |

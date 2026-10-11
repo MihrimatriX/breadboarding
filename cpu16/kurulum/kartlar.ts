@@ -26,6 +26,8 @@ export interface KurulumKarti {
   yol: "breadboard" | "breadboard → PCB" | "PCB";
   /** belgelerin başlığındaki ürün adı (varsayılan "CPU16"; bilgisayardan bağımsız aletlerde kendi adı) */
   urun?: string;
+  /** deney rehberi yerine aşama aşama kurulum rehberi (depoda markdown) */
+  rehber?: string;
 }
 
 /** Kurulum sırasıyla (deney sırası) */
@@ -67,7 +69,7 @@ export const KURULUM_KARTLARI: KurulumKarti[] = [
     aciklama: "Kendin yap bellek kartı (eğitim kartı, FF40–FF4F): 16 baytlık RAM, her bayt bir 74HC574; adres çözme ve veriyolu tamponu. Bir 62256'nın içinde olanı açıkta gösterir. Bilgisayarın çalışması için gerekmez.",
   },
   {
-    kart: "hesap", kaynak: "hesap", yol: "PCB", urun: "8 bit hesap makinesi",
+    kart: "hesap", kaynak: "hesap", yol: "PCB", urun: "8 bit hesap makinesi", rehber: "hesap8/docs/kurulum-rehberi.md",
     aciklama: "8 bit hesap makinesi (bilgisayardan bağımsız): A ve B sayıları 8'li DIP anahtarlarla, işlem 2'li DIP anahtarla seçilir; toplama, çıkarma, çarpma ve bölme tamamen 74HC kapılarıyla, program ve saat olmadan yapılır. Sayılar ve sonuç onluk 7 segment göstergelerde (A, B, işaret + 5 haneli sonuç, bölmede kalan). Bloklar ayrı ayrı breadboard'da denenebilir; bütün kart PCB içindir.",
   },
 ];
