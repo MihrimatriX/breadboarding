@@ -126,7 +126,7 @@ export class Cpu16 {
     return this.add(a, ~b & 0xffff, carryIn);
   }
 
-  private condition(cond: number): boolean | null {
+  private condition(cond: number): boolean {
     switch (cond) {
       case 0: return this.z;
       case 1: return !this.z;
@@ -143,7 +143,7 @@ export class Cpu16 {
       case 12: return !this.z && this.n === this.v;
       case 13: return this.z || this.n !== this.v;
       case 14: return true;
-      default: return null;
+      default: return false; // 15 = NV (asla); koşul biriminin doğal çıkışı
     }
   }
 
@@ -243,9 +243,7 @@ export class Cpu16 {
         this.bus.write8((r[rs1] + f.imm6(w)) & 0xffff, r[rd] & 0xff);
         return "ok";
       case OP.BCC: {
-        const taken = this.condition(f.cond(w));
-        if (taken === null) return this.illegal(at);
-        if (taken) this.pc = (this.pc + f.off8(w) * 2) & 0xffff;
+        if (this.condition(f.cond(w))) this.pc = (this.pc + f.off8(w) * 2) & 0xffff;
         return "ok";
       }
       case OP.JAL:

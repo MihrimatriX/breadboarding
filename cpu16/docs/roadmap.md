@@ -1,6 +1,6 @@
 # CPU16 — Yol Haritası
 
-> **Şu an:** Faz 1 bitti (emülatör + as16, 52 test). **Sıradaki:** Faz 2, mikromimari ve mikrokod. Paralel iz olarak Faz 8 (C derleyicisi) artık başlayabilir.
+> **Şu an:** Faz 2 bitti (mikrokod + saat döngüsü modeli, emülatörle lockstep). **Sıradaki:** Faz 3, 74HC parça kütüphanesi. Paralel iz: Faz 8 (C derleyicisi).
 > Bu satır her faz bittiğinde güncellenir. Kaybolursan önce buraya bak.
 
 ## Kaybolmamak için 5 kural
@@ -36,10 +36,11 @@ Faz 0 Spec ─▶ Faz 1 Emülatör+as16 ─▶ Faz 2 Mikromimari ─▶ Faz 3 74
 - Video: "Kendi komut setimizi tasarladık: ilk programı çalıştırıyoruz".
 - Sonuç: `emu/cpu.ts`, `emu/disasm.ts`, `asm/assembler.ts`, `asm/hex.ts`, `tools/cli.ts`, `programs/*.s` (hello, fib, add32 + yazılım çarpma, bubble, irq), `tests/` (52 test, disassembler 65 536 kelimenin hepsinde gidiş-dönüş). Bit bit davranış: `docs/isa-ayrintilari.md`; assembler rehberi: `docs/as16.md`.
 
-### Faz 2 — Mikromimari ve mikrokod
+### Faz 2 — Mikromimari ve mikrokod ✅ 2026-10-11
 - Çıktı: veriyolu blok şeması, kontrol sinyali listesi (24–32 sinyal), mikrokod kaynak dosyası + mikrokod derleyicisi (Flash imajı üretir), **saat döngüsü seviyesinde** blok modeli (register, ALU, bus, kontrol).
 - Bitti ölçütü: Faz 1 test programlarının tamamı blok modelde çalışır ve her komut sonunda emülatörle lockstep aynı durumdadır; komut başına döngü sayısı tablosu çıkar.
 - Video: "Mikrokod nedir? CPU'nun içindeki küçük program".
+- Sonuç: `micro/control.ts` (32 bit kontrol kelimesi), `micro/cpu16.ucode` + `micro/microasm.ts` (4 Flash imajı: `npm run cpu16 -- ucode`), `micro/datapath.ts` (ROM bitlerini çalıştıran saat döngüsü modeli). Lockstep: 5 program + 60 000 rastgele komut. Ortalama ≈5 döngü/komut. Ayrıntı: `docs/mikromimari.md`. Spec değişikliği: `cond = 15` artık NV (asla), yasadışı değil.
 
 ### Faz 3 — 74HC parça kütüphanesi
 - Çıktı: kullanılan her çip (≈25 tip: 74HC00/04/08/32/86/74/138/148/157/161/175/245/283/574/595/688, SRAM, Flash…) için kapı seviyesi model + doğruluk tablosu testleri; her kapı için CMOS transistör açılımı; KiCad sembol/footprint eşlemesi.

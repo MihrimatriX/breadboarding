@@ -2,12 +2,14 @@
 //   asm  dosya.s [-o çıktı.hex|.bin] [--list]   derle
 //   run  dosya.s [--trace] [--max N]            derle ve emülatörde çalıştır
 //   dis  dosya.bin [--org 0x0000]               ikili dosyayı geri çevir
+//   ucode dosya.ucode [-o klasör]               mikrokodu 4 Flash imajına derle (rom0..rom3.bin)
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { assemble } from "../asm/assembler.ts";
 import { toIntelHex } from "../asm/hex.ts";
 import { Cpu16, SimpleBus } from "../emu/cpu.ts";
 import { disassemble } from "../emu/disasm.ts";
+import { assembleMicrocode, splitRom } from "../micro/microasm.ts";
 
 const [cmd, file, ...rest] = process.argv.slice(2);
 const opt = (name: string) => {
@@ -26,7 +28,7 @@ function build(path: string) {
 }
 
 if (!cmd || !file) {
-  console.log("kullanım: npm run cpu16 -- asm|run|dis <dosya> [seçenekler]");
+  console.log("kullanım: npm run cpu16 -- asm|run|dis|ucode <dosya> [seçenekler]");
   process.exit(cmd ? 1 : 0);
 }
 
@@ -75,6 +77,16 @@ if (cmd === "asm") {
     const w = bin[i] | (bin[i + 1] << 8);
     console.log(`${hex4(org + i)}  ${hex4(w)}  ${disassemble(w, org + i)}`);
   }
+} else if (cmd === "ucode") {
+  const res = assembleMicrocode(readFileSync(file, "utf8"));
+  if (res.errors.length) {
+    for (const e of res.errors) console.error(`${file}:${e.line}: ${e.message}`);
+    process.exit(1);
+  }
+  const dir = opt("-o") ?? ".";
+  splitRom(res.rom).forEach((img, i) => writeFileSync(`${dir}/rom${i}.bin`, img));
+  console.log(`${dir}/rom0..3.bin: 4 × ${res.rom.length} bayt (rom0 = kontrol bitleri 7..0)`);
+  for (const r of res.routines) console.log(`  ${r.name.padEnd(20)} ${r.steps.length + 2} döngü`);
 } else {
   console.error(`bilinmeyen komut: ${cmd}`);
   process.exit(1);
