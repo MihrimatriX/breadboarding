@@ -10,7 +10,8 @@ import { buildProgram } from "../../cpu16/cc/index";
 import { LIB } from "../../cpu16/cc/lib-vite";
 import { buildBios, type BiosBuild } from "../../cpu16/bios/build";
 import { MachineLink } from "../../cpu16/bios/simlink";
-import { programHex, uploadHex } from "../../cpu16/bios/uploader";
+import { programHex, uploadHex, type SerialLink } from "../../cpu16/bios/uploader";
+import { beklenenCiktilar, kartTesti, kartTestProgramlari, sonucMetni } from "../../cpu16/bios/kart-testi";
 import { disassemble } from "../../cpu16/emu/disasm";
 import { CPU_HZ, Machine } from "../../cpu16/emu/machine";
 import { SET2 } from "../../cpu16/emu/devices/keyboard";
@@ -32,6 +33,13 @@ const LABELS: Record<string, string> = {
   "yilan.c": "yilan.c · C: yılan oyunu (W A S D)",
 };
 const isC = (name: string) => name.endsWith(".c");
+/** Kart testi programları (cpu16/bios/testler): gerçek kart bunları simülatörle aynı çıktıyla geçmeli */
+const TESTLER = Object.fromEntries(
+  Object.entries(import.meta.glob("../../cpu16/bios/testler/*.{s,c}", { query: "?raw", import: "default", eager: true }) as Record<string, string>).map(([p, s]) => [
+    p.split("/").pop()!,
+    s,
+  ]),
+);
 
 /** Hız seçenekleri: 4 MHz'in katı; 0 = turbo (karede sığdığı kadar). */
 const SPEEDS = [
@@ -75,6 +83,7 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
   const [running, setRunning] = useState(true);
   const [speed, setSpeed] = useState(1);
   const [busy, setBusy] = useState<string | null>(null);
+  const [testOut, setTestOut] = useState("");
   const [focused, setFocused] = useState(false);
   const [flashRun, setFlashRun] = useState<string | null>(null);
   const [bad, setBad] = useState<string | null>(null);
@@ -282,6 +291,46 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
     }
   };
 
+  /** Kart testi: test programlarını önce bağımsız bir simülatörde çalıştırıp beklenen çıktıyı alır, sonra
+   * aynı programları karta (Web Serial) ya da bu tezgâhtaki makineye yükleyip çıktıları karşılaştırır. */
+  const boardTest = async (where: "kart" | "sim") => {
+    if (busy) return;
+    setTestOut("");
+    setBusy("Kart testi: beklenen çıktılar simülatörde hesaplanıyor");
+    await new Promise((r) => setTimeout(r, 30));
+    let close = async () => {};
+    try {
+      const programs = kartTestProgramlari(TESTLER, LIB);
+      const expected = await beklenenCiktilar(programs, bios().flash);
+      let link: SerialLink;
+      if (where === "kart") {
+        const l = await WebSerialLink.open(115200);
+        l.onByte = (b) => {
+          boardTerm.push(b);
+          redraw();
+        };
+        link = l;
+        close = () => l.close();
+      } else {
+        resetMachine();
+        term.push(10);
+        m.runUntil(() => tail.current === "> ", 4_000_000);
+        const l = new MachineLink(m, false);
+        linkRef.current = l;
+        link = l;
+        start();
+      }
+      const res = await kartTesti(link, programs, expected, (t) => setBusy(`Kart testi: ${t}`));
+      setTestOut(sonucMetni(programs, res));
+    } catch (e) {
+      setTestOut(`Kart testi yapılamadı: ${(e as Error).message}`);
+    } finally {
+      linkRef.current = null;
+      await close();
+      setBusy(null);
+    }
+  };
+
   const pick = (name: string) => {
     setProg(name);
     setSrc(EXAMPLES[name]);
@@ -443,6 +492,19 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
               Karta gönder (Web Serial)
             </button>
           </div>
+          <div className="row wrap">
+            <button
+              onClick={() => void boardTest("kart")}
+              disabled={!serialOk || !!busy}
+              title="cpu16/bios/testler'deki 4 programı karta yükler, çıktılarını simülatörünkiyle karşılaştırır (CPU, bellek, önbellek, G/Ç ve video)"
+            >
+              Kart testi (Web Serial)
+            </button>
+            <button onClick={() => void boardTest("sim")} disabled={!!busy} title="Aynı testi bu tezgâhtaki simüle karta karşı çalıştır">
+              Kart testini simülatörde dene
+            </button>
+          </div>
+          {testOut && <pre className="bench-uart" aria-label="Kart testi sonucu">{testOut}</pre>}
           {!serialOk && <p className="muted small">Karta gönder: bu tarayıcıda Web Serial yok (Chrome / Edge masaüstü, https ya da localhost gerekir). Kart yine de CLI ile yüklenebilir.</p>}
           <p className="muted small">
             {info} Yükleme gerçek karttaki gibi çalışır: reset, BIOS açılır, program monitöre UART'tan Intel HEX olarak gider (bkz. cpu16/docs/bios.md). Ctrl+Enter: derle ve RAM'e yükle.
