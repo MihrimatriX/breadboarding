@@ -154,6 +154,13 @@ export class SwitchLevelEngine {
     this.recalc([node]);
   }
 
+  /** Dış sürmeyi bırakır: düğüm yalnızca devrenin kendisi tarafından belirlenir */
+  release(node: number): void {
+    this.pullup[node] = this.pullupInitial[node];
+    this.pulldown[node] = 0;
+    this.recalc([node]);
+  }
+
   /** Birden fazla düğümü aynı anda sürüp tek seferde yeniden hesaplar */
   driveMany(nodes: number[], values: boolean[]): void {
     for (let i = 0; i < nodes.length; i++) {

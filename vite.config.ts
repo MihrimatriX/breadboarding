@@ -6,5 +6,5 @@ export default defineConfig({
   plugins: [react()],
   base: "./",
   worker: { format: "es" },
-  test: { environment: "node" },
+  test: { environment: "node", exclude: ["**/node_modules/**", "dist/**", ".claude/**"] },
 });
