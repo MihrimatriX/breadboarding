@@ -130,8 +130,8 @@ describe("parça kütüphanesi: pin düzenleri", () => {
     expect(def.pins.filter((p) => p.dir === "power")).toHaveLength(2);
   });
 
-  it("kütüphanede 29 çip var", () => {
-    expect(CHIPS).toHaveLength(29);
+  it("kütüphanede 31 çip var", () => {
+    expect(CHIPS).toHaveLength(31);
   });
 });
 
@@ -227,6 +227,61 @@ describe("veri sayfası fonksiyon tablosu satırları", () => {
     expect(c.read(range("Q", 8))).toBe(byte);
     c.set("~OE", 1);
     expect(c.get("Q0")).toBe(LZ);
+  });
+
+  it("74HC273: ~MR sıfırlar, CP'nin yükselen kenarında D'ler alınır", () => {
+    const c = new ChipBench(chip("74HC273"));
+    c.write(["CP", "~MR"], 0);
+    expect(c.read(range("Q", 8))).toBe(0);
+    c.set("~MR", 1);
+    c.write(range("D", 8), 0xa5);
+    expect(c.read(range("Q", 8))).toBe(0); // kenar yok
+    c.set("CP", 1);
+    expect(c.read(range("Q", 8))).toBe(0xa5);
+    c.write(range("D", 8), 0x3c);
+    c.set("CP", 0);
+    expect(c.read(range("Q", 8))).toBe(0xa5); // düşen kenar etkisiz
+    c.set("~MR", 0);
+    expect(c.read(range("Q", 8))).toBe(0);
+  });
+
+  it("74HC590: say, register'a al, 255'te ~RCO düşük, iki çip zinciri 16 bit sayar", () => {
+    // iki 590: üst çipin ~CEC'si = ~CEC_alt ∨ ~RCO_alt (anakart önbellek kartındaki gibi)
+    const lo = new ChipBench(chip("74HC590"));
+    const hi = new ChipBench(chip("74HC590"));
+    for (const c of [lo, hi]) c.write(["CPC", "CPR", "~OE", "~CEC", "~MRC"], 0b00000);
+    for (const c of [lo, hi]) c.set("~MRC", 1);
+    const tick = (en: boolean) => {
+      lo.set("~CEC", !en);
+      hi.set("~CEC", !en || lo.get("~RCO") === L1);
+      for (const c of [lo, hi]) c.set("CPC", 1);
+      for (const c of [lo, hi]) c.set("CPC", 0);
+    };
+    const read = () => {
+      for (const c of [lo, hi]) {
+        c.set("CPR", 1);
+        c.set("CPR", 0);
+      }
+      return lo.read(range("Q", 8))! | (hi.read(range("Q", 8))! << 8);
+    };
+    expect(read()).toBe(0);
+    for (let i = 0; i < 300; i++) tick(i % 3 !== 2); // 200 sayım
+    expect(read()).toBe(200);
+    for (let i = 0; i < 55; i++) tick(true);
+    expect(lo.get("~RCO")).toBe(L0);
+    expect(read()).toBe(255);
+    tick(false);
+    expect(read()).toBe(255); // izin yok: üst çip de saymaz
+    tick(true);
+    expect(read()).toBe(256);
+    expect(lo.get("~RCO")).toBe(L1);
+    lo.set("~OE", 1);
+    expect(lo.get("Q3")).toBe(LZ);
+    lo.set("~MRC", 0);
+    lo.set("~OE", 0);
+    expect(lo.read(range("Q", 8))).toBe(0); // sayıcı sıfır ama register eski değerde
+    lo.set("CPR", 1);
+    expect(lo.read(range("Q", 8))).toBe(0);
   });
 });
 
