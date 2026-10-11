@@ -1330,6 +1330,9 @@ class FnGen {
       }
       case "call":
         return this.genCall(e);
+      case "block":
+        // bileşik sabitin başlatma deyimleri (ifade içinde)
+        return this.stmt(e);
     }
     if (e.ty.kind === "void") this.fail(e, `İç hata: void ifade (${e.kind})`);
     if (is32(e.ty)) this.gen32(e);
@@ -1767,5 +1770,105 @@ function peephole(items: Item[]): Item[] {
     out = next;
     if (!changed) break;
   }
+  return dropRedundantLoads(out);
+}
+
+/**
+ * Register içeriği bilgisi: register'ın değerine eşit olduğu bilinen kaynaklar
+ * ("LI 5", "LI _x", "LW [sp+4]", "LBU [sp+2]") ve değerin 0..255 olup olmadığı.
+ */
+interface Known {
+  keys: Set<string>;
+  byte: boolean;
+}
+
+const WRITES_RD = new Set([...FLAG_OPS, "LW", "LBU", "LI", "LUI", "POP"]);
+const NO_WRITE = new Set(["CMP", "CMPI", "SW", "SB", "PUSH", "NOP", "EI", "DI", "HALT"]);
+
+const regName = (r: string) => (r === "r6" ? "sp" : r === "lr" ? "r7" : r);
+
+/**
+ * Temel blok içinde register'da zaten bulunan değeri yeniden yükleyen LI / LW / LBU komutlarını siler
+ * (ör. "SW r0, [sp+4]" ardından "LW r0, [sp+4]", art arda "LI r0, 0"). Bu komutlar bayrakları
+ * etkilemediğinden silmek güvenlidir. Etiketler, çağrılar ve "$±n" göreli dallanmaların
+ * ulaşabildiği öğeler bilgiyi sıfırlar; yığın belleği bilgisi her saklama ve SP değişiminde unutulur.
+ */
+function dropRedundantLoads(items: Item[]): Item[] {
+  // "$+n" / "$-n" hedefinin olabileceği her öğe bir engeldir (her komut en az 2 bayt)
+  const barrier = new Array<boolean>(items.length + 1).fill(false);
+  items.forEach((it, i) => {
+    if (it.k !== "ins") return;
+    for (const a of it.args) {
+      const m = /^\$([+-])(\d+)$/.exec(a.replace(/\s/g, ""));
+      if (!m) continue;
+      const n = Math.ceil(Number(m[2]) / 2);
+      if (m[1] === "+") for (let j = i + 1; j <= Math.min(items.length, i + n); j++) barrier[j] = true;
+      else for (let j = Math.max(0, i - n); j <= i; j++) barrier[j] = true;
+    }
+  });
+  let known = new Map<string, Known>();
+  const clearMem = () => {
+    for (const k of known.values()) for (const key of k.keys) if (!key.startsWith("LI ")) k.keys.delete(key);
+  };
+  const out: Item[] = [];
+  items.forEach((it, i) => {
+    if (barrier[i]) known = new Map();
+    if (it.k !== "ins") {
+      if (it.k === "call") {
+        for (const r of ["r0", "r1", "r2", "r3", "r7"]) known.delete(r);
+        clearMem();
+      } else if (it.k !== "br") known = new Map();
+      out.push(it);
+      return;
+    }
+    const op = it.op;
+    const a0 = it.args[0] ? regName(it.args[0]) : "";
+    const spMem = it.args[1]?.startsWith("[sp") ?? false;
+    if (op === "LI" && a0 !== "sp") {
+      const key = `LI ${it.args[1]}`;
+      if (known.get(a0)?.keys.has(key)) return; // aynı sabit zaten register'da
+      const v = Number(it.args[1]);
+      known.set(a0, { keys: new Set([key]), byte: Number.isInteger(v) && v >= 0 && v <= 255 });
+      out.push(it);
+      return;
+    }
+    if ((op === "LW" || op === "LBU") && spMem && a0 !== "sp") {
+      const key = `${op} ${it.args[1]}`;
+      if (known.get(a0)?.keys.has(key)) return; // değer zaten register'da
+      known.set(a0, { keys: new Set([key]), byte: op === "LBU" });
+      out.push(it);
+      return;
+    }
+    if (op === "SW" || op === "SB") {
+      clearMem();
+      const k = known.get(a0);
+      if (spMem && (op === "SW" || k?.byte)) {
+        // saklanan değer artık hem register'da hem bellekte
+        const key = `${op === "SW" ? "LW" : "LBU"} ${it.args[1]}`;
+        if (k) k.keys.add(key);
+        else known.set(a0, { keys: new Set([key]), byte: false });
+      }
+      out.push(it);
+      return;
+    }
+    if (op === "MOV") {
+      const src = known.get(regName(it.args[1]));
+      if (src && a0 !== "sp") known.set(a0, { keys: new Set(src.keys), byte: src.byte });
+      else known.delete(a0);
+      if (a0 === "sp") clearMem();
+      out.push(it);
+      return;
+    }
+    if (op === "PUSH" || op === "POP") clearMem();
+    if (op === "JALR") {
+      known = new Map();
+    } else if (WRITES_RD.has(op)) {
+      known.delete(a0);
+      if (a0 === "sp") clearMem();
+    } else if (!NO_WRITE.has(op)) {
+      known = new Map(); // bilinmeyen komut: her şeyi unut
+    }
+    out.push(it);
+  });
   return out;
 }
