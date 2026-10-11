@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { Board } from "../board/board.ts";
 import { buildComputerBoard } from "../board/computer.ts";
 import { buildIoCard, ioCardYanlisYollar } from "../board/io-card.ts";
+import { anakartZamanlamasi } from "../board/machine-board.ts";
 import { zamanlamaAnalizi } from "../board/zamanlama.ts";
 import { decodeControl, ROM_WORDS } from "../micro/control.ts";
 import { assembleMicrocode } from "../micro/microasm.ts";
@@ -86,5 +87,40 @@ describe("Faz 9: G/Ç kartının zamanlaması (TCLK ve PS/2 saat alanları)", ()
   it("kapılı saatlerin izinleri kapı açıkken değişmez (yeniden yükleme darbesi TCLK ile kapılanmaz)", () => {
     for (const k of m.kokler) expect(k.aciktaDegisen.map((x) => `${x.ref}.${x.pin} ${x.net}`), k.ad).toEqual([]);
     for (const k of t.kokler) for (const x of k.tutma) expect(x.pay, `${x.ref}.${x.pin} ${x.net}`).toBeGreaterThanOrEqual(5);
+  });
+});
+
+describe("Faz 9: bütün anakartın zamanlaması (6 kart, 5 saat alanı)", () => {
+  const m = anakartZamanlamasi("maks");
+  const t = anakartZamanlamasi("tip");
+  const kok = (r: typeof m, net: string) => r.kokler.find((k) => k.kok === net)!;
+
+  it("her parçanın modeli var; tek uyarı bellek kartının iki pencereli ~WE'si", () => {
+    expect(m.bilinmeyen).toEqual([]);
+    // ~MWR: çift bayt TCLK düşükken, tek bayt TCLK yüksekken yazılır (mem-card.ts): saat iki yönden gelir
+    expect(m.uyarilar).toEqual(["~MWR: saat iki yönden geliyor"]);
+  });
+
+  it("en kötü durumda 1 MHz CPU (osilatör 8 MHz) sığar; tipik değerlerle 2 MHz", () => {
+    expect(kok(m, "CLK").fmaxMHz).toBeGreaterThanOrEqual(1);
+    expect(kok(m, "TCLK").fmaxMHz).toBeGreaterThanOrEqual(1);
+    expect(kok(m, "OSC").fmaxMHz).toBeGreaterThanOrEqual(8);
+    expect(kok(t, "CLK").fmaxMHz).toBeGreaterThanOrEqual(2);
+    expect(kok(m, "PS2_CLK").fmaxMHz).toBeGreaterThan(1);
+  });
+
+  it("kapılı saatlerde tutma payı (tipik ≥ 5 ns)", () => {
+    for (const k of t.kokler) for (const x of k.tutma) expect(x.pay, `${k.kok} ${x.ref}.${x.pin} ${x.net}`).toBeGreaterThanOrEqual(5);
+  });
+
+  it("kapı açıkken değişebilen izinler yalnızca tasarımı gereği güvenli olanlar", () => {
+    const acikta = (net: string) => new Set(kok(m, net).aciktaDegisen.map((x) => x.net.replace(/^~WSEL\d$/, "~WSEL")));
+    // ~WSEL: mikrokod IR yüklerken register yazmaz (yukarıdaki test). C_MEMACC: C_NEED saat değil,
+    // ~WAIT olarak s7'nin ortasında örneklenir (önbellek kartı).
+    expect(acikta("CLK")).toEqual(new Set(["~WSEL", "C_MEMACC"]));
+    // Önbellek kartının yazma evresi TAGPH = TCLK ∧ CB ∧ ¬CBF: CB'nin düştüğü kenarda CBF zaten 1
+    // (sıçrama yok); INVL ve RAMHIT evre [14, 18) boyunca sabit (cache-card.ts, anakart-kartlari.md).
+    expect(acikta("TCLK")).toEqual(new Set(["C_CB", "C_INVL", "C_RAMHIT"]));
+    for (const k of ["OSC", "PS2_CLK", "VID_OSC"]) expect(acikta(k), k).toEqual(new Set());
   });
 });
