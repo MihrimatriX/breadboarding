@@ -26,6 +26,8 @@ export interface ChipInstance {
   handle: unknown;
   /** KiCad footprint'i (kütüphanedekinden farklıysa, ör. ZIF soket) */
   footprint: string;
+  /** Yapıştırıcı lojik çipinde her birimin (kapının) ait olduğu blok ve pinleri (deney rehberi için) */
+  glueUnits?: { block: string; pins: string[]; role: string }[];
 }
 
 export interface Passive {
@@ -36,9 +38,24 @@ export interface Passive {
   /** pin numarası → net */
   pins: Record<string, number>;
   role: string;
+  /** Eklendiği işlev bloğu */
+  block: string;
 }
 
 type Net = number | string;
+
+/**
+ * Kart başına referans numarası tabanı. Her kart kendi KiCad projesidir; numaralar kartın içinde
+ * sırayla verilir, böylece bir kartın referansları (U, R, C …) hangi bilgisayarda kullanılırsa
+ * kullanılsın aynı kalır (deney rehberleri ve 3D görünüm buna dayanır). Tabloda olmayan kartlar
+ * 400'den başlayarak 100'lük dilimler alır.
+ */
+export const CARD_REF_BASE: Record<string, [base: number, span: number]> = {
+  cpu: [0, 200],
+  clk: [200, 100],
+  mem: [300, 100],
+  prog: [0, 100],
+};
 
 /** Yapıştırıcı (glue) kapı türleri: hangi çipten, birimde hangi pinler */
 const GLUE = {
@@ -62,7 +79,8 @@ export class Board {
   /** Sonraki çiplerin işlev bloğu */
   block = "";
   private readonly named = new Map<string, number>();
-  private readonly glue: { kind: GlueKind; card: string; nets: number[]; role: string }[] = [];
+  private readonly extraBases = new Map<string, number>();
+  private readonly glue: { kind: GlueKind; card: string; block: string; nets: number[]; role: string }[] = [];
   private finished = false;
 
   constructor() {
@@ -78,6 +96,20 @@ export class Board {
       this.named.set(name, id);
     }
     return id;
+  }
+
+  /** Geçerli kartta n. elemanın referans numarası (CARD_REF_BASE) */
+  private refNumber(n: number): number {
+    let base: number;
+    let span = 100;
+    const fixed = CARD_REF_BASE[this.card];
+    if (fixed) [base, span] = fixed;
+    else {
+      if (!this.extraBases.has(this.card)) this.extraBases.set(this.card, 400 + 100 * this.extraBases.size);
+      base = this.extraBases.get(this.card)!;
+    }
+    if (n >= span) throw new Error(`${this.card} kartında ${span - 1}'den fazla aynı türden eleman var: CARD_REF_BASE'i genişlet`);
+    return base + n;
   }
 
   has(name: string): boolean {
@@ -101,7 +133,7 @@ export class Board {
   place(part: string, conn: Record<string, Net>, role = "", opts: { footprint?: string } = {}): ChipInstance {
     if (this.finished) throw new Error("Kart tamamlandıktan sonra çip eklenemez");
     const def = chip(part);
-    const ref = `U${this.chips.length + 1}`;
+    const ref = `U${this.refNumber(this.chips.filter((c) => c.card === this.card).length + 1)}`;
     const nets: PinNets = {};
     for (const p of def.pins) {
       if (p.dir === "power") {
@@ -133,10 +165,10 @@ export class Board {
   passive(part: string, pins: Record<string, Net>, role: string): Passive {
     const prefix = refPrefix(part);
     if (prefix === "U") throw new Error(`${part}: pasif elemanın referans harfi U olamaz (entegrelerle çakışır)`);
-    const n = this.passives.filter((x) => refPrefix(x.part) === prefix).length + 1;
+    const n = this.passives.filter((x) => x.card === this.card && refPrefix(x.part) === prefix).length + 1;
     const resolved: Record<string, number> = {};
     for (const [k, v] of Object.entries(pins)) resolved[k] = this.resolve(v);
-    const p: Passive = { ref: `${prefix}${n}`, card: this.card, part, pins: resolved, role };
+    const p: Passive = { ref: `${prefix}${this.refNumber(n)}`, card: this.card, part, pins: resolved, role, block: this.block };
     this.passives.push(p);
     return p;
   }
@@ -162,7 +194,7 @@ export class Board {
   // ---- yapıştırıcı kapılar: kart bitince gerçek çiplere paketlenir
   private gate(kind: GlueKind, ins: Net[], out?: Net, role = ""): number {
     const y = out === undefined ? this.c.net() : this.resolve(out);
-    this.glue.push({ kind, card: this.card, nets: [...ins.map((x) => this.resolve(x)), y], role });
+    this.glue.push({ kind, card: this.card, block: this.block, nets: [...ins.map((x) => this.resolve(x)), y], role });
     return y;
   }
   and(a: Net, b: Net, out?: Net, role?: string) { return this.gate("and", [a, b], out, role); }
@@ -187,30 +219,37 @@ export class Board {
         for (let i = 0; i < items.length; i += g.units) {
           const conn: Record<string, Net> = {};
           const roles: string[] = [];
+          const units: { block: string; pins: string[]; role: string }[] = [];
           for (let u = 1; u <= g.units; u++) {
             const item = items[i + u - 1];
             const pins = g.pins(u);
             if (item) {
               pins.forEach((p, k) => (conn[p] = item.nets[k]));
               if (item.role) roles.push(item.role);
+              units.push({ block: item.block, pins: [...pins], role: item.role });
             } else {
               pins.slice(0, -1).forEach((p) => (conn[p] = "GND")); // boş birim: girişler GND
             }
           }
-          this.place(g.part, conn, roles.length ? `yapıştırıcı: ${[...new Set(roles)].join(", ")}` : "yapıştırıcı lojik");
+          const inst = this.place(g.part, conn, roles.length ? `yapıştırıcı: ${[...new Set(roles)].join(", ")}` : "yapıştırıcı lojik");
+          inst.glueUnits = units;
         }
       }
     }
     // her kart: arka panel konnektörü (istenirse), giriş kondansatörü, her entegreye 100 nF
     for (const card of [...new Set(this.chips.map((c) => c.card))]) {
       this.card = card;
+      this.block = "Besleme ve arka panel";
       if (o.backplane !== false) {
         const pins: Record<string, Net> = {};
         for (const [num, name] of Object.entries(BACKPLANE)) if (this.has(name)) pins[num] = name;
         this.passive("BACKPLANE_2x32", pins, "arka panel konnektörü");
       }
       this.passive("C_100U", { "1": "VCC", "2": "GND" }, "besleme girişi");
-      for (const ci of this.chips.filter((c) => c.card === card)) this.passive("C_100N", { "1": "VCC", "2": "GND" }, `${ci.ref} dekuplaj`);
+      for (const ci of this.chips.filter((c) => c.card === card)) {
+        this.block = ci.block;
+        this.passive("C_100N", { "1": "VCC", "2": "GND" }, `${ci.ref} dekuplaj`);
+      }
     }
     this.card = savedCard;
     this.finished = true;
