@@ -211,3 +211,60 @@ textarea { width: 100%; resize: vertical; line-height: 1.5; margin-top: 8px; }
   .vga { padding: 4px; }
   .bench-m .bench-src textarea { min-height: 220px; }
 }
+
+/* CPU16 bilgisayarı 3D: teller, VGA monitörü, Bağlantılar, program düzenleyicisi, bellek hücreleri */
+.app.kart { grid-template-columns: minmax(0, 1fr) 400px; grid-template-rows: auto minmax(0, 1fr) 320px; }
+.app.kart .clock { flex-basis: 420px; }
+.app.kart .brand-sub { display: block; }
+.app.kart .meter { margin-left: auto; }
+.wires-ctl { display: inline-flex; align-items: center; gap: 8px; font: 12px var(--mono); color: var(--muted); }
+.chk { display: inline-flex; align-items: center; gap: 4px; font: 12px var(--mono); color: var(--muted); cursor: pointer; }
+.chk input { accent-color: var(--high); margin: 0; }
+.vga-panel.big { width: min(664px, 62%); }
+.vga-panel { position: absolute; top: 12px; right: 12px; width: min(360px, 40%); background: rgba(10, 14, 18, .92); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; z-index: 2; }
+.vga-panel.focused { border-color: var(--diff); }
+.vga-panel h2 { margin: 0; }
+.vga-panel p { margin: 0; }
+.vga-screen { background: #000; border-radius: 4px; outline: none; cursor: text; line-height: 0; }
+.vga-screen canvas { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; image-rendering: pixelated; }
+.vga-open { position: absolute; top: 12px; right: 12px; z-index: 2; }
+.kart-uart { max-height: 150px; overflow-y: auto; }
+.links-title { margin-top: 6px !important; }
+.links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.link-row { background: #0a0e12; border: 1px solid var(--line); border-radius: 5px; padding: 4px 7px; font: 11.5px var(--mono); }
+.link-row.sel { border-color: #fff; }
+.link-head { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; }
+.link-head i { font-style: normal; color: var(--muted); min-width: 2.5ch; text-align: right; }
+.link-head .pname { font-weight: 600; min-width: 6ch; }
+.link-head .netname { color: #b9c7ff; }
+.link-ends { display: flex; flex-wrap: wrap; gap: 3px; margin: 3px 0 0 3ch; }
+.link-ends .end { font: 11px var(--mono); padding: 1px 6px; border-radius: 4px; font-weight: 500; }
+.link-ends .end.passive { color: #c9b48c; }
+.bottom-tabs { display: flex; flex-direction: column; gap: 6px; height: 100%; min-height: 0; }
+.bottom-tabs .tabs { align-self: flex-start; }
+.bottom-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.bottom-body .analyzer { min-height: 0; }
+.editor { display: flex; flex-direction: column; gap: 6px; height: 100%; min-height: 0; }
+.editor-bar { margin-top: 0; }
+.editor-bar .err { color: #ff8a8a; }
+.editor-body { flex: 1; min-height: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 320px); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: #0a0e12; }
+.editor-body:not(:has(.errors)) { grid-template-columns: auto minmax(0, 1fr); }
+.editor-body .gutter { margin: 0; padding: 6px 6px 6px 10px; font: 12.5px/1.5 var(--mono); color: #4d5966; text-align: right; overflow: hidden; user-select: none; border-right: 1px solid var(--line); }
+.editor-body .gutter .bad { color: #ff8a8a; font-weight: 700; }
+.editor-body textarea { margin: 0; height: 100%; border: 0; border-radius: 0; resize: none; font: 12.5px/1.5 var(--mono); padding: 6px 10px; white-space: pre; overflow: auto; tab-size: 2; }
+.editor-body .errors { margin: 0; padding: 6px 10px; list-style: none; overflow: auto; font: 12px/1.5 var(--mono); color: #ffb0b0; border-left: 1px solid var(--line); }
+.editor-body .errors .link { color: #ff8a8a; }
+.mem-inside { padding: 6px 10px; display: flex; flex-direction: column; gap: 4px; }
+.mem-inside > p { margin: 0; }
+.mem-svg .cell { cursor: pointer; }
+.cell-box { display: flex; flex-direction: column; gap: 4px; width: 320px; max-width: 100%; }
+.cell-box .cell-svg { width: 100%; height: auto; }
+.cell-box p { margin: 0; }
+.cell-svg { display: block; font: 10px var(--mono); background: #080b0f; border: 1px solid var(--line); border-radius: 6px; }
+.cell-svg text { fill: var(--muted); }
+.cell-svg text.big { fill: var(--fg); font-size: 11px; font-weight: 600; }
+@media (max-width: 900px) {
+  .app.kart { grid-template-columns: 1fr; grid-template-rows: auto 60vh auto auto; }
+  .vga-panel { width: min(320px, 70%); }
+  .bottom-body { min-height: 300px; }
+}
