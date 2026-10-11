@@ -51,4 +51,33 @@ akım çekmez. 74HC00 dört NAND = 16 transistördür (aşağıdaki tablo kütü
 ## Malzeme ve bağlantılar
 
 <!-- otomatik: başla (npm run cpu16 -- kit ile üretilir, elle değiştirme) -->
+#### 74HC00: 4 × 2 girişli NAND
+
+Kılıf DIP-14, kapı seviyesinde 4 kapı, CMOS açılımında 16 transistör.
+
+| Pin | Ad | Yön |
+|---|---|---|
+| 1 | 1A | giriş |
+| 2 | 1B | giriş |
+| 3 | 1Y | çıkış |
+| 4 | 2A | giriş |
+| 5 | 2B | giriş |
+| 6 | 2Y | çıkış |
+| 7 | GND | besleme |
+| 8 | 3Y | çıkış |
+| 9 | 3A | giriş |
+| 10 | 3B | giriş |
+| 11 | 4Y | çıkış |
+| 12 | 4A | giriş |
+| 13 | 4B | giriş |
+| 14 | VCC | besleme |
+
+Birim 1'in doğruluk tablosu (kapı modeli çalıştırılarak üretildi):
+
+| 1A | 1B | 1Y |
+|---|---|---|
+| 0 | 0 | 1 |
+| 0 | 1 | 1 |
+| 1 | 0 | 1 |
+| 1 | 1 | 0 |
 <!-- otomatik: bitti -->

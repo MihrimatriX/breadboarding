@@ -3,12 +3,12 @@ Parça;Adet;Açıklama;Footprint;Kart;Referanslar
 74HC00;3;4 × 2 girişli NAND;Package_DIP:DIP-14_W7.62mm;cpu;U130 U131 U132
 74HC02;3;4 × 2 girişli NOR;Package_DIP:DIP-14_W7.62mm;cpu;U133 U134 U135
 74HC04;4;6 × NOT (evirici);Package_DIP:DIP-14_W7.62mm;cpu mem clk;U145 U146 U307 U209
-74HC08;12;4 × 2 girişli AND;Package_DIP:DIP-14_W7.62mm;cpu clk;U116 U117 U118 U119 U120 U121 U122 U123 U124 U125 U126 U207
+74HC08;11;4 × 2 girişli AND;Package_DIP:DIP-14_W7.62mm;cpu clk;U117 U118 U119 U120 U121 U122 U123 U124 U125 U126 U207
 74HC138;4;3'ten 8'e kod çözücü (aktif düşük çıkış);Package_DIP:DIP-16_W7.62mm;cpu;U10 U13 U17 U18
 74HC14;1;6 × Schmitt tetiklemeli NOT;Package_DIP:DIP-14_W7.62mm;clk;U201
 74HC151;36;8'den 1'e seçici (multiplexer);Package_DIP:DIP-16_W7.62mm;cpu;U14 U15 U16 U49 U50 U51 U52 U53 U54 U55 U56 U57 U58 U59 U60 U61 U62 U63 U64 U76 U77 U78 U79 U80 U81 U82 U83 U84 U85 U86 U87 U88 U89 U90 U91 U111
 74HC153;9;2 × (4'ten 1'e seçici);Package_DIP:DIP-16_W7.62mm;cpu;U92 U93 U94 U95 U96 U97 U98 U99 U100
-74HC157;4;4 × (2'den 1'e seçici);Package_DIP:DIP-16_W7.62mm;cpu clk;U67 U68 U105 U202
+74HC157;5;4 × (2'den 1'e seçici);Package_DIP:DIP-16_W7.62mm;cpu clk;U67 U68 U105 U116 U202
 74HC161;5;4 bit senkron ikili sayıcı (asenkron reset);Package_DIP:DIP-16_W7.62mm;cpu;U9 U43 U44 U45 U46
 74HC175;1;4 × D flip-flop (ortak saat, asenkron reset);Package_DIP:DIP-16_W7.62mm;clk;U203
 74HC245;3;8 bit çift yönlü veriyolu alıcı-vericisi;Package_DIP:DIP-20_W7.62mm;cpu;U112 U113 U114

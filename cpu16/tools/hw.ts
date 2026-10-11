@@ -4,6 +4,7 @@
 //   board                       kartların çip sayıları
 //   board kicad                 cpu16/kicad/<kart>/ şemaları + BOM'u yeniden üret
 //   roms                        cpu16/roms/ altındaki Flash imajlarını (mikrokod, ALU) yeniden üret
+//   zamanlama [--tip] [--yol N] şemadan statik zamanlama analizi: en uzun yollar, en yüksek saat hızı
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { romFiles } from "../board/roms.ts";
@@ -11,6 +12,7 @@ import { erc } from "../board/board.ts";
 import { CLOCK_INPUTS } from "../board/clock-card.ts";
 import { buildComputerBoard } from "../board/computer.ts";
 import { KICAD_CARDS, writeKicadFiles } from "../board/kicad-files.ts";
+import { raporMetni, zamanlamaAnalizi } from "../board/zamanlama.ts";
 import { ChipBench } from "../chips/bench.ts";
 import { toTransistors } from "../chips/cmos.ts";
 import { PASSIVES } from "../board/passives.ts";
@@ -61,4 +63,13 @@ else if (cmd === "roms") {
     writeFileSync(f.path, f.content);
     console.log(f.path);
   }
+}
+else if (cmd === "zamanlama") {
+  const { board } = buildComputerBoard();
+  const kose = rest.includes("--tip") ? "tip" : "maks";
+  const r = zamanlamaAnalizi(board, { kokler: [{ net: "CLK", ad: "CPU saati" }, { net: "OSC_SRC", ad: "osilatör (CPU × 8)" }], kose });
+  console.log(raporMetni(r, Number(opt("--yol") ?? 3)));
+  const cpu = r.kokler.find((k) => k.kok === "CLK")!;
+  const osc = r.kokler.find((k) => k.kok === "OSC_SRC")!;
+  console.log(`\nSonuç: CPU en fazla ${Math.min(cpu.fmaxMHz, osc.fmaxMHz / 8).toFixed(2)} MHz (osilatör ${Math.min(cpu.fmaxMHz * 8, osc.fmaxMHz).toFixed(1)} MHz)`);
 }

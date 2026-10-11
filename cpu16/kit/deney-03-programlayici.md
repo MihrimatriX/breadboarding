@@ -71,4 +71,62 @@ simülasyonda dene. Kuru çalıştırma: `python3 cpu16/programlayici/yaz.py --k
 ## Malzeme ve bağlantılar
 
 <!-- otomatik: başla (npm run cpu16 -- kit ile üretilir, elle değiştirme) -->
+#### Malzeme (3 entegre, 5 pasif eleman)
+
+| Parça | Adet | Referanslar | Açıklama | Besleme |
+|---|---|---|---|---|
+| 74HC595 | 2 | U1 U2 | 8 bit seri giriş / paralel çıkış kaydırmalı register (çıkış mandallı) | GND 8, VCC 16 |
+| SST39SF010A | 1 | U3 | 128 KB Flash (128K × 8, 5 V, komutla programlanır) | VSS 16, VDD 32 |
+
+| Pasif | Adet | Referanslar | Açıklama |
+|---|---|---|---|
+| ARDUINO_NANO | 1 | A1 | Arduino Nano (ATmega328P, USB seri) |
+| C_100N | 3 | C2 C3 C4 | 100 nF seramik kondansatör (dekuplaj) |
+| C_100U | 1 | C1 | 100 µF elektrolitik kondansatör (kart girişi) |
+
+#### Bağlantılar (32 net)
+
+Her satır bir nettir: sütundaki pinlerin hepsi birbirine bağlanır. `U12-3 D0` = U12'nin 3. bacağı (D0).
+Pasif elemanlarda `R5.2` = R5'in 2. ucu. Besleme pinleri ve dekuplaj kondansatörleri tabloda yoktur
+(her entegrenin VCC/GND bacağı besleme hattına, 100 nF'ı bacaklarına yakın). ▶ = bu deneyde sürücüsü yok,
+elle sür (DIP anahtar + 10 kΩ çekme direnci); ◀ = alıcısı sonraki deneylerde, LED + 330 Ω ile izlenebilir.
+
+| Net | Pinler | Not |
+|---|---|---|
+| **GND** | U1-13 ~OE, U2-13 ~OE | sabit seviye |
+| **VCC** | U1-10 ~MR, U2-10 ~MR | sabit seviye |
+| `~FCE` | A1.22, U3-22 ~CE |  |
+| `~FOE` | A1.20, U3-24 ~OE |  |
+| `~FWE` | A1.21, U3-31 ~WE |  |
+| `FA0` | U1-15 Q0, U3-12 A0 |  |
+| `FA1` | U1-1 Q1, U3-11 A1 |  |
+| `FA2` | U1-2 Q2, U3-10 A2 |  |
+| `FA3` | U1-3 Q3, U3-9 A3 |  |
+| `FA4` | U1-4 Q4, U3-8 A4 |  |
+| `FA5` | U1-5 Q5, U3-7 A5 |  |
+| `FA6` | U1-6 Q6, U3-6 A6 |  |
+| `FA7` | U1-7 Q7, U3-5 A7 |  |
+| `FA8` | U2-15 Q0, U3-27 A8 |  |
+| `FA9` | U2-1 Q1, U3-26 A9 |  |
+| `FA10` | U2-2 Q2, U3-23 A10 |  |
+| `FA11` | U2-3 Q3, U3-25 A11 |  |
+| `FA12` | U2-4 Q4, U3-4 A12 |  |
+| `FA13` | U2-5 Q5, U3-28 A13 |  |
+| `FA14` | U2-6 Q6, U3-29 A14 |  |
+| `FA15` | U2-7 Q7, U3-3 A15 |  |
+| `FA16` | A1.19, U3-2 A16 |  |
+| `FD0` | A1.8, U3-13 DQ0 |  |
+| `FD1` | A1.9, U3-14 DQ1 |  |
+| `FD2` | A1.10, U3-15 DQ2 |  |
+| `FD3` | A1.11, U3-17 DQ3 |  |
+| `FD4` | A1.12, U3-18 DQ4 |  |
+| `FD5` | A1.13, U3-19 DQ5 |  |
+| `FD6` | A1.14, U3-20 DQ6 |  |
+| `FD7` | A1.15, U3-21 DQ7 |  |
+| `RCLK` | A1.7, U1-12 STCP, U2-12 STCP |  |
+| `SER` | A1.5, U1-14 DS |  |
+| `SER2` | U1-9 Q7S, U2-14 DS |  |
+| `SRCLK` | A1.6, U1-11 SHCP, U2-11 SHCP |  |
+
+**Boşta kalan çıkışlar (bağlanmaz):** U2-9 Q7S
 <!-- otomatik: bitti -->
