@@ -158,6 +158,8 @@ açıksa kesme ister. Periyot = RELOAD ms (RELOAD = 0 → 65 536 ms). BIOS 10 y�
   çekme dahil her *kelime* erişimi bir kez sayılır (CPU'nun iki baytı aynı veriyolu döngüsüdür).
   Önbellek kapalıyken sayılmaz. Simülatör arayüzü taşmayan toplamları da gösterir.
 - **G/Ç** (`FF00–FFFF`) önbelleğe girmez.
+- Kapı seviyesi gerçekleme (bekleme üreteci, bayt sıralayıcı, zamanlama çizimi):
+  [anakart-kartlari.md](anakart-kartlari.md).
 
 ### Bekleme durumları ve döngü sayımı
 
@@ -298,7 +300,9 @@ yakalarsa çip okuma moduna ancak `F0` (çıkış) komutuyla ya da güç kesilin
 ## Çip listesi (blok başına, tahmini)
 
 Kesin liste KiCad şemalarıyla (Faz 4 / 9) çıkacak; buradaki sayılar tasarımın büyüklüğünü
-göstermek içindir.
+göstermek içindir. Saat, bellek (adres çözme + bank register'ları + ana bellek) ve önbellek
+kartları artık kapı seviyesinde kurulu ve kesin: saat 10, bellek 31, önbellek 37 entegre
+(blok → çip eşlemesi ve farkları: [anakart-kartlari.md](anakart-kartlari.md)).
 
 | Blok | Çipler | ≈ adet |
 |---|---|---|
@@ -326,6 +330,9 @@ göstermek içindir.
   olabilir); G/Ç erişimleri bekleme durumsuzdur.
 - `VSTAT` bit1 (vsync bayrağı, W1C) ve sadece-yazılır register'ların `0xFF` okunması bu
   tasarımda tanımlanmıştır.
+- Kapı seviyesi saat, bellek ve önbellek kartları bu modelle erişim erişim ve komut komut aynıdır
+  (değer, bekleme, bank, sayaç, etiket); kalan küçük farklar (Flash kimlik kipinin köşeleri, kart
+  reset'inin Flash'ı sıfırlamaması, gerçek kart zamanlama payı) [anakart-kartlari.md](anakart-kartlari.md)'de.
 
 ## Simülasyon API'si (özet)
 
