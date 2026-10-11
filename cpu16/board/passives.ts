@@ -120,7 +120,7 @@ export const PASSIVES: Record<string, SymbolOnly> = {
 };
 
 /**
- * Arka panel pin düzeni (her kartta aynı). Faz 6 kartları boş pinleri kullanır.
+ * Arka panel pin düzeni (her kartta aynı). 57..61 boş.
  * Tek numaralar bir sırada, çift numaralar karşı sırada.
  */
 export const BACKPLANE: Record<number, string> = (() => {
@@ -129,5 +129,14 @@ export const BACKPLANE: Record<number, string> = (() => {
   for (let i = 0; i < 8; i++) m[25 + i] = `DE${i}`;
   for (let i = 0; i < 8; i++) m[33 + i] = `DO${i}`;
   Object.assign(m, { 41: "~MRD", 42: "~MWE_E", 43: "~MWE_O", 44: "HALTED", 45: "FAULT", 62: "GND", 63: "VCC", 64: "GND" });
+  // Faz 6 anakart kartları (docs/anakart.md):
+  //   ~WAIT      bellek/önbellek kartı → saat kartı: CPU saatini uzatır (bekleme durumu)
+  //   ~IO        bellek kartı: A15..A8 = 0xFF (G/Ç alanı)
+  //   TCLK       saat kartı: uzatılmayan 4 MHz zaman tabanı (OSC / 8), bekleme döngüleri dahil her döngüde bir
+  //   OSC        saat kartı: tamponlanmış osilatör (CPU saatinin 8 katı)
+  //   PA14..PA19 bellek kartı → önbellek kartı: bank register'ından fiziksel adresin üst bitleri
+  //   VSYNC_REQ  video kartı → G/Ç kartı: dikey tarama kesme isteği (VSTAT bit1)
+  Object.assign(m, { 46: "~WAIT", 47: "~IO", 48: "TCLK", 49: "OSC", 56: "VSYNC_REQ" });
+  for (let i = 0; i < 6; i++) m[50 + i] = `PA${14 + i}`;
   return m;
 })();
