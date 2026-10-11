@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc -b --noEmit",
-    "import:6502": "node scripts/import-visual6502.mjs"
+    "import:6502": "node scripts/import-visual6502.mjs",
+    "cpu16": "node --experimental-strip-types --no-warnings cpu16/tools/cli.ts"
   },
   "dependencies": {
     "@react-three/drei": "9.114.0",

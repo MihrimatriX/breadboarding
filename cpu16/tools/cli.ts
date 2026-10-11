@@ -1,0 +1,81 @@
+// CPU16 komut satırı: npm run cpu16 -- <komut> <dosya.s> [seçenekler]
+//   asm  dosya.s [-o çıktı.hex|.bin] [--list]   derle
+//   run  dosya.s [--trace] [--max N]            derle ve emülatörde çalıştır
+//   dis  dosya.bin [--org 0x0000]               ikili dosyayı geri çevir
+
+import { readFileSync, writeFileSync } from "node:fs";
+import { assemble } from "../asm/assembler.ts";
+import { toIntelHex } from "../asm/hex.ts";
+import { Cpu16, SimpleBus } from "../emu/cpu.ts";
+import { disassemble } from "../emu/disasm.ts";
+
+const [cmd, file, ...rest] = process.argv.slice(2);
+const opt = (name: string) => {
+  const i = rest.indexOf(name);
+  return i >= 0 ? (rest[i + 1] ?? "") : undefined;
+};
+const hex4 = (n: number) => n.toString(16).toUpperCase().padStart(4, "0");
+
+function build(path: string) {
+  const res = assemble(readFileSync(path, "utf8"));
+  if (res.errors.length) {
+    for (const e of res.errors) console.error(`${path}:${e.line}: ${e.message}`);
+    process.exit(1);
+  }
+  return res;
+}
+
+if (!cmd || !file) {
+  console.log("kullanım: npm run cpu16 -- asm|run|dis <dosya> [seçenekler]");
+  process.exit(cmd ? 1 : 0);
+}
+
+if (cmd === "asm") {
+  const res = build(file);
+  const out = opt("-o") ?? file.replace(/\.s$/, ".hex");
+  if (out.endsWith(".bin")) {
+    const end = Math.max(...res.ranges.map(([, e]) => e));
+    writeFileSync(out, res.image.subarray(0, end));
+  } else {
+    writeFileSync(out, toIntelHex(res.image, res.ranges));
+  }
+  if (rest.includes("--list")) {
+    for (const l of res.listing) {
+      const bytes = l.bytes.map((b) => b.toString(16).padStart(2, "0")).join(" ");
+      console.log(`${hex4(l.addr)}  ${bytes.slice(0, 23).padEnd(23)}  ${l.source}`);
+    }
+  }
+  const size = res.ranges.reduce((n, [s, e]) => n + e - s, 0);
+  console.log(`${out}: ${size} bayt, ${res.symbols.size} sembol`);
+} else if (cmd === "run") {
+  const res = build(file);
+  const bus = new SimpleBus();
+  bus.load(res.image);
+  bus.onOutput = (ch) => process.stdout.write(ch);
+  const cpu = new Cpu16(bus);
+  const max = Number(opt("--max") ?? 10_000_000);
+  const trace = rest.includes("--trace");
+  let result = "ok";
+  for (let s = 0; s < max && result === "ok"; s++) {
+    if (trace) {
+      const w = cpu.read16(cpu.pc);
+      const regs = Array.from(cpu.regs, hex4).join(" ");
+      console.error(`${hex4(cpu.pc)}  ${hex4(w)}  ${disassemble(w, cpu.pc).padEnd(24)} ${regs}`);
+    }
+    result = cpu.step();
+  }
+  const f = `${cpu.n ? "N" : "-"}${cpu.z ? "Z" : "-"}${cpu.c ? "C" : "-"}${cpu.v ? "V" : "-"}${cpu.i ? "I" : "-"}`;
+  console.log(`\n[${result}] ${cpu.instructions} komut, PC=${hex4(cpu.pc)} ${f}`);
+  console.log(Array.from(cpu.regs, (v, i) => `r${i}=${hex4(v)}`).join(" "));
+  if (result === "illegal") process.exit(2);
+} else if (cmd === "dis") {
+  const bin = readFileSync(file);
+  const org = Number(opt("--org") ?? 0);
+  for (let i = 0; i + 1 < bin.length; i += 2) {
+    const w = bin[i] | (bin[i + 1] << 8);
+    console.log(`${hex4(org + i)}  ${hex4(w)}  ${disassemble(w, org + i)}`);
+  }
+} else {
+  console.error(`bilinmeyen komut: ${cmd}`);
+  process.exit(1);
+}
