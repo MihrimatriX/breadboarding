@@ -164,3 +164,24 @@ textarea { width: 100%; resize: vertical; line-height: 1.5; margin-top: 8px; }
   .bench { grid-template-columns: 1fr; grid-template-rows: auto auto auto; grid-template-areas: "top" "src" "panel"; }
   .bench-panel { border-left: 0; border-top: 1px solid var(--line); }
 }
+
+/* CPU16 anakart kipi: VGA ekranı + editör solda, register / terminal / anakart sağda */
+.bench.bench-m { grid-template-areas: "top top" "main panel"; }
+.bench-main { grid-area: main; padding: 16px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.bench-main .bench-src { padding: 0; }
+.bench-m .bench-src textarea { min-height: 300px; }
+.vga { position: relative; align-self: center; width: 100%; max-width: 980px; background: #000; border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+.vga.focused { border-color: var(--diff); }
+.vga canvas { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; image-rendering: pixelated; cursor: text; outline: none; }
+.vga-hint { position: absolute; right: 18px; bottom: 18px; max-width: calc(100% - 36px); font: 12px var(--mono); color: var(--muted); background: rgba(10, 14, 18, .88); border: 1px solid var(--line); border-radius: 5px; padding: 3px 8px; pointer-events: none; }
+.bench-term { max-height: 240px; overflow-y: auto; cursor: text; }
+.bench-term:focus { outline: 1px solid var(--diff); }
+.bench-kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 3px 12px; font: 12.5px/1.5 var(--mono); margin: 0; font-variant-numeric: tabular-nums; }
+.bench-kv dt { color: var(--muted); }
+.bench-kv dd { margin: 0; overflow-wrap: anywhere; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: pre; border: 0; }
+@media (max-width: 900px) {
+  .bench.bench-m { grid-template-areas: "top" "main" "panel"; }
+  .vga { padding: 4px; }
+  .bench-m .bench-src textarea { min-height: 220px; }
+}
