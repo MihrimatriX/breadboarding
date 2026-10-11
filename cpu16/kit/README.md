@@ -21,10 +21,10 @@ bloklardan geleceği için o deneyde elle sürülür. Şema değişirse rehber d
 | 5 | [ALU ve bayraklar](deney-05-alu.md) | TA, TB, ALU, bayraklar | toplama, çıkarma, mantık, kaydırma; NZCV |
 | 6 | [Program sayacı ve komut çekme](deney-06-komut-cekme.md) | PC, MAR, IR, bellek arayüzü | PC yürür, komut IR'ye çekilir |
 | 7 | [Mikrokod ve kontrol birimi](deney-07-mikrokod.md) | kontrol birimi, sabit birimi | CPU çalışır: NOP döngüsü, HALT |
-| 8 | [Bellek kartı ve ilk program](deney-08-bellek.md) | bank'lı 1 MB bellek, Flash, çıkış mandalı | ilk program Flash'tan çalışır |
-| 9 | [Bekleme durumları ve önbellek](deney-09-onbellek.md) | önbellek kartı | isabet oranı ölçülür, hız farkı görülür |
+| 8 | [Bellek kartı ve ilk program](deney-08-bellek.md) | bank'lı 1 MB bellek, Flash, FF00 LED mandalı | ilk program Flash'tan 512 KB RAM'i sınar, LED'lerde `0xA5` |
+| 9 | [Bekleme durumları ve önbellek](deney-09-onbellek.md) | önbellek kartı | önbellek açıkken kayan ışık ≈ 1,4 kat hızlı |
 | 10 | [G/Ç kartı](deney-10-gc.md) | UART, zamanlayıcı, kesmeler, PS/2 | bilgisayarla seri haberleşme, klavye |
-| 11 | [Video kartı](deney-11-video.md) | VGA 80 × 30 metin | ekranda "Merhaba" |
+| 11 | [Video kartı](deney-11-video.md) | VGA 80 × 30 metin | ekranda "Merhaba", 16 renk, kare sayacı |
 | 12 | [BIOS, önyükleyici ve Web Serial](deney-12-bios.md) | yazılım | tarayıcıdan karta program yükleme |
 | 13 | [C derleyicisi: yılan oyunu](deney-13-c.md) | yazılım | C ile yazılmış oyun ekranda |
 

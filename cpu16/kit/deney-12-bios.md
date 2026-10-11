@@ -35,10 +35,10 @@ davrandığının kanıtıdır.
    npm run cpu16 -- bios -o bios.hex
    python3 cpu16/programlayici/yaz.py PORT bios.hex --sil --dogrula
    ```
-   Deney 8'deki deneme programı bu Flash'taydı; artık yerini BIOS alır.
-2. USB-UART modülünü (CH340, 5 V) G/Ç kartının UART konnektörüne bağla: modülün TXD'si kartın RXD'sine,
-   RXD'si TXD'ye, RTS/CTS çapraz, GND ortak. Modülün 5 V çıkışını karta **bağlama** (kart kendi
-   adaptöründen beslenir).
+   Deney 8–11'in deneme programları bu Flash'taydı; artık yerini BIOS alır.
+2. USB-UART modülü (CH340, 5 V) Deney 10'daki gibi G/Ç kartının 6 pinli UART yuvasında kalır:
+   1 GND, 2 CTS#, 4 TXD, 5 RXD. Yuvanın 3. pini (VCC) boştur: modülün 5 V'u karta **bağlanmaz**
+   (kart kendi adaptöründen beslenir).
 3. Bilgisayarda bir terminal aç: 28 800 baud, 8N1, akış denetimi RTS/CTS (ör. `screen /dev/ttyUSB0 28800`).
 4. RESET'e bas.
 
