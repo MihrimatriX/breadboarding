@@ -37,6 +37,11 @@ yeniden üretmek için `npm run import:6502`.
 | Pinler | RDY, RES, IRQ, NMI pinlerini elle sür. |
 | Bellek ve program | Sayfa 0 ve yığın sayfası canlı; hücreye tıklayıp değer yaz. Dahili 6502 assembler ile kendi programını derle. |
 
+Aynı depoda iki devre projesi daha var, ikisi de "şema = kod" (aynı tanımdan simülasyon, 3D görünüm, KiCad şeması ve kurulum belgesi):
+
+- [`cpu16/`](cpu16/README.md): kendi 16 bit bilgisayarımız; 74HC çiplerle CPU, bellek, önbellek, G/Ç ve video kartları, C derleyicisi.
+- [`hesap8/`](hesap8/README.md): 8 bit dört işlem hesap makinesi; DIP anahtarlar, 7 segment göstergeler, programsız ve saatsiz, 216 × 74HC.
+
 Kısayollar: `Boşluk` çalıştır/duraklat, `.` yarım çevrim, `N` sonraki komut, `R` sıfırla, `Esc` seçimi kaldır.
 
 ## Mimari
