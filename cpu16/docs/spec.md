@@ -146,9 +146,11 @@ J  : op(4) | off12(12, işaretli, ×2)
 
 ## 5. Opcode haritası
 
+Bit bit davranış (bayraklar, dallanma hesabı, kesme girişi): [isa-ayrintilari.md](isa-ayrintilari.md).
+
 | op | Mnemonik | Format | Anlam |
 |---|---|---|---|
-| 0 | ALU | R | f3: ADD, ADC, SUB, SBC, AND, OR, XOR, CMP |
+| 0 | ALU | R | f3: ADD, ADC, SUB, SBC, AND, OR, XOR, CMP (CMP: rd alanı kullanılmaz) |
 | 1 | ALU2 | R | f3: MOV, NOT, NEG, SHL, SHR, SAR, ROL, ROR (1 bit) |
 | 2 | — | | Rezerve (eski MULDIV) |
 | 3 | ADDI | I | rd = rs1 + imm6 |
@@ -159,7 +161,7 @@ J  : op(4) | off12(12, işaretli, ×2)
 | 8 | SB | S | mem8[rs1 + imm6] = rs2[7:0] |
 | 9 | Bcc | B | EQ NE CS CC MI PL VS VC HI LS GE LT GT LE AL |
 | 10 | JAL | J | r7 = PC+2; PC += off12×2 |
-| 11 | JALR | I | rd = PC+2; PC = rs1 + imm6×2 |
+| 11 | JALR | I | rd = PC+2; PC = rs1 + imm6×2 (RET = JALR r7, r7, 0) |
 | 12 | CMPI | C | bayrak = rs1 − sext(imm9) |
 | 13 | STACK | R | PUSH rs1, POP rd (SP = r6) |
 | 14 | SYS | R | NOP, HALT, EI, DI, RETI, SWI, SXB |

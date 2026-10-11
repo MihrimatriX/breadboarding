@@ -1,6 +1,6 @@
 # CPU16 — Yol Haritası
 
-> **Şu an:** Faz 0 bitti (spec v1.0 donduruldu). **Sıradaki:** Faz 1, referans emülatör + assembler.
+> **Şu an:** Faz 1 bitti (emülatör + as16, 52 test). **Sıradaki:** Faz 2, mikromimari ve mikrokod. Paralel iz olarak Faz 8 (C derleyicisi) artık başlayabilir.
 > Bu satır her faz bittiğinde güncellenir. Kaybolursan önce buraya bak.
 
 ## Kaybolmamak için 5 kural
@@ -30,10 +30,11 @@ Faz 0 Spec ─▶ Faz 1 Emülatör+as16 ─▶ Faz 2 Mikromimari ─▶ Faz 3 74
 - Çıktı: `docs/spec.md` v1.0 (ISA, formatlar, opcode haritası, bellek haritası, ABI, donanım blokları).
 - Bitti ölçütü: AFU onayı. ✅ 2026-10-11
 
-### Faz 1 — Referans emülatör + assembler (altın model)
+### Faz 1 — Referans emülatör + assembler (altın model) ✅ 2026-10-11
 - Çıktı: `cpu16/emu` (TypeScript, komut seviyesi emülatör), `cpu16/asm` (as16: etiketler, direktifler, .bin/.hex çıktısı), ISA test programları.
 - Bitti ölçütü: her opcode için en az bir test; bayrak (NZCV) kenar durumları; Fibonacci, bubble sort, 32 bit toplama (ADC) programları emülatörde doğru sonuç verir; CI'da koşar.
 - Video: "Kendi komut setimizi tasarladık: ilk programı çalıştırıyoruz".
+- Sonuç: `emu/cpu.ts`, `emu/disasm.ts`, `asm/assembler.ts`, `asm/hex.ts`, `tools/cli.ts`, `programs/*.s` (hello, fib, add32 + yazılım çarpma, bubble, irq), `tests/` (52 test, disassembler 65 536 kelimenin hepsinde gidiş-dönüş). Bit bit davranış: `docs/isa-ayrintilari.md`; assembler rehberi: `docs/as16.md`.
 
 ### Faz 2 — Mikromimari ve mikrokod
 - Çıktı: veriyolu blok şeması, kontrol sinyali listesi (24–32 sinyal), mikrokod kaynak dosyası + mikrokod derleyicisi (Flash imajı üretir), **saat döngüsü seviyesinde** blok modeli (register, ALU, bus, kontrol).
