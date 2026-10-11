@@ -3,7 +3,7 @@
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { buildProgram } from "../cc/index.ts";
+import { buildProgram, compile } from "../cc/index.ts";
 import { LIB as VITE_LIB } from "../cc/lib-vite.ts";
 import { runProgram } from "../cc/run.ts";
 import { SimpleBus } from "../emu/cpu.ts";
@@ -382,6 +382,37 @@ describe("struct, union, enum, typedef", () => {
           return counter;
         }`),
     ).toBe(15);
+  });
+});
+
+describe("kod üretimi", () => {
+  /** bağlanmış assembly'de bir fonksiyonun satırları (bir sonraki "; " başlığına kadar) */
+  const fnAsm = (src: string, name: string) => {
+    const c = compile({ "m.c": src }, ["m.c"], { lib: LIB });
+    expect(c.errors).toEqual([]);
+    const lines = c.asm.split("\n");
+    const start = lines.indexOf(`${name}:`);
+    expect(start).toBeGreaterThanOrEqual(0);
+    const end = lines.findIndex((l, i) => i > start && /^; /.test(l));
+    return lines.slice(start, end);
+  };
+
+  it("volatile yerel değişken okumaları silinmez, diğer gereksiz yüklemeler silinir", () => {
+    // &v alındığı için v yığında yaşar ([sp+0]); iki okuma = iki LW (yalnızca volatile iken)
+    const src = (q: string) => `int sink(int a, int b) { return a - b; }
+      int main(void) { ${q} int v = 5; int *p = (int *)&v; int a, b; a = v; b = v; return sink(a, b) + *p; }`;
+    const loadsOfV = (l: string[]) => l.filter((x) => /LW r\d, \[sp\]$/.test(x)).length;
+    expect(loadsOfV(fnAsm(src("volatile"), "_main"))).toBe(2);
+    expect(loadsOfV(fnAsm(src(""), "_main"))).toBe(1);
+    expect(exitOf(src("volatile"))).toBe(5);
+    expect(exitOf(src(""))).toBe(5);
+  });
+
+  it("küçük yaprak fonksiyonlar LR'yi kaydetmez; çağrı yapanlar kaydeder", () => {
+    const src = "int sq(int x) { return x * 3; } int main(void) { return sq(4); }";
+    expect(fnAsm(src, "_sq").join("\n")).not.toMatch(/PUSH r7/);
+    expect(fnAsm(src, "_main").join("\n")).toMatch(/PUSH r7/);
+    expect(exitOf(src)).toBe(12);
   });
 });
 
