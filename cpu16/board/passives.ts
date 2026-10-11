@@ -164,6 +164,52 @@ export const PASSIVES: Record<string, SymbolOnly> = {
   },
 };
 
+// ---- LED renkleri. Kütüphanede tek bir "LED" parçası var; rengi görevinden seçilir. 3D görünüm,
+// bilgi paneli ve rehberler (kit/led-ve-direnc.md) aynı tabloyu kullanır.
+
+export type LedRenk = "kirmizi" | "turuncu" | "sari" | "yesil" | "mavi" | "beyaz";
+
+export interface LedRenkBilgi {
+  /** Türkçe adı (BOM ve panel) */
+  ad: string;
+  /** yanarken ışığın rengi */
+  isik: string;
+  /** sönükken renkli epoksi gövdenin rengi */
+  govde: string;
+  /** tipik ileri gerilim (V) ve veri sayfalarındaki aralık */
+  vf: number;
+  vfAralik: [number, number];
+  /** dalga boyu (nm); beyazda yok (mavi LED + fosfor) */
+  dalga?: number;
+}
+
+export const LED_RENKLERI: Record<LedRenk, LedRenkBilgi> = {
+  kirmizi: { ad: "kırmızı", isik: "#ff2b2b", govde: "#8a1f24", vf: 1.9, vfAralik: [1.8, 2.0], dalga: 625 },
+  turuncu: { ad: "turuncu (amber)", isik: "#ff9a1a", govde: "#8f4d12", vf: 2.0, vfAralik: [1.9, 2.1], dalga: 605 },
+  sari: { ad: "sarı", isik: "#ffe23a", govde: "#8c7a1c", vf: 2.0, vfAralik: [2.0, 2.2], dalga: 590 },
+  yesil: { ad: "yeşil", isik: "#4dff6a", govde: "#1f6b2c", vf: 2.1, vfAralik: [2.0, 2.2], dalga: 570 },
+  mavi: { ad: "mavi", isik: "#3b8cff", govde: "#1d3f8c", vf: 3.1, vfAralik: [3.0, 3.2], dalga: 470 },
+  beyaz: { ad: "beyaz", isik: "#f4f8ff", govde: "#b9c2cc", vf: 3.1, vfAralik: [3.0, 3.2] },
+};
+
+/**
+ * Görevden LED rengi: ilk eşleşen kural. Hata kırmızı, "durdu" uyarı rengi (amber), saat mavi
+ * (breadboard bilgisayarlarında saat LED'i geleneksel olarak mavidir; ayrıca aynı 330 Ω ile daha
+ * az akım çekerek ileri gerilimin akıma etkisini gösterir), besleme / hazır yeşil, veri ve adres
+ * hatları sarı. Kalan her şey kırmızı (en yaygın, en ucuz).
+ */
+export const LED_RENK_KURALLARI: { desen: RegExp; renk: LedRenk; neden: string }[] = [
+  { desen: /FAULT|HATA/i, renk: "kirmizi", neden: "hata: en çok dikkat çeken renk" },
+  { desen: /HALT/i, renk: "turuncu", neden: "CPU durdu: uyarı, ama hata değil (trafik lambasının sarısı)" },
+  { desen: /\bCLK\b|SAAT/i, renk: "mavi", neden: "saat: durmadan yanıp söner, öteki durum LED'lerinden ayrı dursun" },
+  { desen: /VCC|BESLEME|GÜÇ|HAZIR|\bOK\b/i, renk: "yesil", neden: "besleme / her şey yolunda" },
+  { desen: /\b(?:A|D|DE|DO|AD|BUS)\d+\b|VERİ|ADRES/i, renk: "sari", neden: "veri ve adres hatlarını izleme" },
+];
+
+export function ledRengi(role: string): LedRenk {
+  return LED_RENK_KURALLARI.find((k) => k.desen.test(role))?.renk ?? "kirmizi";
+}
+
 /**
  * Arka panel pin düzeni (her kartta aynı). 57..61 boş.
  * Tek numaralar bir sırada, çift numaralar karşı sırada.

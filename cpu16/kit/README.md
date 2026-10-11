@@ -18,6 +18,10 @@ PCB montajı, wire-wrap).
 
 ## Deneyler
 
+**Başlamadan önce:** [LED, direnç ve kondansatör](led-ve-direnc.md): renk kodunu okuma, LED'in kutbu ve
+seri direnci, çekme dirençleri, SIP direnç dizileri, 100 nF dekuplaj ve breadboard yerleşimi, çizimlerle.
+Deney 1'den önce bir kez oku; her deneyde aynı parçalar tekrar karşına çıkar.
+
 | # | Deney | Kurulan | Sonuç |
 |---|---|---|---|
 | 1 | [Saat ve reset kartı](deney-01-saat.md) | saat kartı (9 entegre) | LED'de saat, ADIM butonuyla tek döngü |
@@ -58,7 +62,8 @@ sürdüğünde onu ezmez (veriyolundaki 10 kΩ çekme direnciyle birlikte 1 sevi
 
 ## Genel kurallar
 
-- Her entegrenin VCC/GND bacağı besleme hattına, yanına 100 nF. Her breadboard'un besleme rayına 100 µF.
+- Her entegrenin VCC/GND bacağı besleme hattına, yanına 100 nF. Her breadboard'un besleme rayına 100 µF
+  ([neden](led-ve-direnc.md#dekuplaj-her-entegrenin-yanında-100-nf)).
 - CMOS girişi asla boşta bırakılmaz: tabloda **GND** ve **VCC** satırları sabit bağlanan girişleri,
   "▶ elle sür" notu henüz kurulmamış bir bloktan gelecek girişleri gösterir. O girişleri bir anahtar ve
   10 kΩ çekme direnciyle sür; blok kurulunca anahtarı çıkar.
@@ -72,7 +77,8 @@ sürdüğünde onu ezmez (veriyolundaki 10 kΩ çekme direnciyle birlikte 1 sevi
 | Belirti | Olası sebep |
 |---|---|
 | Entegre ısınıyor | iki çıkış aynı nette (üç durumlu çıkışın ~OE'si yanlış), ters takılmış entegre |
-| Davranış dokunmayla değişiyor | boşta kalmış giriş; tablodaki GND/VCC satırlarını kontrol et |
+| Davranış dokunmayla değişiyor | boşta kalmış giriş; tablodaki GND/VCC satırlarını kontrol et ([çekme dirençleri](led-ve-direnc.md#çekme-dirençleri-pull-up-pull-down)) |
+| LED yanmıyor, sönük ya da çip ısınıyor | LED'in kutbu, seri direncin değeri ([LED ve seri direnç](led-ve-direnc.md#seri-direnç-ledi-her-zaman-bir-dirençle-sür)) |
 | Saat hızlanınca bozuluyor | dekuplaj eksik, uzun saat kabloları; ADIM kipinde doğru çalışıyorsa zamanlama sorunu |
 | EEPROM'dan yanlış veri | çip doğru soketde mi (etiket), programlayıcıda SUM doğrulaması |
 | Simülatörle farklı | aynı programı simülatörde ADIM kipinde yürüt, ilk farklı netin sürücüsünü bul |
