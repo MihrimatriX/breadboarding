@@ -11,15 +11,19 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { buildBios } from "../bios/build.ts";
-import { Board, erc } from "../board/board.ts";
+import { Board, erc, type ChipInstance } from "../board/board.ts";
 import { IO_CARD_INPUTS, buildIoCard } from "../board/io-card.ts";
 import { SYM_LIB_TABLE, cardSchematic, kicadProject } from "../board/kicad-sch.ts";
 import { BACKPLANE, PASSIVES } from "../board/passives.ts";
+import { VIDEO_CARD_INPUTS, buildVideoCard, type VideoCard } from "../board/video-card.ts";
 import { kicadSymbolLibrary, parseSExpr, type SExpr } from "../chips/kicad.ts";
 import { CHIPS } from "../chips/library.ts";
 import { L0, L1, LogicSim, type Level } from "../chips/logic.ts";
+import type { MemoryHandle } from "../chips/parts/memory.ts";
 import { textToScancodes } from "../emu/devices/keyboard.ts";
-import { IO, Machine, TICK_CYCLES, UART_BYTE_CYCLES, VBLANK_START } from "../emu/machine.ts";
+import { FRAME_CYCLES, IO, Machine, TICK_CYCLES, UART_BYTE_CYCLES, VBLANK_START } from "../emu/machine.ts";
+import { FONT_8X16 } from "../video/font.ts";
+import { CGA_PALETTE } from "../../src/cpu16/vga.ts";
 
 const bios = buildBios(readFileSync(new URL("../bios/bios.s", import.meta.url), "utf8"));
 const range = (n: number) => Array.from({ length: n }, (_, i) => i);
@@ -46,6 +50,8 @@ interface Access {
 interface ClockSource {
   next: number;
   fire(): void;
+  /** kenar yerleştikten sonra (örnekleme) */
+  after?(): void;
 }
 
 /**
@@ -61,7 +67,7 @@ class Bench {
   cycle = -8;
   /** şu anki zaman (döngü, kesirli) */
   now = -8;
-  /** son döngünün ilk yarısının sonunda okunan IRQ hattı */
+  /** son döngüde, yazma darbesinden hemen önce (k + 5/8) okunan IRQ hattı (yalnız video kartında VSYNC_REQ) */
   irq: Level = L0;
   readonly sources: ClockSource[] = [];
   private readonly q: { t: number; s: number; fn: () => void }[] = [];
@@ -81,25 +87,40 @@ class Bench {
       this.sim.pull(this.n(`DE${i}`), L1);
       this.sim.pull(this.n(`DO${i}`), L1);
     }
-    this.clk = ["CLK", "TCLK"].map((x) => this.n(x));
-    this.irqNet = this.b.has("IRQ") ? this.n("IRQ") : -1;
-    for (const [name, v] of [["~RESET", 0], ["~IO", 1], ["~MRD", 1], ["~MWE_E", 1], ["~MWE_O", 1], ["TCLK", 0], ["CLK", 0]] as const) {
-      this.drive(name, v);
-    }
+    this.clk = ["CLK", "TCLK"].filter((x) => this.b.has(x)).map((x) => this.n(x));
+    // IRQ hattı (G/Ç kartı) ya da yalnız video kartında VSYNC_REQ
+    this.irqNet = this.b.has("IRQ") ? this.n("IRQ") : this.b.has("VSYNC_REQ") ? this.n("VSYNC_REQ") : -1;
+    for (const [name, v] of [["~RESET", 0], ["~IO", 1], ["~MRD", 1], ["~MWE_E", 1], ["~MWE_O", 1]] as const) this.drive(name, v);
+    for (const net of this.clk) this.sim.drive(net, L0);
     for (let i = 0; i < 8; i++) this.drive(`A${i}`, 0);
     if (this.b.has("UART_RXD")) this.drive("UART_RXD", 1);
+    if (this.b.has("VID_OSC")) this.drive("VID_OSC", 0);
     if (!this.b.chips.some((c) => c.card === "video")) this.drive("VSYNC_REQ", 0);
     this.sim.settle();
     // güç açılışı: flip-flop'lar 0 (GateComputer gibi; gerçekte rastgele, reset tanımlı olanları düzeltir).
-    // Saatler sabitken kurulur: aksi halde X → 1 geçişi "belki kenar" sayılır.
-    this.b.c.gates.forEach((g, i) => {
-      if (g.kind === "DFF" || g.kind === "LATCH") this.sim.setState(i, L0);
-    });
-    this.sim.settle();
+    this.setFlipFlops(range(this.b.c.gates.length).filter((i) => ["DFF", "LATCH"].includes(this.b.c.gates[i].kind)), () => L0);
     // reset 0. döngünün başında bırakılır: ön bölücü 0. kenarda son kez 96 yükler, tıklar 4000k
     // kenarlarında (Machine: TICK_CYCLES'ın katları)
     this.at(0.25, () => this.drive("~RESET", 1));
     while (this.cycle < 0) this.step();
+  }
+
+  /**
+   * Flip-flop'ların iç durumunu ayarla (yalnız simülasyon: güç açılışı, sayaç başlangıcı). Saatler
+   * sabitken yapılmalıdır, yoksa X → 1 geçişi "belki kenar" sayılır; dalgalı sayaçlarda bir basamağın
+   * saati öncekinin çıkışı olduğundan, durumlar değişmez olana kadar tekrarlanır (asenkron
+   * preset/clear'i etkin olanlar onun dediğinde kalır).
+   */
+  setFlipFlops(gates: number[], value: (k: number) => Level): void {
+    let prev = "";
+    for (let pass = 0; pass < 12; pass++) {
+      gates.forEach((x, k) => this.sim.setState(x, value(k)));
+      this.sim.settle();
+      const now = gates.map((x) => this.sim.stateOf(x)).join("");
+      if (now === prev) return;
+      prev = now;
+    }
+    throw new Error("flip-flop'lar yerleşmedi");
   }
 
   n(name: string): number {
@@ -166,6 +187,9 @@ class Bench {
       } else if (src) {
         this.now = src.next;
         src.fire();
+        this.settle();
+        src.after?.();
+        continue;
       } else break;
       this.settle();
     }
@@ -217,12 +241,13 @@ class Bench {
     }
     this.settle();
     this.flush(k + 0.5);
-    if (this.irqNet >= 0) this.irq = this.sim.get(this.irqNet);
     this.edge(L0);
+    // IRQ (ya da VSYNC_REQ) yazma darbesinden hemen önce örneklenir
+    this.flush(k + 0.625);
+    if (this.irqNet >= 0) this.irq = this.sim.get(this.irqNet);
     if (acc?.write) {
       const even = acc.word || !(acc.addr & 1);
       const odd = acc.word || acc.addr & 1;
-      this.flush(k + 0.625);
       if (even) this.drive("~MWE_E", 0);
       if (odd) this.drive("~MWE_O", 0);
       this.settle();
@@ -592,22 +617,29 @@ describe("G/Ç kartı: PS/2 klavye", () => {
 /** Machine ile adım adım: aynı döngüde aynı erişim; her okuma ve her döngüde IRQ hattı karşılaştırılır */
 class Lockstep {
   readonly m = new Machine();
-  readonly g = ioBench();
+  readonly g: Bench;
   irqChecks = 0;
+  /** video kartı tezgâhı: IRQ yerine VSYNC_REQ, Machine'de vsyncFlag */
+  private readonly video: boolean;
 
-  /** Machine'i kapı tezgâhının zamanına getir; video kartının VSYNC_REQ'i Machine'in bayrağından */
+  constructor(g?: Bench) {
+    this.g = g ?? ioBench();
+    this.video = !this.g.b.has("IRQ");
+  }
+
+  /** Machine'i kapı tezgâhının zamanına getir; G/Ç kartında video kartının VSYNC_REQ'i Machine'in bayrağından */
   private sync(): void {
     while (this.m.cycles < this.g.cycle) this.m.idle(1);
-    this.g.drive("VSYNC_REQ", this.m.video.vsyncFlag ? 1 : 0);
+    if (!this.video) this.g.drive("VSYNC_REQ", this.m.video.vsyncFlag ? 1 : 0);
   }
 
   /** bir döngü: IRQ hattı döngünün başındaki (erişimden önceki) Machine durumuyla karşılaştırılır */
   private step(acc?: Access, machine?: () => void): [number, number] | undefined {
     this.sync();
-    const want = this.m.cpu.irq;
+    const want = this.video ? this.m.video.vsyncFlag : this.m.cpu.irq;
     machine?.();
     const r = this.g.step(acc);
-    expect(this.g.irq, `IRQ, döngü ${this.g.cycle - 1}`).toBe(want ? L1 : L0);
+    expect(this.g.irq, `${this.video ? "VSYNC_REQ" : "IRQ"}, döngü ${this.g.cycle - 1}`).toBe(want ? L1 : L0);
     this.irqChecks++;
     return r;
   }
@@ -620,7 +652,7 @@ class Lockstep {
     let want = 0;
     const [de, dO] = this.step({ write: false, addr }, () => (want = this.m.read8(addr)))!;
     const got = addr & 1 ? dO : de;
-    expect(got, `oku ${addr.toString(16)} @${this.g.cycle - 1}`).toBe(want);
+    expect(got, `oku ${addr.toString(16)} @${this.g.cycle - 1} (Machine ${this.m.cycles})`).toBe(want);
     return got;
   }
 
@@ -807,17 +839,265 @@ describe("G/Ç kartı: BIOS izinin kapı seviyesinde tekrarı", () => {
   });
 });
 
+// =============================================================================== video kartı
+
+/** Piksel saati periyodu (CPU döngüsü): bir kare = 420 000 piksel saati = FRAME_CYCLES (Machine) */
+const PIXELS_PER_FRAME = 800 * 525;
+
+interface VideoBench {
+  g: Bench;
+  card: VideoCard;
+  /** bir sonraki piksel saati yükselen kenarının numarası */
+  pixel(): number;
+}
+
+/**
+ * Piksel saatinin TCLK'ye göre fazı (döngü). Gerçekte iki osilatör bağımsızdır; Machine vblank'i
+ * tam döngüye yuvarlar (VBLANK_START = 60 953, kare başı 66 667k). Kartta vblank 384 000. piksel
+ * kenarında (kare başından 60 952,84 döngü sonra) başlar, 420 000. kenarda biter; faz bu iki anı
+ * Machine'in döngülerine denk getirir (okuma döngü sonunda, IRQ k + 5/8'de örneklenir): [0,16; 0,625).
+ */
+const PIXEL_PHASE = 0.4;
+
+/**
+ * Video kartı tezgâhı. Piksel saatinin k. yükselen kenarı PIXEL_PHASE + k · FRAME_CYCLES / 420 000
+ * anında: kare tam olarak Machine'in 66 667 döngüsü. `onPixel(k)` her yükselen kenardan sonra
+ * çağrılır (k + 1 = kenardan sonraki sayaç konumu).
+ */
+function videoBench(onPixel?: (k: number, g: Bench) => void): VideoBench {
+  let card!: VideoCard;
+  const g = new Bench((b) => (card = buildVideoCard(b)));
+  (card.fontRom.handle as MemoryHandle).data.set(FONT_8X16);
+  const osc = g.n("VID_OSC");
+  let k = 0;
+  let high = false;
+  g.sources.push({
+    next: PIXEL_PHASE,
+    fire() {
+      high = !high;
+      g.sim.drive(osc, high ? L1 : L0);
+    },
+    after() {
+      if (high) {
+        onPixel?.(k, g);
+        this.next = PIXEL_PHASE + ((2 * k + 1) * FRAME_CYCLES) / (2 * PIXELS_PER_FRAME);
+      } else {
+        k++;
+        this.next = PIXEL_PHASE + (k * FRAME_CYCLES) / PIXELS_PER_FRAME;
+      }
+    },
+  });
+  return { g, card, pixel: () => k };
+}
+
+/** Kartın IRGB çıkışı (I = bit 3, R, G, B = bit 0) */
+const irgb = (g: Bench) => (g.get("V_I") << 3) | (g.get("V_R") << 2) | (g.get("V_G") << 1) | g.get("V_B");
+
+/** Machine'in çizicisiyle (src/cpu16/vga.ts) aynı kural: görünür (x, y) pikselinin rengi */
+function refPixel(vram: Uint8Array, cursor: number, x: number, y: number): number {
+  const cell = (y >> 4) * 80 + (x >> 3);
+  const r = y & 15;
+  const bits = cell === cursor && r >= 14 ? 0xff : FONT_8X16[vram[cell * 2] * 16 + r];
+  const at = vram[cell * 2 + 1];
+  return bits & (0x80 >> (x & 7)) ? at & 15 : at >> 4;
+}
+
+/** Deneme ekranı: başlık çubuğu + bütün karakter kodları ve bütün renk baytları */
+function testScreen(): Uint8Array {
+  const v = new Uint8Array(4800);
+  const title = " CPU16 BIOS v1".padEnd(80);
+  for (let i = 0; i < 2400; i++) {
+    v[2 * i] = i < 80 ? title.charCodeAt(i) : (i * 5 + (i >> 7)) & 0xff;
+    v[2 * i + 1] = i < 80 ? 0x1f : (i * 7 + (i >> 8)) & 0xff;
+  }
+  return v;
+}
+
+/** Ekran DAC'ı: renk biti 680 Ω, parlaklık 1,3 kΩ, 75 Ω monitör girişine (5 V çıkış) */
+const dac = (hi: number, lo: number) => (5 * (hi / 680 + lo / 1300)) / (1 / 680 + 1 / 1300 + 1 / 75);
+
+describe("video kartı: yapı", () => {
+  it("elektriksel kural denetimi temiz; adres çözme yalnız FF20–FF2F", () => {
+    const b = new Board();
+    buildVideoCard(b);
+    b.finish();
+    expect(erc(b, VIDEO_CARD_INPUTS)).toEqual([]);
+    expect(b.chips.every((c) => c.card === "video")).toBe(true);
+    const { g } = videoBench();
+    for (const a of [0xff00, 0xff01, 0xff08, 0xff0a, 0xff10, 0xff20, 0xff21, 0xff27, 0xff2f, 0xff30, 0xff40]) {
+      expect(g.rd8(a), a.toString(16)).toBe(0xff);
+    }
+  });
+});
+
+describe("video kartı: CPU portu ve tarama (Machine ile döngü döngüsüne)", () => {
+  it("ekran port üzerinden yazılır ve geri okunur; sonraki kare IRGB = font/renk referansı; HSYNC/VSYNC; VSTAT", { timeout: 60_000 }, () => {
+    const F = 1; // karşılaştırılan kare (0. karede ekran yazılıyor)
+    const shot = new Uint8Array(PIXELS_PER_FRAME); // IRGB | HSYNC << 4 | VSYNC << 5
+    const dacSeen = new Map<number, string>();
+    const vb = videoBench((k, g) => {
+      const n = k + 1;
+      if (Math.floor(n / PIXELS_PER_FRAME) !== F) return;
+      const c = irgb(g);
+      shot[n % PIXELS_PER_FRAME] = c | (g.get("VGA_HSYNC") << 4) | (g.get("VGA_VSYNC") << 5);
+      if (!dacSeen.has(c)) dacSeen.set(c, ["V_R", "V_I", "V_GH", "V_GL", "V_B"].map((x) => g.get(x)).join(""));
+    });
+    const s = new Lockstep(vb.g);
+    const { m, g } = s;
+    const gap = () => s.idle(5); // G/Ç komutu 6 döngü: erişimler en az 6 döngü arayla
+
+    s.wr8(IO.VCTRL, 1);
+    s.wr8(IO.CURSOR_X, 37);
+    s.wr8(IO.CURSOR_Y, 21);
+    for (const a of [IO.VCTRL, IO.CURSOR_X, IO.CURSOR_Y, IO.VADDR, IO.VADDR + 1, IO.VSTAT]) s.rd8(a);
+    s.rd16(IO.CURSOR_X);
+    // ekranı yaz: VADDR = 0 (kelime), 4800 × VDATA
+    const scr = testScreen();
+    s.wr16(IO.VADDR, 0);
+    gap();
+    for (const v of scr) {
+      s.wr8(IO.VDATA, v);
+      gap();
+    }
+    // VRAM'in kendisi Machine'inkiyle aynı (iki şerit)
+    const lane = (ci: ChipInstance) => (ci.handle as MemoryHandle).data;
+    for (let a = 0; a < 4800; a++) expect(lane(a & 1 ? vb.card.vramAttr : vb.card.vramChar)[a >> 1], `VRAM ${a}`).toBe(m.video.vram[a]);
+    // ön okuma: her VDATA okuması aynı veriyolu döngüsünde VRAM[VADDR]
+    for (const start of [0, 1, 161, 2399, 4790]) {
+      s.wr16(IO.VADDR, start);
+      gap();
+      for (let j = 0; j < 12; j++) {
+        s.rd8(IO.VDATA);
+        gap();
+      }
+    }
+    // yalnız düşük / yüksek bayt, sonra okuma ve yazma karışık; kelime okuması (VDATA + VCTRL)
+    s.wr8(IO.VADDR, 0x40);
+    gap();
+    s.wr8(IO.VADDR + 1, 0x01);
+    gap();
+    for (let j = 0; j < 6; j++) {
+      s.rd8(IO.VDATA);
+      gap();
+      s.wr8(IO.VDATA, 0x41 + j);
+      gap();
+      s.rd16(IO.VDATA);
+      gap();
+    }
+    s.wr16(IO.VADDR, 0x1ffe); // 13 bit: sondan başa sarar
+    gap();
+    for (let j = 0; j < 4; j++) {
+      s.rd8(IO.VDATA);
+      gap();
+    }
+    // VSTAT: vblank başlangıcında (60 952) her döngü; bayrak 1 yazınca silinir; kare sonu
+    s.idle(VBLANK_START - 6 - g.cycle);
+    for (let j = 0; j < 12; j++) s.rd8(IO.VSTAT);
+    s.wr8(IO.VSTAT, 1); // bit1 = 0: silmez
+    s.rd8(IO.VSTAT);
+    s.wr8(IO.VSTAT, 2);
+    for (let j = 0; j < 3; j++) s.rd8(IO.VSTAT);
+    s.idle(FRAME_CYCLES - 5 - g.cycle);
+    for (let j = 0; j < 10; j++) s.rd8(IO.VSTAT);
+    // 1. kare boyunca dokunma (VSYNC_REQ her döngü karşılaştırılıyor), ikinci vblank'te bayrak yine
+    s.idle((F + 1) * FRAME_CYCLES + 2 - g.cycle);
+    expect(s.rd8(IO.VSTAT)).toBe(2);
+    expect(m.video.frames).toBe(2);
+    const fc = vb.card.frames.nets;
+    const count = ["1Q0", "1Q1", "1Q2", "1Q3", "2Q0"].reduce((a, p, i) => a | (g.sim.get(fc[p]) << i), 0);
+    expect(count, "kare sayacı").toBe(m.video.frames);
+    expect(s.irqChecks).toBeGreaterThan(130_000);
+
+    // kare F: görünür alan referansla aynı, dışı siyah; senkronlar
+    const cursor = m.video.cursorVisible ? m.video.cursorY * 80 + m.video.cursorX : -1;
+    expect(cursor).toBe(21 * 80 + 37);
+    const bad: string[] = [];
+    for (let vc = 0; vc < 525; vc++) {
+      for (let hc = 0; hc < 800; hc++) {
+        const v = shot[vc * 800 + hc];
+        const x = hc - 8;
+        const want = x >= 0 && x < 640 && vc < 480 ? refPixel(m.video.vram, cursor, x, vc) : 0;
+        if ((v & 15) !== want && bad.length < 5) bad.push(`(${x}, ${vc}): ${v & 15} ≠ ${want}`);
+        const hs = hc >= 664 && hc < 760 ? 0 : 1;
+        const pos = vc * 800 + hc;
+        const vs = pos >= 490 * 800 + 8 && pos < 492 * 800 + 8 ? 0 : 1;
+        if (((v >> 4) & 1) !== hs && bad.length < 5) bad.push(`HSYNC (${hc}, ${vc})`);
+        if (((v >> 5) & 1) !== vs && bad.length < 5) bad.push(`VSYNC (${hc}, ${vc})`);
+      }
+    }
+    expect(bad).toEqual([]);
+    // DAC: 16 rengin hepsi göründü; gerilimler CGA paletiyle aynı (0,7 V = 0xFF)
+    expect(dacSeen.size).toBe(16);
+    for (const [c, bits] of dacSeen) {
+      const [r, i, gh, gl, b] = [...bits].map(Number);
+      const want = CGA_PALETTE[c];
+      const volts = [dac(r, i), dac(gh, gl), dac(b, i)];
+      [want >> 16, (want >> 8) & 0xff, want & 0xff].forEach((comp, k) => {
+        expect(Math.abs(volts[k] - (comp / 255) * 0.72), `renk ${c} bileşen ${k}`).toBeLessThan(0.02);
+      });
+    }
+  });
+});
+
+describe("video kartı: imleç", () => {
+  /** İmleç (5, 0) ve 0. karakter satırının tarama satırları; kare sayacı başlangıcı ayarlanabilir */
+  function cursorRow(o: { vctrl: number; frames: number }): number[][] {
+    const rows: number[][] = Array.from({ length: 16 }, () => Array(48).fill(-1));
+    const vb = videoBench((k, g) => {
+      const n = k + 1;
+      const hc = n % 800;
+      const vc = Math.floor(n / 800);
+      if (vc < 16 && hc >= 8 && hc < 56) rows[vc][hc - 8] = irgb(g);
+
+    });
+    const { g, card } = vb;
+    // kare sayacı (74HC393) başlangıç değeri: simülasyonda doğrudan (gerçekte güç açılışında rastgele)
+    const ffs = range(card.frames.gates[1] - card.frames.gates[0]).map((i) => card.frames.gates[0] + i)
+      .filter((x) => g.b.c.gates[x].kind === "DFF");
+    g.setFlipFlops(ffs, (i) => ((o.frames >> i) & 1) as Level);
+    // VRAM doğrudan doldurulur (tarama başlamadan); hücre 5: "_", sarı / mavi
+    (card.vramChar.handle as MemoryHandle).data[5] = "_".charCodeAt(0);
+    (card.vramAttr.handle as MemoryHandle).data[5] = 0x1e;
+    g.wr8(IO.CURSOR_X, 5);
+    g.idle(5);
+    g.wr8(IO.CURSOR_Y, 0);
+    g.idle(5);
+    g.wr8(IO.VCTRL, o.vctrl);
+    while (vb.pixel() < 16 * 800 + 64) g.step();
+    return rows;
+  }
+
+  it("açıkken tarama satırı 14–15 yazı renginde; kapalıyken ve yanıp sönmenin sönük yarısında görünmez", { timeout: 30_000 }, () => {
+    const glyph = (r: number, x: number) => (FONT_8X16["_".charCodeAt(0) * 16 + r] & (0x80 >> (x & 7)) ? 0xe : 0x1);
+    const cell = (rows: number[][], cursor: boolean) => {
+      for (let r = 0; r < 16; r++) {
+        for (let x = 0; x < 48; x++) {
+          const inCell = x >= 40;
+          const want = !inCell ? 0 : cursor && r >= 14 ? 0xe : glyph(r, x);
+          expect(rows[r][x], `satır ${r}, x ${x}`).toBe(want);
+        }
+      }
+    };
+    cell(cursorRow({ vctrl: 1, frames: 0 }), true);
+    cell(cursorRow({ vctrl: 1, frames: 15 }), true); // 0–15: yanık
+    cell(cursorRow({ vctrl: 1, frames: 16 }), false); // 16–31: sönük
+    cell(cursorRow({ vctrl: 0, frames: 0 }), false);
+  });
+});
+
 // =============================================================================== KiCad
 
 /** Tek başına anakart G/Ç + video kartları (arka panel konnektörüyle) */
 function standaloneBoard(): Board {
   const b = new Board();
   buildIoCard(b);
+  buildVideoCard(b);
   b.finish();
   return b;
 }
 const KICAD_CARDS = [
   { card: "gc", title: "CPU16 — Anakart G/Ç kartı (UART, PS/2, zamanlayıcı, kesme)" },
+  { card: "video", title: "CPU16 — Anakart video kartı (80 × 30 metin, VGA 640 × 480)" },
 ];
 
 // KiCad kuruluysa (CI'da değil): şemayı geçici bir dizine yaz, kicad-cli'ye netlist'ini çıkart, kartın netleriyle karşılaştır
@@ -832,6 +1112,13 @@ const hasKicad = (() => {
 
 describe("anakart kartları: KiCad şeması", () => {
   const board = standaloneBoard();
+  it("iki kart birlikte: elektriksel kural denetimi temiz (VSYNC_REQ video kartından)", () => {
+    const ext = [...IO_CARD_INPUTS, ...VIDEO_CARD_INPUTS].filter((x) => x !== "VSYNC_REQ");
+    expect(erc(board, ext)).toEqual([]);
+    const counts = board.summary();
+    expect(Object.keys(counts).sort()).toEqual(["gc", "video"]);
+  });
+
   it("şema her çipi ve pasifi içerir; arka panel konnektörü paylaşılan pinlerde", () => {
     for (const { card, title } of KICAD_CARDS) {
       const sch = cardSchematic(board, card, { project: card, title, paper: "A1", date: "2026-10-11" });
