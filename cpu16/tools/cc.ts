@@ -2,6 +2,8 @@
 //
 //   -o çıktı.hex|.bin|.s   çıktı (varsayılan: ilk dosyanın adı + .hex; --run varsa dosya yazılmaz)
 //   --run                  emülatörde çalıştır, UART çıktısını yazdır
+//   --hedef rom|bios       rom (varsayılan): 0x0000'dan, kendi vektörleriyle; bios: RAM'e 0x4000'dan
+//                          yüklenir, BIOS monitöründen G 4000 ile çalışır (--run anakart + BIOS'ta çalıştırır)
 //   --max N                en fazla komut sayısı (varsayılan 50 milyon)
 //   -I dizin               başlık arama dizini (birden fazla olabilir)
 //   -D AD[=değer]          makro tanımla
@@ -11,7 +13,9 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { toIntelHex } from "../asm/hex.ts";
-import { buildProgram, demangle, formatErrors } from "../cc/index.ts";
+import { buildBios } from "../bios/build.ts";
+import { buildProgram, demangle, formatErrors, type BuildResult } from "../cc/index.ts";
+import { Machine } from "../emu/machine.ts";
 import { diskReader, loadLib } from "../cc/node.ts";
 import { runProgram } from "../cc/run.ts";
 
@@ -27,6 +31,7 @@ export function ccMain(args: string[]): number {
   let optimize = true;
   let nostdlib = false;
   let showMap = false;
+  let target: "rom" | "bios" = "rom";
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
     const val = () => {
@@ -48,6 +53,11 @@ export function ccMain(args: string[]): number {
     else if (a === "-O" || a === "-O1" || a === "-O2") optimize = true;
     else if (a === "--nostdlib") nostdlib = true;
     else if (a === "--map") showMap = true;
+    else if (a === "--hedef") {
+      const t = val();
+      if (t !== "rom" && t !== "bios") throw new Error(`--hedef rom ya da bios olmalı: ${t}`);
+      target = t;
+    }
     else if (a.startsWith("-")) throw new Error(`bilinmeyen seçenek: ${a}`);
     else inputs.push(a);
   }
@@ -65,13 +75,14 @@ export function ccMain(args: string[]): number {
       return 1;
     }
   }
-  const res = buildProgram(files, inputs, { lib: loadLib(), readFile: diskReader, includeDirs, defines, optimize, nostdlib });
+  const res = buildProgram(files, inputs, { lib: loadLib(), readFile: diskReader, includeDirs, defines, optimize, nostdlib, target });
   if (res.errors.length) {
     console.error(formatErrors(res.errors));
     return 1;
   }
 
-  const summary = `ROM ${res.romSize} bayt (0x0000–0x${hex4(res.romSize)}), RAM ${res.ramSize} bayt`;
+  const start = target === "bios" ? 0x4000 : 0;
+  const summary = `kod ${res.romSize} bayt (0x${hex4(start)}–0x${hex4(start + res.romSize)}), RAM ${res.ramSize} bayt`;
   if (output || !run) {
     const out = output ?? inputs[0].replace(/\.[cs]$/, "") + ".hex";
     if (out.endsWith(".s")) writeFileSync(out, res.asm);
@@ -87,6 +98,7 @@ export function ccMain(args: string[]): number {
     }
   }
   if (!run) return 0;
+  if (target === "bios") return runOnBios(res, max);
 
   const r = runProgram(res.image, {
     maxSteps: max,
@@ -95,4 +107,20 @@ export function ccMain(args: string[]): number {
   const why = r.result === "halted" ? `çıkış kodu ${r.exitCode}` : r.result === "illegal" ? `yasadışı komut, PC=0x${hex4(r.cpu.pc)}` : `${max} komut sınırına ulaşıldı`;
   console.error(`\n[${r.result}] ${why}, ${r.steps} komut${r.romWrites ? `, UYARI: ROM'a ${r.romWrites} yazma yok sayıldı` : ""}`);
   return r.result === "halted" ? 0 : 2;
+}
+
+/** BIOS hedefli programı anakart modelinde çalıştırır: BIOS açılır, program RAM'e konur, G 4000. */
+function runOnBios(res: BuildResult, maxCycles: number): number {
+  const m = new Machine();
+  m.loadFlash(buildBios(readFileSync(new URL("../bios/bios.s", import.meta.url), "utf8")).flash);
+  m.reset();
+  m.runUntil(() => m.uartOutput.endsWith("> "), 4_000_000);
+  for (const [s, e] of res.ranges) m.pokeCpu(s, res.image.subarray(s, e));
+  const from = m.uartOutput.length;
+  m.uartOnOutput = (b) => process.stdout.write(Buffer.from([b]));
+  m.uartSend("G 4000\r");
+  const done = m.runUntil(() => m.uartOutput.length > from + 8 && m.uartOutput.endsWith("> "), maxCycles);
+  console.error(`\n[${done ? "monitöre döndü" : `${maxCycles} döngü sınırı`}] ${m.cycles} döngü (${(m.cycles / 4e6).toFixed(2)} s, 4 MHz)`);
+  console.error(m.renderText().replace(/\s+$/gm, "").replace(/\n{2,}/g, "\n"));
+  return done ? 0 : 2;
 }

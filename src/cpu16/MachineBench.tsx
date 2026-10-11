@@ -6,6 +6,8 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import biosSource from "../../cpu16/bios/bios.s?raw";
 import { assemble } from "../../cpu16/asm/assembler";
+import { buildProgram } from "../../cpu16/cc/index";
+import { LIB } from "../../cpu16/cc/lib-vite";
 import { buildBios, type BiosBuild } from "../../cpu16/bios/build";
 import { MachineLink } from "../../cpu16/bios/simlink";
 import { programHex, uploadHex } from "../../cpu16/bios/uploader";
@@ -17,15 +19,19 @@ import { ModeSwitch } from "../ui/ModeSwitch";
 import { VgaRenderer } from "./vga";
 import { TerminalText, WebSerialLink, webSerial } from "./serial";
 
-const sources = import.meta.glob("../../cpu16/bios/ornekler/*.s", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+const sources = import.meta.glob("../../cpu16/bios/ornekler/*.{s,c}", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+/** Örnekler: assembly dosyaları uzantısız ("merhaba"), C dosyaları uzantılı ("yilan.c") anahtarla */
 const EXAMPLES = Object.fromEntries(Object.entries(sources).map(([p, s]) => [p.split("/").pop()!.replace(/\.s$/, ""), s]));
-const ORDER = ["merhaba", "saat", "renkler", "onbellek"].filter((n) => n in EXAMPLES);
+const ORDER = ["merhaba", "saat", "renkler", "onbellek", "selam.c", "yilan.c"].filter((n) => n in EXAMPLES);
 const LABELS: Record<string, string> = {
   merhaba: "merhaba.s · renkli selam ve toplam",
   saat: "saat.s · kutu çizimi ve saat",
   renkler: "renkler.s · 16×16 renk tablosu",
   onbellek: "onbellek.s · önbellek açık / kapalı",
+  "selam.c": "selam.c · C: printf, renkler, özyineleme",
+  "yilan.c": "yilan.c · C: yılan oyunu (W A S D)",
 };
+const isC = (name: string) => name.endsWith(".c");
 
 /** Hız seçenekleri: 4 MHz'in katı; 0 = turbo (karede sığdığı kadar). */
 const SPEEDS = [
@@ -178,6 +184,16 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
 
   /** Derler; hata varsa null. */
   const compile = () => {
+    if (isC(prog)) {
+      // cc16, BIOS hedefi: RAM'e 0x4000'dan yüklenir, giriş __reset (0x4000)
+      const b = buildProgram({ [`/${prog}`]: src }, [`/${prog}`], { lib: LIB, target: "bios" });
+      setErrors(b.errors.map((e) => ({ line: e.line, message: e.col ? `${e.col}. sütun: ${e.message}` : e.message })));
+      if (b.errors.length) {
+        setInfo("Derleme başarısız; hataları düzeltip tekrar dene.");
+        return null;
+      }
+      return { image: b.image, ranges: b.ranges, symbols: new Map([["main", 0x4000]]) } as unknown as ReturnType<typeof assemble>;
+    }
     const res = assemble(src);
     setErrors(res.errors);
     if (res.errors.length) {
@@ -403,7 +419,7 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
             id="cpu16-msrc"
             spellCheck={false}
             value={src}
-            aria-label="Assembly kaynak kodu"
+            aria-label={isC(prog) ? "C kaynak kodu" : "Assembly kaynak kodu"}
             onChange={(e) => setSrc(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
