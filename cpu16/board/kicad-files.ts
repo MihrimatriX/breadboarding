@@ -15,8 +15,8 @@ export const KICAD_DIR = "cpu16/kicad";
  * board = "computer": test bilgisayarı (CPU + test bellek + saat; buildComputerBoard, ortak bom.csv);
  * board = "machine": anakart (buildFullMachineBoard; referanslar o kartta numaralanır, BOM kart klasöründe).
  */
-export const KICAD_CARDS: { card: string; title: string; paper: SchematicOptions["paper"]; board: "computer" | "machine" }[] = [
-  { card: "cpu", title: "CPU16 — CPU kartı", paper: "A0", board: "computer" },
+export const KICAD_CARDS: { card: string; title: string; paper: SchematicOptions["paper"]; board: "computer" | "machine"; densePassives?: boolean }[] = [
+  { card: "cpu", title: "CPU16 — CPU kartı", paper: "A0", board: "computer", densePassives: true },
   { card: "mem", title: "CPU16 — Test bellek kartı (64 KB + UART çıkışı)", paper: "A3", board: "computer" },
   { card: "clk", title: "CPU16 — Saat ve reset kartı", paper: "A3", board: "computer" },
   { card: "bellek", title: "CPU16 — Bellek kartı (Flash 128 KB + RAM 512 KB, bank register'ları)", paper: "A2", board: "machine" },
@@ -34,9 +34,9 @@ export interface KicadFile {
   card?: string;
 }
 
-function project(board: Board, card: string, title: string, paper: SchematicOptions["paper"]): KicadFile[] {
+function project(board: Board, card: string, title: string, paper: SchematicOptions["paper"], densePassives = false): KicadFile[] {
   return [
-    { path: `${KICAD_DIR}/${card}/${card}.kicad_sch`, content: cardSchematic(board, card, { project: card, title, paper, date: DATE }), board, card },
+    { path: `${KICAD_DIR}/${card}/${card}.kicad_sch`, content: cardSchematic(board, card, { project: card, title, paper, date: DATE, densePassives }), board, card },
     { path: `${KICAD_DIR}/${card}/${card}.kicad_pro`, content: kicadProject(card) },
     { path: `${KICAD_DIR}/${card}/sym-lib-table`, content: SYM_LIB_TABLE },
   ];
@@ -46,10 +46,10 @@ function project(board: Board, card: string, title: string, paper: SchematicOpti
 export function writeKicadFiles(board: Board, machine: Board = buildFullMachineBoard().board): KicadFile[] {
   const files: KicadFile[] = [{ path: `${KICAD_DIR}/cpu16.kicad_sym`, content: kicadSymbolLibrary([...CHIPS, ...Object.values(PASSIVES)]) }];
   const computerCards = KICAD_CARDS.filter((c) => c.board === "computer");
-  for (const c of computerCards) files.push(...project(board, c.card, c.title, c.paper));
+  for (const c of computerCards) files.push(...project(board, c.card, c.title, c.paper, c.densePassives));
   files.push({ path: `${KICAD_DIR}/bom.csv`, content: bomCsv(board, computerCards.map((c) => c.card)) });
   for (const c of KICAD_CARDS.filter((x) => x.board === "machine")) {
-    files.push(...project(machine, c.card, c.title, c.paper));
+    files.push(...project(machine, c.card, c.title, c.paper, c.densePassives));
     files.push({ path: `${KICAD_DIR}/${c.card}/bom.csv`, content: bomCsv(machine, [c.card]) });
   }
   // ayrı bir alet: Flash programlayıcı

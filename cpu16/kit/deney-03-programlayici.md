@@ -34,16 +34,16 @@ Protokolün tamamı: `cpu16/programlayici/cpu16-programlayici/cpu16-programlayic
    Seri monitörde (115200) `CPU16 programlayici v1 hazir` görmelisin.
 4. Boş bir SST39SF010A tak: `python3 cpu16/programlayici/yaz.py PORT --id` → `OK ID BF B5`.
    (PORT: Linux `/dev/ttyUSB0`, macOS `/dev/cu.usbserial-…`, Windows `COM5`; `pip install pyserial`.)
-5. ROM'ları yaz ve etiketle (sonraki deneylerde lazım):
+5. Bir deneme imajı yaz ve doğrula (karakter ROM'u; Deney 11'de video kartına takılır):
 
    ```
-   python3 cpu16/programlayici/yaz.py PORT cpu16/roms/alu-0.hex --sil --dogrula        # Deney 5
-   … alu-1, alu-2
-   python3 cpu16/programlayici/yaz.py PORT cpu16/roms/mikrokod-0.hex --sil --dogrula   # Deney 7
-   … mikrokod-1, -2, -3
+   npm run cpu16 -- charrom -o charrom.hex
+   python3 cpu16/programlayici/yaz.py PORT charrom.hex --sil --dogrula
    ```
 
-   Hangi çipin hangi sokete gideceği ilgili deneyin malzeme bölümünde yazar.
+   CPU kartında ROM yok (mikrokod ve ALU kod çözme 74HC kapılarıyla kurulu, Deney 5 ve 7). Programlayıcı
+   bellek kartının Flash'ı (Deney 8'de deneme programı, Deney 12'de BIOS) ve video kartının karakter ROM'u
+   (Deney 11) için lazım. Programlanmış çipleri etiketle.
 
 ## Test: beklenen sonuç
 
@@ -56,8 +56,8 @@ Protokolün tamamı: `cpu16/programlayici/cpu16-programlayici/cpu16-programlayic
 Bu deneyin yazılımı gerçekten test edilir: `npx vitest run cpu16/tests/programmer.test.ts`
 Arduino kodunun kendisini bilgisayarda derler (sahte Arduino çekirdeği ile), pinlerini programlayıcı
 kartının **kapı seviyesi** modeline (2 × 74HC595 + SST39SF010A) bağlar ve `yaz.py`'nin ürettiği
-komutlarla bir ALU ROM'unu siler, yazar ve doğrular. Gerçek kartta takılırsan aynı komutları
-simülasyonda dene. Kuru çalıştırma: `python3 cpu16/programlayici/yaz.py --kuru cpu16/roms/alu-0.hex --sil`.
+komutlarla bir imajı siler, yazar ve doğrular. Gerçek kartta takılırsan aynı komutları simülasyonda
+dene. Kuru çalıştırma: `python3 cpu16/programlayici/yaz.py --kuru charrom.hex --sil`.
 
 ## Sorun giderme
 

@@ -4,7 +4,6 @@
 
 import { L0, L1, LogicSim, type Level } from "../chips/logic.ts";
 import type { MemoryHandle } from "../chips/parts/memory.ts";
-import { aluRomImages } from "./alu-rom.ts";
 import { Board, type ChipInstance } from "./board.ts";
 import { buildClockCard, type ClockCard } from "./clock-card.ts";
 import { buildCpuCard, type CpuCard } from "./cpu-card.ts";
@@ -49,7 +48,11 @@ export class GateComputer {
   private readonly net: (name: string) => number;
   private uartCp: Level = L1;
 
-  constructor(microcode: Uint32Array) {
+  /**
+   * Kartta ROM yok: kontrol birimi mikrokoddan (micro/cpu16.ucode) kart kurulurken kapı devresi
+   * olarak üretilir. Parametre eski çağıranlar için duruyor ve yok sayılır.
+   */
+  constructor(_microcode?: Uint32Array) {
     const { board, cpu, mem, clock } = buildComputerBoard();
     this.board = board;
     this.cpu = cpu;
@@ -59,12 +62,6 @@ export class GateComputer {
       if (!board.has(name)) throw new Error(`Böyle bir net yok: ${name}`);
       return board.n(name);
     };
-    // ROM'lar ve RAM simülasyon kurulmadan önce doldurulur (programlayıcıyla yazılmış gibi)
-    cpu.microcode.forEach((ci, k) => {
-      const h = ci.handle as MemoryHandle;
-      for (let a = 0; a < microcode.length; a++) h.data[a] = (microcode[a] >>> (8 * k)) & 0xff;
-    });
-    aluRomImages().forEach((img, k) => (cpu.aluRom[k].handle as MemoryHandle).data.set(img));
     this.sim = new LogicSim(board.c);
     for (const p of board.pulls) this.sim.pull(p.net, p.level);
     // saat kartı: kristal, OTOMATİK kip, butonlar bırakılmış
@@ -193,7 +190,7 @@ export class GateComputer {
 
   /**
    * Bir CPU saat döngüsü = osilatörün 8 periyodu (saat kartındaki Johnson sayacı): düşen kenar
-   * (kontrol register'ı mikrokodu örnekler), yazma penceresi (bellek/G-Ç yazma darbesi),
+   * (kontrol register'ı kontrol biriminin çıkışını örnekler), yazma penceresi (bellek/G-Ç yazma darbesi),
    * yükselen kenar (bütün durum register'ları).
    */
   cycle(): void {

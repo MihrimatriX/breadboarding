@@ -2,14 +2,22 @@
 // Her blok burada gerçek 74HC çiplerine bağlanır; çıkan devre kapı seviyesinde çalıştırılıp
 // saat döngüsü modeliyle (micro/datapath.ts) her döngüde karşılaştırılır.
 //
-// Zamanlama: kontrol register'ı (CR) saatin DÜŞEN kenarında mikrokod ROM'unu örnekler; bütün
-// durum register'ları YÜKSELEN kenarda yüklenir. Yükleme sinyalleri CR'den geldiği için saat
-// yüksekken sabittir; bu yüzden "kapılı saat" (CLK ∧ yükle) parazitsizdir.
+// Kartta ROM yok: mikrokod ve ALU kod çözme tablosu kontrol.ts'de 74HC kapı devresine çevrilir ve
+// gerçek çipler olarak yerleşir ("Kontrol birimi", "ALU kod çözücü" blokları). Çözücü çipleri
+// boşalan yuvalara (eski ROM'lar U1, U3, U5, U7, U69–U71; adım 0 çözücüsü U10; ALU işlem bit 4
+// seçicisi U68), kalanı ve kapıları kartın sonuna: kartın diğer çiplerinin referansları ROM'lu
+// sürümdekiyle aynı kalır (deney rehberleri, belgeler).
+//
+// Zamanlama: kontrol register'ı (CR) saatin DÜŞEN kenarında kontrol biriminin çıkışlarını (MK0..31)
+// örnekler; bütün durum register'ları YÜKSELEN kenarda yüklenir. Yükleme sinyalleri CR'den geldiği
+// için saat yüksekken sabittir; bu yüzden "kapılı saat" (CLK ∧ yükle) parazitsizdir.
 //
 // Arka panel (backplane) sinyalleri: CLK, WR_WIN (saat düşükken ortadaki yazma penceresi), ~RESET, IRQ, A0..A15, DE0..DE7 (çift bayt), DO0..DO7
 // (tek bayt), ~MRD, ~MWE_E, ~MWE_O, HALTED, FAULT.
 
+import { AD_BIT } from "./alu-kod.ts";
 import type { Board, ChipInstance } from "./board.ts";
+import { KontrolYerlestirici, kontrolDevresi, type Cikis } from "./kontrol.ts";
 
 export interface CpuCard {
   regs: ChipInstance[][]; // [r][0 = düşük bayt, 1 = yüksek bayt]
@@ -18,9 +26,9 @@ export interface CpuCard {
   tb: ChipInstance[];
   mar: ChipInstance[];
   pc: ChipInstance[];
-  microcode: ChipInstance[];
-  aluRom: ChipInstance[];
   cr: ChipInstance[];
+  /** kontrol biriminin MSI çipleri (74HC138, 74HC151; ertelenenler Board.finish()'te eklenir) */
+  kontrol: ChipInstance[];
   flags: { nz: ChipInstance; cv: ChipInstance; i: ChipInstance };
   intHalt: ChipInstance;
   faultRun: ChipInstance;
@@ -29,15 +37,8 @@ export interface CpuCard {
 
 const range = (n: number) => Array.from({ length: n }, (_, i) => i);
 
-/** ALU kod çözme ROM'u çıkışları (alu-rom.ts ile aynı sıra) */
-export const ALUROM_BITS = {
-  // ROM 0
-  INVA: 0, PASSB: 1, INVB: 2, CIN: 3, SETSCV: 4, SINL: 5, SINHC: 6, SAREN: 7,
-  // ROM 1
-  FLO0: 8, RS0: 12, RS1: 13,
-  // ROM 2
-  FHI0: 16,
-} as const;
+/** Sabit çıkışı (0/1) olan kontrol bitinin neti */
+const netOf = (c: Cikis): string => (c === 0 ? "GND" : c === 1 ? "VCC" : c);
 
 export function buildCpuCard(b: Board): CpuCard {
   b.card = "cpu";
@@ -61,21 +62,19 @@ export function buildCpuCard(b: Board): CpuCard {
 
   const END = CW[31], HALT = CW[29], ILLEGAL = CW[30];
 
-  // ---- mikrokod ROM'u + kontrol register'ı
+  // ---- kontrol birimi (mikrokod: adım, komut, f3, COND, INT → MK0..31; ALU kod çözme: işlem, h,
+  // C → AD0..23) ve kontrol register'ı. Kapılar şimdi eklenir, kartın sonunda paketlenir.
   const STEP = b.bus("STEP", 4);
   const COND = n("COND");
   const INT = n("INT");
-  const romAddr = [...STEP, COND, IR[0], IR[1], IR[2], IR[12], IR[13], IR[14], IR[15], INT];
-  const microcode: ChipInstance[] = [];
+  const devre = kontrolDevresi();
+  const kb = new KontrolYerlestirici(b, devre);
   const cr: ChipInstance[] = [];
   for (let k = 0; k < 4; k++) {
-    const conn: Record<string, number | string> = { "~CE": "GND", "~OE": "GND", "~WE": "VCC" };
-    range(17).forEach((i) => (conn[`A${i}`] = i < 13 ? romAddr[i] : "GND"));
-    range(8).forEach((i) => (conn[`DQ${i}`] = `MC${k}_${i}`));
-    microcode.push(b.place("SST39SF010A", conn, `mikrokod ROM ${k} (kontrol bitleri ${8 * k}..${8 * k + 7})`));
+    kb.yerlestir("komut"); // eski mikrokod ROM'u k'nın yuvası
     const c2: Record<string, number | string> = { "~OE": "GND", CP: nCLK };
     range(8).forEach((i) => {
-      c2[`D${i}`] = `MC${k}_${i}`;
+      c2[`D${i}`] = netOf(devre.mk[8 * k + i]);
       c2[`Q${i}`] = CW[8 * k + i];
     });
     cr.push(b.place("74HC574", c2, `kontrol register'ı ${k}`));
@@ -87,15 +86,13 @@ export function buildCpuCard(b: Board): CpuCard {
     "~PE": b.nand(END, RUN_R, "~STEP_CLR", "END: adımı sıfırla"),
     CEP: RUN_R, CET: "VCC", Q0: STEP[0], Q1: STEP[1], Q2: STEP[2], Q3: STEP[3],
   }, "mikro adım sayacı");
-  b.place("74HC138", {
-    A0: STEP[0], A1: STEP[1], A2: STEP[2], "~E1": STEP[3], "~E2": "GND", E3: "VCC", "~Y0": "~IS_STEP0",
-  }, "adım çözücü (adım 0 algılama)");
+  kb.yerlestir("adim"); // adım çözücü: ~ADIM0 = adım 0 (kesme girişi aşağıda da kullanır)
 
   // ---- kesme, HALT, hata
   const IFLAG = n("IFLAG");
   const WAKE = b.and("IRQ", IFLAG, "WAKE", "IRQ ∧ I");
-  const STEP0 = b.not("~IS_STEP0", "IS_STEP0", "adım 0");
-  b.or(b.and(STEP0, WAKE, undefined, "INT seçimi"), b.and("~IS_STEP0", "INT_HOLD", undefined, "INT seçimi"), INT, "INT seçimi");
+  const STEP0 = b.not("~ADIM0", "ADIM0", "adım 0");
+  b.or(b.and(STEP0, WAKE, undefined, "INT seçimi"), b.and("~ADIM0", "INT_HOLD", undefined, "INT seçimi"), INT, "INT seçimi");
   const nWAKE = b.not(WAKE, "~WAKE", "uyanma");
   const intHalt = b.place("74HC74", {
     "1D": INT, "1CLK": "CLK", "~1PRE": "VCC", "~1CLR": "~RESET", "1Q": "INT_HOLD",
@@ -219,30 +216,27 @@ export function buildCpuCard(b: Board): CpuCard {
     "1I0": CW[6], "1I1": IR[0], "1Y": AOP[0], "2I0": CW[7], "2I1": IR[1], "2Y": AOP[1],
     "3I0": CW[8], "3I1": IR[2], "3Y": AOP[2], "4I0": CW[9], "4I1": IR[12], "4Y": AOP[3],
   }, "ALU işlem seçici (bit 0..3)");
-  b.place("74HC157", {
-    S: CW[11], "~E": "GND", "1I0": CW[10], "1I1": "GND", "1Y": AOP[4],
-    "2I0": "GND", "2I1": "GND", "3I0": "GND", "3I1": "GND", "4I0": "GND", "4I1": "GND",
-  }, "ALU işlem seçici (bit 4)");
+  // bit 4: ALU_IR = 1 iken 0 (komuttan gelen işlemler 0..15), değilse CW10. İki kapı kontrol
+  // biriminin kapılarıyla paketlenir (eski 74HC157'nin yuvasında kontrol biriminin bir çipi)
+  b.flexibleGlue = true;
+  b.and(CW[10], b.not(CW[11], "~ALU_IR", "ALU işlem seçici (bit 4)"), AOP[4], "ALU işlem seçici (bit 4)");
+  b.flexibleGlue = false;
+  kb.yerlestir("adim");
 
-  // ---- ALU kod çözme ROM'u (adres: işlem, h, C)
-  const AD = b.bus("AD", 24);
-  const aluRom = range(3).map((k) => {
-    const conn: Record<string, number | string> = { "~CE": "GND", "~OE": "GND", "~WE": "VCC" };
-    const addr: (number | string)[] = [...AOP, IR[8], "CFLAG"];
-    range(17).forEach((i) => (conn[`A${i}`] = i < addr.length ? addr[i] : "GND"));
-    range(8).forEach((i) => (conn[`DQ${i}`] = AD[8 * k + i]));
-    return b.place("SST39SF010A", conn, `ALU kod çözme ROM'u ${k}`);
-  });
+  // ---- ALU kontrol bitleri AD0..AD23: kontrol biriminin ALU kod çözücüsünden (işlem, h, C);
+  // işlem çözücüleri eski ALU ROM'larının yuvalarında
+  for (let k = 0; k < 3; k++) kb.yerlestir("alu");
+  const AD = range(24).map((i) => netOf(devre.ad[i]));
   const ad = (bit: number) => AD[bit];
 
   // ---- toplayıcı girişleri ve 4 × 74HC283
-  const X = range(16).map((i) => b.xor(TA[i], ad(ALUROM_BITS.INVA), `X${i}`, "toplayıcı A girişi (NEG'de ters)"));
+  const X = range(16).map((i) => b.xor(TA[i], ad(AD_BIT.INVA), `X${i}`, "toplayıcı A girişi (NEG'de ters)"));
   const Y = range(16).map((i) =>
-    b.xor(b.and(TB[i], ad(ALUROM_BITS.PASSB), undefined, "toplayıcı B girişi"), ad(ALUROM_BITS.INVB), `Y${i}`, "toplayıcı B girişi (SUB'da ters)"),
+    b.xor(b.and(TB[i], ad(AD_BIT.PASSB), undefined, "toplayıcı B girişi"), ad(AD_BIT.INVB), `Y${i}`, "toplayıcı B girişi (SUB'da ters)"),
   );
   const SUM = b.bus("SUM", 16);
   for (let k = 0; k < 4; k++) {
-    const conn: Record<string, number | string> = { CIN: k === 0 ? ad(ALUROM_BITS.CIN) : `CO${k - 1}`, COUT: k === 3 ? "C_ADD" : `CO${k}` };
+    const conn: Record<string, number | string> = { CIN: k === 0 ? ad(AD_BIT.CIN) : `CO${k - 1}`, COUT: k === 3 ? "C_ADD" : `CO${k}` };
     range(4).forEach((i) => {
       conn[`A${i + 1}`] = X[4 * k + i];
       conn[`B${i + 1}`] = Y[4 * k + i];
@@ -257,27 +251,27 @@ export function buildCpuCard(b: Board): CpuCard {
   for (let i = 0; i < 16; i++) {
     const hi = i >= 8;
     const conn: Record<string, number | string> = { S0: TA[i], S1: TB[i], S2: hi ? TA[7] : "GND", "~E": "GND", Y: LOGIC[i] };
-    range(8).forEach((k) => (conn[`I${k}`] = hi ? AD[ALUROM_BITS.FHI0 + k] : k < 4 ? AD[ALUROM_BITS.FLO0 + k] : "GND"));
+    range(8).forEach((k) => (conn[`I${k}`] = hi ? AD[AD_BIT.FHI0 + k] : k < 4 ? AD[AD_BIT.FLO0 + k] : "GND"));
     b.place("74HC151", conn, `mantık birimi bit ${i} (doğruluk tablosu)`);
   }
 
   // ---- kaydırıcı ve sonuç seçici
-  const SINH = b.or(ad(ALUROM_BITS.SINHC), b.and(ad(ALUROM_BITS.SAREN), TA[15], undefined, "SAR işaret biti"), "SINH", "sağa kaydırmada giren bit");
+  const SINH = b.or(ad(AD_BIT.SINHC), b.and(ad(AD_BIT.SAREN), TA[15], undefined, "SAR işaret biti"), "SINH", "sağa kaydırmada giren bit");
   const RES = b.bus("RES", 16);
   for (let j = 0; j < 8; j++) {
-    const conn: Record<string, number | string> = { S0: AD[ALUROM_BITS.RS0], S1: AD[ALUROM_BITS.RS1], "~1E": "GND", "~2E": "GND" };
+    const conn: Record<string, number | string> = { S0: AD[AD_BIT.RS0], S1: AD[AD_BIT.RS1], "~1E": "GND", "~2E": "GND" };
     for (const h of [1, 2]) {
       const i = 2 * j + h - 1;
       conn[`${h}I0`] = SUM[i];
       conn[`${h}I1`] = LOGIC[i];
-      conn[`${h}I2`] = i === 0 ? ad(ALUROM_BITS.SINL) : TA[i - 1];
+      conn[`${h}I2`] = i === 0 ? ad(AD_BIT.SINL) : TA[i - 1];
       conn[`${h}I3`] = i === 15 ? SINH : TA[i + 1];
       conn[`${h}Y`] = RES[i];
     }
     b.place("74HC153", conn, `ALU sonuç seçici bit ${2 * j}, ${2 * j + 1} (toplam / mantık / sola / sağa)`);
   }
   b.place("74HC153", {
-    S0: AD[ALUROM_BITS.RS0], S1: AD[ALUROM_BITS.RS1], "~1E": "GND", "~2E": "GND",
+    S0: AD[AD_BIT.RS0], S1: AD[AD_BIT.RS1], "~1E": "GND", "~2E": "GND",
     "1I0": "C_ADD", "1I1": "GND", "1I2": TA[15], "1I3": TA[0], "1Y": "C_ALU",
     "2I0": "V_ADD", "2I1": "GND", "2I2": "GND", "2I3": "GND", "2Y": "V_ALU",
   }, "ALU C ve V seçici");
@@ -304,7 +298,7 @@ export function buildCpuCard(b: Board): CpuCard {
   }, "bayrak girişi: ALU ya da veriyolu (RETI)");
   // Dört bayrak aynı kapılı saatle yüklenir; C ve V'yi değiştirmeyen işlemlerde (SETSCV = 0) eski
   // değer geri yazılır (çip, kartın sonunda yerleştirilir: C/V tutma seçicisi). SETSCV saat izninde
-  // kullanılmaz: ALU ROM'unun adresinde CFLAG var ve CFLAG tam bu kenarda değişir; ROM çıkışındaki
+  // kullanılmaz: ALU kod çözücünün girişinde CFLAG var ve CFLAG tam bu kenarda değişir; çıkışındaki
   // bir sıçrama kapılı saatte ikinci bir darbe üretebilirdi (docs/uretim.md, zamanlama).
   const clkNZ = gclk(b.or(CW[24], CW[25], "NZ_LD", "N Z yükle"), "NZ");
   const clkCV = clkNZ;
@@ -373,13 +367,16 @@ export function buildCpuCard(b: Board): CpuCard {
   // çiplerin referans numaraları değişmesin diye en sonda yerleştirilir.
   b.block = "Bayraklar ve koşul";
   b.place("74HC157", {
-    S: ad(ALUROM_BITS.SETSCV), "~E": "GND",
+    S: ad(AD_BIT.SETSCV), "~E": "GND",
     "1I0": "CFLAG", "1I1": "C_ALU", "1Y": "C_NEW", "2I0": "VFLAG", "2I1": "V_ALU", "2Y": "V_NEW",
     "3I0": "GND", "3I1": "GND", "4I0": "GND", "4I1": "GND",
   }, "C/V tutma seçicisi: ALU C, V'yi değiştirmiyorsa eski değer");
 
+  // kontrol biriminin kalan çipleri (adım seçicileri …) kartın yapıştırıcı çiplerinden sonra
+  kb.kalanlariErtele();
+
   return {
-    regs, ir, ta, tb, mar, pc, microcode, aluRom, cr,
+    regs, ir, ta, tb, mar, pc, cr, kontrol: kb.cipler,
     flags: { nz, cv, i: iflag }, intHalt, faultRun, step,
   };
 }

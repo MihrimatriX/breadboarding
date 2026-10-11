@@ -29,23 +29,27 @@ uçlarındaki **net etiketleriyle** yapılır: aynı adlı iki etiket aynı nett
 
 ## Kartlar ve çip sayıları
 
-**CPU kartı: 146 entegre**
+**CPU kartı: 194 entegre** (ROM'lu ilk sürüm 146: 7 × SST39SF010A ile)
 
 | Parça | Adet | Nerede |
 |---|---:|---|
-| 74HC151 (8:1 seçici) | 36 | register indeksi (3), sabit birimi (16), mantık birimi (16), koşul birimi (1) |
+| 74HC151 (8:1 seçici) | 46 | register indeksi (3), sabit birimi (16), mantık birimi (16), koşul birimi (1), kontrol biriminin adım seçicileri (10) |
 | 74HC574 (8 bit register) | 28 | r0..r7 (16), TA/TB/MAR/IR (8), kontrol register'ı (4) |
+| 74HC138 (3→8 çözücü) | 12 | veriyolu kaynağı, register okuma, register yazma; kontrol birimi: adım (2), komut (2), op 13/14 alt çözücü (2); ALU işlem çözücü (3) |
 | 74HC541 (tampon) | 9 | PC, sabit, ALU, bayraklar → veriyolu; bayt okumada yüksek bayt = 0 |
 | 74HC153 (4:1 seçici) | 9 | ALU sonuç seçici (8), C/V seçici (1) |
-| 74HC86 / 08 / 32 / 00 / 02 / 04 | 9 / 11 / 3 / 3 / 3 / 2 | yapıştırıcı lojik (kart bitince birimler çiplere paketlenir) |
-| SST39SF010A (Flash) | 7 | mikrokod (4), ALU kod çözme (3) |
+| 74HC08 / 32 / 00 / 02 / 86 / 04 / 10 | 17 / 9 / 8 / 5 / 9 / 4 / 7 | yapıştırıcı lojik ve kontrol biriminin kapıları (kart bitince birimler çiplere paketlenir) |
+| 74HC11 / 20 / 21 | 1 / 4 / 4 | kontrol biriminin 3 ve 4 girişli kapıları |
 | 74HC161 (sayaç) | 5 | PC (4), mikro adım sayacı (1) |
 | 74HC74 (çift D FF) | 5 | N Z, C V, I, INT mandalı + HALT, FAULT + çalışma izni |
-| 74HC138 (3→8 çözücü) | 4 | veriyolu kaynağı, register okuma, register yazma, adım 0 |
 | 74HC283 (4 bit toplayıcı) | 4 | 16 bit toplayıcı |
 | 74HC245 (çift yönlü) | 3 | veriyolu ↔ çift/tek bayt hatları |
-| 74HC157 (2:1 seçici) | 3 | ALU işlem seçimi (2), bayrak girişi (1) |
+| 74HC157 (2:1 seçici) | 3 | ALU işlem seçimi (bit 0..3), bayrak girişi, C/V tutma |
 | 74HC688 (karşılaştırıcı) | 2 | sıfır (Z) algılama |
+
+Kartta ROM yok: kontrol birimi (mikrokod ve ALU kod çözme) 19 MSI çip ve ≈ 38 kapı çipi
+([mikromimari.md](mikromimari.md), "Kapı seviyesinde kontrol birimi"). Kartın referans aralığı
+U1..U199 (`CARD_REF_BASE`).
 
 Ayrıca: veriyolu çekme dirençleri (2 × 10 kΩ SIP-9), her entegreye 100 nF, kart girişine 100 µF,
 HALTED ve FAULT LED'leri, 2 × 32 arka panel konnektörü.
@@ -58,25 +62,28 @@ davranır; asıl anakart (bank'lı 1 MB bellek, ROM, G/Ç, video) Faz 6'da bunun
 sıralayıcı), önbellek kartı 37 entegre (2 KB, bekleme üreteci, sayaçlar), G/Ç kartı 65 entegre
 (UART, PS/2, zamanlayıcı, kesme denetleyicisi), video kartı 69 entegre (VGA 80 × 30 metin); saat
 kartı bekleme durumuyla 10 entegre. `buildFullMachineBoard()` bunları CPU kartıyla birleştirir
-(bütün anakart: 358 entegre), `GateMachine` kapı seviyesinde çalıştırır; test bilgisayarı
+(bütün anakart: 406 entegre), `GateMachine` kapı seviyesinde çalıştırır; test bilgisayarı
 (`buildComputerBoard`, `GateComputer`) olduğu gibi kalır ve deney setinde CPU'nun kurulduğu ilk
 sahnedir (test kartının FF00 mandalı Deney 8'de LED çıkışı olur). Ayrıntı:
 [anakart-kartlari.md](anakart-kartlari.md), [anakart-gc-video.md](anakart-gc-video.md).
 
 ## Blok → çip eşlemesi (CPU kartı)
 
-- **Mikrokod:** adres = `[12]INT [11:8]op [7:5]f3 [4]COND [3:0]adım` → 4 × Flash (32 kontrol biti) →
-  4 × 74HC574 kontrol register'ı (CR). Mikrokod görüntüsü `npm run cpu16 -- ucode` ile üretilir.
+- **Kontrol birimi (mikrokod):** girişler `[12]INT [11:8]op [7:5]f3 [4]COND [3:0]adım` → kod çözücüler
+  (6 × 74HC138), komut sınıfları ve VEYA ağı (kapılar), adım seçicileri (10 × 74HC151) → `MK0..31` →
+  4 × 74HC574 kontrol register'ı (CR). Devreyi `board/kontrol.ts` mikrokoddan üretir
+  (`npm run cpu16 -- kontrol`); ayrıntı [mikromimari.md](mikromimari.md).
 - **Register dosyası:** her register iki 74HC574 (düşük/yüksek bayt), çıkışları doğrudan veriyolunda
   (üç durumlu). İndeks 3 × 74HC151 (RD/RS1/RS2/SP/LR seçimi), okuma ve yazma için iki 74HC138.
 - **ALU:** 4 × 74HC283 toplayıcı; girişler XOR/AND ile koşullanır (SUB'da B ters, NEG'de A ters,
   PASSB). Mantık birimi her bitte bir 74HC151 *doğruluk tablosu*: seçici girişleri (a, b) bitleri,
-  veri girişleri ALU kod çözme ROM'undan gelen 4 bitlik işlem tablosu (AND/OR/XOR/…). Yüksek baytta
+  veri girişleri ALU kod çözücüden gelen 4 bitlik işlem tablosu (AND/OR/XOR/…). Yüksek baytta
   üçüncü seçici girişi a7'dir; bu sayede SXB (bayt işaret genişletme) ek çip istemez. Sonuç
   8 × 74HC153 ile seçilir: toplam / mantık / sola kaydır / sağa kaydır.
-- **ALU kod çözme ROM'u:** 3 × Flash, adres = {ALU işlemi (5), IR8, C bayrağı}. Toplayıcı kontrolü,
-  mantık tabloları, sonuç seçimi, kaydırmada giren bit ve "C/V güncellensin mi" bitini üretir
-  (`board/alu-rom.ts`). Mikrokodda yeni bir ALU işlemi eklemek için çip değil, ROM içeriği değişir.
+- **ALU kod çözücü:** 3 × 74HC138 ve kapılar, girişler = {ALU işlemi (5), IR8, C bayrağı}. Toplayıcı
+  kontrolü, mantık tabloları, sonuç seçimi, kaydırmada giren bit ve "C/V güncellensin mi" bitini üretir
+  (`AD0..23`). Tablo `board/alu-kod.ts`'de, devre ondan üretilir (`board/kontrol.ts`): yeni bir ALU
+  işlemi tabloya bir satırdır, devre `npm run cpu16 -- kontrol` ile yeniden üretilir.
 - **PC:** 4 × 74HC161 (PC[15:1]; PC[0] her zaman 0), +2 sayma ya da veriyolundan yükleme.
 - **Sabit birimi:** her bit için bir 74HC151, 8 biçimden birini seçer (IMM6, IMM6×2, IMM8, IMM9,
   OFF8×2, OFF12×2, 2, 4).

@@ -4,35 +4,17 @@
 
 import { assemble } from "../../cpu16/asm/assembler";
 import { buildProgram, type LibSources } from "../../cpu16/cc/index";
+import { dilBul, type Dil } from "../cpu16/dil";
 
-export type Lang = "asm" | "c";
+export type Lang = Dil;
 
 /** Flash çipinin boyu (SST39SF010A: 128 KB) ve bank 0'ın sonu (CPU adresi 0x0000–0x3FFF) */
 export const FLASH_SIZE = 0x20000;
 export const BANK0_END = 0x4000;
 
-/** Kaynağın dili: C ve assembly izlerinden puanla (eşitlikte assembly) */
+/** Kaynağın dili: Web IDE ile aynı tanıma (src/cpu16/dil.ts); ipucu yoksa assembly */
 export function detectLanguage(src: string): Lang {
-  let c = 0;
-  let asm = 0;
-  const code = src.replace(/\/\*[\s\S]*?\*\//g, (m) => {
-    c += 2;
-    return m.replace(/[^\n]/g, " ");
-  });
-  for (const raw of code.split("\n")) {
-    const line = raw.trim();
-    if (!line) continue;
-    if (/^#\s*(include|define|if|ifdef|ifndef|endif|pragma)\b/.test(line)) c += 3;
-    else if (/^\/\//.test(line)) c += 1;
-    else if (/^;/.test(line)) asm += 1;
-    else if (/^\.(org|text|data|bss|word|byte|asciz|ascii|space|align|global|equ)\b/i.test(line)) asm += 3;
-    else if (/^[A-Za-z_.][\w.]*\s*=\s*[^=]/.test(line) && !/;\s*$/.test(line)) asm += 2;
-    else if (/^([A-Za-z_.][\w.]*:)?\s*(LI|LUI|ORI|LW|SW|LBU|SB|ADD|ADDI|SUB|AND|OR|XOR|CMP|CMPI|MOV|NOT|NEG|SHL|SHR|SAR|ROL|ROR|B|BEQ|BNE|BLT|BGE|BCS|BCC|BMI|BPL|JAL|JALR|CALL|RET|PUSH|POP|HALT|NOP|EI|DI|RETI|SWI|SXB)\b/i.test(line) && !/[;{}]\s*$/.test(line)) asm += 2;
-    else if (/^[A-Za-z_.][\w.]*:\s*(;.*)?$/.test(line)) asm += 1;
-    if (/[{}]\s*$/.test(line) || /\)\s*;\s*$/.test(line)) c += 2;
-    if (/\b(int|void|char|unsigned|long|short|static|const|struct|return|while|for|if|else)\b/.test(line) && /[;{(]/.test(line)) c += 1;
-  }
-  return c > asm ? "c" : "asm";
+  return dilBul(src) ?? "asm";
 }
 
 /**
