@@ -1,16 +1,17 @@
 // Donanım komutları (cli.ts üzerinden çağrılır):
 //   chips                       parça kütüphanesi: kapı ve transistör sayıları
 //   kicad-sym [-o dosya]        KiCad sembol kütüphanesini üret (varsayılan cpu16/kicad/cpu16.kicad_sym)
-//   board                       kartların çip sayıları
-//   board kicad                 cpu16/kicad/<kart>/ şemaları + BOM'u yeniden üret
+//   board                       kartların çip sayıları ve ERC (test bilgisayarı ve anakart)
+//   board kicad                 cpu16/kicad/<kart>/ şemaları + BOM'ları yeniden üret
 //   roms                        cpu16/roms/ altındaki Flash imajlarını (mikrokod, ALU) yeniden üret
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { romFiles } from "../board/roms.ts";
-import { erc } from "../board/board.ts";
+import { erc, type Board } from "../board/board.ts";
 import { CLOCK_INPUTS } from "../board/clock-card.ts";
 import { buildComputerBoard } from "../board/computer.ts";
 import { KICAD_CARDS, writeKicadFiles } from "../board/kicad-files.ts";
+import { buildMachineBoard } from "../board/machine-board.ts";
 import { ChipBench } from "../chips/bench.ts";
 import { toTransistors } from "../chips/cmos.ts";
 import { PASSIVES } from "../board/passives.ts";
@@ -45,14 +46,19 @@ else if (cmd === "board") {
       console.log(f.path);
     }
   } else {
-    for (const [card, parts] of Object.entries(board.summary())) {
-      const total = Object.values(parts).reduce((a, b) => a + b, 0);
-      console.log(`${card} kartı: ${total} entegre`);
-      for (const [part, n] of Object.entries(parts).sort()) console.log(`  ${part.padEnd(12)} × ${n}`);
-    }
-    const problems = erc(board, ["IRQ", ...CLOCK_INPUTS]);
-    console.log(problems.length ? problems.join("\n") : "ERC: sorun yok");
-    console.log(`kartlar: ${KICAD_CARDS.map((c) => c.card).join(", ")}`);
+    const show = (title: string, b: Board) => {
+      console.log(`== ${title}`);
+      for (const [card, parts] of Object.entries(b.summary())) {
+        const total = Object.values(parts).reduce((x, n) => x + n, 0);
+        console.log(`${card} kartı: ${total} entegre`);
+        for (const [part, n] of Object.entries(parts).sort()) console.log(`  ${part.padEnd(12)} × ${n}`);
+      }
+      const problems = erc(b, ["IRQ", ...CLOCK_INPUTS]);
+      console.log(problems.length ? problems.join("\n") : "ERC: sorun yok");
+    };
+    show("Test bilgisayarı: CPU + test bellek + saat (buildComputerBoard)", board);
+    show("Anakart: CPU + saat + bellek + önbellek (buildMachineBoard)", buildMachineBoard().board);
+    console.log(`KiCad kartları: ${KICAD_CARDS.map((c) => c.card).join(", ")}`);
   }
 }
 else if (cmd === "roms") {

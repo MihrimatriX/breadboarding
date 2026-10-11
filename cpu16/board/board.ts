@@ -152,6 +152,21 @@ export class Board {
     }
   }
 
+  /** Netleri VCC'ye çek: tek net için 10 kΩ direnç, fazlası için 8'li SIP dizi (ortak uç VCC) */
+  pullUp(nets: Net[], role: string): void {
+    const ids = nets.map((x) => this.resolve(x));
+    if (ids.length === 1) {
+      this.passive("R_10K", { "1": "VCC", "2": ids[0] }, role);
+    } else {
+      for (let i = 0; i < ids.length; i += 8) {
+        const pins: Record<string, Net> = { "1": "VCC" };
+        ids.slice(i, i + 8).forEach((net, k) => (pins[String(k + 2)] = net));
+        this.passive("RN_10K_8", pins, role);
+      }
+    }
+    for (const net of ids) this.pulls.push({ net, level: 1 });
+  }
+
   /** Durum LED'i: sinyal → 330 Ω → LED → GND */
   led(signal: Net, name: string): void {
     const mid = this.n(`LED_${name}`);

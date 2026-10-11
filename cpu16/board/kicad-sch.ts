@@ -6,7 +6,7 @@
 import { kicadPinName, symbolDef, symbolLayout } from "../chips/kicad.ts";
 import type { ChipDef, PinDef } from "../chips/types.ts";
 import type { Board } from "./board.ts";
-import { PASSIVES, type SymbolOnly } from "./passives.ts";
+import { BACKPLANE, PASSIVES, type SymbolOnly } from "./passives.ts";
 
 const G = 2.54;
 const q = (s: string) => `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
@@ -133,7 +133,9 @@ function order(p: Placed): number {
   return 100_000 + p.ref.charCodeAt(0) * 1000 + n;
 }
 
-const isBackplane = (name: string) => /^(CLK|WR_WIN|~RESET|IRQ|A\d+|DE\d|DO\d|~MRD|~MWE_[EO]|HALTED|FAULT)$/.test(name);
+/** Arka panel netleri: kartta tek uçlu olsalar da etiketlenir (konnektör üzerinden başka karta gider) */
+const BACKPLANE_NETS = new Set(Object.values(BACKPLANE));
+const isBackplane = (name: string) => BACKPLANE_NETS.has(name);
 
 function labelAt(text: string, x: number, y: number, pinAngle: number, id: string): string {
   // pin açısı gövdeye doğru; etiket ters yöne yazılır
