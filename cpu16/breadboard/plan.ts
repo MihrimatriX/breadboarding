@@ -1,8 +1,8 @@
 // CPU16'nın breadboard planı: her kartın panosu (yerleşim + kurulum sırasıyla teller) ve bütün makine
 // (panoların masadaki yeri, panolar arası 64 damarlı şerit kablo). Tavlama ve yönlendirme kart başına
 // saniyeler–bir dakika sürdüğünden sonuçlar cpu16/breadboard/veri/ altında saklanır (`npm run cpu16 --
-// breadboard --uret` yeniden üretir); plan saklanan veriden kurulur. Ortak motor:
-// cpu16/board/breadboard/.
+// breadboard --uret` yeniden üretir); plan saklanan veriden kurulur (veri parametredir: web uygulaması
+// onu ayrı bir parça olarak yalnız breadboard görünümünde yükler). Ortak motor: cpu16/board/breadboard/.
 
 import type { Board } from "../board/board.ts";
 import { BY_ADIM, mmX, mmY } from "../board/breadboard/geometri.ts";
@@ -17,7 +17,6 @@ import type { BoardLayout } from "../board/layout.ts";
 import { buildFullMachineBoard } from "../board/machine-board.ts";
 import { KART_SIRASI, MAKINE_SIRALARI, panoTanimi, type PanoTanimi } from "./panolar.ts";
 import { CPU_BB_RENKLERI, cpuTelRengi } from "./renk.ts";
-import { BB_VERILERI } from "./veri/index.ts";
 import { kartYerlesimi } from "./yerlesim.ts";
 
 /** En uzun tel (delikten deliğe, mm): daha uzunlar boş bir şeritte bölünür ya da aktarma şeridinden geçer */
@@ -155,11 +154,15 @@ export function makinePlaniKur(board: Board, kartlar: KartBbPlani[]): MakineBbPl
 }
 
 let onbellek: MakineBbPlani | undefined;
-/** Saklanan veriden bütün makinenin planı (tek örnek; kart verilirse onunla: 3D sahnenin kartı) */
-export function makineBbPlani(board?: Board): MakineBbPlani {
+/**
+ * Saklanan veriden bütün makinenin planı (tek örnek; kart verilirse onunla: 3D sahnenin kartı). Veri
+ * (cpu16/breadboard/veri/index.ts BB_VERILERI) parametredir: web uygulaması onu yalnız breadboard
+ * görünümü açılınca yükler.
+ */
+export function makineBbPlani(veriler: Readonly<Record<string, BbVeri>>, board?: Board): MakineBbPlani {
   if (!onbellek || (board && onbellek.board !== board)) {
     const b = board ?? buildFullMachineBoard().board;
-    onbellek = makinePlaniKur(b, KART_SIRASI.map((k) => kartPlaniKur(b, k, BB_VERILERI[k])));
+    onbellek = makinePlaniKur(b, KART_SIRASI.map((k) => kartPlaniKur(b, k, veriler[k])));
   }
   return onbellek;
 }

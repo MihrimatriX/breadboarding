@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { cardTitle } from "../../cpu16/board/layout";
 import type { CipYeri, KurulumPlani, Tel, Uc } from "../../cpu16/kurulum/plan";
-import { aktifKart } from "./aktif";
+import { gorunumHazir } from "./aktif";
 import { BbKurulumPanel } from "./BbKurulumPanel";
 import { gorunenKartlar, sahnedeVar, seciliTel, useKurulum } from "./kurulum";
 import { useKart } from "./store";
@@ -183,10 +183,13 @@ function SifirlaDugmesi({ bos }: { bos: boolean }) {
   );
 }
 
-/** Kurulum paneli: hesap makinesi breadboard görünümündeyse breadboard telleri, değilse pinden pine teller */
+/** Kurulum paneli: breadboard görünümündeyse breadboard telleri (delikten deliğe), değilse pinden pine teller */
 export function KurulumPanel() {
   const gorunum = useKart((s) => s.gorunum);
-  return aktifKart() === "hesap" && gorunum === "breadboard" ? <BbKurulumPanel /> : <PinKurulumPanel />;
+  // bilgisayarın breadboard verisi ayrı parça: yüklenince panel açılır
+  const yukleniyor = useKart((s) => s.gorunumYukleniyor);
+  if (gorunum !== "breadboard") return <PinKurulumPanel />;
+  return !yukleniyor && gorunumHazir() ? <BbKurulumPanel /> : <p className="kur-not">Breadboard panoları yükleniyor…</p>;
 }
 
 function PinKurulumPanel() {

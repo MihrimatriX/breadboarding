@@ -9,7 +9,7 @@ import type { BoardLayout } from "../../cpu16/board/layout";
 import type { GateState } from "../../cpu16/board/computer";
 import { LIB } from "../../cpu16/cc/lib-vite";
 import { TerminalText } from "../cpu16/serial";
-import { aktifHesapGorunumu, aktifKart, gorunumDegisince, hesapGorunumuSec, kartDegisince, kartModeli, kartParcasi, kartUclari, kartYerlesimi, type HesapGorunumu, type KartTuru, type Parca } from "./aktif";
+import { aktifGorunum, aktifKart, cpuBbHazir, cpuBbYukle, gorunumDegisince, gorunumHazir, gorunumSec, kartDegisince, kartModeli, kartParcasi, kartUclari, kartYerlesimi, type Gorunum, type KartTuru, type Parca } from "./aktif";
 import { compileProgram, detectLanguage, type Lang, type ProgramError } from "./program";
 import type { FromWorker, MemWindow, ToWorker } from "./protocol";
 import type { ScreenFrame } from "./screen";
@@ -124,8 +124,10 @@ interface KartState {
   wires: WireMode;
   /** GND / VCC tellerini de çiz */
   power: boolean;
-  /** hesap makinesinin görünümü: breadboard (atlama telleri) ya da PCB */
-  gorunum: HesapGorunumu;
+  /** sahnedeki kartın görünümü: breadboard (atlama telleri) ya da PCB */
+  gorunum: Gorunum;
+  /** bilgisayarın breadboard verisi yükleniyor (ayrı parça) */
+  gorunumYukleniyor: boolean;
   bottom: BottomTab;
   // ekran
   screenText: string;
@@ -154,7 +156,9 @@ interface KartState {
   focusBlock(blok: string | null): void;
   setWires(m: WireMode): void;
   setPower(on: boolean): void;
-  setGorunum(g: HesapGorunumu): void;
+  setGorunum(g: Gorunum): void;
+  /** bilgisayarın breadboard verisini yükle (görünüm seçiliyse ya da seçilince) */
+  bbVerisiniYukle(): Promise<void>;
   setBottom(t: BottomTab): void;
   setSource(src: string): void;
   setLangMode(m: LangMode): void;
@@ -194,7 +198,8 @@ export const useKart = create<KartState>((set, get) => ({
   odak: null,
   wires: "secili",
   power: false,
-  gorunum: aktifHesapGorunumu(),
+  gorunum: aktifGorunum(),
+  gorunumYukleniyor: false,
   bottom: "program",
   screenText: "",
   screenInfo: "",
@@ -251,7 +256,25 @@ export const useKart = create<KartState>((set, get) => ({
     set({ power: on });
   },
   setGorunum(g) {
-    hesapGorunumuSec(g);
+    const tur = aktifKart();
+    if (gorunumHazir(tur, g)) {
+      gorunumSec(g);
+      return;
+    }
+    void get().bbVerisiniYukle().then(() => {
+      if (aktifKart() === tur && gorunumHazir(tur, g)) gorunumSec(g, tur);
+    });
+  },
+  async bbVerisiniYukle() {
+    if (cpuBbHazir()) return;
+    set({ gorunumYukleniyor: true });
+    try {
+      await cpuBbYukle();
+    } catch (e) {
+      set({ error: `Breadboard verisi yüklenemedi: ${String((e as Error).message ?? e)}` });
+    } finally {
+      set({ gorunumYukleniyor: false });
+    }
   },
   setBottom(t) {
     set({ bottom: t });
@@ -363,10 +386,11 @@ function onWorker(m: FromWorker) {
 /** Her kart türünde alt panelin son sekmesi (hesap makinesinde program yok) */
 const sonAltSekme = new Map<KartTuru, BottomTab>([["cpu16", "program"], ["hesap", "ic"]]);
 
-// hesap makinesinin görünümü değişince: parçalar aynı (seçimler kalır), yerleşim ve sahne yenilenir
+// sahnedeki kartın görünümü değişince: parçalar aynı (seçimler kalır), yerleşim ve sahne yenilenir
 gorunumDegisince((g) => {
   liveNets.version++;
-  useKart.setState((s) => ({ gorunum: g, hover: null, odak: null, tick: s.tick + 1 }));
+  // breadboard'da yalnız fiziksel parçalar da var (besleme girişleri, tamponlar): öbür görünümde yoksa seçim kalkar
+  useKart.setState((s) => ({ gorunum: g, chip: s.chip && findPart(s.chip) ? s.chip : null, hover: null, odak: null, tick: s.tick + 1 }));
 });
 
 kartDegisince((tur, onceki) => {
@@ -375,5 +399,5 @@ kartDegisince((tur, onceki) => {
   liveNets.prev = null;
   liveNets.values = sonDegerler.get(tur) ?? null;
   liveNets.version++;
-  useKart.setState((s) => ({ chip: null, gate: null, net: null, hover: null, odak: null, bottom: sonAltSekme.get(tur) ?? "ic", tick: s.tick + 1 }));
+  useKart.setState((s) => ({ chip: null, gate: null, net: null, hover: null, odak: null, gorunum: aktifGorunum(tur), bottom: sonAltSekme.get(tur) ?? "ic", tick: s.tick + 1 }));
 });

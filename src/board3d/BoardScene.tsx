@@ -557,9 +557,10 @@ function Monitor() {
 /**
  * Genel bakış. Bilgisayar: bütün kartlar ve arkadaki monitör, hafif eğik. Hesap makinesi: uzun tek
  * kart önden (göstergelerin olduğu alt kenardan) eğik bakılarak; göstergeler ve anahtarlar okunur.
+ * Breadboard görünümünde (iki kartta da) bütün panolar önden eğik.
  */
 function overview(width: number, height: number, tur: KartTuru) {
-  if (tur === "hesap" && breadboardSahnede()) return breadboardGenelBakis(width, height);
+  if (breadboardSahnede()) return tur === "cpu16" ? breadboardGenelBakis(width, height, 0.13, 1.18) : breadboardGenelBakis(width, height);
   if (tur === "hesap") {
     // uzun ve dar kart: 30° eğik, yukarıdan; bütün boyu dikey görüş açısına sığar, yakın kenardaki
     // göstergeler en büyük görünür
@@ -667,14 +668,14 @@ function SelectedDie() {
 export function BoardScene() {
   const lay = boardLayoutData();
   const tur = aktifKart();
-  // hesap makinesinin görünümü değişince sahne baştan kurulur (yerleşim başka)
+  // görünüm (PCB / breadboard) değişince sahne baştan kurulur (yerleşim başka)
   const gorunum = useKart((s) => s.gorunum);
   const bb = breadboardSahnede();
   // aynı nesne kalmalı: her yeniden çizimde yeni bir hedef OrbitControls'un hedefini genel bakışa sıfırlardı
   const o = useMemo(() => overview(lay.width, lay.height, tur), [lay, tur]);
   return (
     <Canvas
-      key={tur === "hesap" ? `${tur}-${gorunum}` : tur}
+      key={`${tur}-${gorunum}`}
       camera={{ position: o.cam.toArray(), fov: 40, near: 0.2, far: 800 }}
       dpr={[1, 2]}
       onPointerMissed={() => {
