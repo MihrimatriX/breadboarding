@@ -229,6 +229,15 @@ export interface TavlamaSecenekleri {
   bosKalmasin?: boolean;
   /** dikey uzaklığın ağırlığı (board'lar arası dikey yol daha pahalı) */
   dikey?: number;
+  /**
+   * Uzun bağlantı cezası: netin kapsayan ağacında `esik` ızgara adımından (dikey ağırlıklı) uzun her
+   * kenar için fazlasının `kat` katı eklenir (uzun teller yerine kısa tellere yönelir)
+   */
+  uzunCeza?: { esik: number; kat: number };
+  /** board başına yuva sayısı (verilmezse `yuva`) */
+  yuvaSayisi?: (b: BbBoard) => number;
+  /** sığma denetiminde çipin kapladığı sütun (verilmezse pin sayısının yarısı; geniş çiplere pay bırakmak için) */
+  en?: (ci: ChipInstance) => number;
 }
 
 /**
@@ -240,7 +249,9 @@ export function tavlama(bolgeler: TavlamaBolgesi[], sabit: Map<number, { X: numb
   const YUVA = o.yuva ?? 5;
   const aralik = o.aralik ?? (() => [SOL, SAG] as [number, number]);
   const dikeyK = o.dikey ?? 1.3;
-  interface Hc { ci: ChipInstance; n: number; izin: number[]; yuva: number }
+  const enOf = o.en ?? ((ci: ChipInstance) => ci.def.pins.length / 2);
+  const ceza = o.uzunCeza;
+  interface Hc { ci: ChipInstance; n: number; en: number; izin: number[]; yuva: number }
   // yuvalar: [board, sıra]
   const yBoard: BbBoard[] = [];
   const yX: number[] = [];
@@ -258,9 +269,10 @@ export function tavlama(bolgeler: TavlamaBolgesi[], sabit: Map<number, { X: numb
   const yuvaAc = (b: BbBoard): number[] => {
     if (!yuvalar.has(b)) {
       const [sol, sag] = aralik(b);
-      const en = (sag - sol + 1) / YUVA;
+      const ys = o.yuvaSayisi ? o.yuvaSayisi(b) : YUVA;
+      const en = (sag - sol + 1) / ys;
       const list: number[] = [];
-      for (let k = 0; k < YUVA; k++) {
+      for (let k = 0; k < ys; k++) {
         list.push(yBoard.length);
         yBoard.push(b);
         yX.push(b.bx * BX_ADIM + sol + Math.round(k * en));
@@ -280,11 +292,12 @@ export function tavlama(bolgeler: TavlamaBolgesi[], sabit: Map<number, { X: numb
       const bos = izin.filter((y) => yIcerik[y] < 0);
       if (!bos.length) throw new Error(`bölge sığmıyor: ${bolge.boards.map((b) => b.ad).join(",")}`);
       const doluluk = (y: number) => yuvalar.get(yBoard[y])!.filter((q) => yIcerik[q] >= 0).length;
-      const y = bos.filter((q) => sigar(yBoard[q], ci.def.pins.length / 2, 0)).sort((a, b) => doluluk(a) - doluluk(b) || a - b)[0];
+      const en = enOf(ci);
+      const y = bos.filter((q) => sigar(yBoard[q], en, 0)).sort((a, b) => doluluk(a) - doluluk(b) || a - b)[0];
       if (y === undefined) throw new Error(`bölge sığmıyor: ${bolge.boards.map((b) => b.ad).join(",")}`);
       yIcerik[y] = hc.length;
-      hc.push({ ci, n: ci.def.pins.length, izin, yuva: y });
-      bEn.set(yBoard[y], (bEn.get(yBoard[y]) ?? 0) + ci.def.pins.length / 2);
+      hc.push({ ci, n: ci.def.pins.length, en, izin, yuva: y });
+      bEn.set(yBoard[y], (bEn.get(yBoard[y]) ?? 0) + en);
       bSay.set(yBoard[y], (bSay.get(yBoard[y]) ?? 0) + 1);
     }
   }
@@ -325,7 +338,10 @@ export function tavlama(bolgeler: TavlamaBolgesi[], sabit: Map<number, { X: numb
       k++;
     }
     if (k <= 1) return 0;
-    if (k === 2) return Math.abs(px[0] - px[1]) + Math.abs(py[0] - py[1]);
+    if (k === 2) {
+      const d = Math.abs(px[0] - px[1]) + Math.abs(py[0] - py[1]);
+      return ceza && d > ceza.esik ? d + (d - ceza.esik) * ceza.kat : d;
+    }
     for (let i = 0; i < k; i++) { enYakin[i] = Infinity; agacta[i] = 0; }
     let son = 0;
     agacta[0] = 1;
@@ -341,6 +357,7 @@ export function tavlama(bolgeler: TavlamaBolgesi[], sabit: Map<number, { X: numb
       }
       agacta[ei] = 1;
       toplam += en;
+      if (ceza && en > ceza.esik) toplam += (en - ceza.esik) * ceza.kat;
       son = ei;
     }
     return toplam;
@@ -364,8 +381,8 @@ export function tavlama(bolgeler: TavlamaBolgesi[], sabit: Map<number, { X: numb
     const b1 = yBoard[eskiY];
     const b2 = yBoard[hedef];
     if (b1 !== b2) {
-      const en1 = h.n / 2;
-      const en2 = j >= 0 ? hc[j].n / 2 : 0;
+      const en1 = h.en;
+      const en2 = j >= 0 ? hc[j].en : 0;
       const s1 = bSay.get(b1)!;
       const s2 = bSay.get(b2) ?? 0;
       const yeniS1 = j >= 0 ? s1 : s1 - 1;
@@ -386,8 +403,8 @@ export function tavlama(bolgeler: TavlamaBolgesi[], sabit: Map<number, { X: numb
       yIcerik[hedef] = i;
       yIcerik[eskiY] = j;
       if (b1 !== b2) {
-        const en1 = h.n / 2;
-        const en2 = j >= 0 ? hc[j].n / 2 : 0;
+        const en1 = h.en;
+        const en2 = j >= 0 ? hc[j].en : 0;
         bEn.set(b1, bEn.get(b1)! - en1 + en2);
         bEn.set(b2, (bEn.get(b2) ?? 0) + en1 - en2);
         if (j < 0) {

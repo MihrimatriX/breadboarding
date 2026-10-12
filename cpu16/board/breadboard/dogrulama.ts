@@ -37,6 +37,11 @@ export interface DogrulamaSecenekleri {
   asama?: number;
   /** yalnız bu kartın parçaları (birden çok kartlı netlistte bir kartın panosu) */
   kart?: string;
+  /**
+   * Bir tel, kendinden önce takılan bir telin ucunun üstünden geçebilir (çok yoğun panolarda; sıra
+   * önemli olur). Verilmezse hiçbir tel hiçbir telin ucunun üstünden geçemez (her sıra kurulabilir).
+   */
+  oncekiUcUstu?: boolean;
 }
 
 /** Bir pano: bir kartın (ya da kartsız tek panonun) yerleşimi ve telleri */
@@ -81,7 +86,7 @@ class BirlesimBul {
 
 /** Tek panonun doğrulaması (hesap makinesi; ya da `kart` ile birden çok kartlı netlistte bir kart) */
 export function bbDogrula(board: Board, y0: BbYerlesim, teller0: TelGirdisi[], o: DogrulamaSecenekleri = {}): DogrulamaSonucu {
-  return panolariDogrula(board, [{ kart: o.kart, yerlesim: y0, teller: teller0 }], [], { asama: o.asama });
+  return panolariDogrula(board, [{ kart: o.kart, yerlesim: y0, teller: teller0 }], [], { asama: o.asama, oncekiUcUstu: o.oncekiUcUstu });
 }
 
 /**
@@ -89,7 +94,7 @@ export function bbDogrula(board: Board, y0: BbYerlesim, teller0: TelGirdisi[], o
  * panolar arası bağlantı yalnız şerit kablolarla. `kart` verilen panolarda netlistin o kartının bütün
  * parçaları beklenir; kartsız pano netlistin bütün parçalarını bekler.
  */
-export function panolariDogrula(board: Board, panolar: DogrulamaPanosu[], kablolar: SeritKablo[], o: Pick<DogrulamaSecenekleri, "asama"> = {}): DogrulamaSonucu {
+export function panolariDogrula(board: Board, panolar: DogrulamaPanosu[], kablolar: SeritKablo[], o: Pick<DogrulamaSecenekleri, "asama" | "oncekiUcUstu"> = {}): DogrulamaSonucu {
   const hatalar: string[] = [];
   const asama = o.asama;
   const hata = (s: string) => { if (hatalar.length < 200) hatalar.push(s); };
@@ -169,6 +174,8 @@ export function panolariDogrula(board: Board, panolar: DogrulamaPanosu[], kablol
     }
 
     // ---- teller: uçlar, yatay/dikey, gövde ve uç üstünden geçmeme
+    /** tel ucunun deliği → telin sırası */
+    const ucTeli = new Map<string, number>();
     teller.forEach((t, i) => {
       const n = t.yol.length / 2;
       if (n < 2 || t.yol.length % 2) { hata(`${on}tel ${i + 1}: yol bozuk`); return; }
@@ -177,6 +184,7 @@ export function panolariDogrula(board: Board, panolar: DogrulamaPanosu[], kablol
         const k = anahtar(X, Y);
         if (delikte.has(k)) hata(`${on}delik iki kez kullanılmış: tel ${i + 1} ve ${delikte.get(k)}`);
         delikte.set(k, `tel ${i + 1}`);
+        ucTeli.set(k, i);
       }
       for (let j = 1; j < n; j++) {
         if (t.yol[2 * j] !== t.yol[2 * j - 2] && t.yol[2 * j + 1] !== t.yol[2 * j - 1]) hata(`${on}tel ${i + 1}: çapraz parça`);
@@ -198,7 +206,11 @@ export function panolariDogrula(board: Board, panolar: DogrulamaPanosu[], kablol
           const k = anahtar(X, Y);
           const g = govdeHucre.get(k);
           if (g) hata(`${on}tel ${i + 1} ${g} gövdesinin üstünden geçiyor (${X}, ${Y})`);
-          else if (delikte.has(k)) hata(`${on}tel ${i + 1} ${delikte.get(k)} üstünden geçiyor (${X}, ${Y})`);
+          else if (delikte.has(k)) {
+            const u = ucTeli.get(k);
+            // önce takılan telin ucu (izin verildiyse): o tel altta kalır
+            if (!(o.oncekiUcUstu && u !== undefined && u < i)) hata(`${on}tel ${i + 1} ${delikte.get(k)} üstünden geçiyor (${X}, ${Y})`);
+          }
         }
       }
     });
@@ -223,10 +235,13 @@ export function panolariDogrula(board: Board, panolar: DogrulamaPanosu[], kablol
   });
 
   // ---- panolar arası: şerit kablolar (k. damar, uyarlayıcıların k. pini)
+  /** şerit kablonun damarındaki bağlantısız pinler: hepsi aynı (boş) damarın, birbirine kısa devre değil */
+  const damarBos = new Map<string, string>();
   for (const k of kablolar) {
     for (let d = 1; d <= k.damar; d++) {
       let ilk = -1;
       for (const [pi, ref] of k.uclar) {
+        damarBos.set(`${pi}|${ref}|${d}`, `boş damar ${k.ad}:${d}`);
         const n = pinDugumu.get(`${pi}|${ref}|${d}`);
         if (n === undefined) continue; // bu aşamada uyarlayıcı henüz takılmamış
         if (ilk < 0) ilk = n;
@@ -247,7 +262,7 @@ export function panolariDogrula(board: Board, panolar: DogrulamaPanosu[], kablol
         pinSayisi++;
         const net = p.ek ? (p.ek[b.pin] ?? -1) : pinNeti(x!, b.pin);
         const kok = uf.bul(d);
-        const kimlik = net < 0 ? `boş ${onek(pi)}${p.ref}.${b.pin}` : board.netName(net);
+        const kimlik = net < 0 ? (damarBos.get(`${pi}|${p.ref}|${b.pin}`) ?? `boş ${onek(pi)}${p.ref}.${b.pin}`) : board.netName(net);
         if (!parcaNet.has(kok)) parcaNet.set(kok, new Set());
         parcaNet.get(kok)!.add(kimlik);
         if (net >= 0) {
