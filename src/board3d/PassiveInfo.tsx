@@ -14,7 +14,7 @@ import {
 import { useAyar } from "../ui/ayarlar";
 import { levelOf } from "./levels";
 import {
-  cekmeDirenci, etkinNet, ledDevresi, netAlici, netDriver, pasifAciklamasi, seriLed, type PasifBaglam,
+  cekmeDirenci, etkinNet, ledDevresi, ledYanik, netAlici, netDriver, pasifAciklamasi, seriLed, type PasifBaglam,
 } from "./pasif-analiz";
 import { boardModel, findPart, liveNets, netEnds, useKart } from "./store";
 import "./PassiveInfo.css";
@@ -33,9 +33,10 @@ function useBaglam(): PasifBaglam {
   );
 }
 
-/** Bacağın görevi: LED'de anot/katot, elektrolitikte +/−, dizide ortak uç */
+/** Bacağın görevi: LED'de anot/katot, elektrolitikte +/−, dizide ortak uç, çubukta segmentin anodu/katodu */
 function bacakAdi(p: PassivePlace, num: number, ad: string): string {
   if (p.kind === "led") return num === 1 ? "anot (+)" : "katot (−)";
+  if (p.kind === "cubuk") return num <= 10 ? `${num}. segment anodu` : `${21 - num}. segment katodu`;
   if (p.kind === "elektrolitik") return num === 1 ? "+ (uzun)" : "− (şerit)";
   if (p.kind === "dizi") return num === 1 ? "ortak (COM)" : `R${num - 1}`;
   const n = PASSIVES[p.part]?.pins.find((q) => q.num === num)?.name ?? ad;
@@ -54,13 +55,13 @@ function cizimler(p: PassivePlace, ctx: PasifBaglam, id: string, palet: Palet): 
       baslik: "Devre",
       parca: ledDevreCizimi({
         surucu: drv ? uc(drv) : ctx.netName(c.sinyal), sinyal: ctx.netName(c.sinyal), direnc: c.direnc.ref, ohm: c.ohm, led: led.ref, renk: c.renk,
-        seviye: ctx.level(c.sinyal),
+        seviye: ctx.level(c.sinyal), aktifDusuk: c.aktifDusuk,
       }, palet),
     });
   };
   if (p.kind === "led") {
     const c = ledDevresi(p, ctx);
-    out.push({ baslik: "Anatomi", parca: ledCizimi(c.renk, palet, { id, yanik: ctx.level(c.sinyal) === 1 && c.sinyal >= 0 }) });
+    out.push({ baslik: "Anatomi", parca: ledCizimi(c.renk, palet, { id, yanik: ledYanik(c, ctx.level) }) });
     ledDevre(p);
   } else if (d?.tur === "direnc") {
     out.push({ baslik: "Renk bantları", parca: direncCizimi(d.ohm, d.tolerans, palet, { id, etiket: true }) });
@@ -110,7 +111,7 @@ export function PassiveInfo({ p }: { p: PassivePlace }) {
   const palet = useAyar((s) => (s.tema === "acik" ? ACIK_PANEL : KOYU));
   const a = pasifAciklamasi(p, ctx);
   const ciz = cizimler(p, ctx, `pi${rid}`, palet);
-  const led = p.kind === "led" ? LED_RENKLERI[p.led ?? "kirmizi"] : null;
+  const led = p.kind === "led" || p.kind === "cubuk" ? LED_RENKLERI[p.led ?? "kirmizi"] : null;
   const select = useKart.getState();
   return (
     <div className="pasif-info">
@@ -201,7 +202,7 @@ export function PassiveInfo({ p }: { p: PassivePlace }) {
 export function PassiveTooltip({ p }: { p: PassivePlace }) {
   const ctx = useBaglam();
   const a = pasifAciklamasi(p, ctx);
-  const led = p.kind === "led" ? LED_RENKLERI[p.led ?? "kirmizi"] : null;
+  const led = p.kind === "led" || p.kind === "cubuk" ? LED_RENKLERI[p.led ?? "kirmizi"] : null;
   return (
     <span className="pi-ipucu">
       {led && <i className="pi-led pi-led-k" style={{ background: led.isik }} />}

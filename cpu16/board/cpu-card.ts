@@ -372,6 +372,56 @@ export function buildCpuCard(b: Board): CpuCard {
     "3I0": "GND", "3I1": "GND", "4I0": "GND", "4I1": "GND",
   }, "C/V tutma seçicisi: ALU C, V'yi değiştirmiyorsa eski değer");
 
+  // ---- hata ayıklama LED'leri ve çubuk göstergeler (James Sharman'ın ve Ben Eater'ın breadboard
+  // bilgisayarlarındaki gibi): hangi register okunuyor ya da yazılıyor, veriyolunu kim sürüyor,
+  // bellek okuma / yazma, yüklemeler, bayraklar, mikro adım; veriyolunun, PC'nin, adresin, IR'nin ve
+  // ALU sonucunun değeri. Her LED ve segment 1 kΩ ile ≈ 3 mA çeker; aktif düşük sinyallerde LED
+  // VCC'den sinyale bağlıdır (çıkış 0 iken yanar). Çip yok; pasifler kartın öbür pasiflerinden sonra
+  // eklenir: D1, R1, RN1 … değişmez. LED'ler gösterdikleri bloğun yanında. En sona ertelenir: yeni
+  // netleri öbür kartların netlerinden sonra numaralanır, onların adsız netleri (n1234) değişmez.
+  const gl = (sinyal: number | string, ad: string, gorev: string, aktifDusuk = false) => b.led(sinyal, ad, { direnc: "R_1K", gorev, aktifDusuk });
+  b.sonaErtele(() => {
+    b.block = "Register dosyası";
+    range(8).forEach((r) => {
+      gl(`~ROE${r}`, `ROE${r}`, `r${r} okuma (~ROE${r} = 0, r${r} veriyolunu sürüyor)`, true);
+      gl(`~WSEL${r}`, `WSEL${r}`, `r${r} yazma (~WSEL${r} = 0, yükselen kenarda r${r} veriyolundan yüklenir)`, true);
+    });
+    for (const [k, ad] of [["REG", "register"], ["ALU", "ALU"], ["PC", "PC"], ["MEM", "bellek"], ["IMM", "sabit"], ["FLAGS", "bayraklar"]]) {
+      gl(`~SRC_${k}`, `SRC_${k}`, `veriyolu sürücüsü ${ad} (~SRC_${k} = 0)`, true);
+    }
+    b.block = "Bellek arayüzü";
+    gl(MEMRD, "MEMRD", "bellek okuma");
+    gl(MEMW, "MEMW", "bellek yazma");
+    b.block = "Geçici register'lar";
+    gl(CW[17], "TA_L", "TA yükleme (CW17)");
+    gl(CW[18], "TB_L", "TB yükleme (CW18)");
+    b.block = "MAR ve IR";
+    gl(CW[21], "MAR_L", "MAR yükleme (CW21)");
+    gl(CW[23], "IR_L", "IR yükleme (CW23)");
+    b.block = "Program sayacı";
+    gl(pcLoad, "PC_L", "PC yükleme (~PC_LOAD = 0, dallanma)", true);
+    gl(pcInc, "PC_INC", "PC artırma (PC += 2)");
+    b.block = "Bayraklar ve koşul";
+    for (const [f, ad] of [["N", "eksi"], ["Z", "sıfır"], ["C", "elde"], ["V", "taşma"], ["I", "kesme izni"]]) gl(`${f}FLAG`, `${f}FLAG`, `${f} bayrağı (${ad})`);
+    b.block = "Kontrol";
+    range(4).forEach((i) => gl(STEP[i], `STEP${i}`, `mikro adım biti ${i}`));
+    // değerler: bir bayt bir çubuk göstergede (1. segment bit 0)
+    b.block = "Register dosyası";
+    b.cubuk(BUS.slice(0, 8), "BAR_BUS", "iç veriyolu BUS0–7");
+    b.cubuk(BUS.slice(8), "BAR_BUS", "iç veriyolu BUS8–15", 8);
+    b.block = "Program sayacı";
+    b.cubuk([null, ...PC.slice(1, 8)], "BAR_PC", "PC1–7 (PC0 hep 0, 1. segment boş)");
+    b.cubuk(PC.slice(8), "BAR_PC", "PC8–15", 8);
+    b.block = "MAR ve IR";
+    b.cubuk(A.slice(0, 8), "BAR_A", "MAR A0–7 (adres)");
+    b.cubuk(A.slice(8), "BAR_A", "MAR A8–15 (adres)", 8);
+    b.cubuk(IR.slice(0, 8), "BAR_IR", "IR0–7 (komut)");
+    b.cubuk(IR.slice(8), "BAR_IR", "IR8–15 (komut)", 8);
+    b.block = "ALU";
+    b.cubuk(RES.slice(0, 8), "BAR_RES", "ALU sonucu RES0–7");
+    b.cubuk(RES.slice(8), "BAR_RES", "ALU sonucu RES8–15", 8);
+  });
+
   // kontrol biriminin kalan çipleri (adım seçicileri …) kartın yapıştırıcı çiplerinden sonra
   kb.kalanlariErtele();
 

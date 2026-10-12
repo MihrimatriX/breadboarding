@@ -3,7 +3,8 @@
 // sinyalle yanar, halesi ve karttaki ışık lekesiyle), noktalı ve "A103J" yazılı direnç dizileri,
 // metal kutulu osilatörler, butonlar, sürgülü anahtarlar (konumu canlı), trimpot ve konnektörler;
 // hesap makinesinde DIP anahtarlar (sürgüleri canlı, tıklanınca değişir), segmentleri canlı yanan
-// 7 segment göstergeler ve DIP-16 direnç dizileri, basılı tutulan lamba testi butonu.
+// 7 segment göstergeler ve DIP-16 direnç dizileri, basılı tutulan lamba testi butonu; CPU kartında
+// segmentleri canlı yanan 10 segmentli çubuk göstergeler (bir baytın değeri, ikili).
 // Aynı parçanın örnekleri tek InstancedMesh: ~500 pasif birkaç düzine çizim çağrısıdır. Tıklama
 // ve üstüne gelme görünmez kutularla (her pasife bir kutu) yakalanır.
 
@@ -15,11 +16,11 @@ import {
 } from "three";
 import type { PassivePlace } from "../../cpu16/board/layout";
 import { LED_RENKLERI } from "../../cpu16/board/passives";
-import { direncBantlari, faradMetni, frekansMetni, pasifDegeri } from "../../cpu16/board/pasif-bilgi";
+import { direncBantlari, faradMetni, frekansMetni, pasifDegeri, ucHaneliKod } from "../../cpu16/board/pasif-bilgi";
 import { basilabilir, butonBas, useHesap } from "./hesap";
-import { dipAnahtarlari, etkinNet, ledDevresi, ledYanik, segmentNetleri, type SegmentAdi } from "./pasif-analiz";
+import { cubukSegmentleri, cubukSegmentYanik, dipAnahtarlari, etkinNet, ledDevresi, ledYanik, segmentNetleri, type CubukSegmenti, type SegmentAdi } from "./pasif-analiz";
 import {
-  BAND_SLOTS, DIP_TOP, DIP_TRAVEL, DIPDIZI_TOP, LED_DIE, LED_TOP, RAKAM_ORTA, SEGMENT_BOY, SEGMENT_YERI, SEG_TOP, axialLeads, boxAt, buttonBody, buttonCap,
+  BAND_SLOTS, CUBUK_SEGMENT, CUBUK_TOP, DIP_TOP, DIP_TRAVEL, DIPDIZI_TOP, LED_DIE, LED_TOP, RAKAM_ORTA, SEGMENT_BOY, SEGMENT_YERI, SEG_TOP, axialLeads, barBody, barSegment, boxAt, buttonBody, buttonCap,
   canSide, canTexture, canTop, canTopTexture, dipArrayBody, dipSwitchBody, dipSwitchKnob, dipSwitchTexture, discBody, discLabelPlane, discLeads,
   displayBody, flatPins, glowTexture, headerBase, headerPin, labelTexture, ledEpoxy, ledInner, ledLeads, moduleBody, oscCan, oscTexture, plusMark, ps2Body,
   resistorBody, segmentBar, segmentDot, sipBody, sipFrontPlane, slideBody, slideKnob, topPlane, trimpotBody, vgaBody,
@@ -704,8 +705,8 @@ function DipArrays({ list, w }: { list: PassivePlace[]; w: W }) {
   }, [list]);
   const labels = useOwned(
     () => groups.map(([part]) => {
-      const ohm = /^RN_(\d+)/.exec(part)?.[1] ?? "";
-      const kod = ohm.length >= 3 ? `${ohm.slice(0, 2)}${ohm.length - 2}` : ohm;
+      const m = /^RN_(\d+)([KM])?/.exec(part);
+      const kod = m ? ucHaneliKod(Number(m[1]) * (m[2] === "K" ? 1e3 : m[2] === "M" ? 1e6 : 1)) : "";
       const t = labelTexture(["4116R", kod], { w: 512, h: 112, color: "#e6e9ee", dot: "sol-alt", font: 44 });
       return new MeshBasicMaterial({ map: t, transparent: true, alphaTest: 0.3, depthWrite: false });
     }),
@@ -718,6 +719,72 @@ function DipArrays({ list, w }: { list: PassivePlace[]; w: W }) {
       <Batch items={list} geometry={body} material={bodyMat} matrix={mat} />
       <Batch items={list} geometry={legs} material={legMat} matrix={mat} far={DETAIL} />
       {groups.map(([part, ps], i) => <Batch key={part} items={ps} geometry={top} material={labels[i]} matrix={mat} renderOrder={2} far={DETAIL * 2} />)}
+    </>
+  );
+}
+
+// ---------------------------------------------------------------- çubuk göstergeler (CPU kartı)
+
+interface CubukSeg {
+  p: PassivePlace;
+  s: CubukSegmenti;
+  /** segmentin yerel x'i (mm): anot bacağının sütunu */
+  x: number;
+}
+
+function cubukMatrix(c: CubukSeg, w: W, out: Matrix4, hale = false): Matrix4 {
+  tmpM2.makeTranslation(c.x, hale ? CUBUK_TOP + 0.12 : 0, 0);
+  if (hale) tmpM2.multiply(new Matrix4().makeScale(CUBUK_SEGMENT.en + 3, 1, CUBUK_SEGMENT.boy + 3));
+  return partMatrix(c.p, w, out, tmpM2);
+}
+
+/** Yanık ve sönük renkler, LED rengi başına bir kez */
+const CUBUK_RENK = new Map<string, { yanik: Color; sonuk: Color; hale: Color }>();
+function cubukRengi(p: PassivePlace) {
+  const k = p.led ?? "sari";
+  let r = CUBUK_RENK.get(k);
+  if (!r) {
+    const isik = LED_RENKLERI[k].isik;
+    r = { yanik: new Color(isik), sonuk: new Color(isik).multiplyScalar(0.14), hale: new Color(isik).multiplyScalar(0.5) };
+    CUBUK_RENK.set(k, r);
+  }
+  return r;
+}
+
+/**
+ * 10 segmentli çubuk göstergeler: kara gövde, bacaklar ve on segment penceresi. k. segment k. anot
+ * bacağının sütununda; sinyali (dizinin öbür ucu, etkinNet) 1 iken LED renginde yanar, halesi parlar.
+ */
+function BarGraphs({ list, w }: { list: PassivePlace[]; w: W }) {
+  const p0 = list[0];
+  const segs = useMemo<CubukSeg[]>(() => {
+    const ends = netEnds();
+    return list.flatMap((p) => {
+      const lp = new Map(localPins(p).map((q) => [q.num, q.lx]));
+      return cubukSegmentleri(p, ends, findPart).map((s) => ({ p, s, x: lp.get(s.anotPin) ?? (s.no - 5.5) * 2.54 }));
+    });
+  }, [list]);
+  const [body, legs, seg, glowPlane, bodyMat, legMat, segMat, glow] = useOwned(() => {
+    const lp = localPins(p0);
+    const g = new PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+    return [
+      barBody(p0.vertical ? p0.h : p0.w, p0.vertical ? p0.w : p0.h), flatPins(lp.map((q) => q.lx), 1.6, 0.55, 0.3, lp.map((q) => q.lz)), barSegment(), g,
+      std({ vertexColors: true, roughness: 0.55, metalness: 0.05 }), tinned(), new MeshBasicMaterial({ color: "#ffffff", toneMapped: false }), glowTexture(),
+    ];
+  }, [list]);
+  const haleMat = useOwned(() => [new MeshBasicMaterial({ map: glow, color: "#ffffff", blending: AdditiveBlending, transparent: true, depthWrite: false, toneMapped: false })], [glow])[0];
+  const mat = useMemo(() => (p: PassivePlace, m: Matrix4) => partMatrix(p, w, m), [w]);
+  const segM = useMemo(() => (c: CubukSeg, m: Matrix4) => cubukMatrix(c, w, m), [w]);
+  const haleM = useMemo(() => (c: CubukSeg, m: Matrix4) => cubukMatrix(c, w, m, true), [w]);
+  const yanik = (c: CubukSeg, v: Uint8Array | null) => cubukSegmentYanik(c.s, (n) => level(v, n));
+  const segRenk = useMemo(() => (c: CubukSeg, v: Uint8Array | null) => (yanik(c, v) ? cubukRengi(c.p).yanik : cubukRengi(c.p).sonuk), []);
+  const haleRenk = useMemo(() => (c: CubukSeg, v: Uint8Array | null) => (yanik(c, v) ? cubukRengi(c.p).hale : HALE_SONUK), []);
+  return (
+    <>
+      <Batch items={list} geometry={body} material={bodyMat} matrix={mat} />
+      <Batch items={list} geometry={legs} material={legMat} matrix={mat} far={DETAIL} />
+      <LiveBatch items={segs} geometry={seg} material={segMat} matrix={segM} renk={segRenk} renderOrder={2} />
+      <LiveBatch items={segs} geometry={glowPlane} material={haleMat} matrix={haleM} renk={haleRenk} renderOrder={4} />
     </>
   );
 }
@@ -920,7 +987,7 @@ function Outline({ refName, color, opacity, w }: { refName: string | null; color
 // ---------------------------------------------------------------- hepsi
 
 const ORDER: PassivePlace["kind"][] = [
-  "direnc", "kondansator", "elektrolitik", "led", "dizi", "osilator", "buton", "anahtar", "pot", "konnektor", "modul", "dip", "gosterge", "dipdizi",
+  "direnc", "kondansator", "elektrolitik", "led", "dizi", "osilator", "buton", "anahtar", "pot", "konnektor", "modul", "dip", "gosterge", "dipdizi", "cubuk",
 ];
 
 export function Passives3D({ children }: { children?: ReactNode }) {
@@ -937,7 +1004,7 @@ export function Passives3D({ children }: { children?: ReactNode }) {
   const C: Record<PassivePlace["kind"], (props: { list: PassivePlace[]; w: W }) => JSX.Element> = {
     direnc: Resistors, kondansator: DiscCaps, elektrolitik: Electrolytics, led: Leds, dizi: Sips, osilator: Oscillators,
     buton: Buttons, anahtar: Switches, pot: Trimpots, konnektor: Connectors, modul: Modules,
-    dip: DipSwitches, gosterge: Displays, dipdizi: DipArrays,
+    dip: DipSwitches, gosterge: Displays, dipdizi: DipArrays, cubuk: BarGraphs,
   };
   return (
     <group>

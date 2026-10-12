@@ -356,6 +356,7 @@ const PASIF_ADLARI: Record<string, string> = {
   SW_PUSH: "buton",
   SW_SPDT: "iki konumlu anahtar",
   DISP_7SEG_CC: "7 segment gösterge",
+  DISP_BAR_10: "çubuk gösterge",
   LED: "LED",
   CONN_VGA: "VGA konnektörü",
   CONN_PS2: "PS/2 konnektörü",

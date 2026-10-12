@@ -581,6 +581,26 @@ export function dipArrayBody(w: number, d: number): BufferGeometry {
   return boxAt(w, DIPDIZI_TOP - 0.6, d, 0.6 + (DIPDIZI_TOP - 0.6) / 2);
 }
 
+// ---------------------------------------------------------------- çubuk gösterge (CPU kartı)
+
+/** 10 segmentli çubuk göstergenin üst yüzü (mm) */
+export const CUBUK_TOP = 6.5;
+/** Segment penceresi (mm): x boyunca en, z boyunca boy; her segment bir sütunun (2,54 mm) ortasında */
+export const CUBUK_SEGMENT = { en: 1.7, boy: 5.4 };
+
+/** Kara gövde ve 1. bacak köşesindeki açık renkli işaret */
+export function barBody(w: number, d: number): BufferGeometry {
+  return merge([
+    { g: boxAt(w - 0.2, CUBUK_TOP - 0.4, d - 0.2, 0.4 + (CUBUK_TOP - 0.4) / 2), color: "#141518" },
+    { g: boxAt(1.0, 0.05, 1.0, CUBUK_TOP + 0.025, -(w - 0.2) / 2 + 1.0, (d - 0.2) / 2 - 1.0), color: "#5a5f66" },
+  ]);
+}
+
+/** Bir segmentin penceresi: üst yüzde ince dikdörtgen (rengi canlı) */
+export function barSegment(): BufferGeometry {
+  return boxAt(CUBUK_SEGMENT.en, 0.08, CUBUK_SEGMENT.boy, CUBUK_TOP + 0.04);
+}
+
 // ---------------------------------------------------------------- yazı dokuları
 
 function finish(c: HTMLCanvasElement): CanvasTexture {

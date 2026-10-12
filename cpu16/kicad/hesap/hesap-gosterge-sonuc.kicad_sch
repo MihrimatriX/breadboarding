@@ -352,7 +352,7 @@
       (property "Footprint" "LED_THT:LED_D3.0mm" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
       (property "Datasheet" "" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
       (property "ki_description" "3 mm LED" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
-      (property "CPU16_Kullanim" "Durum göstergeleri (HALTED, FAULT)" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+      (property "CPU16_Kullanim" "Durum göstergeleri (HALTED, FAULT, CLK) ve CPU kartının hata ayıklama LED'leri; rengi görevinden (LED_RENK_KURALLARI)" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
       (symbol "LED_0_1"
         (rectangle (start -2.54 2.54) (end 2.54 -2.54) (stroke (width 0.254) (type default)) (fill (type background)))
       )
