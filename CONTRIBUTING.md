@@ -40,7 +40,7 @@ netlist'i ve şema PDF'leri), `g++` ve `python3` (EEPROM programlayıcısı), `p
    `Zamanlama: bütün anakartın analizi; 74AC ailesi seçeneği`).
 3. Göndermeden önce:
    ```bash
-   npm run check        # tsc -b + vitest (569 test, 1–2 dakika)
+   npm run check        # tsc -b + vitest (690 test, ≈ 4 dakika)
    npm run build        # üretim derlemesi
    ```
    Kart, mikrokod ya da deney tanımı değiştiyse önce üretilen dosyaları yenile
@@ -167,6 +167,9 @@ arasındaki bölüm (malzeme ve bacak bacak bağlantılar) kart tanımlarından 
 | `cpu16/micro/cpu16-ucode.ts` (mikrokodun gömülü kopyası) | `npm run cpu16 -- kontrol` | `cpu16/micro/cpu16.ucode` değişince | evet | `kontrol.test.ts` |
 | `cpu16/kit/deney-*.md` otomatik bölümleri, `cpu16/kit/gorseller/*.svg` | `npm run cpu16 -- kit` | kart tanımı ya da `kit/deneyler.ts` değişince | evet | `kit.test.ts` |
 | `cpu16/docs/img/mimari-*.svg`, `hesap8/docs/img/mimari-hesap.svg` (blok diyagramları) | `npm run cpu16 -- mimari` | kart tanımı, diyagram yerleşimi (`cpu16/mimari/`, `hesap8/mimari.ts`) ya da tema renkleri (`src/mimari/mimari.css`, `src/styles.css`) değişince | evet | `cpu16/tests/mimari.test.ts` |
+| `cpu16/breadboard/veri/<kart>.ts` (breadboard yerleşimi ve teller, netlistin parmak iziyle) | `npm run cpu16 -- breadboard --uret [kart,…]` (CPU kartı ≈ 2,5 dakika) | kartın netlisti ya da pano tanımı (`cpu16/breadboard/panolar.ts`, `yerlesim.ts`) değişince | evet | `cpu16/tests/breadboard.test.ts` (parmak izi, netlistle birebir bağlantı) |
+| `hesap8/breadboard/veri.ts` | `npm run hesap8 -- breadboard --uret` | `hesap8/kart.ts` ya da `hesap8/breadboard/yerlesim.ts` değişince | evet | `hesap8/tests/breadboard.test.ts` |
+| `cpu16/breadboard/cikti/`, `hesap8/breadboard/cikti/` (breadboard kurulum belgeleri) | `npm run cpu16 -- breadboard-belge hepsi`, `npm run hesap8 -- breadboard-belge` | istediğinde (yazdırmak için) | hayır (`.gitignore`) | `breadboard.test.ts` (HTML içeriği) |
 | `cpu16/kurulum/cikti/` (kurulum belgeleri HTML + PDF, şema PDF'leri) | `npm run cpu16 -- kurulum hepsi`, `… kurulum hesap` | istediğinde (yazdırmak için) | hayır (`.gitignore`) | `kurulum.test.ts` (HTML içeriği) |
 | `public/chips/mos6502/chip.json` | `npm run import:6502` | visual6502 verisi ya da dönüştürücü değişince | evet | `tests/mos6502.test.ts` |
 | `dist/` | `npm run build` | yayın | hayır | CI |
@@ -177,6 +180,9 @@ kapsayıcısında bu araçlar yok.
 
 ## Belgeler
 
+- Kök [CLAUDE.md](CLAUDE.md) ve `cpu16/`, `hesap8/`, `src/` altındaki `CLAUDE.md`'ler kısa dizinlerdir:
+  Claude Code her oturumda okur, yeni gelen biri için de en kısa giriş. Yeni bir klasör, komut, üretilen
+  dosya ya da kural eklediysen ilgili `CLAUDE.md`'yi de güncelle.
 - Yeni bir belge eklediysen [README'deki belgeler haritasına](README.md#belgeler-haritası) ve
   [okuma yoluna](docs/README.md) bağlantı ekle.
 - Belgelerdeki sayılar (çip, test, tel sayıları) koddan gelir; değiştirdiğinde ilgili komutla
