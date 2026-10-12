@@ -10,7 +10,8 @@ import { panolariDogrula } from "../board/breadboard/dogrulama.ts";
 import { rayDeligiVar } from "../board/breadboard/geometri.ts";
 import { netlistParmakIzi, telYollari3B } from "../board/breadboard/plan.ts";
 import { buildFullMachineBoard } from "../board/machine-board.ts";
-import { beslemeButcesi } from "../breadboard/cli.ts";
+import { dizinBelgesi, kartBbBelgesi, sirasiOnemliTeller } from "../breadboard/belge.ts";
+import { beslemeButcesi } from "../breadboard/besleme.ts";
 import { KART_SIRASI, MAKINE_SIRALARI, panoTanimi } from "../breadboard/panolar.ts";
 import {
   cpuTelTarifi, EN_UZUN_TEL, kartiDogrula, kartOlcu, kartPlaniKur, makinePlaniKur, makineyiDogrula, seritKablolari, type KartBbPlani, type MakineBbPlani,
@@ -219,5 +220,40 @@ describe("makine: panoların yeri ve şerit kablo", () => {
     expect(m.serit.soketler.length).toBe(7);
     expect(m.serit.boyMm).toBeGreaterThan(1000);
     expect(m.serit.boyMm).toBeLessThan(5000);
+  });
+});
+
+describe("kurulum belgeleri (npm run cpu16 -- breadboard-belge)", () => {
+  it("kart belgesi: her tel bir kez, işaret kutulu, aşama sırasıyla; her aşamanın sonunda test; her board'un çizimi", () => {
+    for (const p of kartlar.filter((k) => k.kart === "clk" || k.kart === "kyb")) {
+      const html = kartBbBelgesi(m, p, { tarih: "2026-01-01" });
+      const no = [...html.matchAll(/<td class="id">T(\d{4})/g)].map((x) => Number(x[1]));
+      expect(no, p.kart).toEqual(p.teller.map((t) => t.no));
+      expect(no).toEqual(no.map((_, i) => i + 1));
+      expect(html.split('<tr><td><span class="kutu"></span></td>').length - 1).toBe(p.teller.length);
+      for (const a of p.asamalar) expect(html).toContain(`<b>Aşama ${a.no} testi:</b>`);
+      for (const b of p.yerlesim.boards) expect(html).toContain(`<h3>${b.ad} · `);
+      expect(html).toContain("8. Malzeme listesi");
+    }
+  });
+
+  it("sırası önemli teller (↥): üstünden geçtikleri uç hep daha önce takılan bir telin", () => {
+    let toplam = 0;
+    for (const p of kartlar) {
+      const sira = sirasiOnemliTeller(p);
+      toplam += sira.size;
+      for (const [t, alt] of sira) for (const a of alt) expect(a, `${p.kart} T${t}`).toBeLessThan(t);
+    }
+    expect(toplam).toBeGreaterThan(0);
+    const p = kartlar.find((k) => k.kart === "bellek")!;
+    const html = kartBbBelgesi(m, p);
+    expect(html.split(" ↥</span>").length - 1).toBe(sirasiOnemliTeller(p).size);
+  });
+
+  it("dizin: yedi kart, 64 damarın her biri, soketler kablo boyunca sırayla", () => {
+    const html = dizinBelgesi(m, KART_SIRASI.map((k) => ({ kart: k, html: `${k}-breadboard.html`, pdf: `${k}-breadboard.pdf`, sayfa: 1 })));
+    for (const k of KART_SIRASI) expect(html).toContain(`${k}-breadboard.pdf`);
+    for (let d = 1; d <= 64; d++) expect(html).toMatch(new RegExp(`<td class="sag">${d}</td><td class="mono">`));
+    for (const s of m.serit.soketler) expect(html).toContain(`<td class="ref">${s.ref}</td>`);
   });
 });

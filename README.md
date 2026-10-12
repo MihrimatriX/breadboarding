@@ -149,7 +149,7 @@ docker compose down           # durdur
   çalışır, karta gönderme çalışmaz.
 - **TLS denetleyen bir kurum ağındaysan** `npm ci` sertifika hatası verir. Kök sertifikayı gizli
   olarak ver, imaja girmez: `docker build --secret id=npm_ca,src=kok-sertifika.pem .`
-- Kapsayıcıda `kicad-cli` ve Chromium yok: `npm run cpu16 -- kurulum` orada yalnız HTML üretir.
+- Kapsayıcıda `kicad-cli` ve Chromium yok: `npm run cpu16 -- kurulum` ve `breadboard-belge` orada yalnız HTML üretir.
   PDF'ler için komutu konakta çalıştır ([kurulum.md](cpu16/docs/kurulum.md)).
 
 Ayrıntılar `Dockerfile`, `docker-compose.yml` ve `docker/nginx/default.conf` içindeki yorumlarda.
@@ -255,6 +255,7 @@ Yeni başlıyorsan belgeleri sırayla okuman için bir yol: **[docs/README.md](d
 | Yorumlu C örnekleri | [c-ornekleri.md](cpu16/docs/c-ornekleri.md) |
 | Üretim: saat hızı, kurulum sırası, kart testi | [uretim.md](cpu16/docs/uretim.md) |
 | Kurulum belgeleri: tel listesi, çip kartları, el kitabı | [kurulum.md](cpu16/docs/kurulum.md) |
+| Bütün bilgisayar breadboard'da: panolar, şerit kablo, delikten deliğe teller | [breadboard.md](cpu16/docs/breadboard.md) |
 | Deney seti (14 deney) | [kit/README.md](cpu16/kit/README.md), önce [led-ve-direnc.md](cpu16/kit/led-ve-direnc.md) |
 | Hesap makinesi | [hesap8/README.md](hesap8/README.md), [tasarim.md](hesap8/docs/tasarim.md), [kurulum-rehberi.md](hesap8/docs/kurulum-rehberi.md) |
 | 6502 verisinin lisansı | [NOTICE.md](public/chips/mos6502/NOTICE.md) |
@@ -268,7 +269,8 @@ Gerçek çiplerle kurmak isteyenler için sıra:
    → [Deney 13: yılan oyunu](cpu16/kit/deney-13-c.md); isteğe bağlı
    [Deney 14: kendin yap bellek](cpu16/kit/deney-14-kendin-yap-bellek.md).
 3. [Kurulum belgeleri](cpu16/docs/kurulum.md): kart başına yerleşim, numaralı tel listesi, çip
-   kartları (`npm run cpu16 -- kurulum hepsi`).
+   kartları (`npm run cpu16 -- kurulum hepsi`). İki yol: PCB ya da breadboard panoları
+   ([breadboard.md](cpu16/docs/breadboard.md), `npm run cpu16 -- breadboard-belge hepsi`).
 4. [Üretim ve devreye alma](cpu16/docs/uretim.md): hız hedefi, kurulum sırası, kart testi.
 5. Hesap makinesi: [fiziksel kurulum rehberi](hesap8/docs/kurulum-rehberi.md)
    (`npm run cpu16 -- kurulum hesap`).

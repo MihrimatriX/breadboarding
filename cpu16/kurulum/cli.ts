@@ -55,7 +55,7 @@ function playwrightBul(): { chromium: { launch(o?: object): Promise<any> } } | n
 const altBilgi = (metin: string) => `<div style="font-size:7pt;font-family:Inter,'DejaVu Sans',Arial,sans-serif;color:#666;width:100%;padding:0 11mm;display:flex;justify-content:space-between;">
 <span>${metin}</span><span><span class="pageNumber"></span> / <span class="totalPages"></span></span></div>`;
 
-async function pdfBas(isler: { html: string; pdf: string; altbilgi: string }[]): Promise<boolean> {
+export async function pdfBas(isler: { html: string; pdf: string; altbilgi: string }[]): Promise<boolean> {
   const pw = playwrightBul();
   if (!pw) {
     console.error("playwright bulunamadı: PDF üretilmedi (HTML'i tarayıcıda açıp yazdırabilirsin)");

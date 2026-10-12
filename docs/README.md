@@ -72,7 +72,9 @@ kartta bir modül; her deney dosyasının sonundaki malzeme ve bağlantı tablol
    | 14 | [Kendin yap bellek](../cpu16/kit/deney-14-kendin-yap-bellek.md) | isteğe bağlı: 16 baytlık RAM, her bayt bir 74HC574 |
 
 4. [kurulum.md](../cpu16/docs/kurulum.md): kart başına yazdırılabilir kurulum belgesi (yerleşim
-   haritası, numaralı tel listesi, çip kartları) nasıl üretilir ve nasıl okunur.
+   haritası, numaralı tel listesi, çip kartları) nasıl üretilir ve nasıl okunur. PCB yerine bütün
+   bilgisayarı breadboard'da kurmak için: [breadboard.md](../cpu16/docs/breadboard.md) (kart başına
+   bir pano, kartlar arası şerit kablo, delikten deliğe tel listeleri).
 5. [uretim.md](../cpu16/docs/uretim.md): kurulum sırasının gerekçesi, besleme, arıza bulma, kart testi.
 
 ## Yol C: Hesap makinesi
@@ -107,6 +109,7 @@ görünür. Breadboard'da ilk dört aşaması ≈ 22 entegre ve 6–7 breadboard
 | Hangi çipin kaç kapısı ve transistörü var? | [parcalar.md](../cpu16/docs/parcalar.md), `npm run cpu16 -- chips` |
 | Hangi kartta kaç entegre var? | [kartlar.md](../cpu16/docs/kartlar.md), `npm run cpu16 -- board` |
 | Hangi bacak nereye, tel hangi renk? | [kurulum.md](../cpu16/docs/kurulum.md), `npm run cpu16 -- kurulum <kart>` |
+| Breadboard'da hangi delikten hangi deliğe? | [breadboard.md](../cpu16/docs/breadboard.md), `npm run cpu16 -- breadboard-belge <kart>` |
 | Gerçek kart kaç MHz'te çalışır? | [uretim.md](../cpu16/docs/uretim.md), `npm run cpu16 -- zamanlama` |
 | Dirençlerin renk kodu, LED'in yönü? | [led-ve-direnc.md](../cpu16/kit/led-ve-direnc.md) |
 | 3D görünümü konsoldan nasıl sürerim? | [3d-gorunum.md](../cpu16/docs/3d-gorunum.md#konsol) |

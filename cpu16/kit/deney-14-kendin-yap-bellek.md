@@ -1,6 +1,8 @@
 # Deney 14: Kendin yap bellek: 16 bayt, her bayt bir 74HC574
 
 > **Video:** "Belleğin içi: 16 baytlık RAM'i flip-flop'larla kendimiz yapıyoruz" · **Önce:** Deney 10 (G/Ç kartı, terminal); BIOS'la denemek için Deney 12 · **Kart:** kendin yap bellek kartı (`kyb`, 22 entegre)
+>
+> **Breadboard panosu** (bilgisayarın kalıcı breadboard yolu, [docs/breadboard.md](../docs/breadboard.md)): `kyb-breadboard.pdf` (Kendin yap bellek kartı), 2–3. aşamalar (önce 1. aşama: taban, besleme, uyarlayıcı).
 
 Bilgisayarın RAM'i dört 62256'dır: her biri tek bir entegrede 32 768 bayt. Bu deneyde aynı işi
 yapan bir belleği açıkta kurarız: 16 bayt, her bayt bir 74HC574. Kart G/Ç alanında `FF40–FF4F`'te

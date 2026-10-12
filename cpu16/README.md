@@ -2,7 +2,9 @@
 
 Tamamen 74HC entegrelerinden kurulan, kendi komut seti, kendi C derleyicisi ve 3D'de transistörüne
 kadar incelenebilen bir 16 bit bilgisayar. Aynı zamanda bir eğitim ve deney seti: 14 deneyde, saat
-kartından başlayıp C ile yazılmış yılan oyununa kadar breadboard'da kurulur.
+kartından başlayıp C ile yazılmış yılan oyununa kadar breadboard'da kurulur. Bitmiş bilgisayarın iki
+yolu var: PCB'li (kartlar KiCad'den) ya da bütünüyle breadboard'lı (kart başına bir pano, 129 board,
+kartlar arası şerit kablo; [docs/breadboard.md](docs/breadboard.md)).
 
 - **Şu anki aşama:** simülasyon tarafı bitti, sıradaki iş gerçek kartlar. Ayrıntı: [docs/roadmap.md](docs/roadmap.md).
 - **Deney seti:** [kit/README.md](kit/README.md) (13 deney yılan oyununa gider, 14. isteğe bağlı
@@ -47,6 +49,7 @@ bu tanımdan üretilir.
 | C örnekleri: rehberli tur, CPU16'da C yazarken bilinmesi gerekenler | [c-ornekleri.md](docs/c-ornekleri.md) |
 | Üretim, zamanlama, kart testi | [uretim.md](docs/uretim.md) |
 | Kurulum belgeleri: tel listesi, çip kartları, el kitabı | [kurulum.md](docs/kurulum.md) |
+| Bütün bilgisayar breadboard'da: panolar, şerit kablo, delikten deliğe teller | [breadboard.md](docs/breadboard.md) |
 | Deney seti | [kit/README.md](kit/README.md), [LED, direnç ve kondansatör](kit/led-ve-direnc.md) |
 
 ## Komutlar
@@ -81,6 +84,8 @@ npm run cpu16 -- zamanlama --anakart                 # şemadan statik zamanlama
 # deney seti, kurulum, gerçek kart
 npm run cpu16 -- kit                                 # deney rehberlerinin otomatik bölümlerini üret
 npm run cpu16 -- kurulum hepsi                       # kurulum belgeleri (HTML + PDF): tel listesi, çip kartları, el kitabı
+npm run cpu16 -- breadboard                          # breadboard panoları: ölçüler, besleme, bağlantının netlistle doğrulanması
+npm run cpu16 -- breadboard-belge hepsi              # breadboard kurulum belgeleri (HTML + PDF): kart başına pano + dizin
 npm run cpu16 -- kart-testi --port /dev/ttyUSB0      # gerçek kartı UART üzerinden simülatörle karşılaştır
 
 npx vitest run cpu16                                 # CPU16 testleri
@@ -105,6 +110,7 @@ dosyalarının başındaki yorumlarda.
 | `programs/` | düz bellekte çalışan örnekler: assembly (hello, fib, add32, bubble, irq), `merhaba.c`; `c/` altında cc16 örnekleri |
 | `kit/` | deney rehberleri, görseller, BIOS'tan önceki deneylerin programları (`programlar/`) |
 | `kurulum/` | kurulum belgesi üreteci; çıktı `kurulum/cikti/` (depoya girmez) |
+| `breadboard/` | breadboard panoları (yerleşim, teller, şerit kablo, besleme), üretilmiş veri (`veri/`), belge üreteci; çıktı `breadboard/cikti/` (depoya girmez). Ortak motor `board/breadboard/` |
 | `programlayici/` | Arduino Nano + 2 × 74HC595 EEPROM programlayıcısı (`.ino`) ve `yaz.py` |
 | `video/` | karakter ROM'u (8 × 16 font) |
 | `tools/` | `npm run cpu16` komutları |

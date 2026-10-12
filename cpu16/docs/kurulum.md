@@ -4,6 +4,12 @@ Kartları fiziksel olarak kurarken "hangi bacak nereye" sorusunun cevabı: kart 
 bir kurulum belgesi (A4, HTML + PDF), yanında KiCad şemasının PDF'i ve genel bir kurulum el kitabı.
 Hepsi kart tanımlarından (`cpu16/board/*.ts`) üretilir; şema değişirse belgeler de değişir.
 
+Bilgisayarın iki kurulum yolu var. Bu belgedeki tel listeleri **pinden pine**dir: PCB'de bip testi,
+deneylerde breadboard'da takılacak teller. Bütün bilgisayarı **breadboard'da** kurmak için ayrı,
+**delikten deliğe** belgeler vardır: her kart kendi panosunda (bir grup BB830), board board yerleşim
+çizimleri, aşama aşama numaralı tel listesi, kesim listesi; kartlar arası 64 damarlı şerit kablo
+(`npm run cpu16 -- breadboard-belge hepsi`, [breadboard.md](breadboard.md)).
+
 ```sh
 npm run cpu16 -- kurulum hepsi            # bilgisayarın bütün kartları + el kitabı → cpu16/kurulum/cikti/
 npm run cpu16 -- kurulum cpu              # tek kart
@@ -27,18 +33,20 @@ yalnızca HTML yazılır, HTML tarayıcıda açılıp "Yazdır → PDF" ile bas�
 
 ## Kartlar ve yollar
 
-Deneyler (1–8) breadboard'da kurulur, tam bilgisayar PCB'de (kartlar KiCad şemalarından, çipler
-soketlerde). Tel listesi iki yolda da aynıdır: breadboard'da takılacak teller, PCB'de bip testi listesi.
+Deneyler (1–8) breadboard'da kurulur; tam bilgisayar PCB'de (kartlar KiCad şemalarından, çipler
+soketlerde) ya da breadboard panolarında ([breadboard.md](breadboard.md): yedi pano, 129 board, şerit
+kablo). Bu belgelerin tel listesi pinden pinedir: deneylerin breadboard'unda takılacak teller, PCB'de
+bip testi listesi. Breadboard panolarının delikten deliğe tel listesi breadboard belgelerindedir.
 
 | Kart | Deney | Kaynak tanım | Yol |
 |---|---|---|---|
-| `clk` saat ve reset | 1 | test bilgisayarı | breadboard → PCB |
+| `clk` saat ve reset | 1 | test bilgisayarı | breadboard → PCB ya da breadboard panosu |
 | `prog` EEPROM programlayıcı | 3 | programlayıcı | breadboard |
-| `cpu` CPU | 4–7 | test bilgisayarı | breadboard → PCB |
+| `cpu` CPU | 4–7 | test bilgisayarı | breadboard → PCB ya da breadboard panosu |
 | `mem` test bellek kartı (yalnız FF00 mandalı) | 8 | test bilgisayarı | breadboard |
-| `bellek` | 8 | anakart | breadboard → PCB |
-| `onbellek` | 8, 9 | anakart | breadboard → PCB |
-| `gc`, `video`, `kyb` | 10, 11, 14 | anakart | PCB |
+| `bellek` | 8 | anakart | breadboard → PCB ya da breadboard panosu |
+| `onbellek` | 8, 9 | anakart | breadboard → PCB ya da breadboard panosu |
+| `gc`, `video`, `kyb` | 10, 11, 14 | anakart | PCB ya da breadboard panosu |
 
 Kaynak tanım KiCad şemasınınkiyle aynıdır (`board/kicad-files.ts`), böylece adsız netlerin adları
 (N123) belgede ve şemada aynıdır. CPU ve saat kartı test bilgisayarında ve anakartta aynı çipler, aynı

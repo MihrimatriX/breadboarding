@@ -16,6 +16,23 @@ blok blok numaralı tel listesi (renk kodu, nereden → nereye; PCB'de bip testi
 kartları ve kenar konnektörü; yanında KiCad şemasının PDF'i ve bir kurulum el kitabı (breadboard,
 PCB montajı, wire-wrap).
 
+## İki yol: PCB ya da breadboard panoları
+
+Deneyler bitince bilgisayarın kartları iki yoldan kalıcı hale gelir:
+
+- **PCB**: kartlar KiCad şemalarından üretilir, çipler soketlere; kurulum belgelerindeki tel listesi
+  bip testi listesidir ([docs/kurulum.md](../docs/kurulum.md)).
+- **Breadboard panoları**: her kart kendi panosunda (bir taban plakasında bir grup BB830; saat kartı
+  5, CPU 55, bellek ve önbellek 12'şer, G/Ç 18, video 21, kendin yap bellek 6 board), kartlar arası
+  bütün bağlantılar 64 damarlı bir şerit kablodan (arka panel). Her panonun belgesi delikten deliğe
+  yazılmıştır: board board yerleşim çizimleri, aşama aşama numaralı tel listesi (her aşama bir
+  deneyin bloğu, sonunda testi), kesim listesi, malzeme
+  (`npm run cpu16 -- breadboard-belge hepsi`, [docs/breadboard.md](../docs/breadboard.md)).
+  Uygulamada aynı teller: Silikon3D → CPU16 kartı 3D → Görünüm: Breadboard → Kurulum.
+
+Deneylerdeki "Malzeme ve bağlantılar" tabloları iki yolda da aynıdır (hangi bacak hangi nete gider);
+breadboard panolarında bu bağlantıların hangi delikten hangi deliğe takılacağı panonun belgesindedir.
+
 ## Deneyler
 
 **Başlamadan önce:** [LED, direnç ve kondansatör](led-ve-direnc.md): renk kodunu okuma, LED'in kutbu ve
@@ -49,7 +66,7 @@ kartıdır: bilgisayarın çalışması için gerekmez, 13 deneyin bilgisayarın
 | Araç | Neden |
 |---|---|
 | 5 V, en az 2 A ayarlı/akım sınırlı güç kaynağı | Tam bilgisayar ≈ 400 entegre; ilk açılışta akım sınırı kısa devreyi yakalar |
-| Breadboard (830 delik) × 25–35, tek göbekli 0,5 mm kablo | CPU kartı tek başına ≈ 195 entegre |
+| Breadboard (830 delik) × 25–35, tek göbekli 0,5 mm kablo | CPU kartı tek başına ≈ 195 entegre. Bütün bilgisayar breadboard panolarında: 129 board, ≈ 730 m 22 AWG tel ([docs/breadboard.md](../docs/breadboard.md)) |
 | Multimetre | besleme ve seviye ölçümü |
 | Lojik prob ya da 8 kanallı USB lojik analizör (sigrok / PulseView) | saat, UART, PS/2, VGA zamanlaması |
 | Arduino Nano (klon olur) + ZIF-28 soket | EEPROM programlayıcı (Deney 3) |
@@ -70,7 +87,10 @@ sürdüğünde onu ezmez (veriyolundaki 10 kΩ çekme direnciyle birlikte 1 sevi
 - Önce simülatörde dene: her deneyin "Simülatörde" bölümü aynı devreyi kapı seviyesinde çalıştırır.
   Gerçek kart farklı davranıyorsa aynı net adını simülatörde seç ve seviyeleri karşılaştır.
 - Kartlar arası bağlantı arka panel sinyalleriyle yapılır (`cpu16/docs/kartlar.md`, "Arka panel").
-  Breadboard'da bu, kartlar arasında aynı adlı netleri birleştiren uzun kablolardır.
+  Breadboard panolarında bu, koridorda uzanan 64 damarlı şerit kablodur: her panoda kartın kenar
+  konnektörünün yerinde bir şerit kablo uyarlayıcısı, kablonun üstünde her pano için bir IDC soketi
+  ([docs/breadboard.md](../docs/breadboard.md#arka-panel-şerit-kablo)). Deneylerde henüz bir kart
+  yokken o karttan gelecek sinyaller elle sürülür (tablolardaki "▶ elle sür").
 
 ## Sorun giderme (genel)
 

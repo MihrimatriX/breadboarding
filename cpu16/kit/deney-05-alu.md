@@ -1,6 +1,8 @@
 # Deney 5: ALU ve bayraklar
 
 > **Video:** "16 bit ALU: toplayıcıdan doğruluk tablosuna" · **Önce:** Deney 4 · **Kart:** CPU kartı, "Geçici register'lar", "ALU", "ALU kod çözücü", "Bayraklar ve koşul" blokları
+>
+> **Breadboard panosu** (bilgisayarın kalıcı breadboard yolu, [docs/breadboard.md](../docs/breadboard.md)): `cpu-breadboard.pdf` (CPU kartı), 3. aşama.
 
 Bu deney büyüktür; beş parçada kur ve her parçayı ayrı test et: (a) işlem seçici ve ALU kod çözücü,
 (b) TA, TB ve toplayıcı, (c) mantık birimi, (d) kaydırıcı ve sonuç seçici, (e) bayraklar ve koşul birimi.
