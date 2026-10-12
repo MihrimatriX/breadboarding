@@ -89,7 +89,8 @@ arka    R0                 R1                 R2                 R3             
 
 Bölgeler arkadan öne: register dosyası, sabit birimi, ALU ve bayraklar, kontrol birimi, program
 sayacı / MAR / IR / bellek arayüzü. Modüllerin bölge içindeki yeri, tahmini tel boyunu en kısa yapan
-yerdir (aynı işin board'ları yan yana).
+yerdir: birden çok board'u dolduran modülün board'ları yan yana; arka panelle konuşan bellek erişim
+kapıları ön sırada uyarlayıcının iki yanında.
 
 Bedeli teldir: modül modül dizilimde 16 hatlık veriyolu her register board'una, ALU'nun bit
 dilimleri arasında da A, B ve sonuç hatları board'dan board'a gider. CPU panosu, çiplerin bölge

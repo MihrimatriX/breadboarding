@@ -135,9 +135,10 @@ describe("panolar: kurallar", () => {
       expect(bs.length, `r${r}`).toBe(1);
       expect(p.yerlesim.boards[bs[0]].gruplar, `r${r}`).toEqual([`r${r}`]);
     }
-    // birden çok board'a yayılan grubun her board'unun yanında (sağda, solda, önde ya da arkada) aynı gruptan bir board var
+    // birden çok board'u tek başına dolduran modülün (mantık birimi, sonuç seçici, sabit birimi, mikrokod
+    // kapı ağı …) her board'unun yanında (sağda, solda, önde ya da arkada) aynı modülden bir board var
     for (const [g, bs] of grupBoardlari) {
-      if (bs.size < 2) continue;
+      if (bs.size < 2 || [...bs].some((n) => p.yerlesim.boards[n].gruplar!.length > 1)) continue;
       for (const n of bs) {
         const b = p.yerlesim.boards[n];
         const komsu = [...bs].some((m) => m !== n && Math.abs(p.yerlesim.boards[m].bx - b.bx) + Math.abs(p.yerlesim.boards[m].by - b.by) === 1);
