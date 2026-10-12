@@ -93,6 +93,7 @@ export function refPrefix(part: string): string {
   if (part.startsWith("POT")) return "RV";
   if (part.startsWith("OSC")) return "X";
   if (part.startsWith("ARDUINO")) return "A";
+  if (part.startsWith("DISP")) return "DS";
   return "U";
 }
 

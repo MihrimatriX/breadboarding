@@ -8,9 +8,10 @@ import {
 } from "../../cpu16/board/passives";
 import {
   VCC, akimMetni, direncBantlari, direncGucu, faradMetni, frekansMetni, gucMetni, kodAcilimi, ledAkimi, ohmMetni, pasifDegeri, rcSabiti, sayi,
-  sureMetni, type PasifDeger,
+  sureMetni, ucHaneliKod, type PasifDeger,
 } from "../../cpu16/board/pasif-bilgi";
 import { chip as chipDef } from "../../cpu16/chips/library";
+import { RAKAM_SEGMENT } from "../../cpu16/chips/parts/gosterge";
 import { dacVolts } from "./beam";
 import type { Endpoint } from "./wires";
 
@@ -91,9 +92,20 @@ export function seriLed(p: PassivePlace, ctx: Pick<PasifBaglam, "ends" | "find">
 }
 
 /**
- * Simülasyon dirençlerin değerini bilmez: yalnız pasiflere bağlı bir net (ör. LED'in anodu) Z görünür.
- * Böyle bir net tek bir iki uçlu dirençle çipin sürdüğü bir nete bağlıysa onun seviyesini taşır
- * (akım akmıyorsa iki uç aynı gerilimde; LED yanarken anot ≈ Vf, yine "1" sayılır).
+ * Direncin bir bacağının karşısındaki net: iki uçlu direnç ya da yalıtılmış direnç dizisi (DIP-16:
+ * k. direnç k. ve 17 − k. bacak arasında). Direnç değilse null.
+ */
+function direncKarsisi(r: PassivePlace, num: number): number | null {
+  if (r.kind === "direnc" && r.pins.length === 2) return r.pins.find((q) => q.num !== num)?.net ?? -1;
+  if (r.kind === "dipdizi") return pinNet(r, r.pins.length + 1 - num);
+  return null;
+}
+
+/**
+ * Simülasyon dirençlerin değerini bilmez: yalnız pasiflere bağlı bir net (ör. LED'in anodu, 7 segment
+ * göstergenin segmenti) Z görünür. Böyle bir net tek bir dirençle (iki uçlu ya da yalıtılmış dizinin
+ * bir direnciyle) çipin sürdüğü bir nete bağlıysa onun seviyesini taşır (akım akmıyorsa iki uç aynı
+ * gerilimde; LED yanarken anot ≈ Vf, yine "1" sayılır).
  */
 export function etkinNet(ends: Map<number, Endpoint[]>, find: PasifBaglam["find"], n: number): number {
   if (n <= 1) return n;
@@ -103,9 +115,10 @@ export function etkinNet(ends: Map<number, Endpoint[]>, find: PasifBaglam["find"
   for (const e of list) {
     if (e.kind !== "passive") continue;
     const r = find(e.ref)?.passive;
-    if (!r || r.kind !== "direnc" || r.pins.length !== 2) continue;
+    const karsi = r ? direncKarsisi(r, e.num) : null;
+    if (karsi === null) continue;
     if (out >= 0) return n;
-    out = r.pins.find((q) => q.num !== e.num)?.net ?? -1;
+    out = karsi;
   }
   if (out < 0) return n;
   return out <= 1 || (ends.get(out) ?? []).some((e) => e.kind === "chip") ? out : n;
@@ -247,6 +260,63 @@ export function dacDirenci(p: PassivePlace, ctx: PasifBaglam): DacDirenci | null
   return null;
 }
 
+// ---------------------------------------------------------------- DIP anahtar, 7 segment gösterge
+
+export interface DipAnahtar {
+  /** gövdedeki numarası (soldan 1, 2, …) */
+  no: number;
+  /** birleştirdiği bacaklar: k. ve (n + 1 − k). */
+  pinler: [number, number];
+  /** sinyal ucu (besleme olmayan uç; ikisi de sinyalse ikinci bacak) */
+  net: number;
+  /** açık (ON): iki uç birleşik, aynı seviyede (hesap makinesinde giriş 1) */
+  acik: boolean;
+}
+
+/** DIP anahtarın anahtarları ve canlı konumları: k. anahtar k. ve (n + 1 − k). bacağı birleştirir */
+export function dipAnahtarlari(p: PassivePlace, level: (net: number) => Seviye): DipAnahtar[] {
+  const n = p.pins.length;
+  const lv = (x: number) => (x < 0 ? 2 : level(x));
+  return Array.from({ length: Math.floor(n / 2) }, (_, i) => {
+    const k = i + 1;
+    const a = pinNet(p, k);
+    const b = pinNet(p, n + 1 - k);
+    const la = lv(a);
+    return { no: k, pinler: [k, n + 1 - k], net: isPower(b) && !isPower(a) ? a : b, acik: la <= 1 && la === lv(b) };
+  });
+}
+
+/** Göstergenin segmentleri (a … g ve nokta) */
+export const SEGMENT_ADLARI = ["a", "b", "c", "d", "e", "f", "g", "dp"] as const;
+export type SegmentAdi = (typeof SEGMENT_ADLARI)[number];
+
+/**
+ * Göstergenin her segmenti: bacağı ve segmenti yakan net. Segment bacağı yalnız direnç dizisine bağlı
+ * (simülasyonda Z): dizinin öbür ucundaki sürücü çıkışı (74HC4511) kullanılır (etkinNet).
+ */
+export function segmentNetleri(p: PassivePlace, ends: Map<number, Endpoint[]>, find: PasifBaglam["find"]): { seg: SegmentAdi; pin: number; net: number }[] {
+  const pins = PASSIVES[p.part]?.pins ?? [];
+  return SEGMENT_ADLARI.map((seg) => {
+    const pin = pins.find((q) => q.name.toLowerCase() === seg)?.num ?? -1;
+    const n = pin < 0 ? -1 : pinNet(p, pin);
+    return { seg, pin, net: n < 0 ? -1 : etkinNet(ends, find, n) };
+  });
+}
+
+/** Yanan segmentlerden okunan karakter (74HC4511 deseni): sönük boşluk, yalnız g "−", tanınmayan "?" */
+export function segmentKarakteri(yanan: readonly string[]): string {
+  const s = SEGMENT_ADLARI.slice(0, 7).filter((x) => yanan.includes(x)).join("");
+  if (!s) return " ";
+  const r = RAKAM_SEGMENT.indexOf(s);
+  return r >= 0 ? String(r) : s === "g" ? "−" : "?";
+}
+
+/** Yalıtılmış direnç dizisinin değeri: RN_470_ISO_8 → 8 × 470 Ω */
+function isoDizi(part: string): { ohm: number; adet: number } | null {
+  const m = /^RN_(\d+)([KM])?_ISO_(\d+)$/.exec(part);
+  return m ? { ohm: Number(m[1]) * (m[2] === "K" ? 1e3 : m[2] === "M" ? 1e6 : 1), adet: Number(m[3]) } : null;
+}
+
 // ---------------------------------------------------------------- açıklama
 
 export interface Hesap {
@@ -288,6 +358,9 @@ export const TUR_ADI: Record<PassivePlace["kind"], string> = {
   anahtar: "Sürgülü anahtar",
   pot: "Trimpot (ayarlı direnç)",
   modul: "Modül",
+  dip: "DIP anahtar",
+  gosterge: "7 segment gösterge",
+  dipdizi: "Direnç dizisi (DIP-16, yalıtılmış)",
 };
 
 const v = (x: number, b = 2) => `${sayi(x, b)} V`;
@@ -671,5 +744,85 @@ export function pasifAciklamasi(p: PassivePlace, ctx: PasifBaglam): Aciklama {
       ilgili: [],
     };
   }
+  if (p.kind === "dip") return dipAciklama(p, ctx);
+  if (p.kind === "gosterge") return gostergeAciklama(p, ctx);
+  const iso = p.kind === "dipdizi" ? isoDizi(p.part) : null;
+  if (iso) return isoDiziAciklama(p, iso);
   return { tur: TUR_ADI[p.kind], deger: undefined, ozet: `${title} · ${p.role}`, gorev: [`${p.role}.`, PASSIVES[p.part]?.usage ?? ""].filter(Boolean), hesaplar: [], ilgili: [] };
+}
+
+/** Kırmızı segmentin akımı (gösterge ve dizi panelleri) */
+function segmentHesabi(ohm: number): Hesap {
+  const vf = LED_RENKLERI.kirmizi.vf;
+  const I = ledAkimi(VCC, vf, ohm);
+  return { ad: "Segment akımı", formul: `I = (5 V − ${v(vf, 1)}) / ${ohmMetni(ohm)}`, sonuc: `≈ ${akimMetni(I)} · “8” gösterirken 7 segment ≈ ${akimMetni(7 * I)}` };
+}
+
+function dipAciklama(p: PassivePlace, ctx: PasifBaglam): Aciklama {
+  const sw = dipAnahtarlari(p, ctx.level);
+  const n = p.pins.length;
+  const bitler = sw.map((s) => (s.acik ? "1" : "0")).join("");
+  const on = sw.filter((s) => s.acik).map((s) => s.no);
+  // OFF iken girişi 0'a çeken direnç dizisi
+  const cekme = sw.flatMap((s) => others(ctx, s.net, p.ref).map((e) => passiveOf(ctx, e))).find((x) => x && cekmeDirenci(x)) ?? null;
+  const c = cekme ? cekmeDirenci(cekme) : null;
+  return {
+    tur: `${TUR_ADI.dip} (${sw.length}'li)`,
+    deger: `${sw.length} anahtar · ON = 1, OFF = 0`,
+    ozet: `${p.role} · ${bitler}`,
+    gorev: [
+      `${p.role}.`,
+      `Her anahtar karşılıklı iki bacağı birleştirir: k. anahtar k. ve ${n + 1} − k. bacak (1. anahtar 1 ve ${n}. bacak). Bir uç VCC'de, öbür uç girişe gider: ON iken giriş 5 V'a bağlanır (1), OFF iken ${c ? `${ohmMetni(c.ohm)} çekme direnci` : "çekme direnci"} girişi 0'a çeker.`,
+      `Anahtarlar: ${sw.map((s) => `${s.no} → ${net(ctx, s.net)}`).join(", ")}. 3D'de anahtarın sürgüsüne tıklayınca konumu değişir.`,
+    ],
+    hesaplar: c ? [{ ad: "ON iken çekme direncinden akım", formul: `I = 5 V / ${ohmMetni(c.ohm)}`, sonuc: `= ${akimMetni(VCC / c.ohm)}` }] : [],
+    durum: { ton: "bilgi", metin: `Şu an ${on.length ? `ON: ${on.join(", ")}` : "hepsi OFF"} · soldan sağa ${bitler}.` },
+    ilgili: cekme ? [{ ref: cekme.ref, neden: "çekme dirençleri (OFF = 0)" }] : [],
+  };
+}
+
+function gostergeAciklama(p: PassivePlace, ctx: PasifBaglam): Aciklama {
+  const seg = segmentNetleri(p, ctx.ends, ctx.find);
+  const yanan = seg.filter((s) => s.net >= 0 && ctx.level(s.net) === 1).map((s) => s.seg);
+  const kar = segmentKarakteri(yanan);
+  const bagli = seg.filter((s) => s.net >= 0);
+  const drv = bagli.length ? netDriver(ctx, bagli[0].net) : null;
+  // segment bacağıyla sürücü arasındaki direnç (dizi ya da tek direnç)
+  const ilk = bagli[0] ? pinNet(p, bagli[0].pin) : -1;
+  const dir = ilk >= 0 ? others(ctx, ilk, p.ref).map((e) => passiveOf(ctx, e)).find((x) => x && (x.kind === "dipdizi" || x.kind === "direnc")) ?? null : null;
+  const ohm = dir ? (isoDizi(dir.part)?.ohm ?? ohmOf(dir)) : null;
+  const ilgili: Aciklama["ilgili"] = [];
+  if (drv) ilgili.push({ ref: drv.ref, neden: `sürücü (${drv.part})` });
+  if (dir) ilgili.push({ ref: dir.ref, neden: dir.kind === "dipdizi" ? "segment dirençleri" : "segment direnci" });
+  return {
+    tur: `${TUR_ADI.gosterge} (ortak katot)`,
+    deger: `0,56" tek hane · ${bagli.length} segment bağlı`,
+    ozet: `${p.role} · ${yanan.length ? `“${kar}” gösteriyor` : "sönük"}`,
+    gorev: [
+      `${p.role}.`,
+      "Bir gövdede sekiz LED: a … g segmentleri ve nokta (DP). Katotları içeride birleşik, 3. ve 8. bacaktan GND'ye; bir segment, anoduna direnç üzerinden 1 gelince yanar.",
+      `Bacaklar: 1 e, 2 d, 3 ortak katot, 4 c, 5 DP, 6 b, 7 a, 8 ortak katot, 9 f, 10 g (alt sırada soldan 1 … 5, üstte sağdan 6 … 10).${drv ? ` Segmentleri ${drv.ref} (${drv.part}) sürer: BCD haneyi segment desenine çevirir.` : ""}`,
+    ],
+    hesaplar: ohm ? [segmentHesabi(ohm)] : [],
+    durum: yanan.length
+      ? { ton: "yanik", metin: `YANIYOR: ${yanan.join(" ")} → “${kar}”.` }
+      : { ton: "sonuk", metin: "SÖNÜK: hiçbir segment yanmıyor (baştaki sıfır söndürüldü ya da grup sönük)." },
+    ilgili,
+  };
+}
+
+function isoDiziAciklama(p: PassivePlace, d: { ohm: number; adet: number }): Aciklama {
+  const kod = ucHaneliKod(d.ohm);
+  return {
+    tur: `${TUR_ADI.dipdizi}, ${d.adet} × ${ohmMetni(d.ohm)}`,
+    deger: `${d.adet} × ${ohmMetni(d.ohm)} · üstünde 4116R-1-${kod}`,
+    ozet: `${d.adet} × ${ohmMetni(d.ohm)} (4116R ${kod}) · ${p.role}`,
+    gorev: [
+      `${p.role}.`,
+      `İçeride ${d.adet} ayrı direnç: k. direnç k. ve ${p.pins.length + 1} − k. bacak arasında, birbirine bağlı değil (yalıtılmış). Kod ${kod}: ${kodAcilimi(kod, "Ω")}. Çip gibi DIP-16 sokete takılır; 1. bacak çentik / nokta tarafında.`,
+      "Sürücünün (74HC4511) her segment çıkışı ile göstergenin o segmenti arasında: LED'in akımını sınırlar.",
+    ],
+    hesaplar: [segmentHesabi(d.ohm)],
+    ilgili: [],
+  };
 }

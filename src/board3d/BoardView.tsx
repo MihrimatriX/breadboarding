@@ -1,14 +1,22 @@
 // "CPU16 kartı 3D" bölümü: bütün bilgisayar tek sahnede (anakartın bütün kartları, kapı seviyesinde).
 // Kart → çip → kapı → transistör; çipten çipe teller; VGA monitörü; assembly / C program düzenleyicisi.
+// "8 bit hesap 3D" bölümü aynı görünümü kullanır: sahne, inceleme, çipin içi ve kurulum ortak; program,
+// saat, VGA ve UART yerine hesap makinesinin ön paneli ("Hesap" sekmesi) gelir.
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { gateCmos } from "../../cpu16/board/inside";
 import { PASSIVES } from "../../cpu16/board/passives";
 import type { Gate } from "../../cpu16/chips/logic";
 import { breakCodes, makeCodes, textToScancodes } from "../../cpu16/emu/devices/keyboard";
 import { disassemble } from "../../cpu16/emu/disasm";
 import { AppHeader, Group, Meter, PanelToggle, Splitter, Tabs, heightShare, useLayout, type LayoutPrefs, type Shortcut, type TabDef } from "../ui/Shell";
+import { Simge } from "../ui/simgeler";
+import { HataKutusu, Yukleniyor } from "../ui/Yukleniyor";
+import { useYaziTipleri } from "../ui/yaziTipleri";
+import { aktifKart, aktifKartiSec, type KartTuru } from "./aktif";
 import { BoardScene } from "./BoardScene";
+import { installHesapApi, useHesap } from "./hesap";
+import { HesapMeters, HesapPanel } from "./HesapPanel";
 import { KurulumPanel } from "./KurulumPanel";
 import { useKurulum } from "./kurulum";
 import { CmosDiagram } from "./CmosDiagram";
@@ -30,6 +38,12 @@ const WIRE_MODES: { m: WireMode; label: string; title: string }[] = [
   { m: "hepsi", label: "hepsi", title: "Bütün netler: her netin pinleri en kısa yoldan zincirlenir" },
 ];
 
+const FARE: Shortcut[] = [
+  { keys: "Sürükle", what: "Döndür" },
+  { keys: "Sağ tık", what: "Kaydır" },
+  { keys: "Tekerlek", what: "Yakınlaş / uzaklaş" },
+];
+
 const SHORTCUTS: Shortcut[] = [
   { keys: "Boşluk", what: "Çalıştır / duraklat" },
   { keys: ".", what: "1 saat çevrimi" },
@@ -37,9 +51,15 @@ const SHORTCUTS: Shortcut[] = [
   { keys: "Esc", what: "Seçimi kaldır (kapı → net → çip)" },
   { keys: "Ctrl+Enter", what: "Düzenleyicide: derleyip EEPROM'a yazar ve çalıştırır" },
   { keys: "Tıkla", what: "Entegreyi seç: teller, bağlantılar, içi" },
-  { keys: "Sürükle", what: "Döndür" },
-  { keys: "Sağ tık", what: "Kaydır" },
-  { keys: "Tekerlek", what: "Yakınlaş / uzaklaş" },
+  ...FARE,
+];
+
+const HESAP_KISAYOLLARI: Shortcut[] = [
+  { keys: "Esc", what: "Seçimi kaldır (kapı → net → çip)" },
+  { keys: "Tıkla", what: "Entegreyi seç: teller, bağlantılar, içi" },
+  { keys: "Anahtara tıkla", what: "3D'de DIP anahtarın beyaz düğmesi: biti değiştirir (ON = 1)" },
+  { keys: "Basılı tut", what: "3D'de sarı LAMBA TESTİ butonu: bütün segmentler yanar" },
+  ...FARE,
 ];
 
 /** Üst çubuktaki canlı ölçümler */
@@ -63,14 +83,15 @@ function Toolbar({ lay, setLay }: { lay: LayoutPrefs; setLay: (p: Partial<Layout
   return (
     <div className="toolbar">
       <Group label="Adım adım">
-        <button onClick={() => s.step("cycle")} disabled={!s.ready} title="Bir saat çevrimi · kısayol: .">1 saat</button>
-        <button onClick={() => s.step("instr")} disabled={!s.ready} title="Bir komut · kısayol: N">1 komut</button>
+        <button onClick={() => s.step("cycle")} disabled={!s.ready} title="Bir saat çevrimi · kısayol: ."><Simge ad="yarim" />1 saat</button>
+        <button onClick={() => s.step("instr")} disabled={!s.ready} title="Bir komut · kısayol: N"><Simge ad="adim" />1 komut</button>
       </Group>
       <Group label="Çalıştırma">
         <button className="primary" onClick={() => (s.running ? s.pause() : s.run())} disabled={!s.ready} title="Kısayol: Boşluk">
+          <Simge ad={s.running ? "duraklat" : "oynat"} />
           {s.running ? "Duraklat" : "Çalıştır"}
         </button>
-        <button onClick={s.reset} disabled={!s.ready} title="RESET butonu: program EEPROM'da kalır">Sıfırla</button>
+        <button onClick={s.reset} disabled={!s.ready} title="RESET butonu: program EEPROM'da kalır"><Simge ad="sifirla" />Sıfırla</button>
       </Group>
       <Group label="Saat hızı">
         <label className="speed">
@@ -80,21 +101,62 @@ function Toolbar({ lay, setLay }: { lay: LayoutPrefs; setLay: (p: Partial<Layout
           </select>
         </label>
       </Group>
-      <Group label="Teller" className="wires-ctl">
-        <span className="tb-label">Teller</span>
-        <span className="seg" role="group" aria-label="Teller">
-          {WIRE_MODES.map((w) => (
-            <button key={w.m} className={s.wires === w.m ? "on" : ""} aria-pressed={s.wires === w.m} onClick={() => s.setWires(w.m)} title={w.title}>{w.label}</button>
+      <TellerGrubu />
+      <PanelGrubu lay={lay} setLay={setLay} />
+    </div>
+  );
+}
+
+function TellerGrubu() {
+  const wires = useKart((s) => s.wires);
+  const power = useKart((s) => s.power);
+  const s = useKart.getState();
+  return (
+    <Group label="Teller" className="wires-ctl">
+      <span className="tb-label">Teller</span>
+      <span className="seg" role="group" aria-label="Teller">
+        {WIRE_MODES.map((w) => (
+          <button key={w.m} className={wires === w.m ? "on" : ""} aria-pressed={wires === w.m} onClick={() => s.setWires(w.m)} title={w.title}>{w.label}</button>
+        ))}
+      </span>
+      <label className="chk" title="GND ve VCC tellerini de çiz">
+        <input type="checkbox" checked={power} onChange={(e) => s.setPower(e.target.checked)} /> GND/VCC
+      </label>
+    </Group>
+  );
+}
+
+function PanelGrubu({ lay, setLay }: { lay: LayoutPrefs; setLay: (p: Partial<LayoutPrefs>) => void }) {
+  return (
+    <Group label="Paneller" className="tb-end">
+      <PanelToggle which="bottom" open={lay.bottom} onToggle={() => setLay({ bottom: !lay.bottom })} />
+      <PanelToggle which="side" open={lay.side} onToggle={() => setLay({ side: !lay.side })} />
+    </Group>
+  );
+}
+
+/** Hesap makinesinde kameranın gidebileceği yerler (yerleşimdeki blok adları) */
+const KAMERA_YERLERI: { blok: string | null; label: string; title: string }[] = [
+  { blok: null, label: "Genel bakış", title: "Bütün kart" },
+  { blok: "Anahtarlar", label: "Anahtarlar", title: "A, B ve işlem DIP anahtarları, lamba testi butonu" },
+  { blok: "Gösterge", label: "Göstergeler", title: "15 hane: sürücüler, direnç dizileri ve göstergeler" },
+];
+
+/** Hesap makinesinin araç çubuğu: saat ve program yok (devre birleşimsel) */
+function HesapToolbar({ lay, setLay }: { lay: LayoutPrefs; setLay: (p: Partial<LayoutPrefs>) => void }) {
+  const odak = useKart((s) => s.odak?.blok);
+  return (
+    <div className="toolbar">
+      <Group label="Kamera">
+        <span className="tb-label">Kamera</span>
+        <span className="seg" role="group" aria-label="Kamera">
+          {KAMERA_YERLERI.map((k) => (
+            <button key={k.label} className={odak === k.blok ? "on" : ""} onClick={() => useKart.getState().focusBlock(k.blok)} title={k.title}>{k.label}</button>
           ))}
         </span>
-        <label className="chk" title="GND ve VCC tellerini de çiz">
-          <input type="checkbox" checked={s.power} onChange={(e) => s.setPower(e.target.checked)} /> GND/VCC
-        </label>
       </Group>
-      <Group label="Paneller" className="tb-end">
-        <PanelToggle which="bottom" open={lay.bottom} onToggle={() => setLay({ bottom: !lay.bottom })} />
-        <PanelToggle which="side" open={lay.side} onToggle={() => setLay({ side: !lay.side })} />
-      </Group>
+      <TellerGrubu />
+      <PanelGrubu lay={lay} setLay={setLay} />
     </div>
   );
 }
@@ -126,7 +188,7 @@ function VgaPanel() {
     };
   }, [open]);
   if (!open) {
-    return <button className="vga-open" onClick={() => setOpen(true)}>VGA ekranı</button>;
+    return <button className="vga-open" onClick={() => setOpen(true)}><Simge ad="ok" />VGA ekranı</button>;
   }
   const onKey = (e: React.KeyboardEvent, down: boolean) => {
     if (e.key === "Tab" || e.key === "F5" || e.key === "F12") return;
@@ -284,13 +346,15 @@ function PartPanel() {
   const links = useMemo(() => (place ? partLinks(place.ref, place.pins, netEnds()) : []), [place]);
   if (!place || !ref) {
     return (
-      <section>
+      <section className="bos-durum">
+        <span className="bos-simge" aria-hidden="true"><Simge ad="imlec" boyut={22} /></span>
         <h2>Bir entegreye tıkla</h2>
-        <p className="muted">
-          Seçince her pininden aynı netteki pinlere teller çizilir ve aşağıda <b>Bağlantılar</b> listelenir: pin → net → öbür uçlar.
-          Çipin üstünde kalıbı (die) açılır; alt panelde kapıları, transistörleri ya da bellek hücreleri görünür.
-          Teller "hepsi" kipinde bütün bilgisayarın kablolamasını gösterir.
-        </p>
+        <p className="muted">Sahnede bir çip ya da pasif eleman seç; ayrıntıları burada açılır.</p>
+        <ol className="bos-adimlar">
+          <li>Her pininden aynı netteki pinlere <b>teller</b> çizilir, aşağıda <b>Bağlantılar</b> listelenir: pin → net → öbür uçlar.</li>
+          <li>Çipin üstünde kalıbı (die) açılır; alt panelde <b>kapıları</b>, transistörleri ya da bellek hücreleri görünür.</li>
+          <li>Araç çubuğundaki <b>Teller: hepsi</b> bütün {aktifKart() === "hesap" ? "hesap makinesinin" : "bilgisayarın"} kablolamasını gösterir.</li>
+        </ol>
       </section>
     );
   }
@@ -481,10 +545,13 @@ function Inside() {
 
 /** Alt panel: sekmeler bir diziden gelir; yeni bir alt sekme (ör. "Kurulum") için diziye bir öğe eklenir. */
 function Bottom() {
-  const tab = useKart((s) => s.bottom);
+  const secili = useKart((s) => s.bottom);
   const chip = useKart((s) => s.chip);
+  // hesap makinesinde program yok: yalnız çipin içi
+  const program = aktifKart() === "cpu16";
+  const tab: BottomTab = program ? secili : "ic";
   const tabs: TabDef<BottomTab>[] = [
-    { id: "program", label: "Program", title: "Assembly / C düzenleyicisi" },
+    ...(program ? [{ id: "program" as const, label: "Program", title: "Assembly / C düzenleyicisi" }] : []),
     { id: "ic", label: `Çipin içi${chip ? ` · ${chip}` : ""}`, title: "Seçili entegrenin kapıları, transistörleri ya da bellek hücreleri" },
   ];
   return (
@@ -497,8 +564,9 @@ function Bottom() {
 
 // ---------------------------------------------------------------- yan panel: sekmeler
 
-type SideTab = "inceleme" | "cpu" | "kurulum";
-const SIDE_TABS: SideTab[] = ["inceleme", "cpu", "kurulum"];
+type SideTab = "inceleme" | "cpu" | "kurulum" | "hesap";
+/** Her kart türünün yan sekmeleri; ilki varsayılan */
+const SIDE_TABS: Record<KartTuru, SideTab[]> = { cpu16: ["inceleme", "cpu", "kurulum"], hesap: ["hesap", "inceleme", "kurulum"] };
 
 /**
  * Denetçi (inspector): seçili parçanın (entegre ya da pasif) veya netin ayrıntıları. Yeni ayrıntı
@@ -523,16 +591,19 @@ function SidePanel({ tab, onTab }: { tab: SideTab; onTab: (t: SideTab) => void }
   useEffect(() => {
     if (chip || net !== null) onTab("inceleme");
   }, [chip, net]); // onTab her çizimde yeni; yalnız seçim değişince çalışsın
-  // Yeni yan panel sekmeleri (ör. "Kurulum") bu diziye eklenir.
-  const tabs: TabDef<SideTab>[] = [
-    { id: "inceleme", label: chip ? `İnceleme · ${chip}` : "İnceleme", title: "Seçili parça ya da net: bağlantılar" },
-    { id: "cpu", label: "CPU ve UART", title: "Register'lar, bayraklar, UART terminali" },
-    { id: "kurulum", label: "Kurulum", title: "Kartı gerçekte kurarken tel tel ilerle (yazdırılan kurulum belgesiyle aynı numaralar)" },
-  ];
+  // Yeni yan panel sekmeleri (ör. "Kurulum") bu listeye ve SIDE_TABS'a eklenir.
+  const tumu: Record<SideTab, TabDef<SideTab>> = {
+    hesap: { id: "hesap", label: "Hesap", title: "Göstergeler, anahtarlar, işlem ve blokların şu an hesapladığı" },
+    inceleme: { id: "inceleme", label: chip ? `İnceleme · ${chip}` : "İnceleme", title: "Seçili parça ya da net: bağlantılar" },
+    cpu: { id: "cpu", label: "CPU ve UART", title: "Register'lar, bayraklar, UART terminali" },
+    kurulum: { id: "kurulum", label: "Kurulum", title: "Kartı gerçekte kurarken tel tel ilerle (yazdırılan kurulum belgesiyle aynı numaralar)" },
+  };
+  const tabs = SIDE_TABS[aktifKart()].map((t) => tumu[t]);
   return (
     <aside className="side" aria-label="Yan panel">
       <Tabs tabs={tabs} value={tab} onChange={onTab} label="Yan panel" />
       <div className="side-body" role="tabpanel">
+        {tab === "hesap" && <HesapPanel />}
         {tab === "inceleme" && <Inspector />}
         {tab === "cpu" && (
           <>
@@ -556,15 +627,147 @@ function Tooltip() {
   return (
     <div className="tooltip" style={{ transform: `translate(${hover.x + 14}px, ${hover.y + 14}px)` }}>
       <b>{hover.ref}</b> {c ? c.part : p!.part} {c ? <span>{c.role}</span> : <PassiveTooltip p={p!} />}
+      {hover.ek && <div className="tt-ek">{hover.ek}</div>}
     </div>
   );
 }
 
-export function BoardView() {
+/** Esc: seçimi geri al (kapı → net → çip) */
+function secimiGeriAl() {
+  const s = useKart.getState();
+  if (s.gate !== null) s.selectGate(null);
+  else if (s.net !== null) s.selectNet(null);
+  else s.selectChip(null);
+}
+
+/**
+ * 3D kart bölümü. Sahnedeki kart (bilgisayar ya da hesap makinesi) ilk çizimden önce seçilir: kart
+ * türü modül düzeyinde tutulur (aktif.ts), store.ts'teki boardModel, findPart, liveNets vb. onu okur.
+ * Seçim bir layout effect'te yapılır (çizim sırasında başka bileşenin durumu değişmesin diye); seçim
+ * bitmeden hiçbir şey çizilmez, böylece sahne hiçbir zaman öbür kartın yapısıyla açılmaz.
+ */
+export function BoardView({ tur = "cpu16" }: { tur?: KartTuru }) {
+  const [hazir, setHazir] = useState(() => aktifKart() === tur);
+  useLayoutEffect(() => {
+    aktifKartiSec(tur);
+    setHazir(true);
+  }, [tur]);
+  if (!hazir || aktifKart() !== tur) return null;
+  return tur === "hesap" ? <HesapGorunumu /> : <MakineGorunumu />;
+}
+
+/** Bölümün iskeleti: üst çubuk, araç çubuğu, sahne, alt panel (çipin içi), yan panel */
+function Iskelet({
+  className, lay, setLay, header, toolbar, stage, bottomLabel, sideTab,
+}: {
+  className: string;
+  lay: LayoutPrefs;
+  setLay: (p: Partial<LayoutPrefs>) => void;
+  header: React.ReactNode;
+  toolbar: React.ReactNode;
+  stage: React.ReactNode;
+  bottomLabel: string;
+  sideTab: SideTab;
+}) {
+  return (
+    <div
+      className={`app kart shell${className ? ` ${className}` : ""}`}
+      data-side={lay.side ? "open" : "closed"}
+      data-bottom={lay.bottom ? "open" : "closed"}
+      style={{ "--bottom-h": `${lay.bottomH}px` } as CSSProperties}
+    >
+      {header}
+      {toolbar}
+      <div className="workspace">
+        <div className="center">
+          <main className="stage">{stage}</main>
+          {lay.bottom && (
+            <>
+              <Splitter value={lay.bottomH} onChange={(h) => setLay({ bottomH: h })} min={160} label="Alt panelin yüksekliği" />
+              <section className="bottom" aria-label={bottomLabel}>
+                <Bottom />
+              </section>
+            </>
+          )}
+        </div>
+        {lay.side && <SidePanel tab={sideTab} onTab={(t) => setLay({ sideTab: t })} />}
+      </div>
+      <Tooltip />
+    </div>
+  );
+}
+
+/** Yan sekme: kayıtlı sekme bu kart türünde yoksa varsayılan */
+function yanSekme(tur: KartTuru, kayitli: string | undefined): SideTab {
+  const liste = SIDE_TABS[tur];
+  return liste.includes(kayitli as SideTab) ? (kayitli as SideTab) : liste[0];
+}
+
+/** "8 bit hesap 3D": hesap makinesi kartı; simülasyon ana iş parçacığında (hesap.ts) */
+function HesapGorunumu() {
+  // çip yazıları dokuya bir kez çizilir: sahne yazı tipleri hazır olunca açılır
+  const yazi = useYaziTipleri();
+  const hazir = useHesap((s) => s.hazir);
+  const hata = useHesap((s) => s.hata);
+  const chip = useKart((s) => s.chip);
+  const [lay, setLay] = useLayout("hesap", { side: true, bottom: false, bottomH: heightShare(0.32, 220, 360), sideTab: "hesap" });
+  const sideTab = yanSekme("hesap", lay.sideTab);
+  const { board } = boardModel();
+  useEffect(() => {
+    useHesap.getState().baslat();
+    installHesapApi();
+  }, []);
+  // bir entegre seçilince alt panel (çipin içi) açılır
+  useEffect(() => {
+    if (chip && findPart(chip)?.chip && !lay.bottom) setLay({ bottom: true });
+  }, [chip]); // yalnız seçim değişince
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement).closest("input, textarea, select")) return;
+      if (e.key === "Escape") secimiGeriAl();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+  return (
+    <Iskelet
+      className="hesap"
+      lay={lay}
+      setLay={setLay}
+      sideTab={sideTab}
+      bottomLabel="Çipin içi"
+      header={
+        <AppHeader
+          mode="hesap"
+          context={`8 bit hesap · ${board.chips.length} entegre · ${board.passives.length} pasif`}
+          meters={<HesapMeters />}
+          shortcuts={HESAP_KISAYOLLARI}
+        />
+      }
+      toolbar={<HesapToolbar lay={lay} setLay={setLay} />}
+      stage={
+        <>
+          {yazi && <BoardScene />}
+          {hata ? (
+            <HataKutusu baslik="Hesap makinesi kurulamadı">{hata}</HataKutusu>
+          ) : !hazir ? (
+            <Yukleniyor alt="kapı seviyesinde devre kuruluyor">Hesap makinesi kuruluyor…</Yukleniyor>
+          ) : (
+            !yazi && <Yukleniyor>3D sahne hazırlanıyor…</Yukleniyor>
+          )}
+        </>
+      }
+    />
+  );
+}
+
+/** "CPU16 kartı 3D": bütün bilgisayar; simülasyon worker'da */
+function MakineGorunumu() {
+  const yazi = useYaziTipleri();
   const ready = useKart((s) => s.ready);
   const error = useKart((s) => s.error);
   const [lay, setLay] = useLayout("kart", { side: true, bottom: true, bottomH: heightShare(0.32, 220, 360), sideTab: "inceleme" });
-  const sideTab: SideTab = SIDE_TABS.includes(lay.sideTab as SideTab) ? (lay.sideTab as SideTab) : "inceleme";
+  const sideTab = yanSekme("cpu16", lay.sideTab);
   const { board } = boardModel();
   useEffect(() => {
     startBoardWorker();
@@ -579,46 +782,41 @@ export function BoardView() {
       if (e.key === " ") { e.preventDefault(); s.running ? s.pause() : s.run(); }
       else if (e.key === ".") s.step("cycle");
       else if (e.key === "n" || e.key === "N") s.step("instr");
-      else if (e.key === "Escape") s.gate !== null ? s.selectGate(null) : s.net !== null ? s.selectNet(null) : s.selectChip(null);
+      else if (e.key === "Escape") secimiGeriAl();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
   return (
-    <div
-      className="app kart shell"
-      data-side={lay.side ? "open" : "closed"}
-      data-bottom={lay.bottom ? "open" : "closed"}
-      style={{ "--bottom-h": `${lay.bottomH}px` } as CSSProperties}
-    >
-      <AppHeader
-        mode="kart"
-        context={`CPU16 bilgisayarı · ${board.chips.length} entegre · ${board.passives.length} pasif`}
-        meters={<Meters />}
-        shortcuts={SHORTCUTS}
-      />
-      <Toolbar lay={lay} setLay={setLay} />
-      <div className="workspace">
-        <div className="center">
-          <main className="stage">
-            <BoardScene />
-            <VgaPanel />
-            {!ready && !error && <div className="overlay">Bilgisayar kuruluyor…</div>}
-            {error && <div className="overlay warn">{error}</div>}
-          </main>
-          {lay.bottom && (
-            <>
-              <Splitter value={lay.bottomH} onChange={(h) => setLay({ bottomH: h })} min={160} label="Alt panelin yüksekliği" />
-              <section className="bottom" aria-label="Program ve çipin içi">
-                <Bottom />
-              </section>
-            </>
+    <Iskelet
+      className=""
+      lay={lay}
+      setLay={setLay}
+      sideTab={sideTab}
+      bottomLabel="Program ve çipin içi"
+      header={
+        <AppHeader
+          mode="kart"
+          context={`CPU16 bilgisayarı · ${board.chips.length} entegre · ${board.passives.length} pasif`}
+          meters={<Meters />}
+          shortcuts={SHORTCUTS}
+        />
+      }
+      toolbar={<Toolbar lay={lay} setLay={setLay} />}
+      stage={
+        <>
+          {yazi && <BoardScene />}
+          <VgaPanel />
+          {error ? (
+            <HataKutusu baslik="Simülasyon başlatılamadı">{error}</HataKutusu>
+          ) : !ready ? (
+            <Yukleniyor alt="kartlar kapı seviyesinde kuruluyor, örnek program EEPROM'a yazılıyor">Bilgisayar kuruluyor…</Yukleniyor>
+          ) : (
+            !yazi && <Yukleniyor>3D sahne hazırlanıyor…</Yukleniyor>
           )}
-        </div>
-        {lay.side && <SidePanel tab={sideTab} onTab={(t) => setLay({ sideTab: t })} />}
-      </div>
-      <Tooltip />
-    </div>
+        </>
+      }
+    />
   );
 }
 

@@ -1,0 +1,72 @@
+# Silikon3D için Docker Compose (Compose v2: `docker compose`).
+#
+#   docker compose up -d                 # web: üretim imajı, http://localhost:8080
+#   docker compose up dev                # dev: Vite geliştirme sunucusu + HMR, http://localhost:5173
+#   docker compose run --rm cli cpu16 -- run cpu16/programs/hello.s
+#   docker compose run --rm cli hesap8 -- hesapla 255 x 7
+#   docker compose run --rm cli check    # tip denetimi + testler
+#   docker compose down                  # durdur (node_modules birimini de silmek için: down -v)
+#
+# dev ve cli "profil"lidir: düz `docker compose up` yalnız web'i başlatır; adıyla çağrılınca çalışırlar.
+# Linux'ta kullanıcı kimliğin (id -u) 1000 değilse: DOCKER_USER="$(id -u):$(id -g)" docker compose ...
+# Ayrıntı: README.md, "Docker ile" bölümü.
+
+name: breadboarding
+
+# dev ve cli'ın ortak ayarı: aynı imaj, kaynak klasörü bağlı, node_modules isimli birimde.
+x-node: &node
+  build:
+    context: .
+    target: dev
+  image: breadboarding-dev:latest
+  user: "${DOCKER_USER:-1000:1000}"
+  working_dir: /app
+  init: true
+  environment:
+    # uid 1000 dışında bir kullanıcıyla da npm'in yazabileceği bir önbellek
+    NPM_CONFIG_CACHE: /tmp/.npm
+    # Docker Desktop (Windows/macOS) dosya değişikliklerini kaçırırsa: CHOKIDAR_USEPOLLING=true
+    CHOKIDAR_USEPOLLING: ${CHOKIDAR_USEPOLLING:-false}
+  volumes:
+    - .:/app
+    # Konaktaki node_modules'ün üstüne binen isimli birim: kapsayıcı konağa (ve konak kapsayıcıya)
+    # bağımlılık yazmaz. İlk açılışta imajdaki node_modules buraya kopyalanır.
+    # package.json değişince birimi yenile: docker compose down -v && docker compose up --build dev
+    - node_modules:/app/node_modules
+
+services:
+  # Üretim: npm run build çıktısı nginx'te (Dockerfile'ın "web" aşaması)
+  web:
+    build:
+      context: .
+      target: web
+    image: breadboarding-web:latest
+    ports:
+      - "${WEB_PORT:-8080}:8080"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+  # Geliştirme: Vite, kaynak değişince tarayıcı kendiliğinden yenilenir (HMR)
+  dev:
+    <<: *node
+    profiles: ["dev"]
+    command: ["npx", "vite", "--host", "0.0.0.0", "--port", "${DEV_PORT:-5173}", "--strictPort"]
+    ports:
+      - "${DEV_PORT:-5173}:${DEV_PORT:-5173}"
+
+  # Komut satırı: `docker compose run --rm cli <npm betiği> [-- argümanlar]`
+  # (npm run --silent <betik> ...; argümansız: cpu16 kullanımı). Çıktılar kaynak klasörüne, yani konağa yazılır.
+  cli:
+    <<: *node
+    profiles: ["cli"]
+    entrypoint: ["npm", "run", "--silent"]
+    command: ["cpu16"]
+
+volumes:
+  node_modules:

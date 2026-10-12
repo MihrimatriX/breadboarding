@@ -1,5 +1,9 @@
 /* sort.c — fonksiyon işaretçileriyle sıralama: kütüphanenin qsort'u ve elle yazılmış
- * eklemeli sıralama, sayılar ve string'ler için. */
+ * eklemeli sıralama, sayılar ve string'ler için. Fonksiyon işaretçisi 16 bitlik bir kod adresidir;
+ * çağrı JALR ile yapılır.
+ *   npm run cpu16 -- cc cpu16/programs/c/sort.c --run
+ * Beklenen çıktı: "qsort < : -32768 -300 ... 32767", ters sıra, isimler alfabetik, "rastgele: sıralı".
+ * Beş algoritmanın karşılaştırma sayılarıyla yarışı: cpu16/bios/ornekler/siralama.c */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

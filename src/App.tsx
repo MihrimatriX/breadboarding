@@ -1,4 +1,4 @@
-import { useEffect, type CSSProperties } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import { DieScene } from "./render/DieScene";
 import { Meters, Toolbar } from "./ui/Toolbar";
 import { RegistersPanel } from "./ui/RegistersPanel";
@@ -9,6 +9,7 @@ import { MemoryPanel } from "./ui/MemoryPanel";
 import { ProgramPanel } from "./ui/ProgramPanel";
 import { LogicAnalyzer } from "./ui/LogicAnalyzer";
 import { HoverTooltip } from "./ui/HoverTooltip";
+import { HataKutusu, Yukleniyor } from "./ui/Yukleniyor";
 import { AppHeader, Splitter, Tabs, heightShare, useLayout, type Shortcut, type TabDef } from "./ui/Shell";
 import { useApp } from "./state/store";
 import { sim } from "./sim/SimClient";
@@ -44,6 +45,9 @@ export function App({ active = true }: { active?: boolean }) {
   const chip = useApp((s) => s.chip);
   const [lay, setLay] = useLayout("6502", { side: true, bottom: true, bottomH: heightShare(0.3, 220, 320), sideTab: "durum" });
   const sideTab = (SIDE_TABS.some((t) => t.id === lay.sideTab) ? lay.sideTab : "durum") as SideTab;
+  // çip verisi inerken başka bölüme geçildiyse simülasyon duraklatılmış başlar
+  const activeRef = useRef(active);
+  activeRef.current = active;
 
   useEffect(() => {
     let cancelled = false;
@@ -57,7 +61,7 @@ export function App({ active = true }: { active?: boolean }) {
         const app = useApp.getState();
         app.setChip(data);
         DEFAULT_WATCH.forEach((n) => app.toggleWatch(data.nodeNames[n]));
-        useApp.setState({ running: true });
+        useApp.setState({ running: activeRef.current });
         sim.start(new URL(CHIP_URL, location.href).href, PROGRAMS[0].bytes);
       })
       .catch((e) => useApp.getState().setError(String(e.message ?? e)));
@@ -103,8 +107,8 @@ export function App({ active = true }: { active?: boolean }) {
         <div className="center">
           <main className="stage">
             {status === "ready" && active && <DieScene />}
-            {status === "loading" && <div className="overlay">Die verisi yükleniyor…</div>}
-            {status === "error" && <div className="overlay warn">{error}</div>}
+            {status === "loading" && <Yukleniyor alt="visual6502 çip verisi (~1,6 MB) iniyor, ardından katmanların geometrisi hazırlanır">Die verisi yükleniyor…</Yukleniyor>}
+            {status === "error" && <HataKutusu baslik="Die verisi yüklenemedi">{error}</HataKutusu>}
           </main>
           {lay.bottom && (
             <>
@@ -120,12 +124,12 @@ export function App({ active = true }: { active?: boolean }) {
             <Tabs tabs={SIDE_TABS} value={sideTab} onChange={(t) => setLay({ sideTab: t })} label="Yan panel" />
             {/* sekmeler bağlı kalır, yalnız gizlenir: düzenleyicideki program ve bellek seçimi kaybolmaz */}
             <div className="side-body" role="tabpanel" hidden={sideTab !== "durum"}>
-              <RegistersPanel />
+              <RegistersPanel visible={active && sideTab === "durum"} />
               <SignalSearch />
               <ProbePanel />
             </div>
             <div className="side-body" role="tabpanel" hidden={sideTab !== "bellek"}>
-              <MemoryPanel />
+              <MemoryPanel visible={active && sideTab === "bellek"} />
             </div>
             <div className="side-body" role="tabpanel" hidden={sideTab !== "program"}>
               <ProgramPanel />

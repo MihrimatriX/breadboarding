@@ -669,7 +669,9 @@ class FnGen {
         return;
       }
       case "mul": case "div": case "mod": {
-        this.operands32(e.lhs!, e.rhs!);
+        // __mul32 çarpanın (sağ işlenen) bitleri kadar döner: sabit solda ise (3 * x) yer değiştir
+        if (e.kind === "mul" && e.lhs!.kind === "num" && e.rhs!.kind !== "num") this.operands32(e.rhs!, e.lhs!);
+        else this.operands32(e.lhs!, e.rhs!);
         const u = e.ty.unsigned;
         this.call(e.kind === "mul" ? "__mul32" : e.kind === "div" ? (u ? "__udiv32" : "__div32") : u ? "__umod32" : "__mod32");
         return;
@@ -926,6 +928,9 @@ class FnGen {
     const r = e.rhs!;
     const kind = e.kind;
     const uns = e.ty.unsigned;
+    // Çarpma değişmeli: sabit solda olsa da (2 * x) kaydır-topla yolu kullanılsın. Sabitin yan
+    // etkisi olmadığı için işlenenlerin yeri değişebilir.
+    if (kind === "mul" && l.kind === "num" && r.kind !== "num") return this.genBinary({ ...e, lhs: r, rhs: l });
     if (r.kind === "num") {
       const c = r.val! & 0xffff;
       switch (kind) {

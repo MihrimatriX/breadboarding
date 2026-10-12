@@ -2,7 +2,7 @@
 // bağlar (yayılan ağaç), numaralar benzersiz ve kararlı, blok blok kurulunca her ara durum tamdır,
 // her çipin besleme pinleri ve dekuplajı listelidir. Beklenen uçlar plandan bağımsız olarak doğrudan
 // kart tanımından (Board) hesaplanır.
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { Board } from "../board/board.ts";
 import { buildFullMachineBoard } from "../board/machine-board.ts";
@@ -126,7 +126,9 @@ describe("kurulum planı: tel listesi", () => {
 
   it("net adları kartın KiCad şemasındaki etiketlerle aynı", () => {
     for (const { plan } of kartlar) {
-      const sch = readFileSync(new URL(`../kicad/${plan.kart}/${plan.kart}.kicad_sch`, import.meta.url), "utf8");
+      // çok sayfalı şemada (hesap) bütün sayfalar
+      const dir = new URL(`../kicad/${plan.kart}/`, import.meta.url);
+      const sch = readdirSync(dir).filter((f) => f.endsWith(".kicad_sch")).map((f) => readFileSync(new URL(f, dir), "utf8")).join("\n");
       const etiketler = new Set([...sch.matchAll(/\((?:label|global_label|hierarchical_label) "([^"]*)"/g)].map((m) => m[1]));
       for (const net of new Set(plan.teller.map((t) => t.net))) expect(etiketler.has(kicadPinName(net)), `${plan.kart}: ${net}`).toBe(true);
     }
@@ -208,7 +210,7 @@ describe("kurulum planı: çipler, besleme, pin tabloları, konnektör", () => {
     }
   });
 
-  it.each(kartlar.filter((k) => k.kk.kart !== "prog").map((k) => [k.kk.kart, k] as const))("%s: kenar konnektörü arka panel düzeninde", (_kart, { plan }) => {
+  it.each(kartlar.filter((k) => !["prog", "hesap"].includes(k.kk.kart)).map((k) => [k.kk.kart, k] as const))("%s: kenar konnektörü arka panel düzeninde", (_kart, { plan }) => {
     const k = plan.kenar!;
     expect(k.pinler.map((p) => p.pin)).toEqual(Array.from({ length: 64 }, (_, i) => i + 1));
     for (const p of k.pinler) {
