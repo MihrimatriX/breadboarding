@@ -1,5 +1,9 @@
 /* selam.c — BIOS üzerinde ilk C programı (cc --hedef bios).
- * printf ekrana ve UART'a yazar; renkler BIOS_SETATTR ile, zaman BIOS'un 10 ms'lik tıklarıyla. */
+ * printf ekrana ve UART'a yazar; renkler BIOS_SETATTR ile, zaman BIOS'un 10 ms'lik tıklarıyla.
+ *   Uygulamada: CPU16 tezgâhı → Anakart + BIOS → "selam.c" → Derle ve RAM'e yükle.
+ *   Komut satırında: npm run cpu16 -- cc cpu16/bios/ornekler/selam.c --hedef bios --run
+ * Beklenen çıktı: renkli başlık, 0..15 renkli sayılar, "fib(18) = 2584", geçen süre (≈ 20 × 10 ms).
+ * Sonraki örnekler ve önerilen sıra: cpu16/docs/c-ornekleri.md */
 
 #include <bios.h>
 #include <stdio.h>

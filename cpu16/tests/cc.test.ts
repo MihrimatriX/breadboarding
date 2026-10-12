@@ -414,6 +414,19 @@ describe("kod üretimi", () => {
     expect(fnAsm(src, "_main").join("\n")).toMatch(/PUSH r7/);
     expect(exitOf(src)).toBe(12);
   });
+
+  it("sabitle çarpma, sabit solda olsa da kaydır-topla olur; 32 bitte sabit çarpan (sağ) olur", () => {
+    const src = `unsigned a(unsigned p) { return 2 * p; }
+      int b(int p) { return 10 * p; }
+      long c(long p) { return 3 * p; }
+      int main(void) { return a(3) + b(-2) + (int)(c(100000L) - 299990L); }`;
+    expect(fnAsm(src, "_a").join("\n")).not.toMatch(/__mul16/);
+    expect(fnAsm(src, "_b").join("\n")).not.toMatch(/__mul16/);
+    // __mul32 çarpanın (r3:r2) bitleri kadar döner: sabit 3 r3:r2'ye konmalı
+    expect(fnAsm(src, "_c").join("\n")).toMatch(/LI r2, 3\n\s+LI r3, 0\n\s+JAL __mul32/);
+    expect(exitOf(src)).toBe(6 - 20 + 10);
+    expect(exitOf(src, { optimize: false })).toBe(-4);
+  });
 });
 
 describe("C99 ve diğer özellikler", () => {

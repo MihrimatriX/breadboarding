@@ -1,5 +1,8 @@
 /* switch.c — switch/case: sıkışık durumlar atlama tablosuna, seyrek olanlar karşılaştırma
- * zincirine derlenir. Ayrıca düşme (fallthrough), default ve goto. */
+ * zincirine derlenir. Ayrıca düşme (fallthrough), default ve goto. Hangisinin seçildiğini görmek
+ * için: npm run cpu16 -- cc cpu16/programs/c/switch.c -o switch.s
+ *   npm run cpu16 -- cc cpu16/programs/c/switch.c --run
+ * Beklenen çıktı: gün adları, HTTP kodları, "MCMXCIV=1994 XLII=42 MMXXIV=2024 ABC=-1". */
 #include <stdio.h>
 
 static const char *day_name(int d)
