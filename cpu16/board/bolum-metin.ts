@@ -39,31 +39,55 @@ const yapistirici = (ek: string): BolumMetni =>
 
 // ---------------------------------------------------------------- CPU kartı
 
+/**
+ * Register içeriği tamponlarının (74HC541) referans numarası: k. tampon (r0 düşük, r0 yüksek, r1
+ * düşük …) kartın 195. çipinden başlar; 199'dan sonrası taşma diliminde (U901…, CARD_REF_TASMA).
+ */
+const tampon = (k: number): number => (195 + k <= 199 ? 195 + k : 901 + k - 5);
+
 const CPU: KartMetinleri = {
   kart: m(
     "CPU KARTI",
     "CPU kartı",
     "Komutları getirir, çözer ve çalıştırır: 16 bitlik register'lar, ALU, program sayacı ve mikrokodlu kontrol birimi bu karttadır.",
-    "Tek bir 16 bitlik iç veriyolu (BUS0–15) vardır: her saat döngüsünde ona tek bir kaynak yazar, hedefler yükselen kenarda alır. Kontrol birimi 32 bitlik kontrol kelimesini (CW0–CW31) ROM'suz, 74HC138, 74HC151 ve kapılarla üretir. Bellek ve G/Ç'ye arka paneldeki adres hatları (A0–A15) ve iki bayt şeridiyle (DE, DO) bağlanır. 194 entegre.",
+    "Tek bir 16 bitlik iç veriyolu (BUS0–15) vardır: her saat döngüsünde ona tek bir kaynak yazar, hedefler yükselen kenarda alır. Kontrol birimi 32 bitlik kontrol kelimesini (CW0–CW31) ROM'suz, 74HC138, 74HC151 ve kapılarla üretir. Bellek ve G/Ç'ye arka paneldeki adres hatları (A0–A15) ve iki bayt şeridiyle (DE, DO) bağlanır. 210 entegre; HALTED ve FAULT dışında hata ayıklama için 39 LED ve 26 çubuk gösterge (veriyolu, PC, adres, IR, ALU sonucu ve sekiz register'ın içeriği).",
   ),
   bolgeler: {
     "Register dosyası": m(
       "REGISTER DOSYASI",
       "Register dosyası",
-      "Sekiz 16 bitlik genel register'ı (r0–r7; r6 = SP, r7 = LR) ve iç veriyolunun çekme dirençlerini tutar.",
-      "Her register kendi board'unda: iki 74HC574, solda düşük, sağda yüksek bayt; üç durumlu çıkışları doğrudan iç veriyoluna bağlıdır. Panonun en arkasında: arka sırada R0–R3, önünde R4–R7. Sağ uçtaki iki board'da okuma ve yazma çözücüsü (iki 74HC138), saat kapıları ve register numarasını seçen üç 74HC151 (RSEL); RN1 ve RN2 sürülmeyen veriyolunu 0'a çeker (Deney 4).",
+      "Sekiz 16 bitlik genel register (r0–r7; r6 = SP, r7 = LR): her biri kendi board'unda, değeri hemen önündeki board'un çubuk göstergelerinde.",
+      "Panonun en arkasındaki ada. Arka sırada R0–R3, onların önünde göstergeleri; sonra R4–R7 ve göstergeleri. Her register'ın board'unda dört çip: değeri tutan iki 74HC574 (solda düşük, sağda yüksek bayt) ve onu veriyoluna çıkaran iki 74HC541; göstergeli board'da iki çubuk gösterge (bit 0 sağda), yeşil okuma (~ROE) ve amber yazma (~WSEL) LED'leri. Register'ı seçen çözücüler sağdaki veriyolu kontrolü adasında (Deney 4).",
     ),
-    "ALU, geçici register'lar ve bayraklar": m(
-      "ALU VE BAYRAKLAR",
-      "ALU, geçici register'lar ve bayraklar",
-      "İki işlenen TA ve TB'de tutulur; ALU toplar, çıkarır, mantık ve kaydırma işlemlerini yapar. Sonucun N, Z, C, V bayrakları ve dallanma koşulu da buradadır.",
-      "Dört board sırası; her board'un etiketi işini söyler. Toplayıcı 4 × 74HC283, girişinde XOR ve VE kapıları; mantık birimi her bitte bir 74HC151 doğruluk tablosu (0–7 ve 8–15 ikişer board); sonuç 8 × 74HC153 ile seçilir, iki 74HC688 sıfırı algılar, iki 74HC541 veriyoluna verir. ALU kod çözücü (3 × 74HC138 ve kapılar) işlem kodunu AD0–AD23'e açar; bayraklar 74HC74'lerde, koşul birimi bir 74HC151 (Deney 5).",
+    "Veriyolu kontrolü": m(
+      "VERİYOLU KONTROLÜ",
+      "Veriyolu kontrolü",
+      "İç veriyoluna kimin yazacağını ve hangi register'ın okunup yazılacağını seçer; veriyolunun değerini gösterir.",
+      "Register adasının sağında dört board: okuma ve yazma çözücüleri (iki 74HC138) ve register saat kapıları; veriyolunun çubuk göstergeleri ve onu süren kaynağın beyaz LED'leri (REG, ALU, PC, MEM, IMM, FLAGS); register numarasını seçen üç 74HC151 ve RN1; BUS alanını çözen 74HC138 ve RN2 (sürülmeyen veriyolu 0). Hata ayıklarken ilk bakılacak yer: hangi LED yanıyorsa veriyolundaki değer ondan gelir (Deney 4).",
     ),
-    "Program sayacı, MAR, IR ve bellek arayüzü": m(
-      "PC, MAR, IR, BELLEK",
-      "Program sayacı, MAR, IR ve bellek arayüzü",
-      "Sıradaki komutun adresini (PC), bellek adresini (MAR) ve çalışan komutu (IR) tutar; iç veriyolunu arka paneldeki bayt şeritlerine bağlar.",
-      "Panonun ön kenarında: program sayacı (dört 74HC161; 2'şer sayar ya da veriyolundan yüklenir) ve onu veriyoluna çıkaran iki 74HC541, IR, MAR (çıkışları arka panelin A0–A15 hatları), şerit kablo uyarlayıcısı (J1), veriyolunu DE ve DO şeritlerine bağlayan üç 74HC245 ve bellek kapıları (Deney 6).",
+    "ALU ve geçici register'lar": m(
+      "ALU",
+      "ALU ve geçici register'lar",
+      "İki işlenen TA ve TB'de tutulur; ALU toplar, çıkarır, mantık ve kaydırma işlemlerini yapar ve sonucu veriyoluna verir.",
+      "Dört board sırası; her board'un etiketi işini söyler. Toplayıcı 4 × 74HC283, girişinde XOR ve VE kapıları; mantık birimi her bitte bir 74HC151 doğruluk tablosu (0–7 ve 8–15 ikişer board); sonuç 8 × 74HC153 ile seçilir, yanındaki board'un çubuk göstergeleri sonucu sürekli gösterir, iki 74HC541 veriyoluna verir. ALU kod çözücü (3 × 74HC138 ve kapılar) işlem kodunu AD0–AD23'e açar; TA ve TB'nin yükleme LED'leri amber (Deney 5).",
+    ),
+    "Bayraklar ve koşul": m(
+      "BAYRAKLAR",
+      "Bayraklar ve koşul",
+      "ALU sonucunun N, Z, C, V bayraklarını ve kesme iznini (I) tutar, dallanma koşulunu hesaplar.",
+      "ALU adasının sağında dört board: bayrak flip-flop'ları (üç 74HC74) ve beş mavi LED (N, Z, C, V, I), koşul seçicisi (74HC151), bayrak girişi ve kapıları, bayrakları veriyoluna çıkaran sürücü ve sonucun sıfır olduğunu bulan iki 74HC688 (Deney 5).",
+    ),
+    "Program sayacı": m(
+      "PROGRAM SAYACI",
+      "Program sayacı",
+      "Sıradaki komutun adresini tutar, her komutta 2 artar; dallanmada veriyolundan yüklenir.",
+      "Ön kenarda, solda dört board: dört 74HC161 (iki board), PC'yi veriyoluna çıkaran iki 74HC541 ve PC'nin çubuk göstergeleri (bit 0 hep 0); amber LED'ler yükleme (PC_L) ve artırma (PC_INC) adımlarında yanar (Deney 6).",
+    ),
+    "Bellek arayüzü ve MAR": m(
+      "BELLEK ARAYÜZÜ",
+      "Bellek arayüzü ve MAR",
+      "Bellek adresini (MAR) tutar ve iç veriyolunu arka paneldeki bayt şeritlerine bağlar; bellek okuma ve yazmayı gösterir.",
+      "Ön kenarda, şerit kablo uyarlayıcısının (J1) yanında: MAR (iki 74HC574; çıkışları arka panelin A0–A15 hatları) ve adresin çubuk göstergeleri, yeşil bellek okuma (MEMRD) ve amber yazma (MEMW) LED'leri, veriyolunu DE ve DO şeritlerine bağlayan üç 74HC245, bayt okuma sürücüsü ve bellek kapıları (Deney 6).",
     ),
     "Sabit birimi": m(
       "SABİT BİRİMİ",
@@ -74,8 +98,8 @@ const CPU: KartMetinleri = {
     "Kontrol birimi": m(
       "KONTROL BİRİMİ",
       "Kontrol birimi",
-      "Komutun her adımında hangi birimin ne yapacağını söyleyen 32 bitlik kontrol kelimesini üretir.",
-      "Girişler INT, op, f3, koşul ve mikro adımdır; altı 74HC138 bunları çözer, on board'luk kapı ağı ve on 74HC151 (adım seçicileri) her kontrol bitini kurar. Sonuç CLK'nin düşen kenarında dört 74HC574'e (kontrol register'ı) alınır; 74HC161 mikro adımı sayar (Deney 7).",
+      "Komutu (IR) tutar ve her adımında hangi birimin ne yapacağını söyleyen 32 bitlik kontrol kelimesini üretir.",
+      "Girişler INT, op, f3, koşul ve mikro adımdır; altı 74HC138 bunları çözer, on board'luk kapı ağı ve on 74HC151 (adım seçicileri) her kontrol bitini kurar. Sonuç CLK'nin düşen kenarında dört 74HC574'e (kontrol register'ı) alınır; 74HC161 mikro adımı sayar (dört sarı LED). Ön sırada IR (iki 74HC574) ve komutun çubuk göstergeleri; HALT ve FAULT LED'leri sağ arka board'da (Deney 7).",
     ),
   },
   bloklar: {
@@ -89,31 +113,31 @@ const CPU: KartMetinleri = {
       "KONTROL",
       "Kontrol register'ı ve durum",
       "Mikrokodu kontrol register'ına alır, mikro adımı sayar; kesme, HALT ve hata durumlarını tutar, veriyolu sürücüsünü seçer.",
-      "Dört 74HC574 kontrol kelimesini CLK'nin düşen kenarında yakalar. 74HC161 mikro adımı sayar, END onu sıfırlar. İki 74HC74 INT mandalını, HALT ve FAULT flip-flop'larını ve çalışma iznini (RUN_R) tutar; bir 74HC138 BUS alanını çözer.",
+      "Dört 74HC574 kontrol kelimesini CLK'nin düşen kenarında yakalar. 74HC161 mikro adımı sayar, END onu sıfırlar. İki 74HC74 INT mandalını, HALT ve FAULT flip-flop'larını ve çalışma iznini (RUN_R) tutar; bir 74HC138 BUS alanını çözer. HALTED, FAULT ve mikro adımın dört biti LED'lerle görünür.",
     ),
     "Register dosyası": m(
       "REGISTER DOSYASI",
       "Register dosyası",
       "Sekiz 16 bitlik register (r0–r7) ve onları seçen çözücüler.",
-      "Her register iki 74HC574; D girişleri ve Q çıkışları aynı veriyolu hatlarındadır. Register numarası RSEL alanına göre üç 74HC151'den gelir; yazma çözücüsü saat darbesini, okuma çözücüsü çıkış iznini (~ROE0–7) verir.",
+      "Her register iki 74HC574; D girişleri veriyolundadır, çıkışları hep açıktır ve değeri iki çubuk göstergede görünür. Register'ı veriyoluna iki 74HC541 çıkarır. Register numarası RSEL alanına göre üç 74HC151'den gelir; yazma çözücüsü saat darbesini, okuma çözücüsü çıkış iznini (~ROE0–7) verir. Her register'ın bir okuma (yeşil) ve bir yazma (amber) LED'i var; iç veriyolunun değeri iki çubuk göstergede, onu süren kaynak altı beyaz LED'de görünür.",
     ),
     "Geçici register'lar": m(
       "TA VE TB",
       "Geçici register'lar",
       "ALU'nun iki girişi: TA ve TB işlenenleri tutar.",
-      "Tek veriyolu olduğu için iki işlenen sırayla veriyolundan TA'ya ve TB'ye alınır (TA_L = CW17, TB_L = CW18). 74HC574'lerin çıkışları sürekli açıktır ve doğrudan toplayıcıya, mantık birimine ve kaydırıcıya gider.",
+      "Tek veriyolu olduğu için iki işlenen sırayla veriyolundan TA'ya ve TB'ye alınır (TA_L = CW17, TB_L = CW18). 74HC574'lerin çıkışları sürekli açıktır ve doğrudan toplayıcıya, mantık birimine ve kaydırıcıya gider. Yükleme adımında her birinin amber LED'i yanar.",
     ),
     "MAR ve IR": m(
       "MAR VE IR",
       "MAR ve IR",
       "MAR bellek adresini, IR çalışan komutu tutar.",
-      "İkisi de iki 74HC574'tür ve veriyolundan yüklenir (MAR_L = CW21, IR_L = CW23). MAR'ın çıkışları arka panelin A0–A15 hatlarıdır; IR'nin alanları (op, f3, rd, rs1, rs2, sabit) kontrol birimine, register seçicisine ve sabit birimine gider.",
+      "İkisi de iki 74HC574'tür ve veriyolundan yüklenir (MAR_L = CW21, IR_L = CW23). MAR'ın çıkışları arka panelin A0–A15 hatlarıdır; IR'nin alanları (op, f3, rd, rs1, rs2, sabit) kontrol birimine, register seçicisine ve sabit birimine gider. Adres ve komut ikişer çubuk göstergede, yüklemeler amber LED'lerde görünür.",
     ),
     "Program sayacı": m(
       "PROGRAM SAYACI",
       "Program sayacı",
       "Sıradaki komutun adresini tutar ve her komutta 2 artar.",
-      "Dört 74HC161 PC'nin 1–15. bitlerini sayar; 0. bit hep 0'dır (komutlar 2 bayt). PC_INC (CW20) sayar, PC_L (CW19) veriyolundan yükler (dallanma, JAL). İki 74HC541 PC'yi veriyoluna çıkarır.",
+      "Dört 74HC161 PC'nin 1–15. bitlerini sayar; 0. bit hep 0'dır (komutlar 2 bayt). PC_INC (CW20) sayar, PC_L (CW19) veriyolundan yükler (dallanma, JAL). İki 74HC541 PC'yi veriyoluna çıkarır. PC iki çubuk göstergede; yükleme ve artırma amber LED'lerde görünür.",
     ),
     "Sabit birimi": m(
       "SABİT BİRİMİ",
@@ -125,7 +149,7 @@ const CPU: KartMetinleri = {
       "ALU",
       "ALU",
       "16 bitlik aritmetik ve mantık birimi: toplama, çıkarma, VE, VEYA, ÖZEL VEYA, kaydırma ve döndürme.",
-      "TA ve TB XOR ve VE kapılarıyla koşullanıp (SUB'da B ters, NEG'de A ters) 4 × 74HC283 toplayıcıya girer. Mantık birimi her bitte bir 74HC151 doğruluk tablosudur. 8 × 74HC153 toplam, mantık, sola ve sağa kaydırma arasından sonucu seçer; iki 74HC688 sıfırı algılar, iki 74HC541 sonucu veriyoluna verir.",
+      "TA ve TB XOR ve VE kapılarıyla koşullanıp (SUB'da B ters, NEG'de A ters) 4 × 74HC283 toplayıcıya girer. Mantık birimi her bitte bir 74HC151 doğruluk tablosudur. 8 × 74HC153 toplam, mantık, sola ve sağa kaydırma arasından sonucu seçer; iki 74HC688 sıfırı algılar, iki 74HC541 sonucu veriyoluna verir. Sonuç iki çubuk göstergede sürekli görünür.",
     ),
     "ALU kod çözücü": m(
       "ALU KOD ÇÖZÜCÜ",
@@ -137,13 +161,13 @@ const CPU: KartMetinleri = {
       "BAYRAKLAR",
       "Bayraklar ve koşul",
       "N, Z, C, V ve I bayraklarını tutar; dallanma komutlarının koşulunu hesaplar.",
-      "Bayraklar üç 74HC74'tedir ve ALU'dan ya da (RETI'de) veriyolundan yüklenir. C ve V'yi değiştirmeyen işlemlerde eski değer bir 74HC157 ile geri yazılır. Koşul birimi bir 74HC151 ile cond[3:1]'e göre bayrağı seçer, bir XOR cond[0] ile tersler (COND).",
+      "Bayraklar üç 74HC74'tedir ve ALU'dan ya da (RETI'de) veriyolundan yüklenir. C ve V'yi değiştirmeyen işlemlerde eski değer bir 74HC157 ile geri yazılır. Koşul birimi bir 74HC151 ile cond[3:1]'e göre bayrağı seçer, bir XOR cond[0] ile tersler (COND). Beş bayrak mavi LED'lerde görünür.",
     ),
     "Bellek arayüzü": m(
       "BELLEK ARAYÜZÜ",
       "Bellek arayüzü",
       "16 bitlik iç veriyolunu arka paneldeki iki bayt şeridine (DE, DO) bağlar; yazma darbelerini üretir.",
-      "Üç 74HC245: düşük bayt ↔ DE, yüksek bayt ↔ DO ve tek adresli bayt erişiminde düşük bayt ↔ DO. Bayt okumasında bir 74HC541 yüksek baytı 0 yapar. ~MWE_E ve ~MWE_O yazma darbeleri saat kartının WR_WIN penceresiyle kapılanır.",
+      "Üç 74HC245: düşük bayt ↔ DE, yüksek bayt ↔ DO ve tek adresli bayt erişiminde düşük bayt ↔ DO. Bayt okumasında bir 74HC541 yüksek baytı 0 yapar. ~MWE_E ve ~MWE_O yazma darbeleri saat kartının WR_WIN penceresiyle kapılanır. Bellek okuma (yeşil) ve yazma (amber) LED'lerle görünür.",
     ),
     "Yapıştırıcı lojik": yapistirici(
       "CPU kartında kontrol biriminin ve ALU kod çözücünün kapı ağları da buradadır (74HC00, 02, 04, 08, 10, 11, 20, 21, 32, 86).",
@@ -171,9 +195,9 @@ const CPU: KartMetinleri = {
     g("kontrol-registeri", "U2 U4 U6 U8", "KONTROL REGISTER'I", "Kontrol register'ı (CR)",
       "Mikrokodun 32 bitini CLK'nin düşen kenarında yakalar ve sonraki yükselen kenara kadar sabit tutar: CW0–CW31.",
       "Dört 74HC574. Kontrol sinyalleri saat yüksekken hiç değişmediği için register saatleri kapılı saat (CLKR ∧ yükle) olabilir, parazit oluşmaz. BUS, RSEL, ALU_OP, IMM, yükleme ve yazma alanları bütün karta buradan dağılır."),
-    g("adim-sayaci", "U9", "MİKRO ADIM SAYACI", "Mikro adım sayacı",
+    g("adim-sayaci", "U9 D38-D41 R38-R41", "MİKRO ADIM SAYACI", "Mikro adım sayacı",
       "Komutun kaçıncı adımında olunduğunu sayar (0–15).",
-      "74HC161, RUN_R = 1 iken her saat kenarında bir artar; END (CW31) onu 0'a yükler ve sonraki komut getirilir. Çıkışları (STEP0–3) adım çözücüye ve adım seçicilerine gider."),
+      "74HC161, RUN_R = 1 iken her saat kenarında bir artar; END (CW31) onu 0'a yükler ve sonraki komut getirilir. Çıkışları (STEP0–3) adım çözücüye ve adım seçicilerine gider; dört sarı LED (D38–D41, 1 kΩ) adımı ikili gösterir."),
     g("halt-hata", "U11 U12", "HALT, HATA, KESME", "HALT, hata ve kesme flip-flop'ları",
       "Kesme isteğini komut sınırında mandallar; HALT ve yasadışı komut (FAULT) durumlarını ve çalışma iznini (RUN_R) tutar.",
       "İki 74HC74. Adım 0'da IRQ ∧ I örneklenir ve INT kurulur. HALT ya da hata durumunda RUN_R düşen kenarda düşer, kapılı saat durur; IRQ ∧ I gelirse CPU uyanır."),
@@ -192,42 +216,45 @@ const CPU: KartMetinleri = {
       "Üç 74HC151 register numarasının her bitini RSEL alanına (CW3–5) göre IR'deki alanlardan ya da sabitlerden seçer; çıkış 3 bitlik indekstir (RIDX0–2)."),
     g("register-cozuculeri", "U17 U18", "OKUMA VE YAZMA ÇÖZÜCÜ", "Register okuma ve yazma çözücüleri",
       "Seçilen register'a saat darbesini verir ya da onun çıkışını veriyoluna açar.",
-      "Yazma çözücüsü (U17) REG_W (CW16) ile açılır, çıkışları ~WSEL0–7 register saatlerinin kapılarına gider. Okuma çözücüsü (U18) BUS = REG iken açılır ve seçilen çiftin ~OE'sini (~ROE0–7) düşürür."),
+      "Yazma çözücüsü (U17) REG_W (CW16) ile açılır, çıkışları ~WSEL0–7 register saatlerinin kapılarına gider. Okuma çözücüsü (U18) BUS = REG iken açılır ve seçilen register'ın iki 74HC541 tamponunun ~OE1'ini (~ROE0–7) düşürür."),
     ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) =>
-      g(`r${i}`, `U${19 + 2 * i} U${20 + 2 * i}`, i === 6 ? "R6 (SP)" : i === 7 ? "R7 (LR)" : `R${i}`, i === 6 ? "Register r6 (SP)" : i === 7 ? "Register r7 (LR)" : `Register r${i}`,
+      g(`r${i}`, `U${19 + 2 * i} U${20 + 2 * i} U${tampon(2 * i)} U${tampon(2 * i + 1)} D${3 + 2 * i} D${4 + 2 * i} R${3 + 2 * i} R${4 + 2 * i} DS${11 + 2 * i} DS${12 + 2 * i} RN${13 + 2 * i} RN${14 + 2 * i}`, i === 6 ? "R6 (SP)" : i === 7 ? "R7 (LR)" : `R${i}`, i === 6 ? "Register r6 (SP)" : i === 7 ? "Register r7 (LR)" : `Register r${i}`,
         i === 6
           ? "16 bitlik register; gelenekle yığın işaretçisi (SP): PUSH, POP, RETI, SWI ve kesme girişi donanımda bu register'ı kullanır."
           : i === 7
             ? "16 bitlik register; bağlantı register'ı (LR): JAL dönüş adresini (PC + 2) buraya yazar, RET buradan döner."
             : "16 bitlik genel amaçlı register.",
-        `İki 74HC574: düşük bayt U${19 + 2 * i}, yüksek bayt U${20 + 2 * i}. D girişleri ve üç durumlu Q çıkışları aynı veriyolu hatlarına (BUS0–15) bağlıdır; saati CLK_R${i}, çıkış izni ~ROE${i}.`)),
+        `İki 74HC574: düşük bayt U${19 + 2 * i}, yüksek bayt U${20 + 2 * i}; D girişleri veriyolunda (BUS0–15), saati CLK_R${i}, çıkışları hep açık (R${i}Q0–15). Değeri iki çubuk göstergede sürekli görünür (DS${11 + 2 * i} bit 0–7, DS${12 + 2 * i} bit 8–15; RN${13 + 2 * i}, RN${14 + 2 * i}). İki 74HC541 (U${tampon(2 * i)}, U${tampon(2 * i + 1)}) onu ~ROE${i} = 0 iken veriyoluna çıkarır. Yeşil LED D${3 + 2 * i} register okunurken (~ROE${i} = 0), amber LED D${4 + 2 * i} yazılırken (~WSEL${i} = 0) yanar.`)),
     g("register-saatleri", "U133 U134", "REGISTER SAATLERİ", "Register saat kapıları",
       "Yazılacak register'a, yalnız o adımda, saat darbesi verir.",
       "İki 74HC02'nin sekiz VEYA-DEĞİL kapısı yazma çözücüsünün çıkışını kapılı ana saatle birleştirir: CLK_R0–CLK_R7. Kontrol sinyalleri saat yüksekken değişmediği için darbe parazitsizdir."),
     g("veriyolu-cekme", "RN1 RN2", "VERİYOLU ÇEKME", "Veriyolu çekme dirençleri",
       "Hiçbir kaynak sürmediğinde iç veriyolunu 0'da tutar.",
       "İki 10 kΩ SIP-9 direnç dizisi BUS0–15'i GND'ye çeker; BUS = 0 (yok) adımlarında veriyolu 0 okunur (Deney 4)."),
+    g("veriyolu-gostergeleri", "D19-D24 R19-R24 DS1 DS2 RN3 RN4", "VERİYOLU GÖSTERGELERİ", "Veriyolu göstergeleri",
+      "İç veriyolunun değerini ve o adımda veriyolunu hangi kaynağın sürdüğünü gösterir: hata ayıklarken ilk bakılacak yer.",
+      "İki çubuk gösterge (DS1 BUS0–7, DS2 BUS8–15; RN3, RN4 1 kΩ yalıtılmış diziler) her biti bir segmentte gösterir; 1. segment bit 0. Altı beyaz LED (D19–D24) BUS alanı çözücüsünün (U13) çıkışlarına bağlıdır: REG, ALU, PC, MEM, IMM, FLAGS. Çıkışlar aktif düşük olduğu için LED VCC'den 1 kΩ ile çıkışa bağlıdır, çıkış 0 iken yanar; en çok biri yanar."),
     // Geçici register'lar
-    g("ta", "U35 U36", "TA", "Geçici register TA",
+    g("ta", "U35 U36 D27 R27", "TA", "Geçici register TA",
       "ALU'nun A girişi: işlemin ilk işlenenini tutar.",
-      "İki 74HC574, TA_L (CW17) ile veriyolundan yüklenir. Çıkışları sürekli açıktır: toplayıcının A girişine (XOR'dan geçerek), mantık birimine ve kaydırıcıya gider."),
-    g("tb", "U37 U38", "TB", "Geçici register TB",
+      "İki 74HC574, TA_L (CW17) ile veriyolundan yüklenir; o adımda amber LED D27 yanar. Çıkışları sürekli açıktır: toplayıcının A girişine (XOR'dan geçerek), mantık birimine ve kaydırıcıya gider."),
+    g("tb", "U37 U38 D28 R28", "TB", "Geçici register TB",
       "ALU'nun B girişi: işlemin ikinci işlenenini tutar.",
-      "İki 74HC574, TB_L (CW18) ile veriyolundan yüklenir. Çıkışları VE ve XOR kapılarından geçerek toplayıcının B girişine (SUB'da ters, PASSB'de geçer) ve mantık birimine gider."),
+      "İki 74HC574, TB_L (CW18) ile veriyolundan yüklenir; o adımda amber LED D28 yanar. Çıkışları VE ve XOR kapılarından geçerek toplayıcının B girişine (SUB'da ters, PASSB'de geçer) ve mantık birimine gider."),
     // MAR ve IR
-    g("mar", "U39 U40", "MAR", "Bellek adres register'ı (MAR)",
+    g("mar", "U39 U40 D29 R29 DS5 DS6 RN7 RN8", "MAR", "Bellek adres register'ı (MAR)",
       "Bellek ve G/Ç erişiminin adresini tutar.",
-      "İki 74HC574, MAR_L (CW21) ile veriyolundan yüklenir; çıkışları arka panelin A0–A15 hatlarını sürer (uyarlayıcının 9–24. pinleri, Deney 6)."),
-    g("ir", "U41 U42", "IR", "Komut register'ı (IR)",
+      "İki 74HC574, MAR_L (CW21) ile veriyolundan yüklenir (amber LED D29); çıkışları arka panelin A0–A15 hatlarını sürer (uyarlayıcının 9–24. pinleri, Deney 6). İki çubuk gösterge (DS5, DS6) adresi gösterir."),
+    g("ir", "U41 U42 D30 R30 DS7 DS8 RN9 RN10", "IR", "Komut register'ı (IR)",
       "Çalışan komutun 16 bitini tutar.",
-      "İki 74HC574, getirmenin 1. adımında IR_L (CW23) ile bellekten yüklenir. op, f3 ve koşul alanları kontrol birimine; rd, rs1, rs2 register seçicisine; sabit alanları sabit birimine gider."),
+      "İki 74HC574, getirmenin 1. adımında IR_L (CW23) ile bellekten yüklenir (amber LED D30). op, f3 ve koşul alanları kontrol birimine; rd, rs1, rs2 register seçicisine; sabit alanları sabit birimine gider. İki çubuk gösterge (DS7, DS8) komutu gösterir."),
     g("saat-kapilari", "U119", "TB, MAR, IR SAATLERİ", "Register saat kapıları",
       "TB, MAR ve IR'nin kapılı saatlerini ve PC'nin sayma iznini üretir.",
       "Bir 74HC08: her birim kapılı ana saati (CLKR) ilgili yükleme biriyle VE'ler (CLK_TB, CLK_MAR, CLK_IR); dördüncü birim PC += 2 iznidir (PC_INC ∧ RUN_R)."),
     // Program sayacı
-    g("pc", "U43-U46", "PROGRAM SAYACI", "Program sayacı (PC)",
+    g("pc", "U43-U46 D31 D32 R31 R32 DS3 DS4 RN5 RN6", "PROGRAM SAYACI", "Program sayacı (PC)",
       "Sıradaki komutun adresi: her getirmede 2 artar, dallanmada veriyolundan yüklenir.",
-      "Dört 74HC161 zinciri PC1–PC15'i tutar (PC0 hep 0). CEP/CET = PC += 2 izni, ~PE = PC yükle; ~RESET sıfırlar, program 0x0000'dan (reset vektörü) başlar."),
+      "Dört 74HC161 zinciri PC1–PC15'i tutar (PC0 hep 0). CEP/CET = PC += 2 izni, ~PE = PC yükle; ~RESET sıfırlar, program 0x0000'dan (reset vektörü) başlar. İki çubuk gösterge (DS3, DS4) PC'yi gösterir (DS3'ün 1. segmenti, PC0, boş); amber LED'ler D31 yüklemede (~PC_LOAD = 0), D32 artırmada yanar."),
     g("pc-surucu", "U47 U48", "PC → VERİYOLU", "PC veriyolu sürücüsü",
       "PC'yi veriyoluna çıkarır (getirmede MAR'a, JAL'de LR'ye).",
       "İki 74HC541, BUS = PC iken (~SRC_PC) açılır; düşük baytın 0. biti GND'dir."),
@@ -254,9 +281,9 @@ const CPU: KartMetinleri = {
     g("mantik-yuksek", "U84-U91", "MANTIK BİRİMİ 8–15", "Mantık birimi, bit 8–15",
       "Bit işlemlerini yüksek baytta yapar; SXB'nin işaret genişletmesini de.",
       "Her bit bir 74HC151: üçüncü seçim girişi a7'dir, bu sayede bayt işaret genişletme (SXB) ek çip istemez. Veri girişleri 8 bitlik tablo (FHI0–7)."),
-    g("sonuc-secici", "U92-U99", "ALU SONUÇ SEÇİCİ", "ALU sonuç seçici",
+    g("sonuc-secici", "U92-U99 DS9 DS10 RN11 RN12", "ALU SONUÇ SEÇİCİ", "ALU sonuç seçici",
       "Toplam, mantık sonucu, sola kaydırma ve sağa kaydırma arasından ALU'nun sonucunu (RES0–15) seçer.",
-      "Sekiz 74HC153, her biri iki bit. Kaydırmada komşu bit seçilir; sola kaydırmada giren bit SINL, sağa kaydırmada SINH (SAR'da işaret biti, ROR'da C)."),
+      "Sekiz 74HC153, her biri iki bit. Kaydırmada komşu bit seçilir; sola kaydırmada giren bit SINL, sağa kaydırmada SINH (SAR'da işaret biti, ROR'da C). İki çubuk gösterge (DS9, DS10) sonucu, veriyoluna verilmese de, sürekli gösterir."),
     g("cv-secici", "U100", "C VE V SEÇİCİ", "C ve V seçici",
       "İşleme göre yeni C ve V bayraklarını seçer.",
       "74HC153: C toplayıcının eldesinden ya da kaydırmada dışarı düşen bitten, V toplayıcının taşmasından gelir; mantık işlemlerinde 0."),
@@ -280,9 +307,9 @@ const CPU: KartMetinleri = {
       "İşlem hatlarından ALU'nun 24 kontrol bitini (AD0–AD23) kurar.",
       "Her kontrol biti, o biti 1 yapan işlemlerin VEYA'sıdır; ADC, SBC, ROL, ROR için C bayrağı, MERGE için h biti (IR8) terimlere girer."),
     // Bayraklar ve koşul
-    g("bayraklar", "U106-U108", "BAYRAKLAR N Z C V I", "Bayrak flip-flop'ları",
+    g("bayraklar", "U106-U108 D33-D37 R33-R37", "BAYRAKLAR N Z C V I", "Bayrak flip-flop'ları",
       "N (eksi), Z (sıfır), C (elde), V (taşma) ve I (kesme izni) bayraklarını tutar.",
-      "Üç 74HC74: N ve Z, C ve V, I. NZ ve CV aynı kapılı saatle yüklenir (FLAGS_L ya da FLAGS_BUS_L); I EI, DI ve RETI ile değişir. ~RESET hepsini 0 yapar."),
+      "Üç 74HC74: N ve Z, C ve V, I. NZ ve CV aynı kapılı saatle yüklenir (FLAGS_L ya da FLAGS_BUS_L); I EI, DI ve RETI ile değişir. ~RESET hepsini 0 yapar. Beş mavi LED (D33–D37: N, Z, C, V, I) bayrakları gösterir."),
     g("bayrak-girisi", "U105 U116", "BAYRAK GİRİŞ SEÇİCİLERİ", "Bayrak giriş seçicileri",
       "Bayrakların yeni değerini seçer: ALU'dan, RETI'de veriyolundan ya da (C ve V'yi değiştirmeyen işlemlerde) eski değer.",
       "İki 74HC157. U105 ALU ↔ veriyolu (FLAGS_BUS_L = CW25), U116 C/V tutma: C ve V bu yüzden ayrı bir saat izni istemez, kapılı saatte parazit oluşmaz."),
@@ -305,6 +332,9 @@ const CPU: KartMetinleri = {
     g("bellek-kapilari", "U126 U129 U131 U132", "BELLEK ERİŞİM KAPILARI", "Bellek erişim kapıları",
       "Hangi bayt şeridinin kullanılacağını seçer, yazma darbelerini (~MWE_E, ~MWE_O) üretir.",
       "Yazma darbesi MEM_W ∧ RUN_R ∧ şerit seçimi ∧ WR_WIN'dir: saat kartının penceresi sayesinde adres ve veri oturmuşken başlar, yükselen kenardan önce biter."),
+    g("bellek-ledleri", "D25 D26 R25 R26", "BELLEK OKUMA VE YAZMA", "Bellek okuma ve yazma LED'leri",
+      "Bellekten (ya da G/Ç'den) okunan ve belleğe yazılan adımları gösterir.",
+      "Yeşil LED D25 MEMRD'de (BUS = MEM), amber LED D26 MEMW'de (MEM_W ∧ RUN_R) yanar; ikisi de 1 kΩ ile ≈ 3 mA. Adres aynı anda MAR'ın çubuk göstergelerinde, veri veriyolununkilerde okunur."),
     arkaPanelGrubu("J1", "C1"),
   ],
 };

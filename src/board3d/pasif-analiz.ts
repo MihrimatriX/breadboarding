@@ -131,10 +131,12 @@ export interface LedDevresi {
   /** anot (pin 1) ve katot (pin 2) netleri */
   anot: number;
   katot: number;
-  /** LED'i yakan sinyal: anodu süren çip yoksa seri direncin öbür ucu */
+  /** LED'i yakan sinyal: anodu süren çip yoksa seri direncin öbür ucu; aktif düşükte katot */
   sinyal: number;
   direnc: PassivePlace | null;
   ohm: number | null;
+  /** VCC → direnç → LED → sinyal: sinyal 0 iken yanar (CPU kartının ~ROE0 gibi LED'leri) */
+  aktifDusuk: boolean;
 }
 
 /** LED'in yandığı net: anot netini süren çip yoksa, anoda bağlı direncin öbür ucu (sinyal → R → LED) */
@@ -145,7 +147,7 @@ export function ledSignal(p: PassivePlace, ends: Map<number, Endpoint[]>, find: 
 export function ledDevresi(p: PassivePlace, ctx: Pick<PasifBaglam, "ends" | "find">): LedDevresi {
   const anot = pinNet(p, 1);
   const katot = pinNet(p, 2);
-  const out: LedDevresi = { renk: p.led ?? "kirmizi", anot, katot, sinyal: anot, direnc: null, ohm: null };
+  const out: LedDevresi = { renk: p.led ?? "kirmizi", anot, katot, sinyal: anot, direnc: null, ohm: null, aktifDusuk: false };
   if (anot < 0) return out;
   const list = ctx.ends.get(anot) ?? [];
   for (const e of list) {
@@ -155,15 +157,22 @@ export function ledDevresi(p: PassivePlace, ctx: Pick<PasifBaglam, "ends" | "fin
       out.direnc = r;
       out.ohm = ohmOf(r);
       if (!list.some((x) => x.kind === "chip")) out.sinyal = r.pins.find((q) => q.num !== e.num)?.net ?? -1;
+      // direncin öbür ucu VCC, katot bir sinyalde: aktif düşük LED, katodu süren çıkış 0 olunca yanar
+      if (out.sinyal === VCCNET && katot > VCCNET) {
+        out.aktifDusuk = true;
+        out.sinyal = katot;
+      }
       break;
     }
   }
   return out;
 }
 
-/** LED yanıyor mu: sinyal 1 ve katot 0 */
+/** LED yanıyor mu: sinyal 1 ve katot 0 (aktif düşükte sinyal, yani katot, 0) */
 export const ledYanik = (d: LedDevresi, level: (net: number) => Seviye): boolean =>
-  d.sinyal >= 0 && level(d.sinyal) === 1 && (d.katot === GND || level(d.katot) === 0);
+  d.aktifDusuk
+    ? d.sinyal >= 0 && level(d.sinyal) === 0
+    : d.sinyal >= 0 && level(d.sinyal) === 1 && (d.katot === GND || level(d.katot) === 0);
 
 /** LED'in akımı (A): ileri gerilim renginden, direnç devreden */
 export function ledAkimiOf(d: LedDevresi): number | null {
@@ -361,6 +370,7 @@ export const TUR_ADI: Record<PassivePlace["kind"], string> = {
   dip: "DIP anahtar",
   gosterge: "7 segment gösterge",
   dipdizi: "Direnç dizisi (DIP-16, yalıtılmış)",
+  cubuk: "LED çubuk gösterge (10 segment)",
 };
 
 const v = (x: number, b = 2) => `${sayi(x, b)} V`;
@@ -374,8 +384,11 @@ function ledAciklama(p: PassivePlace, ctx: PasifBaglam): Aciklama {
   const I = ledAkimiOf(d);
   const sig = net(ctx, d.sinyal);
   const drv = d.sinyal >= 0 ? netDriver(ctx, d.sinyal) : null;
+  const yanar = d.aktifDusuk ? 0 : 1;
   const gorev = [
-    `${p.role}: ${sig} sinyali 1 olunca akım ${sig}${d.direnc ? ` → ${d.direnc.ref}` : ""} → ${p.ref} → GND yolundan akar ve LED yanar; 0 olunca söner.`,
+    d.aktifDusuk
+      ? `${p.role}: aktif düşük. ${sig} sinyali 0 olunca akım VCC${d.direnc ? ` → ${d.direnc.ref}` : ""} → ${p.ref} → ${sig} yolundan akar, ${drv ? `${chipLabel(drv)} çıkışı` : "sürücü çıkışı"} akımı GND'ye çeker ve LED yanar; 1 olunca iki uç da 5 V'tadır, LED söner. Sinyal 0 iken etkin olduğu için LED de 0 iken yanar: yanan LED "etkin" demektir.`
+      : `${p.role}: ${sig} sinyali 1 olunca akım ${sig}${d.direnc ? ` → ${d.direnc.ref}` : ""} → ${p.ref} → GND yolundan akar ve LED yanar; 0 olunca söner.`,
     `Renk: ${info.ad}${kural ? `, çünkü ${kural.neden}` : ""}. Kutup: anot (+, uzun bacak) pin 1 → ${net(ctx, d.anot)}; katot (−, kısa bacak, flanşın düz kenarı) pin 2 → ${net(ctx, d.katot)}.`,
   ];
   const hesaplar: Hesap[] = [];
@@ -387,15 +400,17 @@ function ledAciklama(p: PassivePlace, ctx: PasifBaglam): Aciklama {
       { ad: `${d.direnc!.ref} dirençteki güç`, formul: `P = I² · R = (${akimMetni(I)})² · ${ohmMetni(d.ohm)}`, sonuc: `≈ ${gucMetni(direncGucu(I, d.ohm))} (¼ W direnç için çok az)` },
     );
     gorev.push("74HC çıkışı bu akımda ≈ 0,2–0,4 V düşer; gerçek akım hesaptakinden biraz azdır. Bir 74HC çıkışından en çok ±25 mA çekilir, LED için 5–10 mA yeterince parlak.");
+    if (d.ohm >= 1000) gorev.push(`${ohmMetni(d.ohm)} ile ≈ ${akimMetni(I)}: hata ayıklama LED'i için yeter (yüksek verimli 3 mm LED bu akımda da rahat görünür). Kartta onlarca LED var; akım küçük tutulunca hem besleme bütçesi hem de LED'i süren sinyalin seviyesi rahat eder.`);
   }
   let durum: Durum;
   const lv = d.sinyal >= 0 ? ctx.level(d.sinyal) : 3;
-  if (lv === 1) {
-    durum = { ton: "yanik", metin: `YANIYOR: ${sig} = 1${drv ? ` (${chipLabel(drv)} çıkışı yüksek)` : ""}.` };
+  const yuksek = (x: number) => (x === 1 ? "yüksek" : "düşük");
+  if (lv === yanar) {
+    durum = { ton: "yanik", metin: `YANIYOR: ${sig} = ${lv}${drv ? ` (${chipLabel(drv)} çıkışı ${yuksek(lv)})` : ""}.` };
     if (/CLK/.test(sig) && (ctx.hz ?? 0) > 30) durum.metin += " Hızlı saatte LED saniyede onlarca kez yanıp söner; göz ortalamasını görür, yarı parlak yanar.";
-  } else if (lv === 0) durum = { ton: "sonuk", metin: `SÖNÜK: ${sig} = 0${drv ? ` (${chipLabel(drv)} çıkışı düşük)` : ""}.` };
+  } else if (lv === 0 || lv === 1) durum = { ton: "sonuk", metin: `SÖNÜK: ${sig} = ${lv}${drv ? ` (${chipLabel(drv)} çıkışı ${yuksek(lv)})` : ""}.` };
   else durum = { ton: "bilgi", metin: `${sig} = ${SEVIYE_KISA[lv]}: simülasyon henüz bu hattı sürmedi.` };
-  if (d.direnc && d.sinyal !== d.anot) {
+  if (d.direnc && !d.aktifDusuk && d.sinyal !== d.anot) {
     durum.metin += ` Simülasyonda dirençlerin değeri yok: ${net(ctx, d.anot)} neti Z görünür; parlaklık direncin öbür ucundaki ${sig}'den hesaplanır.`;
   }
   return {
@@ -497,7 +512,9 @@ function direncAciklama(p: PassivePlace, ctx: PasifBaglam, d: Extract<PasifDeger
     const info = LED_RENKLERI[ld.renk];
     gorev.push(
       `${led.ref} (${info.ad} LED) için akım sınırlayıcı. LED bir diyottur: ileri gerilimi (Vf ≈ ${v(info.vf, 1)}) aşılınca akımı neredeyse yalnız devredeki direnç sınırlar. Direnç olmasa 74HC çıkışı ile LED aşırı akım çeker, ikisi de zarar görür.`,
-      `Seri bağlantı: ${net(ctx, ld.sinyal)} → ${p.ref} → ${led.ref} → GND. Direnç LED'in önünde ya da arkasında olabilir, akım aynıdır.`,
+      ld.aktifDusuk
+        ? `Seri bağlantı: VCC → ${p.ref} → ${led.ref} → ${net(ctx, ld.sinyal)} (aktif düşük): ${net(ctx, ld.sinyal)} 0 olunca onu süren çıkış akımı çeker ve LED yanar. Direnç LED'in önünde ya da arkasında olabilir, akım aynıdır.`
+        : `Seri bağlantı: ${net(ctx, ld.sinyal)} → ${p.ref} → ${led.ref} → GND. Direnç LED'in önünde ya da arkasında olabilir, akım aynıdır.`,
     );
     if (I !== null) {
       hesaplar.push(
@@ -509,11 +526,11 @@ function direncAciklama(p: PassivePlace, ctx: PasifBaglam, d: Extract<PasifDeger
     }
     ilgili.push({ ref: led.ref, neden: `${info.ad} LED` });
     const lv = ctx.level(ld.sinyal);
-    durum = lv === 1
-      ? { ton: "yanik", metin: `Şu an ${net(ctx, ld.sinyal)} = 1: direncin üzerinden ≈ ${akimMetni(I ?? 0)} akıyor, ${led.ref} yanıyor.` }
-      : lv === 0
-        ? { ton: "sonuk", metin: `Şu an ${net(ctx, ld.sinyal)} = 0: akım yok, ${led.ref} sönük.` }
-        : { ton: "bilgi", metin: `Şu an ${net(ctx, ld.sinyal)} = ${SEVIYE_KISA[lv]}.` };
+    durum = lv === 0 || lv === 1
+      ? ledYanik(ld, ctx.level)
+        ? { ton: "yanik", metin: `Şu an ${net(ctx, ld.sinyal)} = ${lv}: direncin üzerinden ≈ ${akimMetni(I ?? 0)} akıyor, ${led.ref} yanıyor.` }
+        : { ton: "sonuk", metin: `Şu an ${net(ctx, ld.sinyal)} = ${lv}: akım yok, ${led.ref} sönük.` }
+      : { ton: "bilgi", metin: `Şu an ${net(ctx, ld.sinyal)} = ${SEVIYE_KISA[lv]}.` };
   } else if (dac) {
     const sira = dac.girisler.slice().sort((a, b) => a.ohm - b.ohm);
     gorev.push(
@@ -746,8 +763,9 @@ export function pasifAciklamasi(p: PassivePlace, ctx: PasifBaglam): Aciklama {
   }
   if (p.kind === "dip") return dipAciklama(p, ctx);
   if (p.kind === "gosterge") return gostergeAciklama(p, ctx);
+  if (p.kind === "cubuk") return cubukAciklama(p, ctx);
   const iso = p.kind === "dipdizi" ? isoDizi(p.part) : null;
-  if (iso) return isoDiziAciklama(p, iso);
+  if (iso) return isoDiziAciklama(p, ctx, iso);
   return { tur: TUR_ADI[p.kind], deger: undefined, ozet: `${title} · ${p.role}`, gorev: [`${p.role}.`, PASSIVES[p.part]?.usage ?? ""].filter(Boolean), hesaplar: [], ilgili: [] };
 }
 
@@ -811,18 +829,107 @@ function gostergeAciklama(p: PassivePlace, ctx: PasifBaglam): Aciklama {
   };
 }
 
-function isoDiziAciklama(p: PassivePlace, d: { ohm: number; adet: number }): Aciklama {
+/** Bir segment LED'inin (çubuk ya da gösterge) akımı, rengiyle */
+function segmentAkimi(ohm: number, renk: LedRenk, adet: number, birlikte: string): Hesap {
+  const vf = LED_RENKLERI[renk].vf;
+  const I = ledAkimi(VCC, vf, ohm);
+  return { ad: "Segment akımı", formul: `I = (5 V − ${v(vf, 1)}) / ${ohmMetni(ohm)}`, sonuc: `≈ ${akimMetni(I)} · ${birlikte} ${adet} segment ≈ ${akimMetni(adet * I)}` };
+}
+
+function isoDiziAciklama(p: PassivePlace, ctx: PasifBaglam, d: { ohm: number; adet: number }): Aciklama {
   const kod = ucHaneliKod(d.ohm);
+  // dizinin yaktığı gösterge: bacaklarından birine bağlı 7 segment ya da çubuk gösterge
+  const hedef = p.pins.flatMap((q) => (q.net > 1 ? others(ctx, q.net, p.ref) : [])).map((e) => passiveOf(ctx, e)).find((x) => x && (x.kind === "gosterge" || x.kind === "cubuk")) ?? null;
+  const gorev = [
+    `${p.role}.`,
+    `İçeride ${d.adet} ayrı direnç: k. direnç k. ve ${p.pins.length + 1} − k. bacak arasında, birbirine bağlı değil (yalıtılmış). Kod ${kod}: ${kodAcilimi(kod, "Ω")}. Çip gibi DIP-16 sokete takılır; 1. bacak çentik / nokta tarafında.`,
+  ];
+  const hesaplar: Hesap[] = [];
+  if (hedef?.kind === "cubuk") {
+    gorev.push(`Sinyal ile çubuk göstergenin (${hedef.ref}) segmenti arasında: 1–8. bacaklar sinyallerde, 16–9. bacaklar segment anotlarında. Her segment LED'inin akımını sınırlar; LED'ler doğrudan sinyale bağlansa çıkışı aşırı yükler, seviyesini bozardı.`);
+    hesaplar.push(segmentAkimi(d.ohm, hedef.led ?? "sari", 8, "bayt 0xFF iken"));
+  } else {
+    gorev.push(`Sürücünün (74HC4511) her segment çıkışı ile göstergenin${hedef ? ` (${hedef.ref})` : ""} o segmenti arasında: LED'in akımını sınırlar.`);
+    hesaplar.push(segmentHesabi(d.ohm));
+  }
   return {
     tur: `${TUR_ADI.dipdizi}, ${d.adet} × ${ohmMetni(d.ohm)}`,
     deger: `${d.adet} × ${ohmMetni(d.ohm)} · üstünde 4116R-1-${kod}`,
     ozet: `${d.adet} × ${ohmMetni(d.ohm)} (4116R ${kod}) · ${p.role}`,
+    gorev,
+    hesaplar,
+    ilgili: hedef ? [{ ref: hedef.ref, neden: hedef.kind === "cubuk" ? "çubuk gösterge" : "7 segment gösterge" }] : [],
+  };
+}
+
+// ---------------------------------------------------------------- çubuk gösterge
+
+export interface CubukSegmenti {
+  /** 1 … 10: soldan sağa; 1. segment bit 0 */
+  no: number;
+  /** anot bacağı k, katot bacağı 21 − k */
+  anotPin: number;
+  katotPin: number;
+  anot: number;
+  katot: number;
+  /** segmenti yakan net: anot dizinin direnciyle bir sinyale bağlıysa o sinyal (etkinNet), boşsa −1 */
+  net: number;
+}
+
+/** Çubuk göstergenin on segmenti: k. segmentin anodu k. bacak, katodu (21 − k). bacak */
+export function cubukSegmentleri(p: PassivePlace, ends: Map<number, Endpoint[]>, find: PasifBaglam["find"]): CubukSegmenti[] {
+  return Array.from({ length: 10 }, (_, i) => {
+    const no = i + 1;
+    const anot = pinNet(p, no);
+    const katot = pinNet(p, 21 - no);
+    return { no, anotPin: no, katotPin: 21 - no, anot, katot, net: anot < 0 || katot < 0 ? -1 : etkinNet(ends, find, anot) };
+  });
+}
+
+/** Segment yanıyor mu: sinyali 1, katodu GND (ya da 0) */
+export const cubukSegmentYanik = (s: CubukSegmenti, level: (net: number) => Seviye): boolean =>
+  s.net >= 0 && level(s.net) === 1 && (s.katot === GND || level(s.katot) === 0);
+
+/** Çubuğun gösterdiği bayt: k. segment bit k − 1 (boş segment 0) */
+export function cubukDegeri(seg: readonly CubukSegmenti[], level: (net: number) => Seviye): number {
+  return seg.slice(0, 8).reduce((acc, s) => acc | (cubukSegmentYanik(s, level) ? 1 << (s.no - 1) : 0), 0);
+}
+
+function cubukAciklama(p: PassivePlace, ctx: PasifBaglam): Aciklama {
+  const seg = cubukSegmentleri(p, ctx.ends, ctx.find);
+  const bagli = seg.filter((s) => s.net >= 0);
+  const bos = seg.filter((s) => s.net < 0).map((s) => s.no);
+  const renk = p.led ?? "sari";
+  const info = LED_RENKLERI[renk];
+  const drv = bagli.length ? netDriver(ctx, bagli[0].net) : null;
+  const dir = bagli.length ? others(ctx, bagli[0].anot, p.ref).map((e) => passiveOf(ctx, e)).find((x) => x && (x.kind === "dipdizi" || x.kind === "direnc")) ?? null : null;
+  const ohm = dir ? (isoDizi(dir.part)?.ohm ?? ohmOf(dir)) : null;
+  const deger = cubukDegeri(seg, ctx.level);
+  const ikili = deger.toString(2).padStart(8, "0");
+  const okunus = `${ikili.slice(0, 4)} ${ikili.slice(4)} = 0x${deger.toString(16).toUpperCase().padStart(2, "0")} = ${deger}`;
+  const yanan = seg.filter((s) => cubukSegmentYanik(s, ctx.level)).map((s) => s.no);
+  const belirsiz = bagli.filter((s) => ctx.level(s.net) > 1);
+  const ilgili: Aciklama["ilgili"] = [];
+  if (dir) ilgili.push({ ref: dir.ref, neden: dir.kind === "dipdizi" ? "segment dirençleri" : "segment direnci" });
+  if (drv) ilgili.push({ ref: drv.ref, neden: `sürücü (${drv.part})` });
+  const durum: Durum = bagli.length && belirsiz.length === bagli.length
+    ? { ton: "bilgi", metin: `${net(ctx, bagli[0].net)} … = ${SEVIYE_KISA[ctx.level(bagli[0].net)]}: simülasyon henüz bu hatları sürmedi.` }
+    : yanan.length
+      ? { ton: "yanik", metin: `YANIYOR: ${yanan.join(", ")}. segment · değer ${okunus}.` }
+      : { ton: "sonuk", metin: "SÖNÜK: bütün bitler 0 (değer 0)." };
+  if (belirsiz.length && belirsiz.length < bagli.length) durum.metin += ` ${belirsiz.map((s) => net(ctx, s.net)).join(", ")} Z ya da X: sönük çizildi.`;
+  return {
+    tur: `${TUR_ADI.cubuk}, ${info.ad}`,
+    deger: `DIP-20 · ${bagli.length} segment bağlı`,
+    ozet: `${p.role.replace(/: çubuk gösterge$/, "")} · ${belirsiz.length === bagli.length && bagli.length ? "sürülmüyor" : okunus}`,
     gorev: [
       `${p.role}.`,
-      `İçeride ${d.adet} ayrı direnç: k. direnç k. ve ${p.pins.length + 1} − k. bacak arasında, birbirine bağlı değil (yalıtılmış). Kod ${kod}: ${kodAcilimi(kod, "Ω")}. Çip gibi DIP-16 sokete takılır; 1. bacak çentik / nokta tarafında.`,
-      "Sürücünün (74HC4511) her segment çıkışı ile göstergenin o segmenti arasında: LED'in akımını sınırlar.",
+      "Bir gövdede yan yana on ayrı LED (segment). k. segmentin anodu k. bacak, katodu (21 − k). bacak: alt sırada 1–10 anotlar soldan sağa, üst sırada 20–11 katotlar. Katotlar GND'de; bir segment, anoduna direnç üzerinden 1 gelince yanar. 1. bacak gövdenin yazılı / çentikli köşesinde.",
+      `Segmentler: ${bagli.map((s) => `${s.no} ${net(ctx, s.net)}`).join(", ")}${bos.length ? `; ${bos.join(", ")}. segment boş` : ""}. Soldan sağa 1. segment bit 0: yanan segment 1, sönük 0; bayt ikili olarak bir bakışta okunur (James Sharman'ın ve Ben Eater'ın breadboard bilgisayarlarındaki gibi).`,
+      ...(drv ? [`Sinyali ${drv.ref} (${drv.part}) sürer. Segment başına ≈ 3 mA, 74HC çıkışının sınırının (±25 mA) çok altında: göstergeyi takmak sinyalin seviyesini bozmaz.`] : []),
     ],
-    hesaplar: [segmentHesabi(d.ohm)],
-    ilgili: [],
+    hesaplar: ohm ? [segmentAkimi(ohm, renk, 8, "0xFF iken")] : [],
+    durum,
+    ilgili,
   };
 }

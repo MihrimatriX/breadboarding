@@ -18,7 +18,8 @@ da teli 3D'de gösterir; breadboard'da numaralar breadboard belgesiyle aynıdır
 `hesap8/breadboard/` devreyi tam boy breadboard'lara (BB830: 63 sütun, a–e / f–j şeritleri, üstte ve
 altta ikişer ray) yerleştirir ve bütün telleri yönlendirir. Sonuç:
 
-- **60 board, 5 sütun × 12 sıra**, taban plakası ≈ 860 × 710 mm. Arka kenarda göstergeler (soldan
+- **60 board, 5 sütun × 12 sıra**, taban plakası ≈ 900 × 800 mm (bir modülün board'ları bitişik,
+  modüller arasında ≈ 20 mm boşluk: her modül ayrı bir ada). Arka kenarda göstergeler (soldan
   sağa A, B, sonuç, kalan), ön kenarda anahtarlar ve besleme; aradaki veri akışı önden arkaya:
   anahtarlar → toplama / çarpma / bölme → sonuç seçici → onluğa çevirme → 74HC4511 → göstergeler.
   Board başına en çok 5 çip. 57 board'da parça var; BB52, BB53 ve BB60 yalnız rayları ve yanlarından
@@ -31,9 +32,9 @@ altta ikişer ray) yerleştirir ve bütün telleri yönlendirir. Sonuç:
   ucunun üstünden geçmez; bir delikte asla iki tel ucu ya da tel ucu ile bacak olmaz. Bu yüzden teller
   herhangi bir sırayla takılabilir; listedeki sıra yalnız aşamalara bölmek ve elleri boş yerde tutmak
   içindir.
-- **Uzunluk**: delikten deliğe 180 m, kesim boyu (iki uçta 8'er mm) 226 m; ortalama 65 mm, en uzun
-  1,1 m. Kesim boyları: 55 tel 10–20 mm, 1.109 tel 20–40 mm, 845 tel 40–80 mm, 485 tel 80–160 mm, 189
-  tel 160–320 mm, 101 tel 320 mm'den uzun.
+- **Uzunluk**: delikten deliğe 187 m, kesim boyu (iki uçta 8'er mm) 233 m; ortalama 67 mm, en uzun
+  1,4 m. Kesim boyları: 65 tel 10–20 mm, 1.058 tel 20–40 mm, 809 tel 40–80 mm, 571 tel 80–160 mm, 178
+  tel 160–320 mm, 103 tel 320 mm'den uzun.
 - **Doğrulama**: `npm run hesap8 -- breadboard` bağlantıyı yalnız fiziksel modelden (şeritler, raylar,
   ray köprüleri, teller) birleşim-bul ile kurar ve netlistle karşılaştırır: 1.116 net, 4.177 bacak;
   açık devre yok, kısa devre yok. Aynı denetim her aşamanın sonu için de yapılır (testler).

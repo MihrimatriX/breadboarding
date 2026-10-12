@@ -18,11 +18,11 @@
 // Kenar etiketleri (yakından, çip gruplarına): ekranın iki yanında birer sütun; kutular hedeflerinin
 // yüksekliğine göre sıralanır ve üst üste binmeden yerleşir (kenarYerlesimi).
 
-import { ADIM, BX_ADIM, BY_ADIM } from "../../cpu16/board/breadboard/geometri";
+import { ADIM, BY_ADIM, mmX, mmY } from "../../cpu16/board/breadboard/geometri";
 import { boardDikdortgeni } from "../../cpu16/board/breadboard/gorunum";
 import type { BlockPlace, CardPlace } from "../../cpu16/board/layout";
 import { bolumKimligi, type BolumKatalogu } from "../../cpu16/board/bolum-bilgi";
-import { BOLUM_RENKLERI, boardunGruplari, boya, hucreSiniri, panoBolgeleri, tamDikdortgenler, type Hucre } from "../../cpu16/board/bolum-cizim";
+import { BOLUM_RENKLERI, boardGrupEtiketi, boardunGruplari, boya, hucreSiniri, kutularinSiniri, panoBolgeleri, tamDikdortgenler, type Hucre } from "../../cpu16/board/bolum-cizim";
 
 export { boya, hucreSiniri, tamDikdortgenler, type Hucre };
 /** Breadboard'daki çerçeve renkleri (krem board üstünde; kurulum belgelerinin pano haritasında da aynı) */
@@ -94,6 +94,11 @@ export interface Cerceve {
   kutu: Kutu;
   /** çerçevenin içi: board hücreleri (PCB'de blok), içe kaymış (seçilince hafif dolgu) */
   alanlar: Kutu[];
+  /**
+   * breadboard'da modülün tabanı: board'larının ve aralarındaki köprülerin birleşimi, dışa doğru
+   * TABAN_PAY kadar büyük (board'ların altında, kenarlarından renkli bir pervaz olarak görünür)
+   */
+  taban?: Kutu[];
 }
 
 export interface Plaka extends PlakaMetni {
@@ -129,8 +134,8 @@ export interface BbPanoGirdisi {
   sira?: "arka" | "on";
   plan: {
     yerlesim: {
-      boards: readonly { bx: number; by: number; rol: string; gruplar?: readonly string[] }[];
-      parcalar: readonly { ref: string; board: number; cipMi?: boolean; sutun?: number }[];
+      boards: readonly { bx: number; by: number; x0: number; y0: number; rol: string; gruplar?: readonly string[] }[];
+      parcalar: readonly { ref: string; board: number; part?: string; cipMi?: boolean; sutun?: number; bacaklar?: readonly { X: number; Y: number }[] }[];
     };
   };
 }
@@ -147,6 +152,9 @@ export interface YaziBoylari {
 /** Board başına en çok bu kadar modül plakası (fazla gruplar yakında kenar etiketlerinde) */
 export const MODUL_EN_COK = 3;
 
+/** Hata ayıklama göstergeleri (LED'ler ve çubuk göstergeler; dirençleri değil): modül plakaları bunları örtmez */
+const gostergeMi = (part?: string) => part === "LED" || part === "DISP_BAR_10";
+
 const kutuBirlesimi = (k: Kutu[]): Kutu => {
   const x0 = Math.min(...k.map((a) => a.x));
   const y0 = Math.min(...k.map((a) => a.y));
@@ -155,6 +163,11 @@ const kutuBirlesimi = (k: Kutu[]): Kutu => {
 
 /** Çerçevenin içe kayması (mm): komşu iki bölgenin çizgileri arasında boşluk kalsın */
 const BB_IC = 3.2;
+/**
+ * Breadboard'da modül tabanının board'ların dışına taşması (mm): modüller arasındaki ≈ 20 mm boşlukta iki
+ * yanda birer renkli pervaz, ortada taban plakasının koyu rengi kalır
+ */
+export const TABAN_PAY = 6;
 const PCB_IC = 0.9;
 
 /**
@@ -162,18 +175,25 @@ const PCB_IC = 0.9;
  * her kartın plakası panonun dışında. Katalogda olmayan rol atlanır.
  */
 export function bbSahneBolumleri(panolar: readonly BbPanoGirdisi[], k: BolumKatalogu, olc: Olcer, yazi: YaziBoylari): SahneBolumleri {
-  const b0 = boardDikdortgeni(0, 0);
-  const dx = BX_ADIM * ADIM;
+  const b0 = boardDikdortgeni({ x0: 0, y0: 0 });
   const dy = BY_ADIM * ADIM;
   // board'lar arasındaki boşluk (dikeyde 1,27 mm) iki hücreye bölünür
   const bosluk = dy - b0.h;
-  const bolgeler: { id: string; kart: string; renk: string; hucreler: Hucre[]; x0: number; y0: number }[] = [];
+  /** board hücresi (mm, sahnede): board'un dikdörtgeni, dikeyde sıralar arası boşluğun yarısı kadar büyük */
+  type Hucreli = { bx: number; by: number; x0: number; y0: number };
+  const hucreKutusu = (p: BbPanoGirdisi, b: Hucreli): Kutu => {
+    const d = boardDikdortgeni(b);
+    return { x: p.x + d.x, y: p.y + d.y - bosluk / 2, w: d.w, h: d.h + bosluk };
+  };
+  const bolgeler: { id: string; kart: string; renk: string; hucreler: Hucre[]; kutu: (i: number, j: number) => Kutu }[] = [];
   const parcaBolgesi = new Map<string, number>();
   for (const p of panolar) {
     const sira = new Map<string, number>();
+    const boardAt = new Map(p.plan.yerlesim.boards.map((b) => [`${b.bx},${b.by}`, b]));
+    const kutu = (i: number, j: number) => hucreKutusu(p, boardAt.get(`${i},${j}`)!);
     for (const b of panoBolgeleri(p.kart, p.plan.yerlesim.boards, k)) {
       sira.set(b.id, bolgeler.length);
-      bolgeler.push({ ...b, kart: p.kart, x0: p.x + b0.x, y0: p.y + b0.y - bosluk / 2 });
+      bolgeler.push({ ...b, kart: p.kart, kutu });
     }
     for (const q of p.plan.yerlesim.parcalar) {
       const b = p.plan.yerlesim.boards[q.board];
@@ -185,25 +205,44 @@ export function bbSahneBolumleri(panolar: readonly BbPanoGirdisi[], k: BolumKata
   const plakalar: Plaka[] = [];
   bolgeler.forEach((b) => {
     const renk = b.renk;
-    const kenarlar = hucreSiniri(b.hucreler, b.x0, b.y0, dx, dy, BB_IC);
-    const kutu = kutuBirlesimi(b.hucreler.map((h) => ({ x: b.x0 + h.i * dx, y: b.y0 + h.j * dy, w: dx, h: dy })));
-    // dolgu: komşusu bölgede olan kenar içe kaymaz (board'lar arasında boşluk kalmasın)
+    // board hücreleri ve aynı bölgedeki komşu board'ların arasındaki köprüler (modüller arası boşluk
+    // bölgenin içinden geçiyorsa): bölge tek bir çizgiyle sarılır, dolgusu boşluğu da kaplar
+    const hucreler = b.hucreler.map((h) => b.kutu(h.i, h.j));
     const var_ = new Set(b.hucreler.map((h) => `${h.i},${h.j}`));
-    const ic = (i: number, j: number) => (var_.has(`${i},${j}`) ? 0 : BB_IC);
-    const alanlar = b.hucreler.map((h) => {
-      const [l, r, u, a] = [ic(h.i - 1, h.j), ic(h.i + 1, h.j), ic(h.i, h.j - 1), ic(h.i, h.j + 1)];
-      return { x: b.x0 + h.i * dx + l, y: b.y0 + h.j * dy + u, w: dx - l - r, h: dy - u - a };
-    });
-    cerceveler.push({ id: b.id, kart: b.kart, renk, kenarlar, kutu, alanlar });
+    const kopruler: Kutu[] = [];
+    for (const h of b.hucreler) {
+      const a = b.kutu(h.i, h.j);
+      if (var_.has(`${h.i + 1},${h.j}`)) {
+        const c = b.kutu(h.i + 1, h.j);
+        const y0 = Math.max(a.y, c.y), y1 = Math.min(a.y + a.h, c.y + c.h);
+        if (c.x > a.x + a.w + 1e-6 && y1 > y0) kopruler.push({ x: a.x + a.w, y: y0, w: c.x - a.x - a.w, h: y1 - y0 });
+      }
+      if (var_.has(`${h.i},${h.j + 1}`)) {
+        const c = b.kutu(h.i, h.j + 1);
+        const x0 = Math.max(a.x, c.x), x1 = Math.min(a.x + a.w, c.x + c.w);
+        if (c.y > a.y + a.h + 1e-6 && x1 > x0) kopruler.push({ x: x0, y: a.y + a.h, w: x1 - x0, h: c.y - a.y - a.h });
+      }
+    }
+    // çerçeve çizgisi modül tabanının dış kenarında (boşlukta, board'ların deliklerinin üstünde değil);
+    // seçilince dolgu board'ların üstünde, içe kaymış
+    const { alanlar } = kutularinSiniri([...hucreler, ...kopruler], BB_IC);
+    const { kenarlar, alanlar: taban } = kutularinSiniri([...hucreler, ...kopruler], -TABAN_PAY);
+    const kutu = kutuBirlesimi(taban);
+    cerceveler.push({ id: b.id, kart: b.kart, renk, kenarlar, kutu, alanlar, taban });
     // plaka, yazısının en büyük olduğu dikdörtgende (eşitlikte alanı büyük olanda)
     const etiket = k.bolumler.get(b.id)!.etiket;
     let en: { m: PlakaMetni; x: number; y: number; alan: number } | null = null;
     for (const r of tamDikdortgenler(b.hucreler)) {
-      const iw = (r.i1 - r.i0 + 1) * dx;
-      const ih = (r.j1 - r.j0 + 1) * dy;
+      // dikdörtgenin iç kutusu: sol sütunun en sağdaki sol kenarından sağ sütunun en soldaki sağ kenarına
+      const sol = Math.max(...Array.from({ length: r.j1 - r.j0 + 1 }, (_, n) => b.kutu(r.i0, r.j0 + n).x));
+      const sag = Math.min(...Array.from({ length: r.j1 - r.j0 + 1 }, (_, n) => { const q = b.kutu(r.i1, r.j0 + n); return q.x + q.w; }));
+      const ust = b.kutu(r.i0, r.j0).y;
+      const alt = b.kutu(r.i0, r.j1).y + b.kutu(r.i0, r.j1).h;
+      const iw = sag - sol;
+      const ih = alt - ust;
       const m = plakaSigdir(etiket, iw - 8 * BB_IC, ih - 4 * BB_IC, olc, yazi.bolge);
       if (!en || m.h > en.m.h + 1e-6 || (Math.abs(m.h - en.m.h) <= 1e-6 && iw * ih > en.alan)) {
-        en = { m, x: b.x0 + r.i0 * dx + iw / 2, y: b.y0 + r.j0 * dy + ih / 2, alan: iw * ih };
+        en = { m, x: sol + iw / 2, y: ust + ih / 2, alan: iw * ih };
       }
     }
     plakalar.push({ ...en!.m, id: b.id, tur: "bolge", renk, x: en!.x, y: en!.y });
@@ -217,19 +256,54 @@ export function bbSahneBolumleri(panolar: readonly BbPanoGirdisi[], k: BolumKata
         const ids = boardunGruplari(p.kart, no, p.plan.yerlesim, k).slice(0, MODUL_EN_COK);
         if (!ids.length) return;
         const renk = renkler.get(bolumKimligi.bolge(p.kart, b.rol)) ?? BOLUM_RENKLERI[0];
-        const x = p.x + b0.x + b.bx * dx;
-        const y = p.y + b0.y + b.by * dy;
+        const d = boardDikdortgeni(b);
+        const tam: Kutu = { x: p.x + d.x, y: p.y + d.y, w: b0.w, h: b0.h };
         const ara = 0.3;
-        const boy = (b0.h * 0.8) / ids.length - ara * yazi.modul!;
-        const m = ids.map((id) => plakaSigdir(k.bolumler.get(id)!.etiket, b0.w * 0.86, boy, olc, yazi.modul!));
-        const h = Math.min(...m.map((q) => q.h));
-        const esit = m.map((q) => plakaBoyla(q, h, olc));
-        const toplam = esit.reduce((t, q) => t + q.d, 0) + ara * h * (esit.length - 1);
-        let yy = y + b0.h / 2 - toplam / 2;
-        esit.forEach((q, i) => {
-          modulPlakalari.push({ ...q, id: ids[i], tur: "modul", renk, x: x + b0.w / 2, y: yy + q.d / 2 });
-          yy += q.d + ara * h;
-        });
+        const etiketler = ids.map((id) => boardGrupEtiketi(no, p.plan.yerlesim, k, id));
+        /** plakalar bir dikdörtgende alt alta (göstergelerin yanındaki alçak şeritte yazı büyük kalıyorsa yan yana), aynı yazı boyunda */
+        const diz = (a: Kutu, yanaIzin = false) => {
+          const n = ids.length;
+          const alt = etiketler.map((e) => plakaSigdir(e, a.w * 0.86, (a.h * 0.8) / n - ara * yazi.modul!, olc, yazi.modul!));
+          const yan = yanaIzin && n > 1 ? etiketler.map((e) => plakaSigdir(e, (a.w * 0.86) / n - ara * yazi.modul!, a.h * 0.8, olc, yazi.modul!)) : alt;
+          const hAlt = Math.min(...alt.map((q) => q.h));
+          const hYan = Math.min(...yan.map((q) => q.h));
+          const yanYana = hYan > hAlt + 1e-6;
+          const h = yanYana ? hYan : hAlt;
+          const esit = (yanYana ? yan : alt).map((q) => plakaBoyla(q, h, olc));
+          const yer: { x: number; y: number }[] = [];
+          if (yanYana) {
+            esit.forEach((_, i) => yer.push({ x: a.x + ((i + 0.5) * a.w) / n, y: a.y + a.h / 2 }));
+          } else {
+            const toplam = esit.reduce((t, q) => t + q.d, 0) + ara * h * (n - 1);
+            let yy = a.y + a.h / 2 - toplam / 2;
+            for (const q of esit) {
+              yer.push({ x: a.x + a.w / 2, y: yy + q.d / 2 });
+              yy += q.d + ara * h;
+            }
+          }
+          return { a, h, esit, yer };
+        };
+        // modüler panoda göstergeli board'da plakalar göstergelerin solunda, sağında, üstünde ya da altında:
+        // yazının en büyük olduğu şeritte (LED'ler ve çubuklar örtülmesin)
+        let sec = diz(tam);
+        const gosterge = b.gruplar ? p.plan.yerlesim.parcalar.filter((q) => q.board === no && gostergeMi(q.part) && q.bacaklar?.length) : [];
+        if (gosterge.length) {
+          const X = gosterge.flatMap((q) => q.bacaklar!.map((t) => t.X));
+          const Y = gosterge.flatMap((q) => q.bacaklar!.map((t) => t.Y));
+          const gx0 = p.x + mmX(Math.min(...X) - 1);
+          const gx1 = p.x + mmX(Math.max(...X) + 1);
+          const gy0 = p.y + mmY(Math.min(...Y) - 1);
+          const gy1 = p.y + mmY(Math.max(...Y) + 1);
+          const seritler: Kutu[] = [
+            { x: tam.x, y: tam.y, w: gx0 - tam.x, h: tam.h },
+            { x: gx1, y: tam.y, w: tam.x + tam.w - gx1, h: tam.h },
+            { x: tam.x, y: tam.y, w: tam.w, h: gy0 - tam.y },
+            { x: tam.x, y: gy1, w: tam.w, h: tam.y + tam.h - gy1 },
+          ].filter((a) => a.w > 0 && a.h > 0);
+          const adaylar = seritler.map((a) => diz(a, true));
+          sec = adaylar.reduce((e, c) => (c.h > e.h + 1e-6 || (Math.abs(c.h - e.h) <= 1e-6 && c.a.w * c.a.h > e.a.w * e.a.h) ? c : e));
+        }
+        sec.esit.forEach((q, i) => modulPlakalari.push({ ...q, id: ids[i], tur: "modul", renk, ...sec.yer[i] }));
       });
     }
   }

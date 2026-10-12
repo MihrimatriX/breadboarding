@@ -351,7 +351,7 @@
       (property "Footprint" "Package_DIP:DIP-20_W7.62mm" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
       (property "Datasheet" "" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
       (property "ki_description" "8 bit üç durumlu tampon (iki aktif düşük OE)" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
-      (property "CPU16_Kullanim" "İç veriyolu sürücüleri (PC, ALU, sabit birimi → veriyolu), adres tamponu" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+      (property "CPU16_Kullanim" "İç veriyolu sürücüleri (register'lar, PC, ALU, sabit birimi → veriyolu), adres tamponu" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
       (symbol "74HC541_0_1"
         (rectangle (start -7.62 15.24) (end 7.62 -15.24) (stroke (width 0.254) (type default)) (fill (type background)))
       )
@@ -760,7 +760,7 @@
       (property "Footprint" "LED_THT:LED_D3.0mm" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
       (property "Datasheet" "" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
       (property "ki_description" "3 mm LED" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
-      (property "CPU16_Kullanim" "Durum göstergeleri (HALTED, FAULT)" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+      (property "CPU16_Kullanim" "Durum göstergeleri (HALTED, FAULT, CLK) ve CPU kartının hata ayıklama LED'leri; rengi görevinden (LED_RENK_KURALLARI)" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
       (symbol "LED_0_1"
         (rectangle (start -2.54 2.54) (end 2.54 -2.54) (stroke (width 0.254) (type default)) (fill (type background)))
       )
@@ -845,7 +845,7 @@
       (property "Footprint" "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
       (property "Datasheet" "" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
       (property "ki_description" "1 kΩ direnç" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
-      (property "CPU16_Kullanim" "Yavaş osilatörün en düşük direnci (potla seri)" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+      (property "CPU16_Kullanim" "Yavaş osilatörün en düşük direnci (potla seri); CPU kartının gösterge LED'lerinin seri direnci (≈ 3 mA)" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
       (symbol "R_1K_0_1"
         (rectangle (start -2.54 2.54) (end 2.54 -2.54) (stroke (width 0.254) (type default)) (fill (type background)))
       )

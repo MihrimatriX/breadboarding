@@ -10,7 +10,8 @@
 // çizim), kameranın baktığı yere yakın parçalardan başlayarak kare başına birkaç milisaniyede kurulur.
 // Ekran dışındaki parçalar çizilmez; renkler köşe renkleriyle değişir.
 //
-// Renkler: "seçili çip" kipinde teller yalıtımlarının renginde; bir çip ya da net seçilince o
+// Renkler: "seçili çip" kipinde teller yalıtımlarının renginde (uzaktan, seçim yokken soluk: modüller
+// ve çipler öne çıksın); bir çip ya da net seçilince o
 // netlerin telleri canlı seviyenin renginde (0 mavi, 1 kırmızı) parlar, ötekiler soluklaşır. "hepsi"
 // kipinde bütün teller canlı seviyede; "yok" kipinde teller gizli. Kurulum modu açıkken panonun
 // takılan telleri kendi renginde, takılmayanlar ve öbür panolarınkiler soluk; odaktaki tel ayrıca
@@ -23,11 +24,11 @@ import {
   type Camera,
 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import { BY_ADIM, delikVar, KENAR_ALT, KENAR_SAG, KENAR_SOL, KENAR_UST, mmX, mmY, satirHarfi, SUTUN } from "../../cpu16/board/breadboard/geometri";
+import { delikVar, noktaninBoardu, KENAR_ALT, KENAR_SAG, KENAR_SOL, KENAR_UST, mmX, mmY, satirHarfi, SUTUN } from "../../cpu16/board/breadboard/geometri";
 import { telYollari3B, type BbTel } from "../../cpu16/board/breadboard/plan";
 import { aktifGorunum, bbSahnesi, panodakiBoard, type BbPanosu, type BbSahnesi } from "./aktif";
 import { bbPano, bbSeciliTel, useBbKurulum } from "./bbKurulum";
-import { useEtiketlerAcik } from "./bolum";
+import { sahneBolumleri, useEtiketlerAcik } from "./bolum";
 import { LEVEL_COLOR } from "./levels";
 import { boardLayoutData, findPart, liveNets, useKart } from "./store";
 import { TextQuads, type TextItem } from "./TextQuads";
@@ -148,11 +149,56 @@ function boardDokusu(): CanvasTexture {
 
 // ---------------------------------------------------------------- taban plakaları ve board'lar
 
+/** Taban plakasının rengi; modül tabanları bölgenin rengiyle bunun karışımı */
+const PLAKA_RENGI = "#3a3d42";
+
+/**
+ * Modül tabanları: her bölgenin (modülün) board'larının altında, kenarlarından taşan renkli bir zemin
+ * (bolumSahne.ts taban). Modüller arasındaki boşlukta iki renkli pervazın arasında koyu plaka kalır:
+ * uzaktan her modül ayrı bir ada olarak okunur (James Sharman'ın panolarındaki bölümler gibi).
+ */
+function ModulTabanlari() {
+  const { w } = useDunya();
+  const s = sahneBolumleri(undefined, "breadboard");
+  const obj = useMemo(() => {
+    const pos: number[] = [];
+    const col: number[] = [];
+    const idx: number[] = [];
+    const y = (-BOARD_KALINLIK + 0.4) * S;
+    const plaka = new Color(PLAKA_RENGI);
+    for (const c of s.cerceveler) {
+      tmpC.set(c.renk).lerp(plaka, 0.18);
+      for (const k of c.taban ?? []) {
+        const [x0, z0] = w(k.x, k.y);
+        const [x1, z1] = w(k.x + k.w, k.y + k.h);
+        const b = pos.length / 3;
+        pos.push(x0, y, z0, x1, y, z0, x1, y, z1, x0, y, z1);
+        for (let v = 0; v < 4; v++) col.push(tmpC.r, tmpC.g, tmpC.b);
+        idx.push(b, b + 2, b + 1, b, b + 3, b + 2);
+      }
+    }
+    const geo = new BufferGeometry();
+    geo.setAttribute("position", new BufferAttribute(new Float32Array(pos), 3));
+    geo.setAttribute("color", new BufferAttribute(new Float32Array(col), 3));
+    geo.setIndex(idx);
+    geo.computeVertexNormals();
+    const mat = new MeshStandardMaterial({ vertexColors: true, roughness: 0.7, metalness: 0, side: DoubleSide });
+    const m = new Mesh(geo, mat);
+    m.raycast = noRaycast;
+    return { m, geo, mat };
+  }, [s, w]);
+  useEffect(() => () => {
+    obj.geo.dispose();
+    obj.mat.dispose();
+  }, [obj]);
+  return <primitive object={obj.m} />;
+}
+
 export function BreadboardTabani() {
   const { w } = useDunya();
   const sahne = bbSahnesi();
   // bütün panoların board'ları: sahnedeki dikdörtgen ve adı
-  const boards = useMemo(() => sahne.panolar.flatMap((p) => p.plan.yerlesim.boards.map((b) => ({ ad: b.ad, d: panodakiBoard(p, b.bx, b.by) }))), [sahne]);
+  const boards = useMemo(() => sahne.panolar.flatMap((p) => p.plan.yerlesim.boards.map((b) => ({ ad: b.ad, d: panodakiBoard(p, b) }))), [sahne]);
   const ust = useRef<InstancedMesh>(null);
   const govde = useRef<InstancedMesh>(null);
   const [doku, ustGeo, govdeGeo, ustMat, govdeMat] = useMemo(() => {
@@ -198,10 +244,11 @@ export function BreadboardTabani() {
         return (
           <mesh key={p.kart} position={[x, (-BOARD_KALINLIK - PLAKA_KALINLIK / 2) * S, z]} raycast={noRaycast}>
             <boxGeometry args={[p.w * S, PLAKA_KALINLIK * S, p.h * S]} />
-            <meshStandardMaterial color="#3a3d42" roughness={0.6} metalness={0.25} />
+            <meshStandardMaterial color={PLAKA_RENGI} roughness={0.6} metalness={0.25} />
           </mesh>
         );
       })}
+      <ModulTabanlari />
       <instancedMesh ref={govde} args={[govdeGeo, govdeMat, boards.length]} raycast={noRaycast} />
       <instancedMesh ref={ust} args={[ustGeo, ustMat, boards.length]} raycast={noRaycast} />
       <TextQuads items={adlar} cellW={256} cellH={80} font={52} />
@@ -397,7 +444,7 @@ function telVerisi(sahne: BbSahnesi): TelVerisi {
     const ilk = parcalar.length;
     for (let r = 0; r < ny; r++) parcalar.push([]);
     p.plan.teller.forEach((t, ti) => {
-      parcalar[ilk + Math.min(ny - 1, Math.max(0, Math.floor((t.yol[1] + 3) / BY_ADIM)))].push(teller.length);
+      parcalar[ilk + noktaninBoardu(p.plan.yerlesim.boards, t.yol[0], t.yol[1]).by].push(teller.length);
       teller.push(t);
       pano.push(pi);
       noktalar.push(telNoktalari(yollar[ti], p.x, p.y));
@@ -536,6 +583,8 @@ SEVIYE[0] = new Color("#2f6fd6");
 const KARTON = new Color("#f2eee3");
 /** kamera bundan yüksekteyse (dünya birimi) teller yassı şerit olarak çizilir */
 const UZAK = 32;
+/** uzaktan, seçim yokken tellerin krem board rengine karışma oranı */
+const UZAK_SOLUKLUK = 0.5;
 
 /** Seçili çipin ya da netin netleri (GND / VCC yalnız istenirse) */
 function seciliNetler(chip: string | null, net: number | null, power: boolean): Set<number> {
@@ -594,7 +643,9 @@ export function AtlamaTelleri() {
     const kurulan = agi.kurBekleyenleri(hedefi(camera, controls), uzak ? 4 : 10);
     agi.goster(uzak);
     const canli = mode === "hepsi" || (!kurulumAcik && secili.size > 0);
-    const anahtar = `${mode}|${chip}|${net}|${power}|${kurulumAcik}|${yapilan.size}|${kurPano}|${kurAsama}`;
+    // uzaktan (seçim yokken) teller soluk: çipler, LED'ler ve modüllerin tabanları öne çıkar
+    const soluk = uzak && !canli && !kurulumAcik;
+    const anahtar = `${mode}|${chip}|${net}|${power}|${kurulumAcik}|${yapilan.size}|${kurPano}|${kurAsama}|${soluk}`;
     const d = durum.current;
     if (d.agi === agi && anahtar === d.anahtar && (!canli || d.surum === liveNets.version)) {
       for (const q of kurulan) agi.boya(q, renkler);
@@ -621,6 +672,7 @@ export function AtlamaTelleri() {
         else tmpC.copy(yalitimRengi[i]).lerp(KARTON, 0.72);
       } else {
         tmpC.copy(yalitimRengi[i]);
+        if (soluk) tmpC.lerp(KARTON, UZAK_SOLUKLUK);
       }
       renkler[3 * i] = tmpC.r;
       renkler[3 * i + 1] = tmpC.g;

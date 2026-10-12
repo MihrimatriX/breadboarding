@@ -6,21 +6,23 @@
 import type { Board, ChipInstance, Passive } from "../board.ts";
 import { packageSize, passiveShape, type BlockPlace, type BoardLayout, type ChipPlace, type PassivePlace, type PinPlace } from "../layout.ts";
 import { ledRengi, PASSIVES } from "../passives.ts";
-import { ADIM, BX_ADIM, BY_ADIM, KENAR_ALT, KENAR_SAG, KENAR_SOL, KENAR_UST, mmX, mmY, PAY } from "./geometri.ts";
+import { ADIM, BX_ADIM, KENAR_ALT, KENAR_SAG, KENAR_SOL, KENAR_UST, mmX, mmY, PAY, type BbKonum } from "./geometri.ts";
 import { izgaraSiniri } from "./yonlendirme.ts";
 import type { BbYerlesim } from "./yerlesim.ts";
 
 /** Board'un mm cinsinden dikdörtgeni (taban plakasında) */
-export function boardDikdortgeni(bx: number, by: number): { x: number; y: number; w: number; h: number } {
-  const x = mmX(bx * BX_ADIM + KENAR_SOL);
-  const y = mmY(by * BY_ADIM + KENAR_UST);
+export function boardDikdortgeni(b: Pick<BbKonum, "x0" | "y0">): { x: number; y: number; w: number; h: number } {
+  const x = mmX(b.x0 + KENAR_SOL);
+  const y = mmY(b.y0 + KENAR_UST);
   return { x, y, w: (KENAR_SAG - KENAR_SOL) * ADIM, h: (KENAR_ALT - KENAR_UST) * ADIM };
 }
 
 /** Taban plakasının boyu (mm): board'lar + her yanda pay (kenardan dolanan teller dahil) */
-export function plakaBoyu(p: { yerlesim: Pick<BbYerlesim, "nx" | "ny"> }): { w: number; h: number } {
+export function plakaBoyu(p: { yerlesim: Pick<BbYerlesim, "boards"> }): { w: number; h: number } {
   const s = izgaraSiniri(p.yerlesim);
-  return { w: Math.max(mmX(s.x1 + 0.5), mmX(p.yerlesim.nx * BX_ADIM + KENAR_SOL)) + PAY / 2, h: Math.max(mmY(s.y1 + 0.5), mmY((p.yerlesim.ny - 1) * BY_ADIM + KENAR_ALT)) + PAY / 2 };
+  const xs = Math.max(...p.yerlesim.boards.map((b) => b.x0));
+  const ys = Math.max(...p.yerlesim.boards.map((b) => b.y0));
+  return { w: Math.max(mmX(s.x1 + 0.5), mmX(xs + BX_ADIM + KENAR_SOL)) + PAY / 2, h: Math.max(mmY(s.y1 + 0.5), mmY(ys + KENAR_ALT)) + PAY / 2 };
 }
 
 export interface PanoYerlesimSecenekleri {
@@ -71,7 +73,7 @@ export function panoParcalari(board: Board, y: BbYerlesim, o: PanoYerlesimSecene
       x: cx - w / 2, y: cy - h / 2, w, h, height: s.height, vertical: dikey,
       ...(p.ters ? { ters: true } : {}),
       ...(p.bagliCip ? { chip: p.bagliCip } : {}),
-      ...(s.kind === "led" ? { led: ledRengi(x.role) } : {}),
+      ...(s.kind === "led" || s.kind === "cubuk" ? { led: ledRengi(x.role) } : {}),
       pins: p.bacaklar.map((b) => ({ num: b.pin, name: adlar.get(b.pin) ?? String(b.pin), net: x.pins[String(b.pin)] ?? -1, ...pinYeri(b.X, b.Y) })),
     });
   }

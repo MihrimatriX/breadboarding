@@ -156,15 +156,21 @@ function asamalar(kart: string, bloklar: Iterable<string>): BolumAsamasi[] {
   return [...m.values()].sort((a, b) => a.no - b.no);
 }
 
-/** Kartın bölgeleri: ad → (metin, bloklar) */
-function kartBolgeleri(kart: string, metin: KartMetinleri): { ad: string; m: BolgeMetni; bloklar: string[] }[] {
+/**
+ * Kartın bölgeleri: ad → (metin, bloklar; modüler panoda board'larındaki gruplar). Modüler panoda
+ * (düzen) bir bölgenin parçaları board'larındaki grupların parçalarıdır ("grup+" göstergeleri de).
+ */
+function kartBolgeleri(kart: string, metin: KartMetinleri): { ad: string; m: BolgeMetni; bloklar: string[]; gruplar?: Set<string> }[] {
   if (kart === "hesap") return Object.entries(metin.bolgeler).map(([ad, m]) => ({ ad, m, bloklar: m.bloklar ?? [] }));
   const p = PANOLAR.find((x) => x.kart === kart);
   if (!p) return [];
-  return Object.values(p.bolgeler).map((b) => {
+  return Object.entries(p.bolgeler).map(([kod, b]) => {
     const m = metin.bolgeler[b.ad];
     if (!m) throw new Error(`${kart}: bölge metni yok: ${b.ad}`);
-    return { ad: b.ad, m, bloklar: b.bloklar.length ? b.bloklar : (m.bloklar ?? []) };
+    const gruplar = p.duzen
+      ? new Set(p.duzen.flatMap((sira, by) => sira.flatMap((h, bx) => (p.izgara[by][bx] === kod ? h.split(/\s+/).filter(Boolean).map((g) => g.replace(/\+$/, "")) : []))))
+      : undefined;
+    return { ad: b.ad, m, bloklar: b.bloklar.length ? b.bloklar : (m.bloklar ?? []), gruplar };
   });
 }
 
@@ -201,10 +207,20 @@ export function bolumKatalogu(tur: "cpu16" | "hesap", board: Board): BolumKatalo
 
     // bölgeler
     const bolgeOf = new Map<string, string>();
-    for (const { ad, m, bloklar } of kartBolgeleri(kart, metin)) {
+    const bolgeListesi = kartBolgeleri(kart, metin);
+    // modüler pano: grubu bir bölgenin board'unda olan parçalar o bölgenin; kalanlar bloklarıyla
+    const duzendeki = new Set<string>();
+    for (const b of bolgeListesi) for (const g of b.gruplar ?? []) for (const r of refleriAc(metin.gruplar.find((x) => x.id === g)?.refs ?? "")) duzendeki.add(r);
+    for (const { ad, m, bloklar, gruplar } of bolgeListesi) {
       const id = bolumKimligi.bolge(kart, ad);
-      const refs = [...kCip.filter((c) => bloklar.includes(anaBlok(c))).map((c) => c.ref), ...kPasif.filter((p) => bloklar.includes(p.block)).map((p) => p.ref)];
-      ekle({ etiket: m.etiket, baslik: m.baslik, gorev: m.gorev, nasil: m.nasil, id, tur: "bolge", kart, bolge: ad, refs, asamalar: asamalar(kart, bloklar), ust: kartId, alt: [] });
+      const blokta = (ref: string, blok: string) => bloklar.includes(blok) && !duzendeki.has(ref);
+      const grupta = new Set(gruplar ? [...gruplar].flatMap((g) => refleriAc(metin.gruplar.find((x) => x.id === g)?.refs ?? "")) : []);
+      const refs = [
+        ...kCip.filter((c) => grupta.has(c.ref) || blokta(c.ref, anaBlok(c))).map((c) => c.ref),
+        ...kPasif.filter((p) => grupta.has(p.ref) || blokta(p.ref, p.block)).map((p) => p.ref),
+      ];
+      const asamaBloklari = gruplar ? [...new Set(refs.map(parcaBlogu))] : bloklar;
+      ekle({ etiket: m.etiket, baslik: m.baslik, gorev: m.gorev, nasil: m.nasil, id, tur: "bolge", kart, bolge: ad, refs, asamalar: asamalar(kart, asamaBloklari), ust: kartId, alt: [] });
       if (tur === "cpu16") for (const b of bloklar) if (!bolgeOf.has(b)) bolgeOf.set(b, id);
     }
 

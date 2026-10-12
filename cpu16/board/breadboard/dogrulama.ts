@@ -12,7 +12,7 @@
 // netleri kendi tablolarındadır ve aynı biçimde denetlenir.
 
 import type { Board } from "../board.ts";
-import { BX_ADIM, BY_ADIM, DUGUM_BOARD, delikVar, satirRayi, yerelDugum } from "./geometri.ts";
+import { DUGUM_BOARD, delikVar, noktaninBoardu, satirRayi, yerelDugum } from "./geometri.ts";
 import { pinNeti, pinNumaralari, type BbYerlesim } from "./yerlesim.ts";
 
 export interface DogrulamaSonucu {
@@ -127,15 +127,11 @@ export function panolariDogrula(board: Board, panolar: DogrulamaPanosu[], kablol
   const panoBilgisi = panolar.map((pano, pi) => {
     const y: BbYerlesim = asama === undefined ? pano.yerlesim : { ...pano.yerlesim, parcalar: pano.yerlesim.parcalar.filter((p) => p.asama <= asama) };
     const teller = asama === undefined ? pano.teller : pano.teller.filter((t) => (t.asama ?? 0) <= asama);
-    const boardAt = new Map(y.boards.map((b) => [`${b.bx},${b.by}`, b]));
     /** küresel ızgara noktası → (board, yerel satır, sütun) ya da undefined */
     const yerel = (X: number, Y: number) => {
-      const bx = Math.floor(X / BX_ADIM);
-      const by = Math.floor((Y + 3) / BY_ADIM);
-      const b = boardAt.get(`${bx},${by}`);
-      if (!b) return undefined;
-      const r = Y - by * BY_ADIM;
-      const c = X - bx * BX_ADIM;
+      const b = noktaninBoardu(y.boards, X, Y);
+      const r = Y - b.y0;
+      const c = X - b.x0;
       if (!delikVar(r, c)) return undefined;
       return { b, r, c };
     };

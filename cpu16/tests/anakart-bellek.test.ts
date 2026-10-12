@@ -167,7 +167,7 @@ describe("Faz 6 anakart: kartların yapısı", () => {
     expect(erc(board, ["IRQ", ...CLOCK_INPUTS, "VID_OSC"])).toEqual([]);
     const s = board.summary();
     const counts = Object.fromEntries(Object.entries(s).map(([card, parts]) => [card, Object.values(parts).reduce((a, b) => a + b, 0)]));
-    expect(counts).toEqual({ cpu: 194, clk: 10, bellek: 34, onbellek: 46, gc: 65, video: 73, kyb: 22 });
+    expect(counts).toEqual({ cpu: 210, clk: 10, bellek: 34, onbellek: 46, gc: 65, video: 73, kyb: 22 });
   });
 });
 

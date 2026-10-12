@@ -12,6 +12,7 @@
 import { partValue, type Board, type ChipInstance, type Passive } from "../board/board.ts";
 import { boardLayout, cardTitle, type BoardLayout, type PassiveKind } from "../board/layout.ts";
 import { BACKPLANE, PASSIVES } from "../board/passives.ts";
+import { ohmMetni, pasifDegeri } from "../board/pasif-bilgi.ts";
 import type { PinDir } from "../chips/types.ts";
 import { DENEYLER, SADECE_SIM } from "../kit/deneyler.ts";
 
@@ -384,18 +385,31 @@ function zincir<T extends { x: number; y: number }>(start: T, rest: T[]): T[] {
   return path;
 }
 
-/** Tahmini akım (mA, 5 V, 1 MHz CPU saati; bellekler seçiliyken, en kötü durum). Kaba hesap: uretim.md "Besleme". */
-export function akim(deger: string): { kalem: string; mA: number } | null {
+/**
+ * Tahmini akım (mA, 5 V, 1 MHz CPU saati; bellekler seçiliyken, en kötü durum). Kaba hesap: uretim.md
+ * "Besleme". LED'in akımı seri direncinden: (5 V − 2 V) / R, 330 Ω ile 9 mA, 1 kΩ ile 3 mA (ledSeriOhm).
+ */
+export function akim(deger: string, ledOhm = 330): { kalem: string; mA: number } | null {
   if (/^74AC/.test(deger)) return { kalem: "74AC çipleri (piksel saatinde)", mA: 4 };
   if (/^74HC/.test(deger)) return { kalem: "74HC çipleri (1 MHz'de dinamik akım)", mA: 1 };
   if (deger === "62256") return { kalem: "62256 SRAM (seçiliyken)", mA: 30 };
   if (deger === "28C256") return { kalem: "28C256 EEPROM (okurken)", mA: 30 };
-  if (deger === "LED") return { kalem: "LED (330 Ω, yanarken)", mA: 9 };
+  if (deger === "LED") return { kalem: `LED (${ohmMetni(ledOhm)}, yanarken)`, mA: Math.round(3000 / ledOhm) };
+  if (deger === "DISP_BAR_10") return { kalem: "çubuk gösterge (8 segment × ≈ 3 mA, bayt 0xFF iken)", mA: 24 };
   if (deger === "DISP_7SEG_CC") return { kalem: "7 segment hane (7 × ≈ 6 mA, lamba testinde hepsi yanar)", mA: 42 };
   if (deger === "OSC_CAN" || deger === "OSC_25M175") return { kalem: "kristal osilatör modülü", mA: 25 };
   if (deger === "CONN_PS2") return { kalem: "PS/2 klavye (konnektörden beslenir)", mA: 100 };
   if (deger === "ARDUINO_NANO") return { kalem: "Arduino Nano (USB'den beslenir)", mA: 25 };
   return null;
+}
+
+/** LED'in seri direnci (Ω): anoduna bağlı direnç (sinyal → R → LED ya da VCC → R → LED); yoksa 330 */
+export function ledSeriOhm(board: Board, ref: string): number {
+  const led = board.passives.find((p) => p.ref === ref);
+  const anot = led?.pins["1"];
+  const r = anot === undefined ? undefined : board.passives.find((q) => q !== led && /^R_/.test(q.part) && Object.values(q.pins).includes(anot));
+  const d = r ? pasifDegeri(r.part) : null;
+  return d?.tur === "direnc" ? d.ohm : 330;
 }
 
 // ---------------------------------------------------------------- plan
@@ -708,8 +722,8 @@ export function kurulumPlani(board: Board, kart: string, o: PlanSecenekleri = {}
       .map(([kilif, l]) => ({ kilif, adet: l.length })),
   };
   const butce = new Map<string, { adet: number; birim: number }>();
-  for (const x of [...cipler.map((c) => c.deger), ...pasifler.map((p) => p.part)]) {
-    const a = akim(x);
+  const akimlar = [...cipler.map((c) => akim(c.deger)), ...pasifler.map((p) => akim(p.part, p.part === "LED" ? ledSeriOhm(board, p.ref) : undefined))];
+  for (const a of akimlar) {
     if (!a) continue;
     const r = butce.get(a.kalem) ?? { adet: 0, birim: a.mA };
     r.adet++;

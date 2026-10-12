@@ -60,18 +60,18 @@
     <path class="mm-cizgi" d="M220 360 L1290 360" stroke-width="5.5"/>
   </g>
   <g class="mm-yol mm-y-veri" data-yol="veri">
-    <path class="mm-hale" d="M220 329 L220 344.3" stroke-width="11.5"/>
-    <path class="mm-hale" d="M540 329 L540 354.3" stroke-width="11.5"/>
-    <path class="mm-hale" d="M900 316 L900 344.3" stroke-width="11.5"/>
-    <path class="mm-hale" d="M1290 329 L1290 344.3" stroke-width="11.5"/>
+    <path class="mm-hale" d="M220 345 L220 344.3" stroke-width="11.5"/>
+    <path class="mm-hale" d="M540 345 L540 354.3" stroke-width="11.5"/>
+    <path class="mm-hale" d="M900 332 L900 344.3" stroke-width="11.5"/>
+    <path class="mm-hale" d="M1290 345 L1290 344.3" stroke-width="11.5"/>
     <path class="mm-hale" d="M220 397 L220 375.8" stroke-width="11.5"/>
     <path class="mm-hale" d="M540 410 L540 375.8" stroke-width="11.5"/>
     <path class="mm-hale" d="M900 397 L900 365.8" stroke-width="11.5"/>
     <path class="mm-hale" d="M1290 397 L1290 375.8" stroke-width="11.5"/>
-    <path class="mm-cizgi" d="M220 329 L220 344.3" stroke-width="5.5" data-kutular="reg"/>
-    <path class="mm-cizgi" d="M540 329 L540 360" stroke-width="5.5" data-kutular="gecici"/>
-    <path class="mm-cizgi" d="M900 316 L900 344.3" stroke-width="5.5" data-kutular="alu"/>
-    <path class="mm-cizgi" d="M1290 329 L1290 344.3" stroke-width="5.5" data-kutular="bayrak"/>
+    <path class="mm-cizgi" d="M220 345 L220 344.3" stroke-width="5.5" data-kutular="reg"/>
+    <path class="mm-cizgi" d="M540 345 L540 360" stroke-width="5.5" data-kutular="gecici"/>
+    <path class="mm-cizgi" d="M900 332 L900 344.3" stroke-width="5.5" data-kutular="alu"/>
+    <path class="mm-cizgi" d="M1290 345 L1290 344.3" stroke-width="5.5" data-kutular="bayrak"/>
     <path class="mm-cizgi" d="M220 397 L220 375.8" stroke-width="5.5" data-kutular="pc"/>
     <path class="mm-cizgi" d="M540 410 L540 375.8" stroke-width="5.5" data-kutular="sabit"/>
     <path class="mm-cizgi" d="M900 397 L900 360" stroke-width="5.5" data-kutular="marir"/>
@@ -132,9 +132,9 @@
     <circle class="mm-nokta" cx="1050" cy="88" r="6.2"/>
   </g>
   <g class="mm-yol mm-y-kontrol" data-yol="kosul">
-    <path class="mm-hale" d="M1430 316 L1430 329.4" stroke-width="9.5"/>
+    <path class="mm-hale" d="M1430 332 L1430 335.4" stroke-width="9.5"/>
     <path class="mm-hale" d="M1250 833 L1250 815.6" stroke-width="9.5"/>
-    <path class="mm-cizgi" d="M1430 316 L1430 329.4" stroke-width="3.5" data-kutular="bayrak"/>
+    <path class="mm-cizgi" d="M1430 332 L1430 335.4" stroke-width="3.5" data-kutular="bayrak"/>
     <path class="mm-cizgi" d="M1250 833 L1250 815.6" stroke-width="3.5" data-kutular="kontrol"/>
   </g>
   <g class="mm-yol mm-y-veri" data-yol="bayt">
@@ -162,48 +162,54 @@
     <path class="mm-cizgi" d="M1400 778 L1509.4 778" stroke-width="3.5" data-kutular="kontrol arka"/>
   </g>
   <g class="mm-kutu mm-k-register" data-kutu="reg">
-    <rect class="mm-kutu-govde" x="90" y="116" width="290" height="200" rx="8"/>
-    <text class="mm-t mm-t-ad" x="235" y="193.3" text-anchor="middle">REGISTER DOSYASI (R0–R7)</text>
-    <text class="mm-t mm-t-parca" x="235" y="212.4" text-anchor="middle">74HC574 ×16, 74HC151 ×3, 74HC138 ×2</text>
-    <text class="mm-t mm-t-kapi" x="235" y="230.7" text-anchor="middle">+ 8 kapı (yapıştırıcı lojikte)</text>
-    <text class="mm-t mm-t-gorev" x="235" y="249.4" text-anchor="middle">8 × 16 bit; RSEL ve IR alanlarıyla seçilir</text>
+    <rect class="mm-kutu-govde" x="90" y="116" width="290" height="216" rx="8"/>
+    <text class="mm-t mm-t-ad" x="235" y="183.8" text-anchor="middle">REGISTER DOSYASI (R0–R7)</text>
+    <text class="mm-t mm-t-parca" x="235" y="202.9" text-anchor="middle">74HC541 ×16, 74HC574 ×16,</text>
+    <text class="mm-t mm-t-parca" x="235" y="218.9" text-anchor="middle">74HC151 ×3, 74HC138 ×2</text>
+    <text class="mm-t mm-t-pasif" x="235" y="237.9" text-anchor="middle">LED ×22, çubuk gösterge ×18</text>
+    <text class="mm-t mm-t-kapi" x="235" y="256.2" text-anchor="middle">+ 8 kapı (yapıştırıcı lojikte)</text>
+    <text class="mm-t mm-t-gorev" x="235" y="274.9" text-anchor="middle">8 × 16 bit; RSEL ve IR alanlarıyla seçilir</text>
   </g>
   <g class="mm-kutu mm-k-register" data-kutu="gecici">
-    <rect class="mm-kutu-govde" x="430" y="116" width="220" height="200" rx="8"/>
-    <text class="mm-t mm-t-ad" x="540" y="193.3" text-anchor="middle">GEÇİCİ REGISTER'LAR</text>
-    <text class="mm-t mm-t-parca" x="540" y="212.4" text-anchor="middle">74HC574 ×4</text>
-    <text class="mm-t mm-t-kapi" x="540" y="230.7" text-anchor="middle">+ 2 kapı (yapıştırıcı lojikte)</text>
-    <text class="mm-t mm-t-gorev" x="540" y="249.4" text-anchor="middle">TA ve TB: ALU'nun iki girişi</text>
+    <rect class="mm-kutu-govde" x="430" y="116" width="220" height="216" rx="8"/>
+    <text class="mm-t mm-t-ad" x="540" y="191.8" text-anchor="middle">GEÇİCİ REGISTER'LAR</text>
+    <text class="mm-t mm-t-parca" x="540" y="210.9" text-anchor="middle">74HC574 ×4</text>
+    <text class="mm-t mm-t-pasif" x="540" y="229.9" text-anchor="middle">LED ×2</text>
+    <text class="mm-t mm-t-kapi" x="540" y="248.2" text-anchor="middle">+ 2 kapı (yapıştırıcı lojikte)</text>
+    <text class="mm-t mm-t-gorev" x="540" y="266.9" text-anchor="middle">TA ve TB: ALU'nun iki girişi</text>
   </g>
   <g class="mm-kutu mm-k-islem" data-kutu="alu">
-    <rect class="mm-kutu-govde" x="720" y="116" width="390" height="200" rx="8"/>
-    <path class="mm-bolme" d="M726 206 H1104" data-bolme="1"/>
-    <text class="mm-t mm-t-bolme-ad" x="915" y="137.7" text-anchor="middle">ALU KOD ÇÖZÜCÜ</text>
-    <text class="mm-t mm-t-parca" x="915" y="156.4" text-anchor="middle">74HC138 ×3</text>
-    <text class="mm-t mm-t-kapi" x="915" y="174.7" text-anchor="middle">+ 32 kapı (yapıştırıcı lojikte)</text>
-    <text class="mm-t mm-t-gorev" x="915" y="193.4" text-anchor="middle">işlem kodu → 24 ALU denetim biti</text>
-    <text class="mm-t mm-t-bolme-ad" x="915" y="229.7" text-anchor="middle">ALU (ARİTMETİK MANTIK BİRİMİ)</text>
-    <text class="mm-t mm-t-parca" x="915" y="248.4" text-anchor="middle">74HC151 ×16, 74HC153 ×9, 74HC283 ×4, 74HC541 ×2,</text>
-    <text class="mm-t mm-t-parca" x="915" y="264.4" text-anchor="middle">74HC688 ×2, 74HC157</text>
-    <text class="mm-t mm-t-kapi" x="915" y="282.7" text-anchor="middle">+ 56 kapı (yapıştırıcı lojikte)</text>
-    <text class="mm-t mm-t-gorev" x="915" y="301.4" text-anchor="middle">toplama, çıkarma, mantık, kaydırma</text>
+    <rect class="mm-kutu-govde" x="720" y="116" width="390" height="216" rx="8"/>
+    <path class="mm-bolme" d="M726 204 H1104" data-bolme="1"/>
+    <text class="mm-t mm-t-bolme-ad" x="915" y="136.7" text-anchor="middle">ALU KOD ÇÖZÜCÜ</text>
+    <text class="mm-t mm-t-parca" x="915" y="155.4" text-anchor="middle">74HC138 ×3</text>
+    <text class="mm-t mm-t-kapi" x="915" y="173.7" text-anchor="middle">+ 32 kapı (yapıştırıcı lojikte)</text>
+    <text class="mm-t mm-t-gorev" x="915" y="192.4" text-anchor="middle">işlem kodu → 24 ALU denetim biti</text>
+    <text class="mm-t mm-t-bolme-ad" x="915" y="227.2" text-anchor="middle">ALU (ARİTMETİK MANTIK BİRİMİ)</text>
+    <text class="mm-t mm-t-parca" x="915" y="245.9" text-anchor="middle">74HC151 ×16, 74HC153 ×9, 74HC283 ×4, 74HC541 ×2,</text>
+    <text class="mm-t mm-t-parca" x="915" y="261.9" text-anchor="middle">74HC688 ×2, 74HC157</text>
+    <text class="mm-t mm-t-pasif" x="915" y="280.9" text-anchor="middle">çubuk gösterge ×2</text>
+    <text class="mm-t mm-t-kapi" x="915" y="299.2" text-anchor="middle">+ 56 kapı (yapıştırıcı lojikte)</text>
+    <text class="mm-t mm-t-gorev" x="915" y="317.9" text-anchor="middle">toplama, çıkarma, mantık, kaydırma</text>
   </g>
   <g class="mm-kutu mm-k-kontrol" data-kutu="bayrak">
-    <rect class="mm-kutu-govde" x="1190" y="116" width="270" height="200" rx="8"/>
-    <text class="mm-t mm-t-ad" x="1325" y="177.3" text-anchor="middle">BAYRAKLAR VE KOŞUL</text>
-    <text class="mm-t mm-t-parca" x="1325" y="196.4" text-anchor="middle">74HC74 ×3, 74HC157 ×2,</text>
-    <text class="mm-t mm-t-parca" x="1325" y="212.4" text-anchor="middle">74HC541 ×2, 74HC151</text>
-    <text class="mm-t mm-t-kapi" x="1325" y="230.7" text-anchor="middle">+ 12 kapı (yapıştırıcı lojikte)</text>
-    <text class="mm-t mm-t-gorev" x="1325" y="249.4" text-anchor="middle">N Z C V ve I bayrakları; dallanma koşulu</text>
-    <text class="mm-t mm-t-gorev" x="1325" y="265.4" text-anchor="middle">(COND)</text>
+    <rect class="mm-kutu-govde" x="1190" y="116" width="270" height="216" rx="8"/>
+    <text class="mm-t mm-t-ad" x="1325" y="175.8" text-anchor="middle">BAYRAKLAR VE KOŞUL</text>
+    <text class="mm-t mm-t-parca" x="1325" y="194.9" text-anchor="middle">74HC74 ×3, 74HC157 ×2,</text>
+    <text class="mm-t mm-t-parca" x="1325" y="210.9" text-anchor="middle">74HC541 ×2, 74HC151</text>
+    <text class="mm-t mm-t-pasif" x="1325" y="229.9" text-anchor="middle">LED ×5</text>
+    <text class="mm-t mm-t-kapi" x="1325" y="248.2" text-anchor="middle">+ 12 kapı (yapıştırıcı lojikte)</text>
+    <text class="mm-t mm-t-gorev" x="1325" y="266.9" text-anchor="middle">N Z C V ve I bayrakları; dallanma koşulu</text>
+    <text class="mm-t mm-t-gorev" x="1325" y="282.9" text-anchor="middle">(COND)</text>
   </g>
   <g class="mm-kutu mm-k-register" data-kutu="pc">
     <rect class="mm-kutu-govde" x="90" y="410" width="260" height="150" rx="8"/>
-    <text class="mm-t mm-t-ad" x="220" y="454.3" text-anchor="middle">PROGRAM SAYACI (PC)</text>
-    <text class="mm-t mm-t-parca" x="220" y="473.4" text-anchor="middle">74HC161 ×4, 74HC541 ×2</text>
-    <text class="mm-t mm-t-kapi" x="220" y="491.7" text-anchor="middle">+ 2 kapı (yapıştırıcı lojikte)</text>
-    <text class="mm-t mm-t-gorev" x="220" y="510.4" text-anchor="middle">sıradaki komutun adresi; += 2 ya da</text>
-    <text class="mm-t mm-t-gorev" x="220" y="526.4" text-anchor="middle">yüklenir</text>
+    <text class="mm-t mm-t-ad" x="220" y="444.8" text-anchor="middle">PROGRAM SAYACI (PC)</text>
+    <text class="mm-t mm-t-parca" x="220" y="463.9" text-anchor="middle">74HC161 ×4, 74HC541 ×2</text>
+    <text class="mm-t mm-t-pasif" x="220" y="482.9" text-anchor="middle">çubuk gösterge ×2, LED ×2</text>
+    <text class="mm-t mm-t-kapi" x="220" y="501.2" text-anchor="middle">+ 2 kapı (yapıştırıcı lojikte)</text>
+    <text class="mm-t mm-t-gorev" x="220" y="519.9" text-anchor="middle">sıradaki komutun adresi; += 2 ya da</text>
+    <text class="mm-t mm-t-gorev" x="220" y="535.9" text-anchor="middle">yüklenir</text>
   </g>
   <g class="mm-kutu mm-k-secici" data-kutu="sabit">
     <rect class="mm-kutu-govde" x="400" y="410" width="270" height="150" rx="8"/>
@@ -215,23 +221,26 @@
   <g class="mm-kutu mm-k-register" data-kutu="marir">
     <rect class="mm-kutu-govde" x="720" y="410" width="330" height="150" rx="8"/>
     <path class="mm-bolme" d="M885 416 V554" data-bolme="1"/>
-    <text class="mm-t mm-t-bolme-ad" x="802.5" y="453.7" text-anchor="middle">KOMUT REGISTER'I</text>
-    <text class="mm-t mm-t-bolme-ad" x="802.5" y="469.7" text-anchor="middle">(IR)</text>
-    <text class="mm-t mm-t-parca" x="802.5" y="488.4" text-anchor="middle">74HC574 ×2</text>
-    <text class="mm-t mm-t-kapi" x="802.5" y="506.7" text-anchor="middle">+ 1 kapı</text>
-    <text class="mm-t mm-t-gorev" x="802.5" y="525.4" text-anchor="middle">çalışan komut</text>
-    <text class="mm-t mm-t-bolme-ad" x="967.5" y="453.7" text-anchor="middle">ADRES REGISTER'I</text>
-    <text class="mm-t mm-t-bolme-ad" x="967.5" y="469.7" text-anchor="middle">(MAR)</text>
-    <text class="mm-t mm-t-parca" x="967.5" y="488.4" text-anchor="middle">74HC574 ×2</text>
-    <text class="mm-t mm-t-kapi" x="967.5" y="506.7" text-anchor="middle">+ 1 kapı</text>
-    <text class="mm-t mm-t-gorev" x="967.5" y="525.4" text-anchor="middle">bellek adresi</text>
+    <text class="mm-t mm-t-bolme-ad" x="802.5" y="444.2" text-anchor="middle">KOMUT REGISTER'I</text>
+    <text class="mm-t mm-t-bolme-ad" x="802.5" y="460.2" text-anchor="middle">(IR)</text>
+    <text class="mm-t mm-t-parca" x="802.5" y="478.9" text-anchor="middle">74HC574 ×2</text>
+    <text class="mm-t mm-t-pasif" x="802.5" y="497.9" text-anchor="middle">çubuk gösterge ×2, LED</text>
+    <text class="mm-t mm-t-kapi" x="802.5" y="516.2" text-anchor="middle">+ 1 kapı</text>
+    <text class="mm-t mm-t-gorev" x="802.5" y="534.9" text-anchor="middle">çalışan komut</text>
+    <text class="mm-t mm-t-bolme-ad" x="967.5" y="444.2" text-anchor="middle">ADRES REGISTER'I</text>
+    <text class="mm-t mm-t-bolme-ad" x="967.5" y="460.2" text-anchor="middle">(MAR)</text>
+    <text class="mm-t mm-t-parca" x="967.5" y="478.9" text-anchor="middle">74HC574 ×2</text>
+    <text class="mm-t mm-t-pasif" x="967.5" y="497.9" text-anchor="middle">çubuk gösterge ×2, LED</text>
+    <text class="mm-t mm-t-kapi" x="967.5" y="516.2" text-anchor="middle">+ 1 kapı</text>
+    <text class="mm-t mm-t-gorev" x="967.5" y="534.9" text-anchor="middle">bellek adresi</text>
   </g>
   <g class="mm-kutu mm-k-tampon" data-kutu="bellek">
     <rect class="mm-kutu-govde" x="1100" y="410" width="300" height="150" rx="8"/>
-    <text class="mm-t mm-t-ad" x="1250" y="462.3" text-anchor="middle">BELLEK ARAYÜZÜ</text>
-    <text class="mm-t mm-t-parca" x="1250" y="481.4" text-anchor="middle">74HC245 ×3, 74HC541</text>
-    <text class="mm-t mm-t-kapi" x="1250" y="499.7" text-anchor="middle">+ 16 kapı (yapıştırıcı lojikte)</text>
-    <text class="mm-t mm-t-gorev" x="1250" y="518.4" text-anchor="middle">16 bit iç veri yolu ↔ bayt hatları (DE, DO)</text>
+    <text class="mm-t mm-t-ad" x="1250" y="452.8" text-anchor="middle">BELLEK ARAYÜZÜ</text>
+    <text class="mm-t mm-t-parca" x="1250" y="471.9" text-anchor="middle">74HC245 ×3, 74HC541</text>
+    <text class="mm-t mm-t-pasif" x="1250" y="490.9" text-anchor="middle">LED ×2</text>
+    <text class="mm-t mm-t-kapi" x="1250" y="509.2" text-anchor="middle">+ 16 kapı (yapıştırıcı lojikte)</text>
+    <text class="mm-t mm-t-gorev" x="1250" y="527.9" text-anchor="middle">16 bit iç veri yolu ↔ bayt hatları (DE, DO)</text>
   </g>
   <g class="mm-kutu mm-k-kontrol" data-kutu="kontrol">
     <rect class="mm-kutu-govde" x="90" y="655" width="1310" height="150" rx="8"/>
@@ -242,7 +251,7 @@
     <text class="mm-t mm-t-gorev" x="440" y="762.4" text-anchor="middle">komut, adım ve koşuldan 32 kontrol biti; ROM yok, 74HC138 / 151 ve kapılarla</text>
     <text class="mm-t mm-t-bolme-ad" x="1095" y="697.2" text-anchor="middle">KONTROL REGISTER'I VE SIRALAYICI</text>
     <text class="mm-t mm-t-parca" x="1095" y="715.9" text-anchor="middle">74HC574 ×4, 74HC74 ×2, 74HC138, 74HC161</text>
-    <text class="mm-t mm-t-pasif" x="1095" y="734.9" text-anchor="middle">LED ×2</text>
+    <text class="mm-t mm-t-pasif" x="1095" y="734.9" text-anchor="middle">LED ×6</text>
     <text class="mm-t mm-t-kapi" x="1095" y="753.2" text-anchor="middle">+ 17 kapı (yapıştırıcı lojikte)</text>
     <text class="mm-t mm-t-gorev" x="1095" y="771.9" text-anchor="middle">kontrol register'ı (CR), adım sayacı, kesme ve HALT; veri yolu sürücüsü seçimi</text>
   </g>
@@ -263,11 +272,11 @@
     <text class="mm-t mm-t-gorev" x="265" y="984.4" text-anchor="middle">satırları</text>
   </g>
   <g class="mm-yol-ust mm-y-veri" data-yol="veri">
-    <path class="mm-ok" d="M220 316 L228.7 332.3 L211.3 332.3 Z" data-kutular="reg"/>
+    <path class="mm-ok" d="M220 332 L228.7 348.3 L211.3 348.3 Z" data-kutular="reg"/>
     <path class="mm-ok" d="M220 357.3 L211.3 341 L228.7 341 Z" data-kutular="reg"/>
-    <path class="mm-ok" d="M540 316 L548.7 332.3 L531.3 332.3 Z" data-kutular="gecici"/>
+    <path class="mm-ok" d="M540 332 L548.7 348.3 L531.3 348.3 Z" data-kutular="gecici"/>
     <path class="mm-ok" d="M900 357.3 L891.3 341 L908.7 341 Z" data-kutular="alu"/>
-    <path class="mm-ok" d="M1290 316 L1298.7 332.3 L1281.3 332.3 Z" data-kutular="bayrak"/>
+    <path class="mm-ok" d="M1290 332 L1298.7 348.3 L1281.3 348.3 Z" data-kutular="bayrak"/>
     <path class="mm-ok" d="M1290 357.3 L1281.3 341 L1298.7 341 Z" data-kutular="bayrak"/>
     <path class="mm-ok" d="M220 410 L211.3 393.8 L228.7 393.8 Z" data-kutular="pc"/>
     <path class="mm-ok" d="M220 362.8 L228.7 379 L211.3 379 Z" data-kutular="pc"/>
@@ -319,10 +328,10 @@
     <text class="mm-t mm-t-etiket" x="825" y="80" text-anchor="middle">KONTROL HATLARI (CW0–CW31 + 6 SÜRÜCÜ SEÇİMİ)</text>
   </g>
   <g class="mm-yol-ust mm-y-kontrol" data-yol="kosul">
-    <path class="mm-ok" d="M1430 340 L1423 326.8 L1437 326.8 Z" data-kutular="bayrak"/>
+    <path class="mm-ok" d="M1430 346 L1423 332.8 L1437 332.8 Z" data-kutular="bayrak"/>
     <path class="mm-ok" d="M1250 805 L1257 818.3 L1243 818.3 Z" data-kutular="kontrol"/>
-    <rect class="mm-bag" x="1358" y="340" width="144.1" height="22" rx="11"/>
-    <text class="mm-t mm-t-bag" x="1430" y="355.3" text-anchor="middle">KOŞUL, I → KONTROL</text>
+    <rect class="mm-bag" x="1358" y="346" width="144.1" height="22" rx="11"/>
+    <text class="mm-t mm-t-bag" x="1430" y="361.3" text-anchor="middle">KOŞUL, I → KONTROL</text>
     <rect class="mm-bag" x="1171" y="833" width="158.1" height="22" rx="11"/>
     <text class="mm-t mm-t-bag" x="1250" y="848.3" text-anchor="middle">KOŞUL, I ← BAYRAKLAR</text>
   </g>

@@ -75,7 +75,9 @@ kartıdır: bilgisayarın çalışması için gerekmez, 13 deneyin bilgisayarın
 
 LED'leri veriyoluna doğrudan bağlama: hattı yükler, seviye 1 sayılmayabilir. Gösterge modülünün
 74HC541'i hattı yüklemeden LED'i sürer. Anahtar girişi 2,2 kΩ ile sürdüğü için bir register veriyolunu
-sürdüğünde onu ezmez (veriyolundaki 10 kΩ çekme direnciyle birlikte 1 seviyesi ≈ 4 V).
+sürdüğünde onu ezmez (veriyolundaki 10 kΩ çekme direnciyle birlikte 1 seviyesi ≈ 4 V). CPU kartının
+kendi veriyolu çubuk göstergeleri (DS1, DS2, 1 kΩ'luk segmentler) takılıyken anahtar girişi hattı
+1'e çıkaramaz (≈ 2,7 V): anahtarla sürerken RN3 ve RN4'ü yuvasından çıkar ([LED ve direnç](led-ve-direnc.md#cpu-kartının-hata-ayıklama-ledleri)).
 
 ## Genel kurallar
 

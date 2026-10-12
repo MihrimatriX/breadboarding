@@ -42,7 +42,7 @@ describe("mimari diyagramları: CPU kartı ve bütün bilgisayar", () => {
     expect(kutularda.sort()).toEqual([...bloklar].sort());
   });
 
-  it("bilgisayarın her kartının her bloğu diyagramda; çerçeveler 444 entegrenin hepsini kapsıyor", () => {
+  it("bilgisayarın her kartının her bloğu diyagramda; çerçeveler 460 entegrenin hepsini kapsıyor", () => {
     const k = diyagramKur("makine");
     const say = k.diyagram.gruplar.filter((g) => g.id !== "arka").length;
     expect(say).toBe(MAKINE_KARTLARI.length);

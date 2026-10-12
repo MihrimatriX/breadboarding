@@ -29,14 +29,14 @@ uçlarındaki **net etiketleriyle** yapılır: aynı adlı iki etiket aynı nett
 
 ## Kartlar ve çip sayıları
 
-**CPU kartı: 194 entegre** (ROM'lu ilk sürüm 146: 7 × SST39SF010A ile)
+**CPU kartı: 210 entegre** (ROM'lu ilk sürüm 146: 7 × SST39SF010A ile)
 
 | Parça | Adet | Nerede |
 |---|---:|---|
 | 74HC151 (8:1 seçici) | 46 | register indeksi (3), sabit birimi (16), mantık birimi (16), koşul birimi (1), kontrol biriminin adım seçicileri (10) |
 | 74HC574 (8 bit register) | 28 | r0..r7 (16), TA/TB/MAR/IR (8), kontrol register'ı (4) |
 | 74HC138 (3→8 çözücü) | 12 | veriyolu kaynağı, register okuma, register yazma; kontrol birimi: adım (2), komut (2), op 13/14 alt çözücü (2); ALU işlem çözücü (3) |
-| 74HC541 (tampon) | 9 | PC, sabit, ALU, bayraklar → veriyolu; bayt okumada yüksek bayt = 0 |
+| 74HC541 (tampon) | 25 | r0..r7 → veriyolu (16), PC, sabit, ALU, bayraklar → veriyolu; bayt okumada yüksek bayt = 0 |
 | 74HC153 (4:1 seçici) | 9 | ALU sonuç seçici (8), C/V seçici (1) |
 | 74HC08 / 32 / 00 / 02 / 86 / 04 / 10 | 17 / 9 / 8 / 5 / 9 / 4 / 7 | yapıştırıcı lojik ve kontrol biriminin kapıları (kart bitince birimler çiplere paketlenir) |
 | 74HC11 / 20 / 21 | 1 / 4 / 4 | kontrol biriminin 3 ve 4 girişli kapıları |
@@ -49,10 +49,37 @@ uçlarındaki **net etiketleriyle** yapılır: aynı adlı iki etiket aynı nett
 
 Kartta ROM yok: kontrol birimi (mikrokod ve ALU kod çözme) 19 MSI çip ve ≈ 38 kapı çipi
 ([mikromimari.md](mikromimari.md), "Kapı seviyesinde kontrol birimi"). Kartın referans aralığı
-U1..U199 (`CARD_REF_BASE`).
+U1..U199 (`CARD_REF_BASE`); sonradan eklenen register tamponlarının son 11'i ve kondansatörleri taşma
+diliminde: U901–U911, C901–C912 (`CARD_REF_TASMA`), öbür çiplerin numaraları değişmedi.
 
 Ayrıca: veriyolu çekme dirençleri (2 × 10 kΩ SIP-9), her entegreye 100 nF, kart girişine 100 µF,
 HALTED ve FAULT LED'leri, 2 × 32 arka panel konnektörü.
+
+**Hata ayıklama LED'leri ve çubuk göstergeler** (James Sharman'ın ve Ben Eater'ın breadboard
+bilgisayarlarındaki gibi; register içeriği dışında entegre yok):
+
+| Gösterge | Adet | Sinyal | Renk |
+|---|---:|---|---|
+| Register okuma / yazma (D3–D18) | 16 | `~ROE0`–`~ROE7`, `~WSEL0`–`~WSEL7` (aktif düşük) | okuma yeşil, yazma turuncu |
+| Veriyolu sürücüsü (D19–D24) | 6 | `~SRC_REG`, `~SRC_ALU`, `~SRC_PC`, `~SRC_MEM`, `~SRC_IMM`, `~SRC_FLAGS` (aktif düşük) | beyaz |
+| Bellek okuma / yazma (D25, D26) | 2 | `MEMRD`, `MEMW` | yeşil, turuncu |
+| Yüklemeler (D27–D32) | 6 | TA (`CW17`), TB (`CW18`), MAR (`CW21`), IR (`CW23`), PC yükleme (`~PC_LOAD`), PC artırma | turuncu |
+| Bayraklar (D33–D37) | 5 | `NFLAG`, `ZFLAG`, `CFLAG`, `VFLAG`, `IFLAG` | mavi |
+| Mikro adım (D38–D41) | 4 | `STEP0`–`STEP3` | sarı |
+| Çubuk göstergeler (DS1–DS10) | 10 | `BUS0`–`15`, `PC1`–`15`, `A0`–`15` (MAR), `IR0`–`15`, `RES0`–`15` (ALU sonucu) | sarı |
+| Register içeriği (DS11–DS26) | 16 | `R0Q0`–`15` … `R7Q0`–`15` (her register'ın 574 çıkışları) | sarı |
+
+Her LED'in yanında 1 kΩ (R3–R41), her çubuk göstergenin önünde 8 × 1 kΩ yalıtılmış direnç dizisi
+(DIP-16, RN3–RN28): LED ve segment başına ≈ 3 mA. Aktif düşük sinyallerde LED VCC'den sinyale
+bağlıdır (VCC → 1 kΩ → LED → sinyal): çıkış 0 olunca yanar. Çubuk göstergede 1. segment bit 0'dır.
+Ayrıntı ve renk kuralları: [kit/led-ve-direnc.md](../kit/led-ve-direnc.md).
+
+Register'ların içeriğini görmek için register'ın 574'leri artık veriyolunu doğrudan sürmez:
+çıkışları hep açıktır (`~OE` = GND) ve `R{r}Q0..15` hatlarındadır; çubuk göstergeler bu hatlara
+bağlıdır. Veriyolunu register başına iki 74HC541 sürer (U195–U199, U901–U911; `~OE1` = `~ROEr`).
+Bedeli 16 çip ve okuma yolunda bir tampon gecikmesi; zamanlama analizinin sonuçları değişmedi (en
+uzun yollar register okumasından geçmez). Bu parça istenirse çıkarılabilir: 541'ler, DS11–DS26 ve
+RN13–RN28 kalkar, 574'lerin `~OE`'si yine `~ROEr`'ye, çıkışları veriyoluna bağlanır.
 
 **Test bellek kartı: 7 entegre.** 64 KB düz RAM (2 × 62256: çift ve tek baytlar) ve 0xFF00'da UART
 çıkış mandalı (74HC574 + 2 × 74HC688 adres karşılaştırıcı). Emülatördeki `SimpleBus` ile birebir aynı
@@ -64,7 +91,7 @@ G/Ç kartı 65 entegre (UART, PS/2, zamanlayıcı, kesme denetleyicisi), video k
 metin), kendin yap bellek kartı 22 entegre (FF40–FF4F, 16 bayt, her bayt bir 74HC574; Deney 14); saat
 kartı bekleme durumuyla 10 entegre. Anakart yalnız yaygın 7400 serisi lojikle ve iki bellek çipiyle
 (62256, 28C256) kurulur ([spec.md](spec.md), "Parçalar"). `buildFullMachineBoard()` bunları CPU
-kartıyla birleştirir (bütün anakart: 444 entegre), `GateMachine` kapı seviyesinde çalıştırır; test bilgisayarı
+kartıyla birleştirir (bütün anakart: 460 entegre), `GateMachine` kapı seviyesinde çalıştırır; test bilgisayarı
 (`buildComputerBoard`, `GateComputer`) olduğu gibi kalır ve deney setinde CPU'nun kurulduğu ilk
 sahnedir (test kartının FF00 mandalı Deney 8'de LED çıkışı olur). Ayrıntı:
 [anakart-kartlari.md](anakart-kartlari.md), [anakart-gc-video.md](anakart-gc-video.md).
@@ -75,8 +102,9 @@ sahnedir (test kartının FF00 mandalı Deney 8'de LED çıkışı olur). Ayrın
   (6 × 74HC138), komut sınıfları ve VEYA ağı (kapılar), adım seçicileri (10 × 74HC151) → `MK0..31` →
   4 × 74HC574 kontrol register'ı (CR). Devreyi `board/kontrol.ts` mikrokoddan üretir
   (`npm run cpu16 -- kontrol`); ayrıntı [mikromimari.md](mikromimari.md).
-- **Register dosyası:** her register iki 74HC574 (düşük/yüksek bayt), çıkışları doğrudan veriyolunda
-  (üç durumlu). İndeks 3 × 74HC151 (RD/RS1/RS2/SP/LR seçimi), okuma ve yazma için iki 74HC138.
+- **Register dosyası:** her register iki 74HC574 (düşük/yüksek bayt), çıkışları hep açık ve çubuk
+  göstergelerde; veriyoluna iki 74HC541 tamponla çıkar (üç durumlu). İndeks 3 × 74HC151
+  (RD/RS1/RS2/SP/LR seçimi), okuma ve yazma için iki 74HC138.
 - **ALU:** 4 × 74HC283 toplayıcı; girişler XOR/AND ile koşullanır (SUB'da B ters, NEG'de A ters,
   PASSB). Mantık birimi her bitte bir 74HC151 *doğruluk tablosu*: seçici girişleri (a, b) bitleri,
   veri girişleri ALU kod çözücüden gelen 4 bitlik işlem tablosu (AND/OR/XOR/…). Yüksek baytta

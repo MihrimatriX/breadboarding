@@ -17,13 +17,16 @@ bir LED'in direnci ya da sürücüsü değişirse çizim de değişir.
 |---|---|---|---|
 | Direnç, karbon film (bej) | 330 Ω | LED'lerin seri direnci (R1, R2, R205) | yönü yok |
 | Direnç, karbon film | 10 kΩ | çekme dirençleri, reset ve buton RC'si (R201, R202, R204, R601–R603) | yönü yok |
-| Direnç, karbon film | 1 kΩ | yavaş osilatörün en küçük direnci (R203) | yönü yok |
+| Direnç, karbon film | 1 kΩ | yavaş osilatörün en küçük direnci (R203); CPU kartının hata ayıklama LED'lerinin seri direnci (R3–R41) | yönü yok |
 | Direnç, metal film (mavi), %1 | 680 Ω, 1,3 kΩ | VGA renk DAC'ı (R701–R706) | yönü yok |
 | Direnç dizisi SIP-9 | 8 × 10 kΩ, "A103J" | veriyolu çekme dirençleri (RN1, RN2, RN401–RN403) | **noktalı uç ortak hatta** |
+| Direnç dizisi DIP-16, yalıtılmış | 8 × 1 kΩ, "4116R-1-102" | çubuk göstergelerin segment dirençleri (RN3–RN28) | **çentik / nokta = 1. bacak** |
 | Seramik disk kondansatör | 100 nF, "104" | her entegrenin dekuplajı (ör. U201'in yanında C205) | yönü yok |
 | Seramik kondansatör | 1 µF, "105" | buton süzgeci, yavaş osilatör (C202, C203) | yönü yok |
 | Elektrolitik kondansatör | 10 µF, 100 µF | reset gecikmesi (C201), kart besleme girişi (C204) | **şerit = eksi** |
 | LED, 3 mm | turuncu, kırmızı, mavi | HALTED (D1), FAULT (D2), CLK (D201) | **uzun bacak = artı** |
+| LED, 3 mm | yeşil, turuncu, beyaz, mavi, sarı | CPU kartının hata ayıklama LED'leri (D3–D41) | **uzun bacak = artı**; aktif düşüklerde artı direnç tarafında, eksi sinyalde |
+| LED çubuk gösterge, 10 segment (DIP-20) | sarı | CPU kartının değer göstergeleri (DS1–DS26) | **1. bacak yazılı yanda**; emin değilsen diyot kipinde ölç |
 | Trimpot | 100 kΩ, "104" | yavaş saat hızı (RV201) | orta uç silecek |
 | Kristal osilatör | 8 MHz, 25,175 MHz | CPU saati (X201), VGA piksel saati (X701) | **sivri köşe = 1. bacak** |
 
@@ -43,7 +46,7 @@ Bu bilgisayardaki değerler:
 | Değer | Bantlar | Nerede |
 |---|---|---|
 | 330 Ω ± %5 | turuncu – turuncu – kahverengi – altın | LED seri direnci |
-| 1 kΩ ± %5 | kahverengi – siyah – kırmızı – altın | yavaş osilatör |
+| 1 kΩ ± %5 | kahverengi – siyah – kırmızı – altın | yavaş osilatör, CPU kartının LED'leri |
 | 10 kΩ ± %5 | kahverengi – siyah – turuncu – altın | çekme dirençleri, RC |
 | 680 Ω ± %1 | mavi – gri – siyah – siyah – kahverengi | VGA DAC renk biti |
 | 1,3 kΩ ± %1 | kahverengi – turuncu – siyah – kahverengi – kahverengi | VGA DAC parlaklık biti |
@@ -75,10 +78,16 @@ ve bu sayfa aynı kuralı kullanır.
 | D2 | FAULT: CPU yasadışı (tanımsız) bir komutta durdu | kırmızı | hata: en çok dikkat çeken renk | ≈ 1,9 V |
 | D1 | HALTED: CPU HALT komutuyla durdu | turuncu (amber) | uyarı, ama hata değil | ≈ 2,0 V |
 | D201 | CLK: CPU saati | mavi | durmadan yanıp söner, öteki durum LED'lerinden ayrı dursun | ≈ 3,1 V |
+| D3, D5 … D17, D25 | r0–r7 okuma (`~ROE0`–`~ROE7`), bellek okuma (`MEMRD`) | yeşil | okuma: bellekten ya da register'dan veriyoluna bir değer çıkıyor | ≈ 2,1 V |
+| D4, D6 … D18, D26–D32 | r0–r7 yazma (`~WSEL0`–`~WSEL7`), bellek yazma (`MEMW`), TA, TB, MAR, IR yükleme, PC yükleme ve artırma | turuncu (amber) | yazma ve yükleme: bu saat kenarında bir register ya da bellek değişecek | ≈ 2,0 V |
+| D19–D24 | veriyolu sürücüsü (`~SRC_REG`, `~SRC_ALU`, `~SRC_PC`, `~SRC_MEM`, `~SRC_IMM`, `~SRC_FLAGS`) | beyaz | veriyolunu süren kaynak; altısından en çok biri yanar | ≈ 3,1 V |
+| D33–D37 | N, Z, C, V, I bayrakları | mavi | ALU'nun durum bitleri, değer göstergelerinden ayrı | ≈ 3,1 V |
+| D38–D41 | mikro adım (`STEP0`–`STEP3`) | sarı | dört bitlik bir sayı, değer göstergeleri gibi | ≈ 2,0 V |
+| DS1–DS26 | çubuk göstergeler: veriyolu, PC, adres (MAR), komut (IR), ALU sonucu, r0–r7'nin içeriği | sarı | değer göstergesi: veri ve adres izleme gibi | ≈ 2,0 V |
 | — | besleme / "her şey yolunda" göstergesi eklersen | yeşil | trafik lambası mantığı | ≈ 2,1 V |
-| — | veri ya da adres hattı izlersen | sarı | izleme LED'leri, durum LED'lerinden ayrı | ≈ 2,0 V |
 
-Kural bu sırayla uygulanır; görevi hiçbirine uymayan LED kırmızıdır.
+Kural bu sırayla uygulanır; görevi hiçbirine uymayan LED kırmızıdır. Kırmızı yalnız hataya kalır
+(FAULT): bir bakışta "bir şey ters gitti" desin.
 
 ## Seri direnç: LED'i her zaman bir dirençle sür
 
@@ -105,9 +114,50 @@ Aynı 330 Ω kırmızı LED'de (D2, Vf ≈ 1,9 V) ≈ 9,4 mA verir. Mavi biraz d
 LED'ler zaten parlaktır; parlaklıkları göz kararı eşittir. 74HC çıkışı bu akımda 0,2–0,4 V düşer,
 gerçek akım hesaptakinden biraz azdır. Bir 74HC çıkışından en çok ± 25 mA çekilir.
 
-**LED'i veriyoluna doğrudan bağlama:** her LED hattı ≈ 6–9 mA yükler; 10 kΩ çekme direnciyle
-tutulan ya da birkaç girişi süren bir hat 1 sayılmayabilir. Veriyolunu izlemek için gösterge
-modülünü (74HC541 + LED + direnç, bkz. [README](README.md)) kullan.
+**LED'i yukarı çekilen bir hatta doğrudan bağlama:** 10 kΩ çekme direnciyle 1 tutulan hat (ör.
+bellek veri yolu `MD0`–`MD7`, `DE`, `DO`) LED'in akımını veremez, gerilimi 2–3 V'a düşer ve
+girişler onu 1 saymayabilir. Böyle bir hattı izlemek için gösterge modülünü (74HC541 + LED +
+direnç, bkz. [README](README.md)) kullan. CPU kartının iç veriyolu (`BUS0`–`BUS15`) ise aşağı
+çekilidir: sürülmezken zaten 0'dır, onu bir 74HC541 ya da 74HC245 sürünce 1 kΩ'luk segment ≈ 3 mA
+çeker; çıkış bunu rahat verir, çubuk gösterge doğrudan bağlanabilir.
+
+## CPU kartının hata ayıklama LED'leri
+
+James Sharman'ın ve Ben Eater'ın breadboard bilgisayarlarındaki gibi CPU kartında her önemli
+hattın bir LED'i, her önemli değerin bir çubuk göstergesi vardır: adım adım çalışırken hangi
+register'ın okunduğu, hangisinin yazılacağı, veriyolunu kimin sürdüğü ve üzerindeki değer bir
+bakışta görülür. Hepsi 1 kΩ ile ≈ 3 mA çeker: 3 mm LED için yeter. 39 LED ve 26 göstergenin 208
+segmenti en kötü durumda (bütün bitler 1) ≈ 0,75 A çeker; değerlerin bitlerinin yarısı genelde 0
+olduğundan gerçekte bunun yarısı kadardır. 5 V 3 A'lik adaptör ([üretim](../docs/uretim.md#4-besleme))
+bunu karşılar, ama CPU kartının beslemesini iki uçtan ver.
+
+**Aktif düşük sinyaller** (`~ROE0`, `~WSEL0`, `~SRC_ALU`, `~PC_LOAD` gibi adının başında `~` olanlar)
+0 iken etkindir. LED'leri ters bağlanır: **VCC → 1 kΩ → LED → sinyal**. Çıkış 0 olunca akımı
+GND'ye çeker, LED yanar; 1 iken iki uç da 5 V'tadır, akım yoktur. Böylece LED her zaman "etkin"
+iken yanar. Takarken: LED'in uzun bacağı (anot) direnç tarafında, kısa bacağı (katot) sinyalde.
+
+![Aktif düşük LED: VCC, direnç, LED ve sinyal](gorseller/seri-direnc.svg)
+
+**Çubuk gösterge** (10 segmentli LED çubuk, DIP-20): bir gövdede on ayrı LED. k. segmentin anodu
+k. bacak, katodu (21 − k). bacaktır: alt sırada 1–10 anotlar, üst sırada 20–11 katotlar. Bir
+baytın sekiz biti 1–8. segmentlerdedir, 9 ve 10 boştur; **soldaki 1. segment bit 0'dır**. Yanan
+segment 1, sönük 0: 0x35 = 0011 0101 → 1., 3., 5. ve 6. segmentler yanar. Her baytın önünde bir
+8 × 1 kΩ yalıtılmış direnç dizisi (DIP-16) durur: k. direnç k. ve (17 − k). bacak arasında; 1–8.
+bacaklar sinyallerde, 16–9. bacaklar segment anotlarında.
+
+| Gösterge | Değer | Blok |
+|---|---|---|
+| DS1, DS2 | iç veriyolu `BUS0`–`BUS15` | Register dosyası |
+| DS3, DS4 | program sayacı `PC1`–`PC15` (PC0 hep 0: 1. segment boş) | Program sayacı |
+| DS5, DS6 | adres `A0`–`A15` (MAR) | MAR ve IR |
+| DS7, DS8 | komut `IR0`–`IR15` | MAR ve IR |
+| DS9, DS10 | ALU sonucu `RES0`–`RES15` | ALU |
+| DS11–DS26 | r0–r7'nin içeriği `R0Q0`–`R7Q15` (DS11, DS12 = r0; DS13, DS14 = r1 … DS25, DS26 = r7) | Register dosyası |
+
+Register içeriği göstergeleri veriyoluna değil register'ın kendi çıkışlarına bağlıdır: register'ın
+74HC574'lerinin çıkışları hep açıktır, veriyolunu onların arkasındaki 74HC541 tamponlar sürer. Bu
+yüzden sekiz register'ın değeri her an görünür ve anahtar girişiyle sürerken bu göstergeleri
+çıkarmak gerekmez.
 
 ## Çekme dirençleri (pull-up, pull-down)
 
@@ -223,7 +273,9 @@ Silikon3D → "CPU16 kartı 3D":
   karttaki görevi, hesapları (LED akımı, çekme akımı, τ) ve bacaklarının canlı seviyesi açılır.
   İlgili elemanlara (LED'in direnci, dekuplaj kondansatörünün çipi) tıklayıp geçebilirsin.
 - **Üstüne gel:** ipucunda tek satır özet, ör. "mavi LED · CLK · ≈ 5,8 mA · yanıyor".
-- **LED'ler canlıdır:** sürdükleri sinyal 1 olunca parlar, halesi ve karttaki ışık lekesi görünür.
+- **LED'ler canlıdır:** sürdükleri sinyal 1 olunca (aktif düşüklerde 0 olunca) parlar, halesi ve
+  karttaki ışık lekesi görünür. Çubuk göstergelerin segmentleri de canlıdır; göstergeye tıklayınca
+  panel değeri ikili, onaltılı ve onlu yazar.
   `kart.yakinlas("D201")` kamerayı CLK LED'ine yaklaştırır; `kart.hiz(2)` ile saati yavaşlatıp
   yanıp sönmesini izle.
 - **Lehim noktaları seviyenin rengindedir** (kırmızı 1, gri 0, mor Z). Simülasyon dirençlerin
