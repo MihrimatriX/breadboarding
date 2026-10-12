@@ -1,12 +1,14 @@
 // CPU16'nın breadboard kurulum belgeleri (yazdırılabilir HTML; PDF'e Chromium ile basılır). Kart
 // başına bir belge: kapak, nasıl okunur (delik adları, raylar, renk kodu, kesim boyu, uyarlayıcı),
-// panonun haritası ve makinedeki yeri, besleme, aşamalar ve testler, board board yerleşim çizimleri,
-// aşama aşama numaralı tel listesi (işaret kutulu, delikten deliğe; her aşamanın sonunda test), renk ve
-// boya göre kesim listesi, malzeme listesi. Bir de dizin: bütün makine, şerit kablo (soketlerin
-// kablodaki yeri, damar → sinyal), besleme, kartların belgeleri.
+// panonun haritası (bölge çerçeveleri), bölümler (her bölgenin ve çip grubunun görevi; metinler
+// cpu16/board/bolum-bilgi.ts) ve makinedeki yeri, besleme, aşamalar ve testler, board board yerleşim
+// çizimleri (üstlerinde çip grupları), aşama aşama numaralı tel listesi (işaret kutulu, delikten
+// deliğe; her aşamanın sonunda test), renk ve boya göre kesim listesi, malzeme listesi. Bir de dizin:
+// bütün makine, şerit kablo (soketlerin kablodaki yeri, damar → sinyal), besleme, kartların belgeleri.
 // npm run cpu16 -- breadboard-belge [kart|hepsi] -o <dizin>
 
 import type { Board } from "../board/board.ts";
+import { BOLUM_STIL, boardGruplari, bolumlerHtml, grupEtiketleri, HARITA, haritaBolgeleri, haritaBoyu, haritaX, haritaY, katalogu } from "../board/breadboard/bolum-belge.ts";
 import { boardaDegiyor, boardCizimi, type CizimSecenekleri } from "../board/breadboard/cizim.ts";
 import { plakaBoyu } from "../board/breadboard/gorunum.ts";
 import { DAGILIM_SINIRLARI, noktaBoardu, ucEtiketi, type BbOlcu, type BbTel } from "../board/breadboard/plan.ts";
@@ -134,7 +136,7 @@ ${olgu(`≈ ${sayi(Math.ceil(plaka.w / 10) * 10)} × ${sayi(Math.ceil(plaka.h / 
 <h3>İçindekiler</h3>
 <ol class="icindekiler">
 <li>Nasıl okunur: delik adları, raylar, renk kodu, kesim boyu, uyarlayıcı</li>
-<li>Panonun haritası ve makinedeki yeri</li>
+<li>Panonun haritası, bölümleri (her bölgenin ve çip grubunun görevi) ve makinedeki yeri</li>
 <li>Besleme</li>
 <li>Aşamalar ve testler</li>
 <li>Board board yerleşim (${o.board} çizim)</li>
@@ -191,34 +193,36 @@ ${y.parcalar.some((q) => q.tur === "modul") ? "<li><b>Modüller</b> (USB-seri CH
 
 function harita(m: MakineBbPlani, p: KartBbPlani): string {
   const y = p.yerlesim;
-  const W = 52, H = 17;
+  const { W, H } = HARITA;
+  const k = katalogu("cpu16", m.board);
   const s: string[] = [];
   const ub = p.tanim.uyarlayici;
   for (const b of y.boards) {
-    const x = b.bx * (W + 1.5), yy = b.by * (H + 1.5) + 7;
+    const x = haritaX(b.bx), yy = haritaY(b.by);
     s.push(`<rect x="${x}" y="${yy}" width="${W}" height="${H}" rx="1" fill="${ASAMA_RENGI[b.asama - 1]}" stroke="#777" stroke-width="0.25"/>`);
     s.push(`<text x="${x + 1.5}" y="${yy + 4}" font-size="3.2" font-weight="700" fill="#333">${b.ad}</text>`);
-    s.push(`<text x="${x + 1.5}" y="${yy + 8.5}" font-size="2.4" fill="#333">${esc(b.rol.length > 34 ? `${b.rol.slice(0, 33)}…` : b.rol)}</text>`);
+    const gruplar = boardGruplari(b.no, y, k, W - 3, 2.2);
+    (gruplar.length ? gruplar : [b.rol.length > 34 ? `${b.rol.slice(0, 33)}…` : b.rol]).forEach((t, i) => s.push(`<text x="${x + 1.5}" y="${yy + 7.7 + 2.9 * i}" font-size="2.2" fill="#333">${esc(t)}</text>`));
     const parcalar = y.parcalar.filter((q) => q.board === b.no);
     const cipler = parcalar.filter((q) => q.cipMi).length;
     const ek = [parcalar.some((q) => q.tur === "uyarlayici") ? "uyarlayıcı" : "", parcalar.some((q) => q.part === "CONN_5V") ? "5 V girişi" : ""].filter(Boolean).join(" · ");
-    s.push(`<text x="${x + 1.5}" y="${yy + 13}" font-size="2.2" fill="#666">${cipler} çip · ${b.asama}. aşama${ek ? ` · ${ek}` : ""}</text>`);
-    if (b.bx === ub.bx && b.by === ub.by) s.push(`<rect x="${x + 14}" y="${yy + (p.tanim.sira === "arka" ? H - 2.2 : 0.2)}" width="${W - 28}" height="2" fill="#2d3a2f"/>`);
+    s.push(`<text x="${x + 1.5}" y="${yy + 14.6}" font-size="2.1" fill="#666">${cipler} çip · ${b.asama}. aşama${ek ? ` · ${ek}` : ""}</text>`);
+    if (b.bx === ub.bx && b.by === ub.by) s.push(`<rect x="${x + 14}" y="${yy + (p.tanim.sira === "arka" ? H - 1.7 : 0.2)}" width="${W - 28}" height="1.5" fill="#2d3a2f"/>`);
   }
-  const w = y.nx * (W + 1.5);
-  const h = y.ny * (H + 1.5) + 14;
+  const bolgeler = haritaBolgeleri(p.kart, y.boards, k);
+  s.push(bolgeler.svg);
+  const { w, h } = haritaBoyu(y.nx, y.ny);
   const arka = p.tanim.sira === "arka";
   s.push(`<text x="${w / 2}" y="4" font-size="3" text-anchor="middle" fill="#555">${arka ? "arka kenar" : "arka kenar: koridor, şerit kablo"}</text>`);
   s.push(`<text x="${w / 2}" y="${h - 2}" font-size="3" text-anchor="middle" fill="#555">${arka ? "ön kenar: koridor, şerit kablo" : "ön kenar (sana yakın)"}</text>`);
   const lejant = p.asamalar.map((a) => `<span><span class="bk" style="background:${ASAMA_RENGI[a.no - 1]}"></span>${a.no}. ${esc(a.ad)}</span>`).join("");
-  const bolgeler = Object.values(p.tanim.bolgeler).map((b) => `<li><b>${esc(b.ad)}</b>: ${esc(b.bloklar.join(", "))}</li>`).join("");
   return `<section class="bolum akar">
-<h2>2. Panonun haritası</h2>
-<p>Bölgeler veri akışı sırasıyla: uyarlayıcının yanında arka panele en çok bağlanan bloklar, ondan uzakta iç bloklar. Mantık çipleri bölgelerinin board'larına tel boyu en kısa olacak biçimde dağıtılmıştır; board başına en çok ${p.tanim.yuva} çip (çiplerin arasında tellere yer kalır).</p>
-<ul class="kucuk">${bolgeler}</ul>
+<h2>2. Panonun haritası ve bölümleri</h2>
+<p>Bölgeler veri akışı sırasıyla: uyarlayıcının yanında arka panele en çok bağlanan bloklar, ondan uzakta iç bloklar. Mantık çipleri bölgelerinin board'larına tel boyu en kısa olacak biçimde dağıtılmıştır; board başına en çok ${p.tanim.yuva} çip (çiplerin arasında tellere yer kalır). Her bölge renkli bir çerçeveyle sarılı, etiketi sol üst köşesinde; board'ların ikinci satırı üstündeki çip grupları.</p>
 <div class="lejant">${lejant}</div>
-<figure class="harita"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-1 0 ${w + 1} ${h}" width="${Math.min(186, 40 * y.nx + 20)}mm" font-family="DejaVu Sans, Arial, sans-serif">${s.join("")}</svg>
-<figcaption>Board'lar, görevleri ve takıldıkları aşama; koyu şerit: şerit kablo uyarlayıcısı. Üstten bakış; BB01 sol arka köşe.</figcaption></figure>
+<figure class="harita"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 0 ${w + 4} ${h}" width="${Math.min(186, 40 * y.nx + 20)}mm" font-family="DejaVu Sans, Arial, sans-serif">${s.join("")}</svg>
+<figcaption>Board'lar, çip grupları ve takıldıkları aşama (zemin rengi); renkli çerçeve: bölge; koyu şerit: şerit kablo uyarlayıcısı. Üstten bakış; BB01 sol arka köşe.</figcaption></figure>
+${bolumlerHtml(p.kart, y, k, "Bölümler: her bölgenin görevi ve çip grupları", "5. bölüm")}
 <h3>Makinedeki yeri</h3>
 <figure class="harita">${makineHaritasi(m, p.kart, 150)}<figcaption>Yedi pano iki sıra halinde koridora bakar; şerit kablo koridorda uzanır, her panonun uyarlayıcısına bir IDC soketiyle iner.</figcaption></figure>
 </section>`;
@@ -273,6 +277,7 @@ function parcaBasligi(board: Board, q: BbParca): string {
 
 function boardBolumu(board: Board, p: KartBbPlani): string {
   const y = p.yerlesim;
+  const cizim: CizimSecenekleri = { ...CIZIM, grup: grupEtiketleri(p.kart, y, katalogu("cpu16", board)) };
   const out: string[] = [];
   for (const b of y.boards) {
     const teller = p.teller.filter((t) => boardaDegiyor(t, b));
@@ -285,13 +290,13 @@ function boardBolumu(board: Board, p: KartBbPlani): string {
     const kendi = p.teller.filter((t) => noktaBoardu(y, t.yol[0], t.yol[1]) === b.no || noktaBoardu(y, t.yol[t.yol.length - 2], t.yol[t.yol.length - 1]) === b.no).length;
     out.push(`<article class="board">
 <h3>${b.ad} · ${esc(b.rol)} <span class="muted kucuk">(${b.asama}. aşama · ${y.parcalar.filter((q) => q.board === b.no && q.cipMi).length} çip · ${dekuplaj} kondansatör üst raylarda · bu board'da ucu olan ${kendi} tel)</span></h3>
-<figure class="harita">${boardCizimi(y, b, teller, renkHex, CIZIM)}</figure>
+<figure class="harita">${boardCizimi(y, b, teller, renkHex, cizim)}</figure>
 ${satir ? `<table class="tablo kucuk"><thead><tr><th style="width:14mm">Parça</th><th>Ne</th><th style="width:16mm">1. bacak</th><th class="sag" style="width:10mm">Aşama</th><th>Görevi</th></tr></thead><tbody>${satir}</tbody></table>` : ""}
 </article>`);
   }
   return `<section class="bolum">
 <h2>5. Board board yerleşim</h2>
-<p>Her board üstten, ön kenar aşağıda. Çipler koyu (çentik solda, nokta 1. bacak), geniş çipler d–h satırlarında, osilatör gri, uyarlayıcı koyu yeşil (kırmızı işaret 1. pin), 100 nF'lar üst rayların arasında turuncu, 100 µF'lar mavi daire, besleme girişleri siyah. Teller kendi renginde, uçları yuvarlak; board dışına çıkan teller kenarda kesilir. Tablo: parçalar soldan sağa, 1. bacağının deliği ve takıldığı aşama.</p>
+<p>Her board üstten, ön kenar aşağıda; üstünde çip grupları (köşeli çizgi grubun sütunlarını kapsar, rengi bölgenin rengi; 2. bölümdeki "Bölümler"de görevleriyle). Çipler koyu (çentik solda, nokta 1. bacak), geniş çipler d–h satırlarında, osilatör gri, uyarlayıcı koyu yeşil (kırmızı işaret 1. pin), 100 nF'lar üst rayların arasında turuncu, 100 µF'lar mavi daire, besleme girişleri siyah. Teller kendi renginde, uçları yuvarlak; board dışına çıkan teller kenarda kesilir. Tablo: parçalar soldan sağa, 1. bacağının deliği ve takıldığı aşama.</p>
 ${out.join("\n")}
 </section>`;
 }
@@ -404,7 +409,7 @@ export function kartBbBelgesi(m: MakineBbPlani, p: KartBbPlani, o: BelgeSecenekl
     kapak(p, olcu, b, o.tarih), nasilOkunur(p, olcu, sirali), harita(m, p), besleme(p, b, m.board), asamalar(p), boardBolumu(m.board, p),
     telListesi(p, sirali), kesimListesi(p.teller, olcu, "7"), malzeme(m.board, p, olcu, b),
   ].join("\n");
-  return htmlBelge(`CPU16 · ${p.tanim.baslik} · breadboard kurulumu`, govde, `${kartAdi(p)}: ${olcu.board} breadboard, ${olcu.tel} atlama teli delikten deliğe, aşama aşama`).replace("</style>", `${EK_STIL}</style>`);
+  return htmlBelge(`CPU16 · ${p.tanim.baslik} · breadboard kurulumu`, govde, `${kartAdi(p)}: ${olcu.board} breadboard, ${olcu.tel} atlama teli delikten deliğe, aşama aşama`).replace("</style>", `${EK_STIL}${BOLUM_STIL}</style>`);
 }
 
 // ---------------------------------------------------------------- dizin: bütün makine

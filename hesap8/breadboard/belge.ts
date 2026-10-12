@@ -1,11 +1,13 @@
 // Hesap makinesinin breadboard kurulum belgesi (yazdırılabilir HTML; PDF'e Chromium ile basılır):
-// kapak, nasıl okunur (delik adları, raylar, renk kodu, kesim boyu), board haritası, board board
-// yerleşim çizimleri (parçalar ve o board'daki teller), aşama aşama numaralı tel listesi (işaret
-// kutulu, delikten deliğe), renk ve boya göre kesim listesi, malzeme listesi.
+// kapak, nasıl okunur (delik adları, raylar, renk kodu, kesim boyu), board haritası (bölge
+// çerçeveleri) ve bölümler (her bölgenin ve çip grubunun görevi; metinler hesap8/bolum-metin.ts),
+// board board yerleşim çizimleri (parçalar, o board'daki teller, üstlerinde çip grupları), aşama aşama
+// numaralı tel listesi (işaret kutulu, delikten deliğe), renk ve boya göre kesim listesi, malzeme listesi.
 // npm run hesap8 -- breadboard-belge -o <dizin>
 
 import { PASSIVES } from "../../cpu16/board/passives.ts";
 import { esc, htmlBelge, kutu } from "../../cpu16/kurulum/stil.ts";
+import { BOLUM_STIL, boardGruplari, bolumlerHtml, grupEtiketleri, HARITA, haritaBolgeleri, haritaBoyu, haritaX, haritaY, katalogu } from "../../cpu16/board/breadboard/bolum-belge.ts";
 import { boardaDegiyor, boardCizimi as cizim, BW, type CizimSecenekleri } from "../../cpu16/board/breadboard/cizim.ts";
 import { ADIM, BY_ADIM } from "./geometri.ts";
 import { bbOlcu, noktaBoardu, ucEtiketi, type BbOlcu, type BbPlani, type BbTel } from "./plan.ts";
@@ -40,7 +42,8 @@ const CIZIM: CizimSecenekleri = {
   sipYazisi: (p) => `${p.ref} 10 kΩ × 8`,
   ledRengi: (p) => (/ISLEM/.test(p.rol) ? "#3fb34f" : "#e0352b"),
 };
-const boardCizimi = (plan: BbPlani, b: BbBoard, teller: BbTel[]) => cizim(plan.yerlesim, b, teller, (t) => renkTanimi(t.renk).hex, CIZIM);
+const boardCizimi = (plan: BbPlani, b: BbBoard, teller: BbTel[]) =>
+  cizim(plan.yerlesim, b, teller, (t) => renkTanimi(t.renk).hex, { ...CIZIM, grup: grupEtiketleri("hesap", plan.yerlesim, katalogu("hesap", plan.kart.board)) });
 
 // ---------------------------------------------------------------- bölümler
 
@@ -64,7 +67,7 @@ ${olgu(`≈ ${sayi(Math.ceil((plan.yerlesim.nx * BW + 30) / 10) * 10)} × ${sayi
 <h3>İçindekiler</h3>
 <ol class="icindekiler">
 <li>Nasıl okunur: delik adları, raylar, renk kodu, kesim boyu</li>
-<li>Board haritası</li>
+<li>Board haritası ve bölümler (her bölgenin ve çip grubunun görevi)</li>
 <li>Aşamalar ve testler</li>
 <li>Board board yerleşim (${o.board} çizim)</li>
 <li>Tel listesi (T0001–T${String(o.tel).padStart(4, "0")}), aşama aşama</li>
@@ -111,29 +114,32 @@ function nasilOkunur(plan: BbPlani, o: BbOlcu): string {
 
 function harita(plan: BbPlani): string {
   const y = plan.yerlesim;
-  const W = 52, H = 17;
+  const { W, H } = HARITA;
+  const k = katalogu("hesap", plan.kart.board);
   const s: string[] = [];
   for (const b of y.boards) {
-    const x = b.bx * (W + 1.5), yy = b.by * (H + 1.5) + 7;
+    const x = haritaX(b.bx), yy = haritaY(b.by);
     s.push(`<rect x="${x}" y="${yy}" width="${W}" height="${H}" rx="1" fill="${ASAMA_RENGI[b.asama - 1]}" stroke="#777" stroke-width="0.25"/>`);
     s.push(`<text x="${x + 1.5}" y="${yy + 4}" font-size="3.2" font-weight="700" fill="#333">${b.ad}</text>`);
     const rol = b.rol.replace(/^Gösterge: /, "Gösterge ").replace(/^Onluğa çevirme: /, "Onluk ").replace(/^Sürücüler: /, "Sürücü ");
-    s.push(`<text x="${x + 1.5}" y="${yy + 8.5}" font-size="2.4" fill="#333">${esc(rol.length > 34 ? `${rol.slice(0, 33)}…` : rol)}</text>`);
+    const gruplar = boardGruplari(b.no, y, k, W - 3, 2.2);
+    (gruplar.length ? gruplar : [rol.length > 34 ? `${rol.slice(0, 33)}…` : rol]).forEach((t, i) => s.push(`<text x="${x + 1.5}" y="${yy + 7.7 + 2.9 * i}" font-size="2.2" fill="#333">${esc(t)}</text>`));
     const cipler = y.parcalar.filter((p) => p.board === b.no && p.cipMi).length;
     const diger = y.parcalar.filter((p) => p.board === b.no && !p.cipMi && p.tur !== "kondansator").length;
-    s.push(`<text x="${x + 1.5}" y="${yy + 13}" font-size="2.2" fill="#666">${cipler} çip${diger ? ` · ${diger} parça` : ""} · ${b.asama}. aşama</text>`);
+    s.push(`<text x="${x + 1.5}" y="${yy + 14.6}" font-size="2.1" fill="#666">${cipler} çip${diger ? ` · ${diger} parça` : ""} · ${b.asama}. aşama</text>`);
   }
-  const w = y.nx * (W + 1.5);
-  const h = y.ny * (H + 1.5) + 14;
+  s.push(haritaBolgeleri("hesap", y.boards, k).svg);
+  const { w, h } = haritaBoyu(y.nx, y.ny);
   s.push(`<text x="${w / 2}" y="4" font-size="3" text-anchor="middle" fill="#555">arka kenar: göstergeler</text>`);
   s.push(`<text x="${w / 2}" y="${h - 2}" font-size="3" text-anchor="middle" fill="#555">ön kenar (sana yakın): anahtarlar</text>`);
   const lejant = plan.asamalar.map((a) => `<span><span class="bk" style="background:${ASAMA_RENGI[a.no - 1]}"></span>${a.no}. ${esc(a.ad)}</span>`).join("");
   return `<section class="bolum">
-<h2>2. Board haritası</h2>
-<p>Veri akışı önden arkaya: anahtarlar (ön kenar) → toplama, çarpma, bölme → sonuç seçici → ikilikten onluğa çevirme → 74HC4511 sürücüler → göstergeler (arka kenar). A ve B'nin onluk göstergeleri solda, sonucunki ortada, kalanınki sağda. Board başına en çok 5 çip; çiplerin arasında tellere yer kalır.</p>
+<h2>2. Board haritası ve bölümler</h2>
+<p>Veri akışı önden arkaya: anahtarlar (ön kenar) → toplama, çarpma, bölme → sonuç seçici → ikilikten onluğa çevirme → 74HC4511 sürücüler → göstergeler (arka kenar). A ve B'nin onluk göstergeleri solda, sonucunki ortada, kalanınki sağda. Board başına en çok 5 çip; çiplerin arasında tellere yer kalır. Her bölge renkli bir çerçeveyle sarılı, etiketi sol üst köşesinde; board'ların ikinci satırı üstündeki çip grupları.</p>
 <div class="lejant">${lejant}</div>
-<figure class="harita"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-1 0 ${w + 1} ${h}" width="186mm" font-family="DejaVu Sans, Arial, sans-serif">${s.join("")}</svg>
-<figcaption>Board'lar, işleri ve takıldıkları aşama. Üstten bakış; BB01 sol arka köşe.</figcaption></figure>
+<figure class="harita"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 0 ${w + 4} ${h}" width="186mm" font-family="DejaVu Sans, Arial, sans-serif">${s.join("")}</svg>
+<figcaption>Board'lar, çip grupları ve takıldıkları aşama (zemin rengi); renkli çerçeve: bölge. Üstten bakış; BB01 sol arka köşe.</figcaption></figure>
+${bolumlerHtml("hesap", y, k, "Bölümler: her bölgenin görevi ve çip grupları", "4. bölüm")}
 </section>`;
 }
 
@@ -177,7 +183,7 @@ ${satir ? `<table class="tablo kucuk"><thead><tr><th style="width:14mm">Parça</
   }
   return `<section class="bolum">
 <h2>4. Board board yerleşim</h2>
-<p>Her board üstten, ön kenar aşağıda. Çipler koyu (çentik solda, nokta 1. bacak), DIP anahtarlar mavi, 470 Ω diziler gri, göstergeler büyük koyu kutular; 100 nF'lar üst rayların arasında turuncu. Teller kendi renginde (beyaz teller ince koyu kenarlı), uçları yuvarlak; board dışına çıkan teller kenarda kesilir. Tablo: parçalar soldan sağa, 1. bacağının deliği.</p>
+<p>Her board üstten, ön kenar aşağıda; üstünde çip grupları (köşeli çizgi grubun sütunlarını kapsar, rengi bölgenin rengi; 2. bölümdeki "Bölümler"de görevleriyle). Çipler koyu (çentik solda, nokta 1. bacak), DIP anahtarlar mavi, 470 Ω diziler gri, göstergeler büyük koyu kutular; 100 nF'lar üst rayların arasında turuncu. Teller kendi renginde (beyaz teller ince koyu kenarlı), uçları yuvarlak; board dışına çıkan teller kenarda kesilir. Tablo: parçalar soldan sağa, 1. bacağının deliği.</p>
 ${out.join("\n")}
 </section>`;
 }
@@ -277,5 +283,5 @@ export interface BelgeSecenekleri {
 export function bbBelgesi(plan: BbPlani, o: BelgeSecenekleri = {}): string {
   const olcu = bbOlcu(plan);
   const govde = [kapak(plan, olcu, o.eskiTel, o.tarih), nasilOkunur(plan, olcu), harita(plan), asamalar(plan), boardBolumu(plan), telListesi(plan), kesimListesi(plan, olcu), malzeme(plan, olcu)].join("\n");
-  return htmlBelge("8 bit hesap makinesi · breadboard kurulumu", govde, "60 breadboard, atlama telleri delikten deliğe, aşama aşama").replace("</style>", `${EK_STIL}</style>`);
+  return htmlBelge("8 bit hesap makinesi · breadboard kurulumu", govde, "60 breadboard, atlama telleri delikten deliğe, aşama aşama").replace("</style>", `${EK_STIL}${BOLUM_STIL}</style>`);
 }
