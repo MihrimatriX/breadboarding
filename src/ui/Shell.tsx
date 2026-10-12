@@ -14,6 +14,7 @@ import { baslangiciAc } from "./Baslangic";
 import { Simge } from "./simgeler";
 import { useAyar, type TemaSecimi } from "./ayarlar";
 import { useSikisma } from "./sikisma";
+import { useT } from "./ceviri";
 
 // ---------------------------------------------------------------- düzen tercihleri
 
@@ -93,6 +94,7 @@ const ORTAK_KISAYOLLAR: Shortcut[] = [
   { keys: "F", what: "Odak modu: yan ve alt panelleri gizle / göster" },
   { keys: "T", what: "Tema: koyu / açık" },
   { keys: "Y", what: "Yazı boyutu: normal / büyük" },
+  { keys: "L", what: "Dil: Türkçe / English" },
   { keys: "?", what: "Başlangıç: bölümler ve ipuçları" },
 ];
 
@@ -117,6 +119,7 @@ export function AppHeader({ mode, context, meters, shortcuts }: { mode: Mode; co
       <div className="appbar-end">
         {meters && <div className="meter" role="group" aria-label="Canlı ölçümler">{meters}</div>}
         <div className="appbar-tools">
+          <DilDugmesi />
           <TemaDugmesi />
           <GorunumMenusu />
           <Menu label={<><Simge ad="klavye" boyut={18} /> <span className="menu-label">Kısayollar</span></>} title="Klavye ve fare kısayolları" className="icon-btn" align="end">
@@ -136,6 +139,24 @@ export function AppHeader({ mode, context, meters, shortcuts }: { mode: Mode; co
         </div>
       </div>
     </header>
+  );
+}
+
+/** Türkçe ↔ İngilizce (L). Düğmede geçilecek dilin kısaltması yazar. */
+function DilDugmesi() {
+  const dil = useAyar((s) => s.dil);
+  const t = useT();
+  return (
+    <button
+      className="icon-btn dil-btn"
+      onClick={() => useAyar.getState().dilSec(dil === "tr" ? "en" : "tr")}
+      aria-label={t("Switch to English", "Türkçeye geç")}
+      lang={dil === "tr" ? "en" : "tr"}
+      data-tip={t("English (L)", "Türkçe (L)")}
+      data-tip-hiza="son"
+    >
+      {dil === "tr" ? "EN" : "TR"}
+    </button>
   );
 }
 
@@ -167,6 +188,8 @@ function GorunumMenusu() {
   const secim = useAyar((s) => s.secim);
   const boyut = useAyar((s) => s.boyut);
   const odak = useAyar((s) => s.odak);
+  const dil = useAyar((s) => s.dil);
+  const t = useT();
   const a = useAyar.getState();
   return (
     <Menu label={<Simge ad="ayarlar" boyut={20} />} title="Görünüm: tema, yazı boyutu, odak modu" className="icon-btn tasma" align="end">
@@ -186,6 +209,13 @@ function GorunumMenusu() {
           <button className={boyut === "buyuk" ? "on" : ""} aria-pressed={boyut === "buyuk"} onClick={() => a.boyutSec("buyuk")}>Büyük</button>
         </span>
       </div>
+      <div className="ayar-satiri">
+        <span>{t("Dil", "Language")}</span>
+        <span className="seg" role="group" aria-label={t("Dil", "Language")}>
+          <button className={dil === "tr" ? "on" : ""} aria-pressed={dil === "tr"} lang="tr" onClick={() => a.dilSec("tr")}>Türkçe</button>
+          <button className={dil === "en" ? "on" : ""} aria-pressed={dil === "en"} lang="en" onClick={() => a.dilSec("en")}>English</button>
+        </span>
+      </div>
       <label className="ayar-satiri chk">
         <span>Odak modu: paneller gizli</span>
         <input type="checkbox" checked={odak} onChange={(e) => a.odakSec(e.target.checked)} />
@@ -195,6 +225,7 @@ function GorunumMenusu() {
         <span><kbd>T</kbd> tema</span>
         <span><kbd>Y</kbd> yazı boyutu</span>
         <span><kbd>F</kbd> odak modu</span>
+        <span><kbd>L</kbd> {t("dil", "language")}</span>
       </p>
     </Menu>
   );

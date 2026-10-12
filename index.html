@@ -6,20 +6,22 @@
     <meta name="color-scheme" content="dark light" />
     <meta name="theme-color" content="#1b1f25" />
     <script>
-      // Tema ve yazı boyutu ilk boyamadan önce (src/ui/ayarlar.ts ile aynı anahtarlar): sayfa açılırken
+      // Tema, yazı boyutu ve kayıtlı dil ilk boyamadan önce (src/ui/ayarlar.ts ile aynı anahtarlar): sayfa açılırken
       // yanlış temada parlamasın. Tema seçilmemişse işletim sisteminin tercihi.
       (function () {
-        var t = null, b = null, o = null;
+        var t = null, b = null, o = null, d = null;
         try {
           t = localStorage.getItem("silikon3d.tema");
           b = localStorage.getItem("silikon3d.boyut");
           o = localStorage.getItem("silikon3d.odak");
+          d = localStorage.getItem("silikon3d.dil");
         } catch (e) {}
         if (t !== "koyu" && t !== "acik") t = window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches ? "acik" : "koyu";
         var k = document.documentElement;
         k.setAttribute("data-tema", t);
         k.setAttribute("data-boyut", b === "buyuk" ? "buyuk" : "normal");
         k.setAttribute("data-odak", o === "1" ? "1" : "0");
+        if (d === "tr" || d === "en") k.setAttribute("lang", d);
       })();
     </script>
     <meta name="description" content="Silikon3D: bir bilgisayarı transistörden karta kadar tarayıcıda, 3D ve canlı sinyallerle çalıştırır." />

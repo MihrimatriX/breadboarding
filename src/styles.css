@@ -440,6 +440,7 @@ textarea { display: block; width: 100%; resize: vertical; font-size: var(--fs-ba
 .icon-btn:hover:not(:disabled) { color: var(--text); background: var(--surface-2); border-color: transparent; }
 .icon-btn[aria-pressed="true"] { color: var(--accent); background: var(--accent-soft); border-color: transparent; }
 .icon-btn .simge-yazi { font: 600 var(--fs-base)/1 var(--sans); letter-spacing: -0.02em; }
+.dil-btn { font: 600 var(--fs-sm)/1 var(--sans); letter-spacing: 0.02em; }
 
 .chk { display: inline-flex; align-items: center; gap: var(--sp-2); min-height: var(--ctl-h-sm); font: var(--fs-base) var(--body); color: var(--text-muted); cursor: pointer; white-space: nowrap; }
 .chk:hover { color: var(--text); }
