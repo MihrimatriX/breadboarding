@@ -3,7 +3,10 @@
 //   npm run hesap8 -- hesapla 255 x 7      kapı seviyesi devreyi çalıştır, göstergeleri yaz (+ - x /)
 //   npm run hesap8 -- dogrula              2000 örnek + uç durumlar, altın modelle karşılaştır
 //   npm run hesap8 -- dogrula --hepsi      bütün 4 × 256 × 256 = 262 144 durum (iş parçacıklarına bölünür)
+//   npm run hesap8 -- breadboard           breadboard planı: ölçüler, bağlantının netlistle doğrulanması
+//   npm run hesap8 -- breadboard --uret    yerleşimi ve telleri yeniden üret (hesap8/breadboard/veri.ts)
 
+import { writeFileSync } from "node:fs";
 import { availableParallelism } from "node:os";
 import { isMainThread, parentPort, Worker, workerData } from "node:worker_threads";
 import { erc } from "../cpu16/board/board.ts";
@@ -11,9 +14,33 @@ import { birlesimselYol } from "../cpu16/board/zamanlama.ts";
 import { buildHesapBoard, ISLEMLER } from "./kart.ts";
 import { beklenen, ornekDurumlar, type Durum, type Gorunum, type IslemKodu } from "./model.ts";
 import { HesapSim } from "./sim.ts";
+import { bbDogrula } from "./breadboard/dogrulama.ts";
+import { bbOlcu, bbPlani, bbPlaniUret, type BbPlani, type BbVeri } from "./breadboard/plan.ts";
+import { renkTanimi } from "./breadboard/renk.ts";
 
 const ayni = (x: Gorunum, y: Gorunum) => x.a === y.a && x.b === y.b && x.sonuc === y.sonuc && x.kalan === y.kalan && x.hata === y.hata;
 const goster = (g: Gorunum) => `A [${g.a}]  B [${g.b}]  sonuç [${g.sonuc}]  kalan [${g.kalan}]${g.hata ? "  HATA" : ""}`;
+
+/** Üretilen breadboard verisinin kaynak dosyası */
+function veriDosyasi(v: BbVeri): string {
+  const dizi = (a: string[]) => a.map((x) => `    ${JSON.stringify(x)},`).join("\n");
+  return `// Breadboard yerleşimi ve telleri: ÜRETİLİR, elle değiştirme (npm run hesap8 -- breadboard --uret).
+// Mantık çiplerinin yerleri ("ref|board|1. pinin sütunu") ve kurulum sırasıyla teller ("net|aşama|r: ray
+// köprüsü|yol": başlangıç deliği "X,Y" ızgarada, sonra parçalar R/L/D/U + adım). plan.ts okur.
+
+import type { BbVeri } from "./plan.ts";
+
+export const BB_VERI: BbVeri = {
+  parmakIzi: ${JSON.stringify(v.parmakIzi)},
+  cipler: [
+${dizi(v.cipler)}
+  ],
+  teller: [
+${dizi(v.teller)}
+  ],
+};
+`;
+}
 
 /** Durumları sırayla devreye uygula; farklı çıkanları döndür (en çok `sinir` tane) */
 function sina(sim: HesapSim, durumlar: Iterable<Durum>, sinir = 20): { sayi: number; farklar: string[] } {
@@ -130,8 +157,36 @@ if (!isMainThread) {
       }
       console.log(`${r.sayi} durumun hepsi altın modelle aynı (${sn} s); bütün durumlar için: dogrula --hepsi`);
     }
+  } else if (cmd === "breadboard") {
+    let plan: BbPlani;
+    if (rest.includes("--uret")) {
+      const t = performance.now();
+      const r = bbPlaniUret(buildHesapBoard(), { log: (x) => console.log(`  ${x}`) });
+      writeFileSync(new URL("./breadboard/veri.ts", import.meta.url), veriDosyasi(r.veri));
+      console.log(`hesap8/breadboard/veri.ts yazıldı (${((performance.now() - t) / 1000).toFixed(1)} s): ${r.binme} üst üste binen tel parçası, ${r.kesisme} kesişme`);
+      plan = r.plan;
+    } else {
+      plan = bbPlani();
+    }
+    const d = bbDogrula(plan.kart.board, plan.yerlesim, plan.teller);
+    const o = bbOlcu(plan);
+    const sayi = (n: number) => n.toLocaleString("tr-TR");
+    console.log(`Breadboard: ${o.board} board (BB830), ${sayi(plan.yerlesim.parcalar.length)} parça, ${sayi(o.tel)} atlama teli`);
+    console.log(`  ray köprüsü: ${o.rayIc} board içi (üst ↔ alt ray çifti), ${o.rayArasi} board'lar arası`);
+    console.log(`  delikten deliğe ${o.toplamM.toFixed(1)} m, kesim (uçlar dahil) ${o.kesimM.toFixed(1)} m, ortalama ${o.ortalamaMm.toFixed(0)} mm, en uzun ${o.enUzunMm.toFixed(0)} mm`);
+    let alt = 0;
+    console.log(`  kesim boyu: ${o.dagilim.map(([s, n]) => { const x = `${alt}–${s === Infinity ? "" : s} mm: ${n}`; alt = s; return x; }).join(", ")}`);
+    console.log(`  renkler: ${o.renkler.map((r) => `${renkTanimi(r.renk).ad} ${r.sayi} (${r.kesimM.toFixed(1)} m)`).join(", ")}`);
+    console.log(`  aşamalar: ${o.asamalar.map((a) => `${a.no}. ${a.tel}`).join(", ")}`);
+    console.log(`Bağlantı (yalnız fiziksel modelden, birleşim-bul): ${d.netSayisi} net, ${d.pinSayisi} bacak, ${d.telSayisi} tel`);
+    if (d.hatalar.length) {
+      console.log(d.hatalar.slice(0, 40).join("\n"));
+      console.log(`${d.hatalar.length} SORUN`);
+      process.exit(1);
+    }
+    console.log("  netlistle birebir aynı: açık devre yok, kısa devre yok, her bacak bir delikte, hiçbir delikte iki şey yok, gövde ve tel ucu üstünden geçen tel yok");
   } else {
-    console.error(`bilinmeyen komut: ${cmd} (ozet | hesapla | dogrula [--hepsi])`);
+    console.error(`bilinmeyen komut: ${cmd} (ozet | hesapla | dogrula [--hepsi] | breadboard [--uret])`);
     process.exit(1);
   }
 }
