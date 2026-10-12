@@ -110,6 +110,16 @@
   padding: var(--sp-7) var(--gutter) var(--sp-9);
 }
 .bl-bas { grid-area: bas; min-width: 0; }
+/* dil İngilizceyken İngilizcesi olmayan belgenin üstünde */
+.bl-dil-notu {
+  margin-bottom: var(--sp-5);
+  padding: var(--sp-2) var(--sp-4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-inset);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
 .bl-metin { grid-area: metin; position: relative; min-width: 0; min-height: 50vh; }
 
 /* bu sayfada: dar ve orta ekranda başlıkla metnin arasında kapalı kutu */

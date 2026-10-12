@@ -1,6 +1,7 @@
-// Belgeler bölümü: markdown ayrıştırıcısı (src/belgeler/md.ts), dizin, adresler ve arama
-// (src/belgeler/katalog.ts). Son bölüm depodaki gerçek belgeleri okur: dizindeki her belge var, ayrıştırma
-// tablo ya da kod çitini paragrafta bırakmıyor, belgeler arası her bağlantının çapası bir başlığa denk geliyor.
+// Belgeler bölümü: markdown ayrıştırıcısı (src/belgeler/md.ts), dizin, adresler, iki dil ve arama
+// (src/belgeler/katalog.ts). Son bölüm depodaki gerçek belgeleri okur (İngilizce .en.md'ler de): dizindeki
+// her belge var, her .en.md'nin Türkçe eşi var, ayrıştırma tablo ya da kod çitini paragrafta bırakmıyor,
+// belgeler arası her bağlantının çapası bağlandığı dosyadaki bir başlığa denk geliyor.
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -10,6 +11,8 @@ import {
   GITHUB,
   belgeHash,
   belgelerdeAra,
+  dosyaSec,
+  enYolu,
   gorselCoz,
   hashCoz,
   hedefCoz,
@@ -17,6 +20,7 @@ import {
   katla,
   komsular,
   metindeAra,
+  trYolu,
   yolBirlestir,
 } from "../src/belgeler/katalog.ts";
 
@@ -231,15 +235,85 @@ describe("dizin ve arama", () => {
   });
 });
 
+describe("iki dil", () => {
+  const dosyalar = ["docs/README.md", "cpu16/docs/spec.md", "cpu16/docs/spec.en.md", "cpu16/kit/deney-01-saat.md", "yeni/belge.md", "yetim.en.md"];
+  const dosyaVar = (y: string) => dosyalar.includes(y);
+
+  it("İngilizce dosya adı ve Türkçe eşi", () => {
+    expect(enYolu("cpu16/docs/spec.md")).toBe("cpu16/docs/spec.en.md");
+    expect(trYolu("cpu16/docs/spec.en.md")).toBe("cpu16/docs/spec.md");
+    expect(trYolu("cpu16/docs/spec.md")).toBeNull();
+  });
+
+  it("katalog: .en.md listede ayrı belge değil; adlar seçili dilde, adres Türkçe dosyanın yolu", () => {
+    const tr = katalog(dosyalar);
+    const en = katalog(dosyalar, "en");
+    const yollar = (g: typeof tr) => g.flatMap((x) => x.belgeler.map((b) => b.yol));
+    expect(yollar(tr)).toEqual(["docs/README.md", "cpu16/docs/spec.md", "cpu16/kit/deney-01-saat.md", "yeni/belge.md"]);
+    expect(yollar(en)).toEqual(yollar(tr));
+    expect(en.map((x) => x.ad)).toEqual(["Getting started", "CPU16: design", "Experiment kit", "Other"]);
+    expect(en.flatMap((x) => x.belgeler.map((b) => b.ad))).toEqual(["Reading guide", "Design specification", "1. Clock and reset board", "belge"]);
+    expect(komsular(en, "cpu16/docs/spec.md").sonraki).toEqual({ yol: "cpu16/kit/deney-01-saat.md", ad: "1. Clock and reset board" });
+  });
+
+  it("dizindeki her belgenin iki dilde de adı var", () => {
+    for (const g of DIZIN) for (const x of [g, ...g.belgeler]) expect(x.ad.tr && x.ad.en, JSON.stringify(x.ad)).toBeTruthy();
+  });
+
+  it("gösterilen dosya: İngilizcede .en.md varsa o, yoksa Türkçesi; Türkçede hep Türkçesi", () => {
+    expect(dosyaSec("cpu16/docs/spec.md", "en", dosyaVar)).toBe("cpu16/docs/spec.en.md");
+    expect(dosyaSec("cpu16/docs/spec.md", "tr", dosyaVar)).toBe("cpu16/docs/spec.md");
+    expect(dosyaSec("cpu16/kit/deney-01-saat.md", "en", dosyaVar)).toBe("cpu16/kit/deney-01-saat.md");
+  });
+
+  it("adres dilden bağımsız: .en.md adresi Türkçe eşine çözülür", () => {
+    expect(hashCoz("#belgeler/cpu16/docs/spec.en.md#instruction-formats")).toEqual({ yol: "cpu16/docs/spec.md", capa: "instruction-formats" });
+  });
+
+  it("x.en.md bağlantısı x.md belgesine gider; İngilizcesi olmayan belgeye Türkçe adıyla", () => {
+    // uygulamada belge = Türkçe dosya; göreli yollar Türkçe yoldan çözülür (.en.md aynı klasörde)
+    const belgeVar = (y: string) => dosyaVar(y) && trYolu(y) === null;
+    expect(hedefCoz("cpu16/docs/spec.md", "spec.en.md#instruction-formats", belgeVar)).toEqual({ tur: "belge", yol: "cpu16/docs/spec.md", capa: "instruction-formats" });
+    expect(hedefCoz("cpu16/docs/spec.md", "../kit/deney-01-saat.md#malzeme", belgeVar)).toEqual({ tur: "belge", yol: "cpu16/kit/deney-01-saat.md", capa: "malzeme" });
+    expect(hedefCoz("cpu16/docs/spec.md", "../../docs/README.en.md", belgeVar)).toEqual({ tur: "belge", yol: "docs/README.md", capa: null });
+    // Türkçe eşi olmayan .en.md belge değil
+    expect(hedefCoz("docs/README.md", "../yetim.en.md", belgeVar)).toEqual({ tur: "dis", url: `${GITHUB}/blob/main/yetim.en.md` });
+    // .en.md'yi ayrı dosya olarak tanıyan denetim (depo testi) bağlantının adını olduğu gibi alır
+    expect(hedefCoz("cpu16/docs/spec.en.md", "#instruction-formats", dosyaVar)).toEqual({ tur: "belge", yol: "cpu16/docs/spec.en.md", capa: "instruction-formats" });
+  });
+
+  it("İngilizce görseller (.en.svg) paketlenmiş adresiyle", () => {
+    const adresler = { "cpu16/docs/img/mimari-cpu.en.svg": "/assets/mimari-cpu.en-abc.svg" };
+    expect(gorselCoz("cpu16/docs/mimari.md", "img/mimari-cpu.en.svg", adresler)).toBe("/assets/mimari-cpu.en-abc.svg");
+  });
+
+  it("Türkçe katlamalı arama İngilizce metinde de çalışır", () => {
+    expect(katla("Instruction FORMATS, Interrupt")).toBe("instruction formats, interrupt");
+    expect(metindeAra("## Instruction formats\nINSTRUCTION set and `instructions`", "Instruction")).toEqual({ sayi: 3, ornek: "Instruction formats" });
+    const en = katalog(dosyalar, "en");
+    const metin = (y: string) => (y === "cpu16/docs/spec.md" ? "The INSTRUCTION set" : undefined);
+    expect(belgelerdeAra(en, "instruction", metin).flatMap((x) => x.belgeler.map((b) => b.yol))).toEqual(["cpu16/docs/spec.md"]);
+    // ad da seçili dilde aranır
+    expect(belgelerdeAra(en, "specification", metin).flatMap((x) => x.belgeler.map((b) => b.yol))).toEqual(["cpu16/docs/spec.md"]);
+  });
+});
+
 describe("depodaki belgeler", () => {
   const dizindekiler = DIZIN.flatMap((g) => g.belgeler.map((b) => b.yol));
   const md = (k: string) => readdirSync(new URL(k, kok)).filter((f) => f.endsWith(".md")).map((f) => k + f);
-  // BelgelerView.tsx'teki import.meta.glob ile aynı küme
-  const hepsi = ["README.md", "CONTRIBUTING.md", "docs/README.md", "cpu16/README.md", ...md("cpu16/docs/"), ...md("cpu16/kit/"), "hesap8/README.md", ...md("hesap8/docs/")];
+  // BelgelerView.tsx'teki import.meta.glob ile aynı küme: tek dosyalar ve varsa İngilizceleri, klasörlerdeki
+  // bütün .md'ler (.en.md'ler de)
+  const tekler = ["README.md", "CONTRIBUTING.md", "docs/README.md", "cpu16/README.md", "hesap8/README.md"].flatMap((y) => [y, enYolu(y)]);
+  const hepsi = [...tekler.filter((y) => existsSync(new URL(y, kok))), ...md("cpu16/docs/"), ...md("cpu16/kit/"), ...md("hesap8/docs/")];
   const agac = new Map(hepsi.map((y) => [y, mdAyristir(oku(y))]));
+  const ingilizceler = hepsi.filter((y) => trYolu(y) !== null);
 
   it("dizindeki her belgenin dosyası var", () => {
     for (const y of dizindekiler) expect(existsSync(new URL(y, kok)), y).toBe(true);
+  });
+
+  it("her .en.md'nin Türkçe eşi var", () => {
+    for (const y of ingilizceler) expect(agac.has(trYolu(y)!), `${y}: Türkçe eşi ${trYolu(y)} yok`).toBe(true);
   });
 
   /** ağaçtaki bütün bloklar (liste, alıntı, açılır kutu içleri de) */
@@ -273,15 +347,23 @@ describe("depodaki belgeler", () => {
     }
   });
 
+  // .en.md'ler de ayrı dosya: çapa bağlantının adını taşıyan dosyada aranır (İngilizce başlığın slug'ı)
   it("belgeler arası her bağlantı bir belgeye, çapası bir başlığa denk geliyor", () => {
     const kimlikler = new Map([...agac].map(([y, b]) => [y, new Set([...gez(b)].flatMap((x) => (x.t === "baslik" ? [x.id] : [])))]));
     let sayi = 0;
     for (const [y, b] of agac) {
+      const ingilizce = trYolu(y) !== null;
       for (const x of gez(b)) {
         for (const s of satirIcleri(x)) {
-          if (s.t !== "baglanti") continue;
+          if (s.t !== "baglanti" || /^(?:https?|mailto):/i.test(s.href)) continue;
+          const dosya = s.href.split("#")[0];
+          // .en.md bağlantısının dosyası var (çapasız bağlantıda da)
+          if (dosya.endsWith(".en.md")) expect(agac.has(yolBirlestir(y, dosya) ?? ""), `${y}: ${s.href}: dosya yok`).toBe(true);
           const h = hedefCoz(y, s.href, (z) => agac.has(z));
-          if (h.tur !== "belge" || !h.capa) continue;
+          if (h.tur !== "belge") continue;
+          // İngilizce belge, İngilizcesi olan belgeye .en.md adıyla bağlanır (klasör bağlantısı serbest)
+          if (ingilizce && dosya && !dosya.endsWith("/") && trYolu(h.yol) === null) expect(agac.has(enYolu(h.yol)), `${y}: ${s.href}: ${enYolu(h.yol)} var, ona bağlan`).toBe(false);
+          if (!h.capa) continue;
           sayi++;
           expect(kimlikler.get(h.yol)?.has(h.capa), `${y}: ${s.href}`).toBe(true);
         }
