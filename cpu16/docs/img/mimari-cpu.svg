@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" class="mm-svg" viewBox="0 0 1680 1030" width="1680" height="1030">
-  <!-- ÜRETİLİR, elle değiştirme: npm run cpu16 -- mimari cpu (cpu16/mimari/) -->
+  <!-- ÜRETİLİR, elle değiştirme: npm run cpu16 mimari cpu (cpu16/mimari/) -->
   <title>CPU16 işlemci kartı: mimari</title>
   <desc>CPU kartının blokları ve aralarındaki yollar. Tek 16 bitlik iç veri yolu: her saat döngüsünde bir birim sürer, istenenler yükler. Kontrol birimi komuttan ve adım sayacından 32 kontrol hattını üretir. Kart, arka panel konnektörüyle bellek, saat ve G/Ç kartlarına bağlanır.</desc>
   <style>
