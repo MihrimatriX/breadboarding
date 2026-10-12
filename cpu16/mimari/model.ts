@@ -345,6 +345,10 @@ export class Devre {
   }
 }
 
+/** Kutunun tek satırlık görevi; bölmeli kutularda (görevi bölmelerinde yazan) bölmelerin görevleri */
+export const kutuGorevi = (k: Pick<Kutu, "gorev" | "bolmeler">): string =>
+  k.gorev || (k.bolmeler ?? []).map((b) => b.gorev ?? "").filter(Boolean).join("; ");
+
 /** Kısa pasif adları (kutularda ve yan panelde) */
 const PASIF_ADLARI: Record<string, string> = {
   SW_DIP_8: "8'li DIP anahtar",

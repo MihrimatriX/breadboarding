@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { agac, CSS_PALETI, svgMetni } from "../mimari/agac.ts";
 import { blokDenetimi, diyagramiDenetle, sayiDenetimi, ucDurumu, yolDenetimi } from "../mimari/denetim.ts";
+import { iliskiKur, vurgula } from "../mimari/iliski.ts";
 import { diyagramKur, DIYAGRAMLAR } from "../mimari/index.ts";
 import { MAKINE_KARTLARI } from "../mimari/makine.ts";
 import { Devre, netOzeti, type Diyagram } from "../mimari/model.ts";
@@ -117,6 +118,56 @@ describe("mimari diyagramları: CPU kartı ve bütün bilgisayar", () => {
     const once = k.devre.board.c.netNames.length;
     expect(new Devre(k.devre.board).net("BÖYLE_BİR_NET_YOK")).toBeUndefined();
     expect(k.devre.board.c.netNames.length).toBe(once);
+  });
+});
+
+describe("mimari diyagramları: bağlantılar (uygulamadaki vurgu ve yan panel)", () => {
+  it("her yolun her ucu ilişkide; ucun vurgusu yolu içeriyor", () => {
+    for (const d of DIYAGRAMLAR) {
+      const k = diyagramKur(d.id);
+      const il = iliskiKur(k.diyagram, k.devre);
+      for (const y of k.diyagram.yollar) {
+        const uclar = (il.uclari.get(y.id) ?? []).filter((u) => !u.dolayli).map((u) => u.kutu);
+        expect(uclar, `${d.id}/${y.id}`).toEqual(y.uclar.map((u) => u.kutu));
+        for (const u of y.uclar) {
+          expect(vurgula(il, { tur: "kutu", id: u.kutu }).yollar.has(y.id), `${d.id}/${u.kutu}`).toBe(true);
+          expect(vurgula(il, { tur: "yol", id: y.id }).kutular.has(u.kutu)).toBe(true);
+        }
+      }
+    }
+  });
+
+  it("makinede her kart ucunun içinde yolun netlerine gerçekten değen bir kutu var, yönü pinlerden", () => {
+    const k = diyagramKur("makine");
+    const il = iliskiKur(k.diyagram, k.devre);
+    for (const y of k.diyagram.yollar) {
+      for (const u of y.uclar) {
+        const ic = il.icindekiler.get(u.kutu);
+        if (!ic?.length) continue;
+        const dolayli = (il.uclari.get(y.id) ?? []).filter((b) => b.dolayli && ic.includes(b.kutu));
+        expect(dolayli.length, `${y.id}: ${u.kutu}`).toBeGreaterThan(0);
+        for (const b of dolayli) {
+          const durum = ucDurumu(k.devre, y.netler, k.diyagram.kutular.find((x) => x.id === b.kutu)!.bloklar);
+          if (b.yon !== "giris") expect(durum.surer || durum.pasif, `${y.id}: ${b.kutu}`).toBe(true);
+          if (b.yon !== "cikis") expect(durum.okur || durum.pasif, `${y.id}: ${b.kutu}`).toBe(true);
+        }
+      }
+    }
+    // adresi CPU kartının içinde MAR'lı register kutusu sürer; bellek kartında adres çözücü okur
+    const adres = il.uclari.get("adres")!;
+    expect(adres.find((b) => b.kutu === "cpu-reg")?.yon).toBe("cikis");
+    expect(adres.find((b) => b.kutu === "bellek-cozme")?.yon).toBe("giris");
+  });
+
+  it("kutunun vurgusu: kendisi, çerçevesi, yolları ve yolların yazılı uçları; ilgisizler dışarıda", () => {
+    const k = diyagramKur("cpu");
+    const il = iliskiKur(k.diyagram, k.devre);
+    const v = vurgula(il, { tur: "kutu", id: "marir" });
+    expect(v.kutular.has("marir")).toBe(true);
+    expect(v.yollar.has("adres")).toBe(true);
+    expect(v.yollar.has("ir-kontrol")).toBe(true);
+    expect(v.kutular.has("arka")).toBe(true);
+    expect(v.yollar.has("ta")).toBe(false);
   });
 });
 

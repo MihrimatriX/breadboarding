@@ -1245,6 +1245,8 @@ p .lv, b.lv { display: inline; padding: 1px 5px; }
 .baslangic h2 { font: 700 var(--fs-xl)/1.25 var(--body); letter-spacing: -0.01em; color: var(--text); }
 .bs-giris { font-size: var(--fs-md); line-height: 1.6; color: var(--text-muted); max-width: 60ch; }
 .bs-bolumler { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
+/* tek kalan son bölüm satırı boydan boya */
+.bs-bolumler > li:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .bs-bolum {
   height: 100%;
   display: flex;
