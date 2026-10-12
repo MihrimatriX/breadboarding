@@ -240,8 +240,8 @@ kesik; üstünde çip gruplarının etiketleri, altında parça tablosu); numara
 test satırı); kesim listesi (renk ve boy); malzeme listesi (breadboard, taban plakası, uyarlayıcı,
 IDC soketi, besleme girişleri, renk renk tel metrajı, entegreler, pasifler, aletler).
 
-Sayfa sayıları (bütün belgeler, 2026-10): saat 14, CPU 92, bellek 27, önbellek 28, G/Ç 37, video 41,
-kendin yap bellek 19, dizin 7.
+Sayfa sayıları (bütün belgeler, 2026-10): saat 14, CPU 95, bellek 27, önbellek 28, G/Ç 37, video 41,
+kendin yap bellek 19, dizin 10.
 
 Delik adları: `BB07 c14` = BB07'nin c satırı, 14. sütunu; raylar `BB07 üst+16`, `üst−`, `alt−`,
 `alt+`. BB01 panonun sol arka köşesi, satır satır soldan sağa.
