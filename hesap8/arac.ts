@@ -5,8 +5,15 @@
 //   npm run hesap8 -- dogrula --hepsi      bütün 4 × 256 × 256 = 262 144 durum (iş parçacıklarına bölünür)
 //   npm run hesap8 -- breadboard           breadboard planı: ölçüler, bağlantının netlistle doğrulanması
 //   npm run hesap8 -- breadboard --uret    yerleşimi ve telleri yeniden üret (hesap8/breadboard/veri.ts)
+//   npm run hesap8 -- breadboard-belge [-o dizin] [--html]
+//                                          breadboard kurulum belgesi (HTML + PDF; varsayılan dizin
+//                                          hesap8/breadboard/cikti/, depoya girmez)
 
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import { execSync } from "node:child_process";
 import { availableParallelism } from "node:os";
 import { isMainThread, parentPort, Worker, workerData } from "node:worker_threads";
 import { erc } from "../cpu16/board/board.ts";
@@ -40,6 +47,64 @@ ${dizi(v.teller)}
   ],
 };
 `;
+}
+
+/** playwright: önce depodan, sonra global kurulumdan (cpu16 kurulum belgeleri gibi) */
+function playwrightBul(): { chromium: { launch(o?: object): Promise<any> } } | null {
+  const req = createRequire(import.meta.url);
+  try {
+    return req("playwright");
+  } catch {
+    /* depoda yok */
+  }
+  try {
+    const root = execSync("npm root -g", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+    return req(join(root, "playwright"));
+  } catch {
+    return null;
+  }
+}
+
+/** Breadboard kurulum belgesi: HTML, sonra Chromium ile A4 PDF (alt bilgide sayfa numarası) */
+async function bbBelgeYaz(args: string[]): Promise<number> {
+  const i = args.indexOf("-o");
+  const out = i >= 0 ? args[i + 1] : "hesap8/breadboard/cikti";
+  if (!out) {
+    console.error("kullanım: npm run hesap8 -- breadboard-belge [-o dizin] [--html]");
+    return 1;
+  }
+  const { bbBelgesi } = await import("./breadboard/belge.ts");
+  const { KurulumVerisi } = await import("../cpu16/kurulum/kartlar.ts");
+  const { pdfSayfaSayisi } = await import("../cpu16/kurulum/cli.ts");
+  const plan = bbPlani();
+  const tarih = new Date().toISOString().slice(0, 10);
+  mkdirSync(out, { recursive: true });
+  const html = join(out, "hesap8-breadboard-kurulum.html");
+  writeFileSync(html, bbBelgesi(plan, { eskiTel: new KurulumVerisi().plan("hesap").teller.length, tarih }));
+  console.log(`${html}: ${plan.yerlesim.boards.length} board, ${plan.teller.length} tel`);
+  if (args.includes("--html")) return 0;
+  const pw = playwrightBul();
+  if (!pw) {
+    console.error("playwright bulunamadı: PDF üretilmedi (HTML'i tarayıcıda açıp yazdırabilirsin)");
+    return 0;
+  }
+  const pdf = join(out, "hesap8-breadboard-kurulum.pdf");
+  const browser = await pw.chromium.launch();
+  try {
+    const page = await browser.newPage();
+    await page.goto(pathToFileURL(resolve(html)).href, { waitUntil: "load" });
+    await page.pdf({
+      path: pdf, format: "A4", printBackground: true, preferCSSPageSize: true, displayHeaderFooter: true,
+      headerTemplate: "<span></span>",
+      footerTemplate: `<div style="font-size:7pt;font-family:Inter,'DejaVu Sans',Arial,sans-serif;color:#666;width:100%;padding:0 11mm;display:flex;justify-content:space-between;">
+<span>8 bit hesap makinesi · breadboard kurulumu · ${tarih}</span><span><span class="pageNumber"></span> / <span class="totalPages"></span></span></div>`,
+      margin: { top: "12mm", bottom: "15mm", left: "11mm", right: "11mm" },
+    });
+  } finally {
+    await browser.close();
+  }
+  console.log(`${pdf}: ${pdfSayfaSayisi(pdf)} sayfa`);
+  return 0;
 }
 
 /** Durumları sırayla devreye uygula; farklı çıkanları döndür (en çok `sinir` tane) */
@@ -185,8 +250,10 @@ if (!isMainThread) {
       process.exit(1);
     }
     console.log("  netlistle birebir aynı: açık devre yok, kısa devre yok, her bacak bir delikte, hiçbir delikte iki şey yok, gövde ve tel ucu üstünden geçen tel yok");
+  } else if (cmd === "breadboard-belge") {
+    process.exit(await bbBelgeYaz(rest));
   } else {
-    console.error(`bilinmeyen komut: ${cmd} (ozet | hesapla | dogrula [--hepsi] | breadboard [--uret])`);
+    console.error(`bilinmeyen komut: ${cmd} (ozet | hesapla | dogrula [--hepsi] | breadboard [--uret] | breadboard-belge [-o dizin] [--html])`);
     process.exit(1);
   }
 }
