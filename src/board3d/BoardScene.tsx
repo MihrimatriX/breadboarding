@@ -28,6 +28,9 @@ import { boardLayoutData, boardModel, findPart, liveNets, netEnds, useKart } fro
 import { KurulumSahne } from "./KurulumSahne";
 import { AtlamaTelleri, BbKurulumSahne, BreadboardTabani, breadboardGenelBakis, breadboardSahnede } from "./Breadboard3D";
 import { TextQuads, type TextItem } from "./TextQuads";
+import { cipGovdeRengi, useBolum, useBolumVurgusu, useEtiketlerAcik } from "./bolum";
+import { Bolumler3D } from "./Bolumler3D";
+import { BolumKatmani } from "./BolumKatmani";
 import { useSahneRengi } from "../ui/ayarlar";
 import { allWires, busRouter, netWires, partWires, wireGeometry, type Endpoint, type WireEdge } from "./wires";
 
@@ -62,6 +65,8 @@ function Cards() {
   const { lay, w } = useLayoutWorld();
   // arka panel şeridi yalnız kartların kenar konnektörü varsa (bilgisayar); hesap makinesi tek kart
   const backplane = useMemo(() => lay.passives.some((p) => p.edge), [lay]);
+  // bölüm etiketleri açıkken blokların çerçevesi ve başlığı bölüm katmanında (Bolumler3D)
+  const etiketler = useEtiketlerAcik();
   const outline = useMemo(() => {
     const pos: number[] = [];
     for (const b of lay.blocks) {
@@ -75,7 +80,7 @@ function Cards() {
     return g;
   }, [lay, w]);
   const titles = useMemo<TextItem[]>(() => [
-    ...lay.blocks.map((b) => {
+    ...(etiketler ? [] : lay.blocks).map((b) => {
       const [x, z] = w(b.x + 1, b.y + 0.5);
       return { text: b.name, x, z, w: Math.min(b.w - 2, 60) * S, d: 5 * S, y: 0.003, color: "#d8e6dc", align: "left" as const };
     }),
@@ -83,7 +88,7 @@ function Cards() {
       const [x, z] = w(c.x + 6, c.y + 2);
       return { text: c.title, x, z, w: 90 * S, d: 7 * S, y: 0.003, color: "#ffffff", align: "left" as const };
     }),
-  ], [lay, w]);
+  ], [lay, w, etiketler]);
   return (
     <group>
       {lay.cards.map((c) => {
@@ -116,9 +121,11 @@ function Cards() {
           </mesh>
         );
       })}
-      <lineSegments geometry={outline} raycast={noRaycast}>
-        <lineBasicMaterial color="#cfe3d6" transparent opacity={0.35} />
-      </lineSegments>
+      {!etiketler && (
+        <lineSegments geometry={outline} raycast={noRaycast}>
+          <lineBasicMaterial color="#cfe3d6" transparent opacity={0.35} />
+        </lineSegments>
+      )}
       <TextQuads items={titles} cellW={512} cellH={48} font={30} />
       {backplane && <BackplaneTraces />}
     </group>
@@ -178,6 +185,9 @@ function Chips() {
   const pads = useRef<InstancedMesh>(null);
   const selected = useKart((s) => s.chip);
   const hover = useKart((s) => s.hover?.ref ?? null);
+  // seçili bölümün çipleri bölümün rengine çalar, ötekiler soluklaşır
+  const vurgu = useBolumVurgusu();
+  const zemin = breadboardSahnede() ? "#f2eee3" : "#0f3d2c";
   const flatPins = useMemo(() => chips.flatMap((c) => c.pins.map((p) => ({ chip: c, pin: p }))), [chips]);
   const version = useRef(-1);
 
@@ -210,9 +220,9 @@ function Chips() {
   }, [chips, flatPins, w]);
 
   useLayoutEffect(() => {
-    chips.forEach((c, i) => body.current!.setColorAt(i, tmpC.set(c.ref === selected ? "#3a4a66" : c.ref === hover ? "#2a313b" : "#141619")));
+    chips.forEach((c, i) => body.current!.setColorAt(i, cipGovdeRengi(tmpC, c.ref, selected, hover, vurgu, zemin)));
     body.current!.instanceColor!.needsUpdate = true;
-  }, [chips, selected, hover]);
+  }, [chips, selected, hover, vurgu, zemin]);
 
   useFrame(() => {
     if (version.current === liveNets.version || !liveNets.values) return;
@@ -623,8 +633,8 @@ function CameraFly() {
     const c = part?.chip ?? part?.passive ?? null;
     const start = { t0: controls.target.clone(), c0: camera.position.clone(), t: 0 };
     if (!c) {
-      // seçim kalkınca genel bakış (bir bloğa gidilmişse orada kalır)
-      if (useKart.getState().odak) return;
+      // seçim kalkınca genel bakış (bir bloğa ya da seçili bölüme gidilmişse orada kalır)
+      if (useKart.getState().odak || useBolum.getState().secili) return;
       const o = overview(lay.width, lay.height, aktifKart());
       anim.current = { target: o.target, cam: o.cam, ...start };
       return;
@@ -677,29 +687,34 @@ export function BoardScene() {
   // zemin temaya uyar (kartın, breadboard'un ve çiplerin kendi renkleri değişmez)
   const zemin = useSahneRengi();
   return (
-    <Canvas
-      key={`${tur}-${gorunum}`}
-      camera={{ position: o.cam.toArray(), fov: 40, near: 0.2, far: 800 }}
-      dpr={[1, 2]}
-      onPointerMissed={() => {
-        const s = useKart.getState();
-        if (s.gate !== null) s.selectGate(null);
-        else s.selectChip(null);
-      }}
-    >
-      <color attach="background" args={[zemin]} />
-      <hemisphereLight args={["#ffffff", "#1a2028", 1.1]} />
-      <directionalLight position={[20, 40, 15]} intensity={1.3} />
-      {bb ? <BreadboardTabani /> : <Cards />}
-      <Chips />
-      {bb ? <Passives3D /> : <Passives />}
-      {bb ? <AtlamaTelleri /> : <Wires />}
-      {bb ? <BbKurulumSahne /> : <KurulumSahne />}
-      <SelectedDie />
-      {tur === "cpu16" && <Monitor />}
-      <OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI * 0.48} minDistance={1.5} maxDistance={260} target={o.target} />
-      <CameraFly />
-      <KameraApi />
-    </Canvas>
+    <>
+      <Canvas
+        key={`${tur}-${gorunum}`}
+        camera={{ position: o.cam.toArray(), fov: 40, near: 0.2, far: 800 }}
+        dpr={[1, 2]}
+        onPointerMissed={() => {
+          const s = useKart.getState();
+          if (s.gate !== null) s.selectGate(null);
+          else if (s.chip !== null || !useBolum.getState().secili) s.selectChip(null);
+          else useBolum.getState().sec(null);
+        }}
+      >
+        <color attach="background" args={[zemin]} />
+        <hemisphereLight args={["#ffffff", "#1a2028", 1.1]} />
+        <directionalLight position={[20, 40, 15]} intensity={1.3} />
+        {bb ? <BreadboardTabani /> : <Cards />}
+        <Chips />
+        {bb ? <Passives3D /> : <Passives />}
+        {bb ? <AtlamaTelleri /> : <Wires />}
+        {bb ? <BbKurulumSahne /> : <KurulumSahne />}
+        <SelectedDie />
+        <Bolumler3D />
+        {tur === "cpu16" && <Monitor />}
+        <OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI * 0.48} minDistance={1.5} maxDistance={260} target={o.target} />
+        <CameraFly />
+        <KameraApi />
+      </Canvas>
+      <BolumKatmani />
+    </>
   );
 }
