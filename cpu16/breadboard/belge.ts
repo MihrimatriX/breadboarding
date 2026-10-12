@@ -17,6 +17,7 @@ import { beslemeButcesi, KOPRU_OHM, type BeslemeButcesi } from "./besleme.ts";
 import { KART_SIRASI, MAKINE_SIRALARI } from "./panolar.ts";
 import { EN_UZUN_TEL, KORIDOR, kartOlcu, PANO_ARASI, type KartBbPlani, type MakineBbPlani } from "./plan.ts";
 import { CPU_BB_RENKLERI, cpuRenkTanimi } from "./renk.ts";
+import { mimariBolumu } from "../mimari/belge.ts";
 
 const sayi = (n: number, k = 0) => n.toLocaleString("tr-TR", { minimumFractionDigits: k, maximumFractionDigits: k });
 const telNo = (t: BbTel) => `T${String(t.no).padStart(4, "0")}`;
@@ -484,6 +485,8 @@ ${olgu(`≈ ${sayi(Math.ceil(m.w / 10) * 10)} × ${sayi(Math.ceil(m.h / 10) * 10
 </div>
 <p class="dipnot">Üretildi${o.tarih ? ` ${esc(o.tarih)}` : ""}: <code>npm run cpu16 -- breadboard-belge hepsi</code> (kaynak <code>cpu16/breadboard/</code>; açıklama <code>cpu16/docs/breadboard.md</code>). Bağlantı yalnız fiziksel modelden (board'lar, bacakların delikleri, teller, şerit kablo) birleşim-bul ile yeniden kurulur ve anakartın netlistiyle karşılaştırılır: <code>npm run cpu16 -- breadboard</code>. Uygulamada: Silikon3D → CPU16 kartı 3D → Görünüm: Breadboard.</p>
 </section>
+${mimariBolumu("makine")}
+${mimariBolumu("cpu")}
 <section class="bolum">
 <h2>1. Makine</h2>
 <figure class="harita">${makineHaritasi(m)}<figcaption>Üstten bakış (mm). Arka sıra: ${MAKINE_SIRALARI.arka.map((k) => esc(m.kartlar.find((x) => x.kart === k)!.tanim.baslik)).join(", ")} (uyarlayıcılar ön kenarda); ön sıra: ${MAKINE_SIRALARI.on.map((k) => esc(m.kartlar.find((x) => x.kart === k)!.tanim.baslik)).join(", ")} (uyarlayıcılar arka kenarda; butonlar, VGA, PS/2 ve USB-seri önde). Panolar arası ${PANO_ARASI} mm, koridor ${KORIDOR} mm.</figcaption></figure>

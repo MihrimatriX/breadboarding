@@ -10,6 +10,7 @@ import { boardaDegiyor, boardCizimi as cizim, BW, type CizimSecenekleri } from "
 import { ADIM, BY_ADIM } from "./geometri.ts";
 import { bbOlcu, noktaBoardu, ucEtiketi, type BbOlcu, type BbPlani, type BbTel } from "./plan.ts";
 import { BB_RENKLERI, renkTanimi } from "./renk.ts";
+import { mimariBolumu } from "../../cpu16/mimari/belge.ts";
 import type { BbBoard } from "./yerlesim.ts";
 
 const sayi = (n: number, k = 0) => n.toLocaleString("tr-TR", { minimumFractionDigits: k, maximumFractionDigits: k });
@@ -276,6 +277,6 @@ export interface BelgeSecenekleri {
 /** Breadboard kurulum belgesi (tek HTML) */
 export function bbBelgesi(plan: BbPlani, o: BelgeSecenekleri = {}): string {
   const olcu = bbOlcu(plan);
-  const govde = [kapak(plan, olcu, o.eskiTel, o.tarih), nasilOkunur(plan, olcu), harita(plan), asamalar(plan), boardBolumu(plan), telListesi(plan), kesimListesi(plan, olcu), malzeme(plan, olcu)].join("\n");
+  const govde = [kapak(plan, olcu, o.eskiTel, o.tarih), mimariBolumu("hesap"), nasilOkunur(plan, olcu), harita(plan), asamalar(plan), boardBolumu(plan), telListesi(plan), kesimListesi(plan, olcu), malzeme(plan, olcu)].join("\n");
   return htmlBelge("8 bit hesap makinesi · breadboard kurulumu", govde, "60 breadboard, atlama telleri delikten deliğe, aşama aşama").replace("</style>", `${EK_STIL}</style>`);
 }

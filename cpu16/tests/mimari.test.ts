@@ -3,8 +3,11 @@
 // arka panel şeritlerinin tamlığı (her kart kullandığı her şeride bağlı) ayrıca denetlenir.
 // Hesap makinesinin diyagramı: hesap8/tests/mimari.test.ts.
 
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { agac, CSS_PALETI, svgMetni } from "../mimari/agac.ts";
+import { mimariBolumu, mimariSvg } from "../mimari/belge.ts";
+import { belgeDosyasi } from "../mimari/cli.ts";
 import { blokDenetimi, diyagramiDenetle, sayiDenetimi, ucDurumu, yolDenetimi } from "../mimari/denetim.ts";
 import { iliskiKur, vurgula } from "../mimari/iliski.ts";
 import { diyagramKur, DIYAGRAMLAR } from "../mimari/index.ts";
@@ -211,5 +214,23 @@ describe("mimari diyagramları: çizim", () => {
       }
       expect(p.kagit).not.toBe(p.yazi);
     }
+  });
+});
+
+describe("mimari diyagramları: belgeler", () => {
+  it("belgelerdeki SVG'ler devreyle güncel (değiştiyse: npm run cpu16 -- mimari)", () => {
+    for (const d of DIYAGRAMLAR) {
+      const yol = new URL(`../../${belgeDosyasi(d)}`, import.meta.url);
+      expect(readFileSync(yol, "utf8") === mimariSvg(d.id), `${belgeDosyasi(d)} eski: npm run cpu16 -- mimari`).toBe(true);
+    }
+  });
+
+  it("kurulum belgelerinin mimari sayfası: A4 yatay, diyagram gömülü", () => {
+    const html = mimariBolumu("makine");
+    expect(html).toMatch(/^<section class="bolum yatay mimari" id="mimari-makine">/);
+    expect(html).toContain("<h2>Mimari: CPU16 bilgisayarı</h2>");
+    expect(html).toContain("<svg");
+    expect(html).toContain("ARKA PANEL");
+    expect(html).not.toContain("var(--mm-");
   });
 });
