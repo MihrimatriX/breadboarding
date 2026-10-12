@@ -121,7 +121,7 @@ describe("parçalar breadboard'a oturuyor", () => {
       expect(k!.board).toBe(c.board);
       const rs = k!.bacaklar.map((b) => yerel(b.X, b.Y).r).sort();
       expect(rs).toEqual([0, 1]);
-      const col = yerel(k!.bacaklar[0].X, 0).c;
+      const col = yerel(k!.bacaklar[0].X, k!.bacaklar[0].Y).c;
       expect(rayDeligiVar(col)).toBe(true);
       expect(Math.abs(col - c.sutun)).toBeLessThanOrEqual(8);
     }

@@ -13,7 +13,7 @@ import { kartMetinleri, refleriAc } from "../board/bolum-bilgi.ts";
 import { buildFullMachineBoard } from "../board/machine-board.ts";
 import { dizinBelgesi, kartBbBelgesi, sirasiOnemliTeller } from "../breadboard/belge.ts";
 import { beslemeButcesi } from "../breadboard/besleme.ts";
-import { KART_SIRASI, MAKINE_SIRALARI, panoTanimi } from "../breadboard/panolar.ts";
+import { beslemeSiralari, KART_SIRASI, MAKINE_SIRALARI, panoTanimi } from "../breadboard/panolar.ts";
 import {
   cpuTelTarifi, EN_UZUN_TEL, kartiDogrula, kartOlcu, kartPlaniKur, makinePlaniKur, makineyiDogrula, seritKablolari, type KartBbPlani, type MakineBbPlani,
 } from "../breadboard/plan.ts";
@@ -107,7 +107,7 @@ describe("panolar: kurallar", () => {
         expect(parcalar.length, `${p.kart} ${b.ad} boş`).toBeGreaterThan(0);
       }
     }
-    expect(kartlar.reduce((s, p) => s + p.yerlesim.boards.length, 0)).toBe(134);
+    expect(kartlar.reduce((s, p) => s + p.yerlesim.boards.length, 0)).toBe(149);
   });
 
   it("CPU kartı modül modül: her board'da düzendeki gruplar; R0–R7 her biri kendi board'unda, düşük bayt solda; bir grubun board'ları yan yana", () => {
@@ -115,14 +115,22 @@ describe("panolar: kurallar", () => {
     const t = panoTanimi("cpu");
     const grubu = new Map<string, string>();
     for (const g of kartMetinleri("cpu").gruplar) for (const r of refleriAc(g.refs)) grubu.set(r, g.id);
+    const cipliGruplar = new Set(board.chips.filter((c) => c.card === "cpu").map((c) => grubu.get(c.ref)!));
     const grupBoardlari = new Map<string, Set<number>>();
     for (const b of p.yerlesim.boards) {
-      expect(b.gruplar, b.ad).toEqual(t.duzen![b.by][b.bx].split(" "));
+      const duzen = t.duzen![b.by][b.bx].split(" ");
+      expect(b.gruplar, b.ad).toEqual(duzen.map((g) => g.replace(/\+$/, "")));
       const cipler = p.yerlesim.parcalar.filter((q) => q.board === b.no && q.cipMi);
       const gs = new Set(cipler.map((q) => grubu.get(q.ref)!));
-      // her çip board'un gruplarından birinde; düzendeki her grubun bu board'da çipi var
+      // her çip board'un gruplarından birinde; düzendeki her çipli grubun ("grup+" göstergeleri hariç) bu board'da çipi var
       expect([...gs].every((g) => b.gruplar!.includes(g)), `${b.ad}: ${[...gs].join(", ")}`).toBe(true);
-      expect(b.gruplar!.every((g) => gs.has(g)), `${b.ad}: ${b.gruplar!.join(", ")}`).toBe(true);
+      const cipli = duzen.filter((g) => !g.endsWith("+") && cipliGruplar.has(g));
+      expect(cipli.every((g) => gs.has(g)), `${b.ad}: ${b.gruplar!.join(", ")}`).toBe(true);
+      // "grup+" board'unda o grubun çipi yok, göstergeleri var
+      for (const g of duzen.filter((x) => x.endsWith("+")).map((x) => x.slice(0, -1))) {
+        expect(gs.has(g), `${b.ad}: ${g}+ çipsiz`).toBe(false);
+        expect(p.yerlesim.parcalar.some((q) => q.board === b.no && grubu.get(q.ref) === g && (q.part === "LED" || q.part === "DISP_BAR_10")), `${b.ad}: ${g} göstergeleri`).toBe(true);
+      }
       for (const g of gs) grupBoardlari.set(g, new Set([...(grupBoardlari.get(g) ?? []), b.no]));
       // tek gruplu board'da çipler referans sırasıyla soldan sağa
       if (b.gruplar!.length === 1) {
@@ -133,7 +141,13 @@ describe("panolar: kurallar", () => {
     for (let r = 0; r < 8; r++) {
       const bs = [...grupBoardlari.get(`r${r}`)!];
       expect(bs.length, `r${r}`).toBe(1);
-      expect(p.yerlesim.boards[bs[0]].gruplar, `r${r}`).toEqual([`r${r}`]);
+      const rb = p.yerlesim.boards[bs[0]];
+      expect(rb.gruplar, `r${r}`).toEqual([`r${r}`]);
+      // içeriğin çubukları (DS11 + 2r, DS12 + 2r) ve okuma/yazma LED'leri hemen önündeki board'da
+      const on = p.yerlesim.boards.find((x) => x.bx === rb.bx && x.by === rb.by + 1)!;
+      for (const ref of [`DS${11 + 2 * r}`, `DS${12 + 2 * r}`, `D${3 + 2 * r}`, `D${4 + 2 * r}`]) {
+        expect(p.yerlesim.parcalar.find((q) => q.ref === ref)?.board, `r${r} ${ref}`).toBe(on.no);
+      }
     }
     // birden çok board'u tek başına dolduran modülün (mantık birimi, sonuç seçici, sabit birimi, mikrokod
     // kapı ağı …) her board'unun yanında (sağda, solda, önde ya da arkada) aynı modülden bir board var
@@ -163,12 +177,13 @@ describe("panolar: kurallar", () => {
     }
   });
 
-  it("besleme: uyarlayıcının board sırasında her board sütununa bir 5 V girişi ve 100 µF; her çipe 100 nF yanında", () => {
+  it("besleme: uyarlayıcının (ve ek besleme sıralarının) board sırasında her board sütununa bir 5 V girişi ve 100 µF; her çipe 100 nF yanında", () => {
     for (const p of kartlar) {
       const y = p.yerlesim;
       const t = panoTanimi(p.kart);
-      const sira = y.boards.filter((b) => b.by === t.uyarlayici.by);
-      expect(sira.length, p.kart).toBe(y.nx);
+      const sira = y.boards.filter((b) => beslemeSiralari(t).includes(b.by));
+      expect(sira.length, p.kart).toBe(y.nx * beslemeSiralari(t).length);
+      expect(y.parcalar.filter((q) => q.part === "CONN_5V").length, p.kart).toBe(sira.length);
       for (const b of sira) {
         const giris = y.parcalar.filter((q) => q.board === b.no && q.part === "CONN_5V");
         expect(giris.length, `${p.kart} ${b.ad}`).toBe(1);

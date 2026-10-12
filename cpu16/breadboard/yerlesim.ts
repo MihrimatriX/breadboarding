@@ -4,9 +4,10 @@
 // - Şerit kablo uyarlayıcısı (kartın BACKPLANE_2x32 konnektörü) uyarlayıcı sırasındaki board'da, 32
 //   sütun: k. sütunda (c0 + k − 1) 2k − 1. pin f satırında, 2k. pin e satırında.
 // - Besleme: uyarlayıcı sırasındaki her board'da (her board sütununun başında) bir 5 V girişi (2 pinli
-//   başlık, yalnız fiziksel parça) ve yanında 100 µF; kartın kendi 100 µF'ı (C1, C204 …) ilk girişin
-//   yanında, öteki girişlerinki yalnız breadboard'a özgü ek parça. Arka sıradaki panolarda girişler
-//   board'un alt ray çiftinde (ön kenar), ön sıradakilerde üst ray çiftinde (arka kenar).
+//   başlık, yalnız fiziksel parça) ve yanında 100 µF; uzun panoda (CPU kartı) tanımın `ekBesleme`
+//   sıralarında da. Kartın kendi 100 µF'ı (C1, C204 …) ilk girişin yanında, öteki girişlerinki yalnız
+//   breadboard'a özgü ek parça. Arka sıradaki panolarda girişler board'un alt ray çiftinde (ön kenar),
+//   ön sıradakilerde üst ray çiftinde (arka kenar).
 // - Elle yerleşen pasifler (direnç dizileri, LED'ler, butonlar, anahtarlar, osilatörler, konnektörler)
 //   board'un bir ucunda kendi sütunlarında; mantık çipleri kalan sütunlara.
 // - Mantık çipleri bölge bölge tavlamayla (ortak motor, tohumlu: her çalışmada aynı sonuç) board'lara;
@@ -24,7 +25,7 @@ import { boardAdi, kafesKonumu, kureselX, kureselY, rayDeligiVar } from "../boar
 import {
   dipBacaklari, genisDipBacaklari, ikiBacak, tersDipBacaklari, izgaraNoktasi, pinNeti, siraBacaklari, sutunlariDiz, tavlama, type BbBacak, type BbBoard, type BbParca, type BbYerlesim, type Kalip, type ParcaTuru,
 } from "../board/breadboard/yerlesim.ts";
-import { panoTanimi, type PanoTanimi } from "./panolar.ts";
+import { beslemeSiralari, panoTanimi, type PanoTanimi } from "./panolar.ts";
 
 const G = izgaraNoktasi;
 
@@ -270,10 +271,10 @@ export function kartYerlesimi(board: Board, kart: string, o: KartYerlesimSecenek
     pasifEkle(bp.ref, ub, "uyarlayici", { bacaklar, govde: [a.X, a.Y, z.X, z.Y] }, {}, u.c0);
   }
 
-  // ---- 2. besleme girişleri: uyarlayıcı sırasının her board'unda
+  // ---- 2. besleme girişleri: uyarlayıcı sırasının (ve ek besleme sıralarının) her board'unda
   {
     const kartC = bul((p) => p.part === "C_100U");
-    const sira = boards.filter((b) => b.by === u.by).sort((a, b) => Math.abs(a.bx - u.bx) - Math.abs(b.bx - u.bx) || a.bx - b.bx);
+    const sira = beslemeSiralari(tanim).flatMap((by) => boards.filter((b) => b.by === by).sort((a, b) => Math.abs(a.bx - u.bx) - Math.abs(b.bx - u.bx) || a.bx - b.bx));
     const alt = tanim.sira === "arka";
     const [arti, eksi] = alt ? [17, 16] : [0, 1];
     sira.forEach((b, i) => {

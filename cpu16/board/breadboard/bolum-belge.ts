@@ -7,7 +7,7 @@
 import { esc } from "../../kurulum/stil.ts";
 import type { Board } from "../board.ts";
 import { bolumKatalogu, bolumKimligi, bolumleri, type Bolum, type BolumKatalogu } from "../bolum-bilgi.ts";
-import { boardunGruplari, grupBolgeleri, hucreSiniri, panoBolgeleri, type BolgeBoardu, type PanoBolgesi } from "../bolum-cizim.ts";
+import { boardGrupEtiketi, boardunGruplari, grupBolgeleri, hucreSiniri, panoBolgeleri, type BolgeBoardu, type PanoBolgesi } from "../bolum-cizim.ts";
 import { PASSIVES } from "../passives.ts";
 import type { GrupEtiketi } from "./cizim.ts";
 
@@ -99,7 +99,7 @@ export function haritaBolgeleri(kart: string, boards: readonly BolgeBoardu[], k:
  * çok `satir` satıra sığdığı kadar; kalanlar "+N"
  */
 export function boardGruplari(kart: string, no: number, y: BelgeYerlesimi, k: BolumKatalogu, en: number, boy: number, satir = 2): string[] {
-  const et = boardunGruplari(kart, no, y, k).map((g) => k.bolumler.get(g)!.etiket);
+  const et = boardunGruplari(kart, no, y, k).map((g) => boardGrupEtiketi(no, y, k, g));
   const sigar = (t: string) => NORMAL_EN * boy * t.length <= en;
   const out: string[] = [""];
   for (let i = 0; i < et.length; i++) {
