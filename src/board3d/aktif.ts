@@ -6,7 +6,7 @@
 //
 // İki kartın da iki görünümü var: PCB ve breadboard. Hesap makinesinde breadboard varsayılan
 // (hesap8/breadboard: 60 board, atlama telleri); bilgisayarda PCB varsayılan, breadboard'da her kart
-// kendi panosunda (cpu16/breadboard: 7 pano, 134 board, panolar arası 64 damarlı şerit kablo) ve
+// kendi panosunda (cpu16/breadboard: 7 pano, 149 board, panolar arası 64 damarlı şerit kablo) ve
 // seçim tarayıcıda saklanır. Kart ve simülasyon aynı; yalnız yerleşim değişir.
 
 import type { Board } from "../../cpu16/board/board";

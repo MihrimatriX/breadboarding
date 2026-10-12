@@ -94,8 +94,10 @@ görünür. Breadboard'da ilk dört aşaması ≈ 22 entegre ve 6–7 breadboard
 
 1. [CONTRIBUTING.md](../CONTRIBUTING.md): kurulum, dal ve PR akışı, kurallar, yeni çip / kart / örnek
    program ekleme, üretilen dosyalar.
-2. [README: proje yapısı](../README.md#proje-yapısı) ve [Silikon3D mimarisi](../README.md#silikon3d-mimarisi).
-3. Dokunacağın yerin belgesi: derleyici için [cc16.md](../cpu16/docs/cc16.md) (dosya tablosu), yeni
+2. [CLAUDE.md](../CLAUDE.md): tek sayfalık dizin (klasör haritası, push'tan önceki denetimler, üretilen
+   dosyalar, değişmez kurallar, bilinen tuzaklar); `cpu16/`, `hesap8/`, `src/` altında birer tane daha.
+3. [README: proje yapısı](../README.md#proje-yapısı) ve [Silikon3D mimarisi](../README.md#silikon3d-mimarisi).
+4. Dokunacağın yerin belgesi: derleyici için [cc16.md](../cpu16/docs/cc16.md) (dosya tablosu), yeni
    çip için [parcalar.md](../cpu16/docs/parcalar.md) (sonundaki "Yeni çip eklemek"), 3D görünüm için
    [3d-gorunum.md](../cpu16/docs/3d-gorunum.md) (sonundaki "Dosyalar"), kartlar için
    [kartlar.md](../cpu16/docs/kartlar.md).
