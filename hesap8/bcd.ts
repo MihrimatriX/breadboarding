@@ -27,23 +27,27 @@ export interface BcdAgi {
 
 /**
  * Hangi (adım, hane) noktasında modül gerekir: n bitlik bütün girişler için algoritmayı sayıyla
- * çalıştırıp hanenin o anda 5'e ulaşabildiği yerleri bulur.
+ * çalıştırıp hanenin o anda 5'e ulaşabildiği yerleri bulur. i. adımda yazmaçta yalnız girişin en
+ * anlamlı i biti vardır: 2^i ayrı değer. Her adımda bu değerler birer kez işlenir (girişleri tek tek
+ * çalıştırmaktan n kat az iş).
  */
 export function modulYerleri(n: number, haneSayisi: number): boolean[][] {
   const gerek = Array.from({ length: n }, () => Array<boolean>(haneSayisi).fill(false));
-  const N = 1 << n;
-  for (let v = 0; v < N; v++) {
-    let reg = 0; // BCD yazmacı (4 bit / hane)
-    for (let i = 0; i < n; i++) {
+  let yazmaclar = new Uint32Array(1); // BCD yazmacı (4 bit / hane), girişin kaydırılmış her başı için
+  for (let i = 0; i < n; i++) {
+    const sonraki = new Uint32Array(2 * yazmaclar.length);
+    for (let k = 0; k < yazmaclar.length; k++) {
+      let reg = yazmaclar[k];
       for (let h = 0; h < haneSayisi; h++) {
-        const d = (reg >>> (4 * h)) & 15;
-        if (d >= 5) {
+        if (((reg >>> (4 * h)) & 15) >= 5) {
           gerek[i][h] = true;
           reg += 3 << (4 * h);
         }
       }
-      reg = reg * 2 + ((v >>> (n - 1 - i)) & 1);
+      sonraki[2 * k] = reg * 2; // sıradaki giriş biti 0
+      sonraki[2 * k + 1] = reg * 2 + 1; // 1
     }
+    yazmaclar = sonraki;
   }
   return gerek;
 }

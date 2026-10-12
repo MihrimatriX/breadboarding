@@ -16,7 +16,7 @@ import { BIOS, buildBios } from "../bios/build.ts";
 import { MachineLink } from "../bios/simlink.ts";
 import { programHex, uploadHex, intelHex } from "../bios/uploader.ts";
 import { buildProgram, formatErrors } from "../cc/index.ts";
-import { diskReader, loadLib } from "../cc/node.ts";
+import { diskReader, loadLib, toPosixPath } from "../cc/node.ts";
 import { EEPROM_SIZE } from "../emu/devices/eeprom.ts";
 import { CPU_HZ, Machine } from "../emu/machine.ts";
 import { CODEPAGE, FONT_8X16 } from "../video/font.ts";
@@ -98,7 +98,8 @@ export async function machineCommand(args: string[]): Promise<void> {
     let hex: string;
     if (file.endsWith(".c")) {
       // C: cc16 ile BIOS hedefine derle (kod 0x4000'dan); Web IDE'nin "Derle ve RAM'e yükle"si gibi
-      const b = buildProgram({ [file]: readFileSync(file, "utf8") }, [file], { lib: loadLib(), readFile: diskReader, target: "bios" });
+      const yol = toPosixPath(file);
+      const b = buildProgram({ [yol]: readFileSync(file, "utf8") }, [yol], { lib: loadLib(), readFile: diskReader, target: "bios" });
       if (b.errors.length) {
         console.error(formatErrors(b.errors));
         process.exit(1);

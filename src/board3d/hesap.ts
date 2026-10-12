@@ -185,6 +185,9 @@ export const useHesap = create<HesapState>((set, get) => {
     },
     ayarla(a, b, op) {
       const x = { a: a & 0xff, b: b & 0xff, op: (op & 3) as IslemKodu };
+      const s = get();
+      // hiçbir anahtar değişmedi (ör. seçili işleme yeniden tıklandı): devre ve sahne zaten güncel
+      if (sim && x.a === s.a && x.b === s.b && x.op === s.op) return;
       set(x);
       if (!sim) return;
       sim.ayarla(x.a, x.b, x.op);

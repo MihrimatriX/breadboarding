@@ -8,7 +8,7 @@ import { buildProgram } from "../../cpu16/cc/index";
 import { LIB } from "../../cpu16/cc/lib-vite";
 import { Cpu16, SimpleBus, type StepResult } from "../../cpu16/emu/cpu";
 import { disassemble } from "../../cpu16/emu/disasm";
-import { AppHeader, Group, Meter, OdakDugmesi, PanelToggle, Section, Tabs, TasmaMenusu, YanBolucu, duzenStili, useLayout, usePaneller, type Shortcut, type TabDef } from "../ui/Shell";
+import { AppHeader, Bayrak, Group, Meter, OdakDugmesi, PanelToggle, Section, Tabs, TasmaMenusu, YanBolucu, duzenStili, useLayout, usePaneller, type Shortcut, type TabDef } from "../ui/Shell";
 import { Simge } from "../ui/simgeler";
 import { dilBul, ornekDili, type Dil } from "./dil";
 
@@ -319,7 +319,7 @@ export function FlatBench({ switcher }: { switcher: ReactNode }) {
                       ))}
                     </div>
                     <div className="pins" aria-label="Bayraklar">
-                      {(["n", "z", "c", "v", "i"] as const).map((f) => <span key={f} className={`pin ${cpu[f] ? "on" : ""}`}>{f.toUpperCase()}</span>)}
+                      {(["n", "z", "c", "v", "i"] as const).map((f) => <Bayrak key={f} ad={f} on={cpu[f]} />)}
                       {cpu.irq && <span className="pin on">IRQ</span>}
                     </div>
                   </>

@@ -1,13 +1,14 @@
 import type { ReactNode } from "react";
 import { onYukle } from "../bolumler";
 
-export type Mode = "6502" | "cpu16" | "kart" | "hesap" | "mimari";
+export type Mode = "6502" | "cpu16" | "kart" | "hesap" | "mimari" | "belgeler";
 
 export function modeFromHash(): Mode {
   if (location.hash === "#cpu16") return "cpu16";
   if (location.hash === "#kart") return "kart";
   if (location.hash === "#hesap") return "hesap";
   if (location.hash === "#mimari" || location.hash.startsWith("#mimari/")) return "mimari";
+  if (location.hash === "#belgeler" || location.hash.startsWith("#belgeler/")) return "belgeler";
   return "6502";
 }
 
@@ -105,11 +106,25 @@ export const BOLUMLER: Bolum[] = [
       </>,
     ),
   },
+  {
+    mode: "belgeler",
+    hash: "#belgeler",
+    ad: "Belgeler",
+    ipucu: "CPU16 ve hesap8 belgeleri: spec, komut seti, kartlar, deneyler",
+    tanitim:
+      "Depodaki bütün belgeler uygulamanın içinde: okuma yolu, CPU16'nın spec'i ve komut seti, kartlar, BIOS ve C derleyicisi, deney rehberleri, hesap makinesi. Soldan bir belge seç ya da başlık ve metinlerde ara.",
+    simge: svg(
+      <>
+        <path d="M10 5.5c-1.6-1.2-3.8-1.7-6.5-1.5v11c2.7-.2 4.9.3 6.5 1.5 1.6-1.2 3.8-1.7 6.5-1.5V4c-2.7-.2-4.9.3-6.5 1.5z" />
+        <path d="M10 5.5v11" opacity="0.7" />
+      </>,
+    ),
+  },
 ];
 
 export const bolum = (mode: Mode): Bolum => BOLUMLER.find((b) => b.mode === mode)!;
 
-/** Uygulamanın bölümleri arasında geçiş: 6502 die görünümü, CPU16 tezgâhı, CPU16 kartı (3D), 8 bit hesap makinesi (3D) ve mimari diyagramları. */
+/** Uygulamanın bölümleri arasında geçiş: 6502 die görünümü, CPU16 tezgâhı, CPU16 kartı (3D), 8 bit hesap makinesi (3D), mimari diyagramları ve belgeler. */
 export function ModeSwitch({ mode }: { mode: Mode }) {
   return (
     <nav className="modes" aria-label="Bölüm">

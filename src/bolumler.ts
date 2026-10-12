@@ -9,6 +9,8 @@ export const yukle6502 = () => import("./App");
 export const yukleTezgah = () => import("./cpu16/Cpu16Bench");
 export const yukleKart = () => import("./board3d/BoardView");
 export const yukleMimari = () => import("./mimari/MimariView");
+// belgelerin kendisi ayrı parçalarda: açılan belge iner (aramada hepsi)
+export const yukleBelgeler = () => import("./belgeler/BelgelerView");
 
 const YUKLEYICI: Record<Mode, () => Promise<unknown>> = {
   "6502": yukle6502,
@@ -16,6 +18,7 @@ const YUKLEYICI: Record<Mode, () => Promise<unknown>> = {
   kart: yukleKart,
   hesap: yukleKart,
   mimari: yukleMimari,
+  belgeler: yukleBelgeler,
 };
 
 /** Bölümün kodunu arka planda iste (hata olursa bölüm açılırken yeniden denenir) */

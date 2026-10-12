@@ -1,7 +1,7 @@
 /*
  * Silikon3D arayüzü.
- * Dört bölüm (6502 die, CPU16 tezgâhı, CPU16 kartı 3D, 8 bit hesap 3D) aynı iskeleti ve aynı tasarım
- * belirteçlerini kullanır:
+ * Beş bölüm (6502 die, CPU16 tezgâhı, CPU16 kartı 3D, 8 bit hesap 3D, mimari) aynı iskeleti ve aynı
+ * tasarım belirteçlerini kullanır:
  *   üst çubuk (marka, bölüm geçişi, canlı ölçümler, tema, görünüm ayarları, kısayollar, Başlangıç)
  *   araç çubuğu (az sayıda büyük denetim; seyrek olanlar "⋯" menüsünde)
  *   çalışma alanı: sahne + (yeniden boyutlanabilir) alt panel | sekmeli, genişliği ayarlanabilir yan panel
@@ -297,7 +297,7 @@ code, kbd, pre, .mono { font-family: var(--mono); font-variant-numeric: tabular-
 code { font-size: 0.95em; }
 .count {
   font: 500 var(--fs-cap)/1 var(--sans);
-  padding: 4px 8px;
+  padding: var(--sp-1) var(--sp-2);
   border-radius: var(--r-pill);
   background: var(--surface-3);
   color: var(--text-muted);
@@ -391,20 +391,30 @@ textarea { display: block; width: 100%; resize: vertical; font-size: var(--fs-ba
   box-shadow: none;
 }
 .link:hover:not(:disabled) { background: none; color: var(--link-hover); text-decoration: underline; text-underline-offset: 3px; }
-.psec-actions .link, .vga-actions .link { font-size: var(--fs-sm); padding: 6px 2px; }
+.psec-actions .link, .vga-actions .link { font-size: var(--fs-sm); }
+/* başlık satırlarındaki tek başına bağlantılar ("kapat", "temizle", "3D'de göster"): dokunma alanı en az
+   36 px; dolgu negatif kenar boşluğuyla dengelenir, satırın yüksekliği değişmez */
+.psec-actions .link, .vga-actions .link, .parca-bas > .link, .mm-bas-ust .link, .hs-blok-bas .link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ctl-h-sm);
+  padding: var(--sp-2) 0.125rem;
+  margin-block: calc(-1 * var(--sp-2));
+}
 
-/* bölümlü düğme öbeği (iki üç seçenekten biri) */
+/* bölümlü düğme öbeği (iki üç seçenekten biri). Dış boyu öbür denetimlerle aynı (--ctl-h); içindeki
+   düğmeler en az 36 px (--ctl-h-sm): çerçeve kutunun içine gölgeyle çizilir, boy yemez. */
 .seg {
   display: inline-flex;
   flex: none;
   gap: 2px;
-  padding: 3px;
+  padding: calc((var(--ctl-h) - var(--ctl-h-sm)) / 2);
   background: var(--surface-inset);
-  border: 1px solid var(--border);
+  box-shadow: inset 0 0 0 1px var(--border);
   border-radius: calc(var(--r-md) + 2px);
 }
 .seg button {
-  height: calc(var(--ctl-h) - 8px);
+  height: var(--ctl-h-sm);
   padding: 0 var(--sp-3);
   border: 0;
   border-radius: var(--r-sm);
@@ -442,7 +452,7 @@ textarea { display: block; width: 100%; resize: vertical; font-size: var(--fs-ba
 kbd {
   display: inline-block;
   font: 500 var(--fs-cap)/1 var(--mono);
-  padding: 5px 8px;
+  padding: 0.3125rem var(--sp-2);
   border: 1px solid var(--border-strong);
   border-bottom-width: 2px;
   border-radius: var(--r-sm);
@@ -460,8 +470,8 @@ kbd {
   top: calc(100% + 10px);
   left: 50%;
   width: max-content;
-  max-width: 300px;
-  padding: 8px 12px;
+  max-width: 18.75rem;
+  padding: var(--sp-2) var(--sp-3);
   border-radius: var(--r-md);
   background: var(--surface-2);
   box-shadow: var(--shadow-pop);
@@ -545,8 +555,10 @@ kbd {
 .modes a[aria-current="page"] .simge { color: var(--accent); }
 .modes a:focus-visible { outline-offset: 1px; }
 
-/* araç çubuğu: öbekler boşlukla, yalnız ince bir ayraçla ayrılır */
+/* araç çubuğu: öbekler boşlukla, yalnız ince bir ayraçla ayrılır. --tb-ara: ayracın iki yanındaki boşluk
+   (dar ekranda daralır); panel düğmeleri (tb-end) her genişlikte sağda. */
 .toolbar {
+  --tb-ara: var(--sp-5);
   position: relative;
   z-index: 20;
   flex: none;
@@ -561,8 +573,8 @@ kbd {
   min-width: 0;
 }
 .tb-group { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; }
-.tb-group + .tb-group { margin-left: var(--sp-5); padding-left: var(--sp-5); border-left: 1px solid var(--border); }
-.tb-group.tb-end { margin-left: auto; border-left: 0; gap: var(--sp-1); }
+.tb-group + .tb-group { margin-left: var(--tb-ara); padding-left: var(--tb-ara); border-left: 1px solid var(--border); }
+.toolbar .tb-group.tb-end { margin-left: auto; padding-left: var(--tb-ara); border-left: 0; gap: var(--sp-1); }
 .tb-group.tb-grow { flex: 0 1 22rem; }
 .tb-label { font: 400 var(--fs-base)/1 var(--body); color: var(--text-faint); white-space: nowrap; }
 .speed { display: flex; align-items: center; gap: var(--sp-3); font: var(--fs-base) var(--body); color: var(--text-muted); flex: 1; min-width: 0; white-space: nowrap; }
@@ -727,7 +739,7 @@ body.resizing-x .splitter.dikey::after { opacity: 1; background: var(--focus); }
 .tabs [role="tab"]:focus-visible { outline-offset: -4px; }
 .tabbar-actions { margin-left: auto; display: flex; align-items: center; gap: var(--sp-3); min-width: 0; overflow: hidden; }
 .tabbar-actions .hint-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tab-sayi { margin-left: 6px; font-weight: 400; color: var(--text-faint); }
+.tab-sayi { margin-left: 0.375rem; font-weight: 400; color: var(--text-faint); }
 
 /* panel bölümü: başlık solda, küçük eylemler sağda */
 .psec { display: flex; flex-direction: column; gap: var(--sp-4); min-width: 0; }
@@ -751,7 +763,7 @@ body.resizing-x .splitter.dikey::after { opacity: 1; background: var(--focus); }
   z-index: 50;
   pointer-events: none;
   max-width: 26rem;
-  padding: 8px 12px;
+  padding: var(--sp-2) var(--sp-3);
   background: var(--overlay);
   border-radius: var(--r-md);
   box-shadow: var(--shadow-pop);
@@ -761,7 +773,7 @@ body.resizing-x .splitter.dikey::after { opacity: 1; background: var(--focus); }
 .tooltip b { font-family: var(--mono); font-weight: 600; }
 .tooltip span { color: var(--text-muted); }
 .tooltip span.on { color: var(--hi); font-weight: 600; }
-.tooltip .tt-ek { margin-top: 4px; color: var(--warn); font-size: var(--fs-cap); }
+.tooltip .tt-ek { margin-top: var(--sp-1); color: var(--warn); font-size: var(--fs-cap); }
 .credit { font-size: var(--fs-cap); color: var(--text-faint); }
 
 /* ============================================================ değerler: yazmaçlar, pinler, durum */
@@ -877,7 +889,7 @@ button.pin.toggle:hover:not(:disabled) { background: var(--surface-3); border-st
 /* ============================================================ 6502 die */
 .olcum-bas { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
 .olcum-bas .big { font: 500 var(--fs-xl)/1.25 var(--mono); overflow-wrap: anywhere; color: var(--text); }
-.level { flex: none; font: 600 var(--fs-sm)/1 var(--sans); padding: 8px 12px; border-radius: var(--r-pill); background: var(--surface-inset); color: var(--lo); white-space: nowrap; }
+.level { flex: none; font: 600 var(--fs-sm)/1 var(--sans); padding: var(--sp-2) var(--sp-3); border-radius: var(--r-pill); background: var(--surface-inset); color: var(--lo); white-space: nowrap; }
 .level.on { color: var(--hi); background: var(--hi-soft); }
 .tlist { list-style: none; margin: 0; padding: 0; font: 400 var(--fs-sm)/1.9 var(--mono); max-height: 15rem; overflow: auto; }
 .tlist li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--sp-2); border-bottom: 1px solid var(--border); padding: 2px 0; }
@@ -921,15 +933,15 @@ button.pin.toggle:hover:not(:disabled) { background: var(--surface-3); border-st
 .analyzer-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: var(--sp-4) var(--gutter) var(--sp-4); }
 .trace { flex: 1; min-height: 0; overflow: auto; border-radius: var(--r-lg); background: var(--surface-inset); }
 .trace table { border-collapse: collapse; width: 100%; font: 400 var(--fs-sm)/1.6 var(--mono); }
-.trace th { position: sticky; top: 0; padding: 8px 12px; background: var(--surface-2); color: var(--text-muted); font: 500 var(--fs-cap)/1.3 var(--sans); text-align: left; }
-.trace td { padding: 2px 12px; white-space: nowrap; }
+.trace th { position: sticky; top: 0; padding: var(--sp-2) var(--sp-3); background: var(--surface-2); color: var(--text-muted); font: 500 var(--fs-cap)/1.3 var(--sans); text-align: left; }
+.trace td { padding: 0.125rem var(--sp-3); white-space: nowrap; }
 .trace tr.fetch td { color: var(--accent); }
 .wave { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: var(--sp-3); }
 .wave canvas { display: block; width: 100%; flex: none; }
 .chips { gap: var(--sp-2); }
 .tabbar-actions .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 2px 0; min-width: 0; }
 .tabbar-actions .chips .hint-text { margin-right: var(--sp-1); }
-.chip { height: 2rem; padding: 0 var(--sp-3); border-radius: var(--r-pill); font: 400 var(--fs-sm)/1 var(--mono); color: var(--text-muted); box-shadow: none; }
+.chip { height: var(--ctl-h-sm); padding: 0 var(--sp-3); border-radius: var(--r-pill); font: 400 var(--fs-sm)/1 var(--mono); color: var(--text-muted); box-shadow: none; }
 .chip span { opacity: 0.6; margin-left: 2px; font-family: var(--sans); }
 .chip:hover:not(:disabled) { color: var(--text); }
 
@@ -961,19 +973,18 @@ button.pin.toggle:hover:not(:disabled) { background: var(--surface-3); border-st
 @container (max-width: 660px) or (max-height: 516px) {
   .vga canvas { image-rendering: auto; }
 }
+/* ekranın üstündeki ipucu: ekran iki temada da siyah, ipucu da hep koyu; dar ekranda kesilmez, satır kırar */
 .vga-hint {
   position: absolute;
   right: 20px;
   bottom: 20px;
   max-width: calc(100% - 40px);
-  padding: 6px 12px;
+  padding: 0.375rem var(--sp-3);
   font: 400 var(--fs-sm)/1.4 var(--sans);
   color: #e9ecf1;
   background: rgba(27, 31, 37, 0.9);
   border-radius: var(--r-md);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  text-wrap: balance;
   pointer-events: none;
 }
 
@@ -1102,7 +1113,7 @@ input.addr { width: 8ch; height: var(--ctl-h-sm); text-align: center; flex: none
 .side-body .tlist { max-height: none; }
 
 /* lojik seviye rozeti: 0 1 Z X */
-.lv { display: inline-grid; place-items: center; min-width: 1.75rem; height: 1.5rem; padding: 0 6px; border-radius: var(--r-sm); font: 600 var(--fs-cap)/1 var(--mono); background: var(--surface-inset); }
+.lv { display: inline-grid; place-items: center; min-width: 1.75rem; height: 1.5rem; padding: 0 0.375rem; border-radius: var(--r-sm); font: 600 var(--fs-cap)/1 var(--mono); background: var(--surface-inset); }
 .lv.l0 { color: var(--lo); }
 .lv.l1 { color: var(--hi); background: var(--hi-soft); }
 .lv.l2 { color: var(--z); }
@@ -1150,6 +1161,11 @@ p .lv, b.lv { display: inline; padding: 1px 5px; }
 .inside-svg .gate, .inside-svg .wire, .inside-svg .ipin { cursor: pointer; }
 .inside-svg .gate.behav { cursor: default; }
 .inside-svg .wire:hover { stroke-width: 2.6; }
+/* klavyeyle gelinen kapı ya da pin: odak halkası şeklin çizgisinde */
+.inside-svg [role="button"]:focus { outline: none; }
+.inside-svg .gate:focus-visible .sema-govde { stroke: var(--focus); stroke-width: 2.4; }
+.inside-svg .ipin:focus-visible rect { stroke: var(--focus); stroke-width: 2; }
+.inside-svg .ipin:focus-visible text { fill: var(--focus); font-weight: 600; }
 .sema-govde { fill: var(--sema-govde); stroke: var(--sema-cizgi); }
 .sema-govde.on { fill: var(--hi-soft); }
 .sema-govde.sel { stroke: var(--sema-secili); }
@@ -1202,7 +1218,7 @@ p .lv, b.lv { display: inline; padding: 1px 5px; }
   place-items: center;
   margin-bottom: var(--sp-1);
   border-radius: 50%;
-  font: 700 18px/1 var(--body);
+  font: 700 var(--fs-lg)/1 var(--body);
   color: var(--danger);
   background: var(--danger-soft);
 }
@@ -1265,7 +1281,7 @@ p .lv, b.lv { display: inline; padding: 1px 5px; }
 .bs-bolum-bas b { font: 600 var(--fs-md)/1.25 var(--body); }
 .bs-simge { width: 2rem; height: 2rem; display: grid; place-items: center; flex: none; border-radius: var(--r-md); background: var(--surface-2); color: var(--text-muted); box-shadow: var(--shadow-ctl); }
 .bs-bolum[aria-current="page"] .bs-simge { color: var(--accent); }
-.bs-git { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font: 500 var(--fs-sm)/1 var(--body); color: var(--text-faint); white-space: nowrap; }
+.bs-git { margin-left: auto; display: inline-flex; align-items: center; gap: var(--sp-1); font: 500 var(--fs-sm)/1 var(--body); color: var(--text-faint); white-space: nowrap; }
 .bs-bolum:hover .bs-git { color: var(--link); }
 .bs-bolum[aria-current="page"] .bs-git { color: var(--accent); }
 .bs-tanitim { font-size: var(--fs-sm); line-height: 1.6; color: var(--text-muted); }
@@ -1310,21 +1326,34 @@ p .lv, b.lv { display: inline; padding: 1px 5px; }
   .appbar { gap: var(--sp-5); }
   .menu-label { display: none; }
   .modes a { padding: 0 var(--sp-3) 0 var(--sp-2); }
-  .tb-group + .tb-group { margin-left: var(--sp-4); padding-left: var(--sp-4); }
-  .toolbar { --gutter: var(--sp-5); }
+  .toolbar { --gutter: var(--sp-5); --tb-ara: var(--sp-4); }
 }
 @media (max-width: 1340px) {
   .tb-label.kisalir { display: none; }
   .appbar-end { gap: var(--sp-4); }
 }
-/* daha dar: seçili olmayan bölümler yalnız simge (adı ipucunda, ekran okuyucuda duruyor) */
+/* daha dar: seçili olmayan bölümler yalnız simge (adı ipucunda, ekran okuyucuda duruyor). Daha geniş
+   ekranda da üst çubuk sığmazsa aynısı ve sonraki kademeler ui/sikisma.ts'ten gelir (aşağıda). */
 @media (max-width: 1240px) {
   .modes a:not([aria-current="page"]) { padding: 0 var(--sp-3); gap: 0; }
   .modes a:not([aria-current="page"]) .modes-ad { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .tb-label { display: none; }
 }
-@media (max-width: 1100px) {
-  .meter .m-label { display: none; }
+/* üst çubuk sığmayınca (ui/sikisma.ts, data-sikisma="1 2 …"): 1 bölüm adları simge, 2 ikincil ölçümler
+   gizli, 3 ölçüm etiketleri görünmez, 4 marka adı görünmez, 5 durum rozeti yalnız nokta. Telefonda üst
+   çubuk satır kırar: kademe yok. */
+@media (min-width: 901px) {
+  .appbar[data-sikisma~="1"] .modes a:not([aria-current="page"]) { padding: 0 var(--sp-3); gap: 0; }
+  .appbar[data-sikisma~="1"] .modes a:not([aria-current="page"]) .modes-ad,
+  .appbar[data-sikisma~="3"] .meter .m-label,
+  .appbar[data-sikisma~="4"] .brand-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .appbar[data-sikisma~="2"] .meter .m.ikincil { display: none; }
+  .appbar[data-sikisma~="3"] .meter .m { gap: 0; }
+  .appbar[data-sikisma~="5"] .meter .bench-status { gap: 0; padding: 0 var(--sp-2); font-size: 0; }
+}
+/* ölçüm etiketleri görünmez olur ama ekran okuyucuda kalır (ve değerin ipucunda) */
+@media (max-width: 1100px) and (min-width: 901px) {
+  .meter .m-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .meter .m { gap: 0; }
 }
 @media (max-width: 900px) {
@@ -1332,14 +1361,13 @@ p .lv, b.lv { display: inline; padding: 1px 5px; }
   html, body, #root { height: auto; }
   .shell { height: auto; min-height: 100%; }
   .appbar { flex-wrap: wrap; padding: var(--sp-2) var(--sp-4); row-gap: var(--sp-2); }
-  .appbar-end { margin-left: 0; width: 100%; justify-content: space-between; }
-  .appbar-tools { border-left: 0; padding-left: 0; }
+  /* üç satır: marka ve araçlar · canlı ölçümler (boydan boya, etiketleriyle) · bölüm geçişi */
+  .appbar-end { display: contents; }
+  .appbar-tools { order: 1; margin-left: auto; border-left: 0; padding-left: 0; }
+  .meter { order: 2; width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .meter .m { flex: none; }
   .modes { order: 3; width: 100%; overflow-x: auto; scrollbar-width: none; }
   .modes a { flex: 1 0 auto; justify-content: center; }
-  .meter { overflow-x: auto; scrollbar-width: none; }
-  .meter .m { flex: none; }
-  .toolbar { padding: var(--sp-2) var(--sp-4); }
-  .tb-group + .tb-group { margin-left: var(--sp-2); padding-left: var(--sp-2); }
   .workspace { flex-direction: column; }
   .stage { flex: none; height: 60vh; }
   .side { width: 100% !important; border-left: 0; border-top: 1px solid var(--border); }
@@ -1360,6 +1388,11 @@ p .lv, b.lv { display: inline; padding: 1px 5px; }
 @media (max-width: 560px) {
   .modes a .modes-ad { font-size: var(--fs-sm); }
   .bs-alt { flex-direction: column; align-items: stretch; }
+  /* bölümlü öbek sığmazsa satır kırar (sayfa yana kaymasın) */
+  .seg { flex: 0 1 auto; flex-wrap: wrap; min-width: 0; }
+  /* VGA paneli sahnenin çoğunu örtmesin: daha dar, açıklama satırı gizli */
+  .vga-panel { width: min(240px, 62%); gap: var(--sp-2); padding: var(--sp-3); }
+  .vga-panel .vga-note { display: none; }
 }
 /* ============================================================ bölüm etiketleri (3D kart görünümü) */
 /* Sahnedeki bölge / blok çerçeveleri ve plakaları 3D'de (Bolumler3D); burada kenar etiketleri, çip
@@ -1412,11 +1445,11 @@ p .lv, b.lv { display: inline; padding: 1px 5px; }
 /* 3D kart sayfalarında araç çubuğu kalabalık (Etiketler): 1440 px'de de tek satır kalsın diye öbekler
    arası biraz daralır, kısalan etiketler biraz daha geniş ekranda kısalır */
 @media (max-width: 1680px) {
-  .app.kart .toolbar .tb-group + .tb-group:not(.tb-end) { margin-left: var(--sp-4); padding-left: var(--sp-4); }
+  .app.kart .toolbar { --tb-ara: var(--sp-4); }
 }
 @media (max-width: 1500px) {
   .app.kart .tb-label.kisalir { display: none; }
-  .app.kart .toolbar .tb-group + .tb-group:not(.tb-end) { margin-left: var(--sp-3); padding-left: var(--sp-3); }
+  .app.kart .toolbar { --tb-ara: var(--sp-3); }
 }
 /* bilgisayarın araç çubuğu daha dar ekranda: Etiketler "⋯" menüsünde */
 .etiket-menude { display: none; }
@@ -1444,8 +1477,30 @@ button.etiket.bolum-etiketi:hover:not(:disabled) { background: var(--surface-3);
 .bolum-altlar li i { align-self: center; }
 .bolum-altlar .hint-text { margin-left: auto; white-space: nowrap; }
 .bolum-sinyaller { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-2); }
-.bolum-sinyaller code { padding: 1px 6px; border-radius: var(--r-sm); background: var(--surface-inset); color: var(--net); font-size: var(--fs-sm); }
+.bolum-sinyaller code { padding: 1px 0.375rem; border-radius: var(--r-sm); background: var(--surface-inset); color: var(--net); font-size: var(--fs-sm); }
 .bolum-parcalar span { font-family: var(--sans); color: var(--text-muted); }
+
+/* dar ekran: araç çubuğu. 1100 px'in altında öbekler satır kırabilir: ayraç satır başında kalmasın diye
+   ayraç yok, öbekler yalnız boşlukla ayrılır. 900 px'in altında öbeğin içi de kırılır (sayfa yana kaymaz).
+   Kart kurallarından sonra gelir: onların --tb-ara değerini de ezer. */
+@media (max-width: 1100px) {
+  .toolbar, .app.kart .toolbar { --tb-ara: 0; column-gap: var(--sp-5); }
+  .tb-group + .tb-group { border-left: 0; }
+}
+/* "Yazı boyutu: büyük"te denetimler %12,5 geniş, satır daha erken kırılır (kartların araç çubuğu en
+   kalabalığı): aynı kural daha geniş ekranda */
+@media (max-width: 1240px) {
+  html[data-boyut="buyuk"] .toolbar { --tb-ara: 0; column-gap: var(--sp-5); }
+  html[data-boyut="buyuk"] .tb-group + .tb-group { border-left: 0; }
+}
+@media (max-width: 1600px) {
+  html[data-boyut="buyuk"] .app.kart .toolbar { --tb-ara: 0; column-gap: var(--sp-5); }
+  html[data-boyut="buyuk"] .app.kart .tb-group + .tb-group { border-left: 0; }
+}
+@media (max-width: 900px) {
+  .toolbar, .app.kart .toolbar { padding: var(--sp-2) var(--sp-4); column-gap: var(--sp-4); }
+  .tb-group { flex-wrap: wrap; row-gap: var(--sp-2); }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }

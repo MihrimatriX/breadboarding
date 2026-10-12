@@ -22,9 +22,9 @@ referans modele bağlı.
 
 ## Neler var
 
-### Silikon3D: beş bölüm
+### Silikon3D: altı bölüm
 
-Uygulamanın üst çubuğunda beş bölüm var. Adres çubuğundaki `#...` açık olan bölümü gösterir; bu
+Uygulamanın üst çubuğunda altı bölüm var. Adres çubuğundaki `#...` açık olan bölümü gösterir; bu
 adresleri yer imi olarak kaydedebilirsin.
 
 | Bölüm | Adres | Ne görürsün |
@@ -34,6 +34,7 @@ adresleri yer imi olarak kaydedebilirsin.
 | **CPU16 kartı 3D** | `#kart` | Bütün bilgisayar tek sahnede: 7 kart, 460 entegre, 641 pasif eleman, ~5 000 kapı. Hepsi bir Web Worker'da kapı seviyesinde, saat saat çalışıyor. Bilgisayardan karta, karttan çipe, çipten kapıya, kapıdan transistöre iniyorsun; her seviyede sinyaller canlı. Kartların her bölgesi ve çip grubu etiketli (**Etiketler**, kısayol `E`); bir etikete tıklayınca görevi, nasıl çalıştığı ve çipleri yan panelde. Monitörde programın görüntüsü var, klavyeyle yazabiliyorsun. |
 | **8 bit hesap 3D** | `#hesap` | Hesap makinesinin kartı: 216 entegre, 15 hane 7 segment gösterge. Anahtarları çeviriyorsun, sonuç kapı gecikmeleriyle göstergelere geliyor; her bloğun o an ne hesapladığı yan panelde. Bölgeler ve çip grupları etiketli, tıklanınca açıklamaları yan panelde. |
 | **Mimari** | `#mimari` | Blok diyagramları: CPU kartı, bütün bilgisayar (7 kart, arka panel, dış cihazlar) ve hesap makinesi. Her kutu bir işlev bloğu: görevi, içindeki entegreler ve sayıları (devreden sayılır). Çizgiler veri, adres ve kontrol yolları; kalınlık bit sayısı, ok yön. Bir kutunun üstüne gelince yolları öne çıkıyor; tıklayınca entegreleri, kapıları ve yolları yan panelde, "3D'de göster" ile 3D karttaki yeri. Ayrıntı: [mimari.md](cpu16/docs/mimari.md). |
+| **Belgeler** | `#belgeler` | CPU16, hesap8 ve deney setinin belgeleri uygulamanın içinde: gruplu liste, arama (Türkçe karakterlere duyarsız, kısayol `/`), "Bu sayfada" içindekiler. Belgeler arası bağlantılar ve çapalar uygulamada açılır; kaynak dosyalara bağlantılar GitHub'a gider. Her belge ayrı bir parça, yalnız açılınca iner. Adres `#belgeler/<yol>#<çapa>`. |
 
 <details>
 <summary>6502 die bölümünün ayrıntıları ve kısayollar</summary>
@@ -167,7 +168,7 @@ Ayrıntılar `Dockerfile`, `docker-compose.yml` ve `docker/nginx/default.conf` i
 | `npm run dev` | Vite geliştirme sunucusu, http://localhost:5173 |
 | `npm run build` | tip denetimi (`tsc -b`) + üretim derlemesi `dist/` altına |
 | `npm run preview` | `dist/`'i yerelde sun (http://localhost:4173) |
-| `npm test` | bütün vitest testleri (6502, CPU16, hesap8; ≈ 4 dakika) |
+| `npm test` | bütün vitest testleri (6502, CPU16, hesap8; ≈ 1 dakika) |
 | `npm run typecheck` | yalnız tip denetimi |
 | `npm run check` | tip denetimi + testler: PR açmadan önce bunu çalıştır |
 | `npm run cpu16 -- <komut>` | CPU16 komut satırı (aşağıda) |
@@ -287,7 +288,7 @@ Gerçek çiplerle kurmak isteyenler için sıra:
 ## Testler ve doğrulama
 
 ```bash
-npm test                                                  # bütün testler (690 test, ≈ 4 dakika)
+npm test                                                  # bütün testler (721 test, ≈ 1 dakika)
 npm run check                                             # tip denetimi + testler
 npx vitest run cpu16/tests/emu.test.ts                    # tek dosya
 npx vitest run cpu16/tests/cc-bios.test.ts -t "yılan"     # bir dosyada adı eşleşen testler

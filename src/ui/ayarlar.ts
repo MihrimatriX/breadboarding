@@ -2,7 +2,8 @@
 // paneller gizli, sahne tam). Tercihler tarayıcıda saklanır; tema seçilmemişse işletim sisteminin
 // tercihi izlenir (sistem değişince sayfa da değişir). Ayarlar <html> öğesine data-tema, data-boyut ve
 // data-odak olarak yazılır; styles.css belirteçleri bunlara göre değişir. index.html'deki küçük betik
-// aynı anahtarları ilk boyamadan önce okur ki sayfa açılırken yanlış temada parlamasın.
+// aynı anahtarları ilk boyamadan önce okur ki sayfa açılırken yanlış temada parlamasın. İşletim
+// sisteminin "hareketi azalt" tercihi de buradan okunur (azHareket: 3D kamera uçuşları).
 //
 // Kısayollar (yazı alanlarında ve klavyeyi karta ileten ekranlarda değil): T tema, Y yazı boyutu,
 // F odak modu.
@@ -138,6 +139,22 @@ export function useAyarlariUygula(): void {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+}
+
+const azHareketSorgusu: MediaQueryList | null =
+  typeof window !== "undefined" && typeof window.matchMedia === "function" ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
+
+/**
+ * İşletim sisteminde "hareketi azalt" açık mı. CSS geçişleri styles.css'te kapanır; JS ile yapılan kamera
+ * uçuşları buna bakar ve hedefe kayarak değil, hemen geçer; kart sahnelerinde kamera bırakınca süzülmez.
+ */
+export function azHareket(): boolean {
+  return azHareketSorgusu?.matches ?? false;
+}
+
+/** Kamera uçuşunun bir karelik ilerlemesi (0..1): hareket azaltılmışsa doğrudan sona */
+export function ucusAdimi(t: number, dt: number, hiz: number): number {
+  return azHareket() ? 1 : Math.min(1, t + dt * hiz);
 }
 
 /** 3D sahnelerin zemini: temanın sahne rengi (styles.css'teki --surface-scene ile aynı) */

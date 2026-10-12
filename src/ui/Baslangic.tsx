@@ -80,7 +80,7 @@ export function Baslangic({ mode }: { mode: Mode }) {
         </button>
       </div>
       <p className="bs-giris">
-        Bir bilgisayarı transistörden karta kadar tarayıcıda, canlı sinyallerle çalıştırır. Beş bölüm var; üst çubuktan istediğin an
+        Bir bilgisayarı transistörden karta kadar tarayıcıda, canlı sinyallerle çalıştırır. Altı bölüm var; üst çubuktan istediğin an
         geçebilirsin, her bölüm kaldığı yerden devam eder.
       </p>
       <ul className="bs-bolumler">
