@@ -121,11 +121,18 @@ describe("Kontrol birimi: CPU kartında", () => {
     expect(imza[1]).toBe(imza[0]);
   });
 
-  it("CPU kartının referansları kendi aralığında kalır (CARD_REF_BASE: U1..U199)", () => {
+  it("CPU kartının referansları kendi aralığında kalır (CARD_REF_BASE: U1..U199, taşanlar U901..U999)", () => {
+    const aralikta = (ref: string) => {
+      const n = Number(/\d+$/.exec(ref)![0]);
+      return (n >= 1 && n <= 199) || (n >= 901 && n <= 999);
+    };
     for (const [ad, board] of kartlar) {
       const cpu = board.chips.filter((c) => c.card === "cpu");
-      expect(cpu.length, ad).toBeLessThan(199);
-      expect(board.passives.filter((p) => p.card === "cpu" && /^C/.test(p.ref)).length, ad).toBeLessThan(200);
+      for (const c of cpu) expect(aralikta(c.ref), `${ad} ${c.ref}`).toBe(true);
+      for (const p of board.passives.filter((p) => p.card === "cpu")) expect(aralikta(p.ref), `${ad} ${p.ref}`).toBe(true);
+      // kartın referansları tekil; taşma diliminden önce 1..199 dolar
+      expect(new Set(cpu.map((c) => c.ref)).size, ad).toBe(cpu.length);
+      expect(cpu.filter((c) => Number(c.ref.slice(1)) <= 199).length, ad).toBe(Math.min(cpu.length, 199));
     }
   });
 });

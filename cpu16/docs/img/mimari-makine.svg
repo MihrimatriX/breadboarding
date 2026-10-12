@@ -53,7 +53,7 @@
   <path class="mm-baslik-bg" d="M0.5 56 V10.5 A10 10 0 0 1 10.5 0.5 H1889.5 A10 10 0 0 1 1899.5 10.5 V56 Z"/>
   <g class="mm-baslik">
     <text class="mm-t mm-t-baslik" x="24" y="37.4" text-anchor="start">CPU16 BİLGİSAYARI · MİMARİ</text>
-    <text class="mm-t mm-t-alt-baslik" x="1876" y="33.4" text-anchor="end">7 kart · 64 hatlı arka panel · 444 entegre</text>
+    <text class="mm-t mm-t-alt-baslik" x="1876" y="33.4" text-anchor="end">7 kart · 64 hatlı arka panel · 460 entegre</text>
   </g>
   <g class="mm-grup" data-kutu="clk">
     <rect class="mm-grup-govde" x="1570" y="80" width="300" height="374" rx="12"/>
@@ -65,7 +65,7 @@
     <rect class="mm-grup-govde" x="30" y="80" width="520" height="374" rx="12"/>
     <path class="mm-grup-cizgi" d="M31 114 H549"/>
     <text class="mm-t mm-t-grup-ad" x="44" y="103" text-anchor="start">CPU KARTI</text>
-    <text class="mm-t mm-t-grup-ek" x="135.4" y="103" text-anchor="start">194 entegre · 68 kapı çipi</text>
+    <text class="mm-t mm-t-grup-ek" x="135.4" y="103" text-anchor="start">210 entegre · 68 kapı çipi</text>
     <text class="mm-t mm-t-grup-link" x="536" y="103" text-anchor="end">ayrıntı ›</text>
   </g>
   <g class="mm-grup" data-kutu="bellek">
@@ -281,10 +281,10 @@
     <rect class="mm-kutu-govde" x="42" y="126" width="242" height="160" rx="8"/>
     <text class="mm-t mm-t-ad" x="163" y="148.8" text-anchor="middle">REGISTER'LAR VE SABİT</text>
     <text class="mm-t mm-t-ad" x="163" y="166.8" text-anchor="middle">BİRİMİ</text>
-    <text class="mm-t mm-t-parca" x="163" y="185.9" text-anchor="middle">74HC574 ×24, 74HC151 ×19,</text>
-    <text class="mm-t mm-t-parca" x="163" y="201.9" text-anchor="middle">74HC161 ×4, 74HC541 ×4,</text>
+    <text class="mm-t mm-t-parca" x="163" y="185.9" text-anchor="middle">74HC574 ×24, 74HC541 ×20,</text>
+    <text class="mm-t mm-t-parca" x="163" y="201.9" text-anchor="middle">74HC151 ×19, 74HC161 ×4,</text>
     <text class="mm-t mm-t-parca" x="163" y="217.9" text-anchor="middle">74HC138 ×2</text>
-    <text class="mm-t mm-t-pasif" x="163" y="236.9" text-anchor="middle">LED ×28, çubuk gösterge ×8</text>
+    <text class="mm-t mm-t-pasif" x="163" y="236.9" text-anchor="middle">LED ×28, çubuk gösterge ×24</text>
     <text class="mm-t mm-t-kapi" x="163" y="255.2" text-anchor="middle">+ 14 kapı (yapıştırıcı lojikte)</text>
     <text class="mm-t mm-t-gorev" x="163" y="273.9" text-anchor="middle">R0–R7, TA, TB, PC, MAR, IR, sabitler</text>
   </g>

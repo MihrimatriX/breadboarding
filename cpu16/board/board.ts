@@ -73,6 +73,15 @@ export const CARD_REF_BASE: Record<string, [base: number, span: number]> = {
   hesap: [0, 1000],
 };
 
+/**
+ * Aralığı dolan kartın taşma dilimi: kartın aralığından sonraki elemanları buradan (taban + 1)
+ * numaralanır, öbür kartların numaraları değişmez. CPU kartının 200. entegresi U901, 200.
+ * kondansatörü C901 (register içeriği tamponları ve onların kondansatörleri).
+ */
+export const CARD_REF_TASMA: Record<string, number> = {
+  cpu: 900,
+};
+
 /** Yapıştırıcı (glue) kapı türleri: hangi çipten, birimde hangi pinler */
 const GLUE = {
   and: { part: "74HC08", units: 4, pins: (u: number) => [`${u}A`, `${u}B`, `${u}Y`] },
@@ -157,8 +166,10 @@ export class Board {
       if (!this.extraBases.has(this.card)) this.extraBases.set(this.card, 400 + 100 * this.extraBases.size);
       base = this.extraBases.get(this.card)!;
     }
-    if (n >= span) throw new Error(`${this.card} kartında ${span - 1}'den fazla aynı türden eleman var: CARD_REF_BASE'i genişlet`);
-    return base + n;
+    if (n < span) return base + n;
+    const tasma = CARD_REF_TASMA[this.card];
+    if (tasma !== undefined && n - span + 1 < 100) return tasma + n - span + 1;
+    throw new Error(`${this.card} kartında ${span - 1}'den fazla aynı türden eleman var: CARD_REF_BASE'i genişlet`);
   }
 
   has(name: string): boolean {
@@ -212,6 +223,29 @@ export class Board {
     }
     this.chips.push(inst);
     return inst;
+  }
+
+  /**
+   * Yerleştirilmiş bir çipin bacağını başka bir nete taşır (sonaErtele() içinde: çipin referansı ve
+   * kartın öbür netlerinin numarası değişmeden bağlantısı değişir). Çipin kapılarında eski net, giriş
+   * bacağında yalnız girişlerde, çıkış bacağında yalnız çıkışlarda değişir; çipin aynı yöndeki başka
+   * bir bacağı da o netteyse ayırt edilemez, hata verir.
+   */
+  bacakTasi(ci: ChipInstance, pin: string, net: Net): void {
+    const p = ci.def.pins.find((x) => x.name === pin);
+    if (!p) throw new Error(`${ci.ref} (${ci.def.part}): taşınacak bacak yok: ${pin}`);
+    if (p.dir !== "in" && p.dir !== "out" && p.dir !== "tri") throw new Error(`${ci.ref}.${pin}: yalnız giriş ve çıkış bacakları taşınır (${p.dir})`);
+    const eski = ci.nets[pin];
+    const giris = p.dir === "in";
+    const ayni = ci.def.pins.filter((x) => x.name !== pin && ci.nets[x.name] === eski && (x.dir === "in") === giris);
+    if (ayni.length) throw new Error(`${ci.ref}.${pin}: ${ayni.map((x) => x.name).join(", ")} de aynı nette, ayırt edilemez`);
+    const yeni = this.resolve(net);
+    for (let g = ci.gates[0]; g < ci.gates[1]; g++) {
+      const k = this.c.gates[g];
+      const dizi = giris ? k.inputs : k.outputs;
+      for (let i = 0; i < dizi.length; i++) if (dizi[i] === eski) dizi[i] = yeni;
+    }
+    ci.nets[pin] = yeni;
   }
 
   /** Pasif eleman (direnç dizisi, kondansatör, LED, konnektör): simülasyona etkisi yok, BOM ve şema için */
