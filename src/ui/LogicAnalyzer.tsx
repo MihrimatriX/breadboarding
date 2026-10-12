@@ -29,13 +29,16 @@ function Watched() {
   const index = useApp((s) => s.index);
   if (watch.length === 0) return <span className="hint-text">Ölçtüğün sinyali "Analizöre ekle" ile buraya al.</span>;
   return (
-    <div className="row chips" aria-label="İzlenen sinyaller">
+    <div className="row chips" role="group" aria-label="İzlenen sinyaller">
       <span className="hint-text">İzlenen</span>
-      {watch.map((w) => (
-        <button key={w.node} className="chip" onClick={() => { useApp.getState().toggleWatch(w.node); sim.syncWatch(); }} title="Analizörden çıkar">
-          {index?.namesByNode.get(w.node)?.[0] ?? `#${w.node}`} <span aria-hidden="true">×</span>
-        </button>
-      ))}
+      {watch.map((w) => {
+        const ad = index?.namesByNode.get(w.node)?.[0] ?? `#${w.node}`;
+        return (
+          <button key={w.node} className="chip" onClick={() => { useApp.getState().toggleWatch(w.node); sim.syncWatch(); }} title="Analizörden çıkar" aria-label={`${ad}: analizörden çıkar`}>
+            {ad} <span aria-hidden="true">×</span>
+          </button>
+        );
+      })}
     </div>
   );
 }

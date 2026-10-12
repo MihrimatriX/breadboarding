@@ -1,12 +1,28 @@
 // Seçili çipin içi: kapı seviyesi şema, canlı. Kapıya tıkla → transistör şeması; tele tıkla → net.
+// Kapılar ve pinler klavyeyle de seçilir (Tab, Enter / Boşluk).
 
-import { useMemo } from "react";
+import { useMemo, type KeyboardEvent } from "react";
 import { chipInside, type InsideGate } from "../../cpu16/board/inside";
 import type { Gate } from "../../cpu16/chips/logic";
 import { LEVEL_VAR, levelOf } from "./levels";
 import { boardModel, liveNets, useKart } from "./store";
 
 const BUBBLE = 3;
+
+/** SVG öğesini düğme gibi davrandır: odaklanır, Enter ve Boşluk tıklar */
+export function svgDugme(ad: string, tikla: () => void) {
+  return {
+    role: "button",
+    tabIndex: 0,
+    "aria-label": ad,
+    onClick: tikla,
+    onKeyDown: (e: KeyboardEvent) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      tikla();
+    },
+  };
+}
 
 function shape(g: InsideGate): { d: string; bubble: boolean; label?: string } {
   const { x, y, w, h } = g;
@@ -50,7 +66,7 @@ export function InsideDiagram({ refName }: { refName: string }) {
   const name = (n: number) => board.netName(n);
 
   return (
-    <svg className="inside-svg" viewBox={`0 0 ${ins.width} ${ins.height}`} width={ins.width} height={ins.height} role="img" aria-label={`${refName} çipinin kapı seviyesi şeması`}>
+    <svg className="inside-svg" viewBox={`0 0 ${ins.width} ${ins.height}`} width={ins.width} height={ins.height} role="group" aria-label={`${refName} çipinin kapı seviyesi şeması`}>
       {ins.wires.map((w, i) => {
         const lv = levelOf(v, w.net);
         return (
@@ -74,11 +90,13 @@ export function InsideDiagram({ refName }: { refName: string }) {
         const s = shape(g);
         const out = levelOf(v, g.outputs[0]);
         const sel = selectedGate === g.gate;
+        const behav = g.kind === "BEHAV";
+        const cikis = g.outputs.map((o) => `${name(o)} = ${"01ZX"[levelOf(v, o)]}`).join(", ");
         return (
           <g
             key={g.gate}
-            className={`gate${sel ? " sel" : ""}${g.kind === "BEHAV" ? " behav" : ""}`}
-            onClick={() => g.kind !== "BEHAV" && useKart.getState().selectGate(g.gate)}
+            className={`gate${sel ? " sel" : ""}${behav ? " behav" : ""}`}
+            {...(behav ? {} : { ...svgDugme(`${g.kind} kapısı, çıkış ${cikis}: transistörlerini göster`, () => useKart.getState().selectGate(g.gate)), "aria-pressed": sel })}
           >
             <title>{`${g.kind} · çıkış ${g.outputs.map((o) => `${name(o)}=${"01ZX"[levelOf(v, o)]}`).join(", ")}`}</title>
             <path d={s.d} className={`sema-govde${out === 1 ? " on" : ""}${sel ? " sel" : ""}`} strokeWidth={sel ? 1.8 : 1.1} />
@@ -91,7 +109,7 @@ export function InsideDiagram({ refName }: { refName: string }) {
         const lv = levelOf(v, p.net);
         const left = p.side === "left";
         return (
-          <g key={p.name} className="ipin" onClick={() => useKart.getState().selectNet(p.net)}>
+          <g key={p.name} className="ipin" {...svgDugme(`${p.name} pini = ${"01ZX"[lv]}: netini seç`, () => useKart.getState().selectNet(p.net))}>
             <rect x={p.x - 4} y={p.y - 4} width={8} height={8} style={{ fill: LEVEL_VAR[lv] }} />
             <text x={left ? p.x - 8 : p.x + 8} y={p.y + 4} textAnchor={left ? "end" : "start"} className={selectedNet === p.net ? "sel" : ""}>
               {p.name}
