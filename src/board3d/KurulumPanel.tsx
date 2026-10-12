@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { cardTitle } from "../../cpu16/board/layout";
 import type { CipYeri, KurulumPlani, Tel, Uc } from "../../cpu16/kurulum/plan";
-import { KURULUM_KARTLARI, sahnedeVar, seciliTel, useKurulum } from "./kurulum";
+import { gorunenKartlar, sahnedeVar, seciliTel, useKurulum } from "./kurulum";
 import "./kurulum.css";
 
 const sayi = (n: number) => n.toLocaleString("tr-TR");
@@ -223,7 +223,7 @@ export function KurulumPanel() {
         <label className="kur-kart">
           <span>Kart</span>
           <select value={s.kart} onChange={(e) => void s.kartSec(e.target.value)}>
-            {KURULUM_KARTLARI.map((k) => (
+            {gorunenKartlar().map((k) => (
               <option key={k.kart} value={k.kart}>
                 {cardTitle(k.kart)} · {k.yol}
               </option>
@@ -279,7 +279,7 @@ export function KurulumPanel() {
             </button>
           </div>
           <p className="kur-ipucu">
-            Enter: taktım · ← →: gez. Numaralar yazdırılan kurulum belgesiyle aynı (<code>npm run cpu16 -- kurulum</code>). PCB'de aynı
+            Enter: taktım · ← →: gez. Numaralar yazdırılan kurulum belgesiyle aynı (<code>npm run cpu16 -- kurulum{plan.kart === "hesap" ? " hesap" : ""}</code>). PCB'de aynı
             liste bip testi listesidir.
           </p>
 

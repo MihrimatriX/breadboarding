@@ -111,8 +111,10 @@ karakterleri doğrudan kullanılabilir (ör. `╔` = `0xC9`). Ekranın sonunda y
 Örnekler: `bios/ornekler/merhaba.s` (renkli metin, toplam), `saat.s` (SETCURSOR, çerçeve,
 TICKS, tuşla çıkış), `renkler.s` (16×16 renk tablosu), `onbellek.s` (önbellek açık/kapalı
 süre ve sayaçlar). Hepsi `0x4000`'e derlenir ve RET ile monitöre döner. C ile yazılmış
-örnekler: `selam.c` (printf, renkler, `fib`) ve `yilan.c` (VGA ekranda klavyeyle oynanan yılan
-oyunu); `npm run cpu16 -- cc --hedef bios dosya.c` ile derlenir, ayrıntılar
+örnekler: `selam.c` (printf, renkler, `fib`), `hesap.c` (`GETLINE` ile satır okuyan hesap makinesi),
+`kesme.c` (`SETIRQHOOK` ile vsync kesmesine bağlanan C fonksiyonu), `yilan.c` (VGA ekranda klavyeyle
+oynanan yılan oyunu) ve diğerleri; `npm run cpu16 -- cc --hedef bios dosya.c` ile derlenir. Rehberli
+tur: [c-ornekleri.md](c-ornekleri.md); derleyici tarafı:
 [cc16.md](cc16.md#bios-hedefi-anakartta-c---hedef-bios).
 
 ## Kesmeler

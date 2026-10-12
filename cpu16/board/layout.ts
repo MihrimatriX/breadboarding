@@ -38,7 +38,9 @@ export interface ChipPlace {
 
 /** Pasif elemanın biçimi (3D gövdesi buna göre çizilir) */
 export type PassiveKind =
-  | "direnc" | "kondansator" | "elektrolitik" | "led" | "dizi" | "konnektor" | "osilator" | "buton" | "anahtar" | "pot" | "modul";
+  | "direnc" | "kondansator" | "elektrolitik" | "led" | "dizi" | "konnektor" | "osilator" | "buton" | "anahtar" | "pot" | "modul"
+  // 8 bit hesap makinesi: DIP anahtar, 7 segment gösterge, DIP-16 direnç dizisi
+  | "dip" | "gosterge" | "dipdizi";
 
 export interface PassivePlace {
   ref: string;
@@ -114,6 +116,7 @@ export interface BoardLayout {
 export const CARD_TITLES: Record<string, string> = {
   cpu: "CPU kartı", mem: "Test bellek kartı", clk: "Saat ve reset kartı", bellek: "Bellek kartı", onbellek: "Önbellek kartı",
   gc: "G/Ç kartı", video: "Video kartı", kyb: "Kendin yap bellek kartı", prog: "Programlayıcı kartı",
+  hesap: "8 bit hesap makinesi",
 };
 
 export const cardTitle = (card: string): string =>
@@ -186,6 +189,23 @@ export function passiveShape(part: string, pinCount: number): PassiveShape {
     kind, w: span + 1.2, h, height, pin: (_n, i) => [0.6 + (i ? span : 0), h / 2],
   });
   if (/R_Array_SIP/.test(fp)) return row("dizi", 2.6, 5);
+  if (/SW_DIP_SPSTx/.test(fp)) return twoRows("dip", 7.62, 9.78, 5, "dip");
+  if (/^Package_DIP:/.test(fp)) return twoRows("dipdizi", 7.62, 6.4, 3.5, "dip");
+  if (/Display_7Segment/.test(fp)) {
+    // 0,56" tek hane: 12,6 × 19 mm gövde; pinler üst ve alt kenarda 5'er, sıralar arası 15,24 mm.
+    // 1–5 alt sırada soldan sağa, 6–10 üst sırada sağdan sola (DIP gibi)
+    const w = 12.6;
+    const h = 19;
+    return {
+      kind: "gosterge", w, h, height: 8,
+      pin: (n) => {
+        const k = n - 1;
+        const bottom = k < 5;
+        const col = bottom ? k : 9 - k;
+        return [w / 2 + (col - 2) * PITCH, h / 2 + (bottom ? 7.62 : -7.62)];
+      },
+    };
+  }
   if (/PinHeader_2x/.test(fp)) return twoRows("konnektor", PITCH, 5.6, 8.5, "header");
   if (/Pin(Header|Socket)_1x/.test(fp)) return row("konnektor", 2.8, 8.5);
   if (/Oscillator_DIP|Arduino/.test(fp)) {

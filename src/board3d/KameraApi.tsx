@@ -1,10 +1,14 @@
 // Konsoldan ve otomatik ekran görüntülerinden kamera: kart.yakinlas("D201") bir elemana yaklaşır,
-// kart.kamera() kameranın yerini ve baktığı noktayı verir, kart.kamera([x,y,z], [x,y,z]) ayarlar.
-// window.kart BoardView'da kurulur; bu bileşen kendi işlevlerini ona ekler.
+// kart.kamera() kameranın yerini ve baktığı noktayı verir, kart.kamera([x,y,z], [x,y,z]) ayarlar;
+// kart.ekranda("U3", 1) bir bacağın ekrandaki yerini verir (otomatik tıklama testleri).
+// window.kart (bilgisayar) ya da window.hesap (hesap makinesi) BoardView'da kurulur; bu bileşen kendi
+// işlevlerini sahnedeki kartınkine ekler.
 
 import { useEffect } from "react";
+import { Vector3 } from "three";
 import { useThree } from "@react-three/fiber";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+import { aktifKart } from "./aktif";
 import { boardLayoutData, findPart } from "./store";
 
 const S = 0.1;
@@ -14,6 +18,7 @@ type Vec = [number, number, number];
 export function KameraApi() {
   const camera = useThree((s) => s.camera);
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null;
+  const gl = useThree((s) => s.gl);
   useEffect(() => {
     if (!controls) return;
     const set = (cam: Vec, target: Vec) => {
@@ -41,14 +46,26 @@ export function KameraApi() {
         set([x + d * Math.cos(e) * Math.sin(a), 0.2 + d * Math.sin(e), z + d * Math.cos(e) * Math.cos(a)], [x, 0.2, z]);
         return true;
       },
+      /** Bir bacağın (pin verilmezse elemanın ortasının) ekrandaki yeri, sayfa pikseli; yükseklik mm */
+      ekranda: (ref: string, pin?: number, yukseklik = 0) => {
+        const part = findPart(ref);
+        const c = part?.chip ?? part?.passive;
+        if (!c) return null;
+        const p = pin === undefined ? { x: c.x + c.w / 2, y: c.y + c.h / 2 } : c.pins.find((q) => q.num === pin);
+        if (!p) return null;
+        const lay = boardLayoutData();
+        const v = new Vector3((p.x - lay.width / 2) * S, yukseklik * S, (p.y - lay.height / 2) * S).project(camera);
+        const r = gl.domElement.getBoundingClientRect();
+        return { x: Math.round(r.left + ((v.x + 1) / 2) * r.width), y: Math.round(r.top + ((1 - v.y) / 2) * r.height) };
+      },
     };
     const attach = () => {
-      const k = (window as unknown as { kart?: Record<string, unknown> }).kart;
+      const k = (window as unknown as Record<string, Record<string, unknown> | undefined>)[aktifKart() === "hesap" ? "hesap" : "kart"];
       if (k && k.yakinlas !== api.yakinlas) Object.assign(k, api);
     };
     attach();
     const id = window.setInterval(attach, 500);
     return () => window.clearInterval(id);
-  }, [camera, controls]);
+  }, [camera, controls, gl]);
   return null;
 }

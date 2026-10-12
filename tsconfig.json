@@ -16,5 +16,5 @@
     "noEmit": true,
     "types": ["vite/client", "node"]
   },
-  "include": ["src", "tests", "cpu16", "vite.config.ts"]
+  "include": ["src", "tests", "cpu16", "hesap8", "vite.config.ts"]
 }

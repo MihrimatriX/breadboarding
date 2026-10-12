@@ -1,9 +1,10 @@
 // Anakart komutları (cli.ts çağırır):
 //   bios    [-o bios.hex|bios.bin]          BIOS'u derle (.bin = 32 KB EEPROM imajı, .hex = sadece BIOS)
 //   charrom [-o charrom.bin]                video kartının 4 KB karakter ROM'u
-//   machine [dosya.s] [--flash] [--cycles N] [--screen]
+//   machine [dosya.s|dosya.c] [--flash] [--cycles N] [--screen]
 //                                           BIOS'u aç, programı UART önyükleyicisiyle yükleyip
-//                                           çalıştır; UART stdin/stdout'a bağlı (çıkış: Ctrl-])
+//                                           çalıştır; UART stdin/stdout'a bağlı (çıkış: Ctrl-]).
+//                                           .c dosyaları cc16 ile BIOS hedefine (0x4000) derlenir
 //   machine dosya.s --rom [--led] [--cycles N] [--screen]
 //                                           BIOS'suz: program EEPROM bank 0'a yazılmış gibi reset'ten
 //                                           çalışır (BIOS'tan önceki deneylerin programları, .org 0).
@@ -14,6 +15,8 @@ import { assemble } from "../asm/assembler.ts";
 import { BIOS, buildBios } from "../bios/build.ts";
 import { MachineLink } from "../bios/simlink.ts";
 import { programHex, uploadHex, intelHex } from "../bios/uploader.ts";
+import { buildProgram, formatErrors } from "../cc/index.ts";
+import { diskReader, loadLib } from "../cc/node.ts";
 import { EEPROM_SIZE } from "../emu/devices/eeprom.ts";
 import { CPU_HZ, Machine } from "../emu/machine.ts";
 import { CODEPAGE, FONT_8X16 } from "../video/font.ts";
@@ -92,12 +95,23 @@ export async function machineCommand(args: string[]): Promise<void> {
   if (!rom) m.runUntil(() => m.uartOutput.endsWith("> "), 2_000_000);
 
   if (file && !rom) {
-    const asm = assemble(readFileSync(file, "utf8"));
-    if (asm.errors.length) {
-      for (const e of asm.errors) console.error(`${file}:${e.line}: ${e.message}`);
-      process.exit(1);
+    let hex: string;
+    if (file.endsWith(".c")) {
+      // C: cc16 ile BIOS hedefine derle (kod 0x4000'dan); Web IDE'nin "Derle ve RAM'e yükle"si gibi
+      const b = buildProgram({ [file]: readFileSync(file, "utf8") }, [file], { lib: loadLib(), readFile: diskReader, target: "bios" });
+      if (b.errors.length) {
+        console.error(formatErrors(b.errors));
+        process.exit(1);
+      }
+      hex = intelHex(b.ranges.map(([s, e]) => ({ addr: s, data: b.image.subarray(s, e) })), 0x4000);
+    } else {
+      const asm = assemble(readFileSync(file, "utf8"));
+      if (asm.errors.length) {
+        for (const e of asm.errors) console.error(`${file}:${e.line}: ${e.message}`);
+        process.exit(1);
+      }
+      hex = programHex(asm).hex;
     }
-    const { hex } = programHex(asm);
     const res = await uploadHex(link, hex, { mode: args.includes("--flash") ? "flash" : "ram", run: !args.includes("--flash") });
     if (!res.ok) {
       console.error(`\nyükleme başarısız: ${res.message}`);

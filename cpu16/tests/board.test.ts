@@ -174,7 +174,8 @@ describe("Faz 4: KiCad şemaları ve BOM", () => {
   });
 
   it("her şemada her çipin her pini bir etikete ya da 'bağlı değil' işaretine değiyor; etiketler netlerle aynı", () => {
-    for (const f of files.filter((x) => x.path.endsWith(".kicad_sch"))) {
+    // tek sayfalı kart şemaları (hesap makinesinin çok sayfalı şeması hesap8/tests'te sınanır)
+    for (const f of files.filter((x) => x.path.endsWith(".kicad_sch") && x.board)) {
       const tree = parseSExpr(f.content) as SExpr[];
       const key = (x: string, y: string) => `${Number(x).toFixed(2)},${Number(y).toFixed(2)}`;
       const labels = new Map<string, string>();

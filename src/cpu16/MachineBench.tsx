@@ -17,6 +17,7 @@ import { CPU_HZ, Machine } from "../../cpu16/emu/machine";
 import { SET2 } from "../../cpu16/emu/devices/keyboard";
 import { textToChar } from "../../cpu16/video/font";
 import { AppHeader, Group, Menu, Meter, PanelToggle, Section, Splitter, Tabs, heightShare, useLayout, type Shortcut, type TabDef } from "../ui/Shell";
+import { Simge } from "../ui/simgeler";
 import { dilBul, ornekDili, type Dil } from "./dil";
 import { VgaRenderer } from "./vga";
 import { TerminalText, WebSerialLink, webSerial } from "./serial";
@@ -24,7 +25,11 @@ import { TerminalText, WebSerialLink, webSerial } from "./serial";
 const sources = import.meta.glob("../../cpu16/bios/ornekler/*.{s,c}", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
 /** Örnekler: assembly dosyaları uzantısız ("merhaba"), C dosyaları uzantılı ("yilan.c") anahtarla */
 const EXAMPLES = Object.fromEntries(Object.entries(sources).map(([p, s]) => [p.split("/").pop()!.replace(/\.s$/, ""), s]));
-const ORDER = ["merhaba", "saat", "renkler", "onbellek", "yeni.c", "selam.c", "yilan.c"].filter((n) => n in EXAMPLES);
+const ORDER = [
+  "merhaba", "saat", "renkler", "onbellek",
+  "yeni.c", "selam.c", "sayilar.c", "uzun.c", "kalbur.c", "siralama.c", "liste.c", "hesap.c", "sabit.c",
+  "ekran.c", "kesme.c", "hayat.c", "yilan.c",
+].filter((n) => n in EXAMPLES);
 const LABELS: Record<string, string> = {
   merhaba: "merhaba.s · renkli selam ve toplam",
   saat: "saat.s · kutu çizimi ve saat",
@@ -32,6 +37,16 @@ const LABELS: Record<string, string> = {
   onbellek: "onbellek.s · önbellek açık / kapalı",
   "yeni.c": "yeni.c · C: boş şablon, buradan başla",
   "selam.c": "selam.c · C: printf, renkler, özyineleme",
+  "sayilar.c": "sayilar.c · C: onluk, hex, ikilik; 16 bit taşma",
+  "uzun.c": "uzun.c · C: 32 bit long, çarpma / bölme ne kadar sürer",
+  "kalbur.c": "kalbur.c · C: bit dizisiyle 65535'e kadar asallar",
+  "siralama.c": "siralama.c · C: 5 sıralama algoritması yarışıyor",
+  "liste.c": "liste.c · C: struct, işaretçi, malloc ile bağlı liste",
+  "hesap.c": "hesap.c · C: klavyeden hesap makinesi",
+  "sabit.c": "sabit.c · C: sabit noktalı sayılar, sinüs eğrisi",
+  "ekran.c": "ekran.c · C: VGA'ya doğrudan: pencere, Türkçe, animasyon",
+  "kesme.c": "kesme.c · C: vsync kesmesine C fonksiyonu bağlamak",
+  "hayat.c": "hayat.c · C: Hayat Oyunu (R, Q)",
   "yilan.c": "yilan.c · C: yılan oyunu (W A S D)",
 };
 /** Kullanıcının örnek üzerinde yaptığı değişiklikler tarayıcıda saklanır (sayfa yenilense de kaybolmaz) */
@@ -196,11 +211,12 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
     return () => cancelAnimationFrame(raf);
   }, [m]);
 
-  // Terminal hep en alttan gösterilir
+  // Terminal hep en alttan gösterilir. Yalnız metin değişince: her çizimde scrollHeight okumak
+  // (çalışırken saniyede ~15 kez) tarayıcıya boşuna yerleşim hesaplatıyordu.
   useEffect(() => {
     const el = termRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  });
+  }, [term.text, lay.side, sideTab]);
 
   const start = () => {
     if (m.cpu.illegalAt !== null) return;
@@ -487,9 +503,12 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
       <div className="toolbar">
         <Group label="Kip">{switcher}</Group>
         <Group label="Çalıştırma">
-          <button onClick={step} disabled={running || !!busy} title="Bir komut çalıştır">Adım</button>
-          <button className="primary" onClick={running ? pause : start} disabled={!!busy || !!bad}>{running ? "Durdur" : "Çalıştır"}</button>
-          <button onClick={resetMachine} disabled={!!busy} title="Reset düğmesi: CPU ve cihazlar sıfırlanır, RAM ve EEPROM kalır">Sıfırla</button>
+          <button onClick={step} disabled={running || !!busy} title="Bir komut çalıştır"><Simge ad="adim" />Adım</button>
+          <button className="primary" onClick={running ? pause : start} disabled={!!busy || !!bad}>
+            <Simge ad={running ? "duraklat" : "oynat"} />
+            {running ? "Durdur" : "Çalıştır"}
+          </button>
+          <button onClick={resetMachine} disabled={!!busy} title="Reset düğmesi: CPU ve cihazlar sıfırlanır, RAM ve EEPROM kalır"><Simge ad="sifirla" />Sıfırla</button>
         </Group>
         <Group label="Saat hızı">
           <select value={speed} onChange={(e) => pickSpeed(Number(e.target.value))} aria-label="Saat hızı">
@@ -566,7 +585,7 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
               <ol className="bench-errors">{errors.map((e, i) => <li key={i}>satır {e.line}: {e.message}</li>)}</ol>
             )}
             <div className="panel-foot">
-              <button className="primary" onClick={() => void upload("ram")} disabled={!!busy} title="Ctrl+Enter">Derle ve RAM'e yükle</button>
+              <button className="primary" onClick={() => void upload("ram")} disabled={!!busy} title="Ctrl+Enter"><Simge ad="yukle" />Derle ve RAM'e yükle</button>
               <button onClick={() => void upload("flash")} disabled={!!busy} title="F komutu: 28C256 EEPROM'a korumalı sayfa yazmasıyla yazar (yalnız bank 1, 0x4000–0x7FFF; bank 0 BIOS'un)">EEPROM'a yaz</button>
               {flashRun && <button onClick={runFromFlash} disabled={!!busy}>EEPROM'dan çalıştır</button>}
               <Menu label="Gerçek kart" title="Web Serial ile gerçek karta yükleme ve kart testi" placement="up" keepMounted>

@@ -4,14 +4,24 @@
   "version": "0.1.0",
   "type": "module",
   "description": "Tarayıcıda transistör seviyesinde, 3D CPU die simülatörü (visual6502 tarzı).",
+  "engines": {
+    "node": ">=22.6.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc -b --noEmit",
+    "check": "npm run typecheck && npm test",
     "import:6502": "node scripts/import-visual6502.mjs",
-    "cpu16": "node --experimental-strip-types --no-warnings cpu16/tools/cli.ts"
+    "cpu16": "node --experimental-strip-types --no-warnings cpu16/tools/cli.ts",
+    "hesap8": "node --experimental-strip-types --no-warnings hesap8/arac.ts",
+    "docker:build": "docker compose build web",
+    "docker:up": "docker compose up -d --build web",
+    "docker:down": "docker compose down",
+    "docker:dev": "docker compose up --build dev",
+    "docker:test": "docker build --target test ."
   },
   "dependencies": {
     "@react-three/drei": "9.114.0",

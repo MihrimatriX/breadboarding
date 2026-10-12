@@ -4,6 +4,7 @@
 
 import { BELLEK_EK_CHIPS } from "./parts/bellek-ek.ts";
 import { GATE_CHIPS } from "./parts/gates.ts";
+import { GOSTERGE_CHIPS } from "./parts/gosterge.ts";
 import { GC_EK_CHIPS } from "./parts/gc-ek.ts";
 import { MEMORY_CHIPS } from "./parts/memory.ts";
 import { MSI_CHIPS } from "./parts/msi.ts";
@@ -12,6 +13,7 @@ import type { ChipDef } from "./types.ts";
 
 export const CHIPS: ChipDef[] = [...GATE_CHIPS, ...MSI_CHIPS, ...SEQ_CHIPS, ...BUS_CHIPS, ...MEMORY_CHIPS, ...GC_EK_CHIPS];
 CHIPS.push(...BELLEK_EK_CHIPS); // anakart bellek/önbellek kartları (Faz 6)
+CHIPS.push(...GOSTERGE_CHIPS); // 8 bit hesap makinesinin 7 segment sürücüsü (hesap8/)
 
 export const CHIP_BY_PART: Record<string, ChipDef> = Object.fromEntries(CHIPS.map((c) => [c.part, c]));
 

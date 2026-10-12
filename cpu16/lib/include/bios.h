@@ -7,12 +7,18 @@
 
 int bios_getc(void);          /* tuş gelene kadar bekler (PS/2 klavye ya da UART) */
 int bios_trygetc(void);       /* tuş yoksa -1 */
+int bios_getline(char *buf, int max); /* satır okur (yankılı, Backspace siler); buf en az max + 1 bayt.
+                                       * Okunan karakter sayısı döner, sonuna 0 eklenir */
 void bios_puts(const char *s);
 void bios_puthex4(unsigned v);
 void bios_cls(void);
 void bios_setcursor(int x, int y);
 void bios_setattr(int attr);  /* düşük 4 bit yazı, yüksek 4 bit zemin rengi */
 unsigned long bios_ticks(void); /* 10 ms'lik tıklar */
+/* UART RX (2) ve vsync (3) kesmeleri için kullanıcı kancası; 0 kaldırır. Kanca kesmeler kapalıyken
+ * kaynak numarasıyla çağrılır ve kaynağı onaylamalıdır (vsync: VSTAT'a 2 yaz). Ayrıca IRQ_MASK'ta
+ * (0xFF09) kaynağın biti açılmalıdır. Program bitmeden kanca kaldırılmalı (bkz. kesme.c). */
+void bios_setirqhook(void (*kanca)(int kaynak));
 
 /* Renkler (CGA paleti) */
 enum {

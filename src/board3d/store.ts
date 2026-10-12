@@ -1,16 +1,19 @@
 // Kart görünümünün durumu: worker istemcisi, seçimler, teller, program düzenleyicisi ve canlı değerler
-// (net seviyeleri, ekran, bellek penceresi). Bütün bilgisayar tek sahnede: anakartın bütün kartları.
+// (net seviyeleri, ekran, bellek penceresi). Sahnede ya bütün CPU16 bilgisayarı (anakartın bütün
+// kartları, worker'da) ya da 8 bit hesap makinesi (hesap.ts, ana iş parçacığında) vardır: kartın
+// yapısı aktif.ts'ten, seçimler ve canlı değerler buradan.
 
 import { create } from "zustand";
-import { buildFullMachineBoard } from "../../cpu16/board/machine-board";
-import { boardLayout, type BoardLayout, type ChipPlace, type PassivePlace } from "../../cpu16/board/layout";
+import type { Board } from "../../cpu16/board/board";
+import type { BoardLayout } from "../../cpu16/board/layout";
 import type { GateState } from "../../cpu16/board/computer";
 import { LIB } from "../../cpu16/cc/lib-vite";
 import { TerminalText } from "../cpu16/serial";
+import { aktifKart, kartDegisince, kartModeli, kartParcasi, kartUclari, kartYerlesimi, type KartTuru, type Parca } from "./aktif";
 import { compileProgram, detectLanguage, type Lang, type ProgramError } from "./program";
 import type { FromWorker, MemWindow, ToWorker } from "./protocol";
 import type { ScreenFrame } from "./screen";
-import { netEndpoints, type Endpoint } from "./wires";
+import type { Endpoint } from "./wires";
 
 // ---------------------------------------------------------------- örnek programlar
 
@@ -46,39 +49,39 @@ export const EXAMPLES: Example[] = Object.entries({ ...kit, ...progs, ...own })
 
 // ---------------------------------------------------------------- kart modeli
 
-/** Kartın yapısı ana iş parçacığında da kurulur (yerleşim, çip içi şemaları); worker'dakiyle aynı */
-let model: ReturnType<typeof buildFullMachineBoard> | null = null;
-let layout: BoardLayout | null = null;
-let ends: Map<number, Endpoint[]> | null = null;
-let parts: Map<string, { chip?: ChipPlace; passive?: PassivePlace }> | null = null;
-
-export function boardModel() {
-  model ??= buildFullMachineBoard();
-  return model;
+/**
+ * Sahnedeki kartın yapısı (aktif.ts): CPU16'da ana iş parçacığında da kurulur (yerleşim, çip içi
+ * şemaları), worker'dakiyle aynı; hesap makinesinde simülasyon da bu kartla çalışır.
+ */
+export function boardModel(): { board: Board } {
+  return kartModeli();
 }
-export function boardLayoutData() {
-  layout ??= boardLayout(boardModel().board);
-  return layout;
+export function boardLayoutData(): BoardLayout {
+  return kartYerlesimi();
 }
 /** Her netin uçları (çip ve pasif pinleri) */
-export function netEnds() {
-  ends ??= netEndpoints(boardLayoutData());
-  return ends;
+export function netEnds(): Map<number, Endpoint[]> {
+  return kartUclari();
 }
 /** Referanstan yerleşim: çip ya da pasif eleman */
-export function findPart(ref: string | null): { chip?: ChipPlace; passive?: PassivePlace } | null {
-  if (!ref) return null;
-  if (!parts) {
-    parts = new Map();
-    const lay = boardLayoutData();
-    for (const c of lay.chips) parts.set(c.ref, { chip: c });
-    for (const p of lay.passives) parts.set(p.ref, { passive: p });
-  }
-  return parts.get(ref) ?? null;
+export function findPart(ref: string | null): Parca | null {
+  return kartParcasi(ref);
 }
 
 /** Her karede değişen net değerleri React durumuna konmaz; çizim döngüsü buradan okur */
 export const liveNets = { values: null as Uint8Array | null, prev: null as Uint8Array | null, version: 0 };
+
+/** Her kart türünün son net değerleri: sahnedeki kart değişince canlı değerler onunkine döner */
+const sonDegerler = new Map<KartTuru, Uint8Array>();
+
+/** Bir kartın yeni net değerleri; kart sahnedeyse hemen çizilir */
+export function netDegerleri(tur: KartTuru, values: Uint8Array): void {
+  sonDegerler.set(tur, values);
+  if (tur !== aktifKart()) return;
+  liveNets.prev = liveNets.values;
+  liveNets.values = values;
+  liveNets.version++;
+}
 /** Ekran (metin kipinden ya da ışın kipinden) ve izlenen bellek penceresi */
 export const liveScreen = { frame: null as ScreenFrame | null, beam: null as { rgba: Uint8ClampedArray; width: number; height: number; x: number; y: number } | null, version: 0 };
 export const liveMem = { window: null as MemWindow | null, version: 0 };
@@ -111,7 +114,13 @@ interface KartState {
   chip: string | null;
   gate: number | null;
   net: number | null;
-  hover: { ref: string; x: number; y: number } | null;
+  /** üstüne gelinen parça; ek: ipucuna eklenen satır (ör. DIP anahtarın hangi anahtarı) */
+  hover: { ref: string; x: number; y: number; ek?: string } | null;
+  /**
+   * kamera bu bloğa (ya da "Gösterge" gibi bir ön adla başlayan bloklara) gitsin; blok null: genel
+   * bakış. n her istekte artar: aynı yere yeniden gidilebilsin.
+   */
+  odak: { blok: string | null; n: number } | null;
   wires: WireMode;
   /** GND / VCC tellerini de çiz */
   power: boolean;
@@ -139,6 +148,8 @@ interface KartState {
   selectChip(ref: string | null): void;
   selectGate(g: number | null): void;
   selectNet(n: number | null): void;
+  /** kamerayı yerleşimdeki bir işlev bloğuna götür (seçim değişmez); null: genel bakış */
+  focusBlock(blok: string | null): void;
   setWires(m: WireMode): void;
   setPower(on: boolean): void;
   setBottom(t: BottomTab): void;
@@ -177,6 +188,7 @@ export const useKart = create<KartState>((set, get) => ({
   gate: null,
   net: null,
   hover: null,
+  odak: null,
   wires: "secili",
   power: false,
   bottom: "program",
@@ -213,7 +225,9 @@ export const useKart = create<KartState>((set, get) => ({
     send({ type: "speed", hz });
   },
   selectChip(ref) {
-    set({ chip: ref, gate: null, ...(ref && findPart(ref)?.chip ? { bottom: "ic" as const } : {}) });
+    set({ chip: ref, gate: null, odak: null, ...(ref && findPart(ref)?.chip ? { bottom: "ic" as const } : {}) });
+    // bellek çipinin içi worker'dan gelir (yalnız bilgisayarda)
+    if (aktifKart() !== "cpu16") return;
     const ci = ref ? boardModel().board.chips.find((c) => c.ref === ref) : null;
     send({ type: "watch", ref: ci?.def.behavioral ? ci.ref : null });
   },
@@ -222,6 +236,9 @@ export const useKart = create<KartState>((set, get) => ({
   },
   selectNet(n) {
     set({ net: n });
+  },
+  focusBlock(blok) {
+    set({ odak: { blok, n: (get().odak?.n ?? 0) + 1 }, hover: null });
   },
   setWires(m) {
     set({ wires: m });
@@ -302,7 +319,7 @@ export function startBoardWorker() {
 function onWorker(m: FromWorker) {
   if (m.type === "error") useKart.setState({ error: m.message, running: false });
   else if (m.type === "ready") {
-    const expect = boardModel().board.c.netCount;
+    const expect = kartModeli("cpu16").board.c.netCount;
     if (m.netCount !== expect) useKart.setState({ error: `Worker'daki kart (${m.netCount} net) görünümdekinden (${expect} net) farklı` });
     else useKart.setState({ ready: true, has: { screen: m.screen, keyboard: m.keyboard, uart: m.uart, beam: m.beam } });
   } else if (m.type === "screen") {
@@ -314,9 +331,7 @@ function onWorker(m: FromWorker) {
     liveScreen.version++;
     useKart.setState({ beamFrames: m.frames });
   } else {
-    liveNets.prev = liveNets.values;
-    liveNets.values = m.values;
-    liveNets.version++;
+    netDegerleri("cpu16", m.values);
     if (m.mem) {
       liveMem.window = m.mem;
       liveMem.version++;
@@ -335,3 +350,17 @@ function onWorker(m: FromWorker) {
     if (Object.keys(patch).length) useKart.setState(patch);
   }
 }
+
+// ---------------------------------------------------------------- kart değişince
+
+/** Her kart türünde alt panelin son sekmesi (hesap makinesinde program yok) */
+const sonAltSekme = new Map<KartTuru, BottomTab>([["cpu16", "program"], ["hesap", "ic"]]);
+
+kartDegisince((tur, onceki) => {
+  // referanslar karta özgü: seçimler kalkar; canlı değerler yeni kartın son değerleri olur
+  sonAltSekme.set(onceki, useKart.getState().bottom);
+  liveNets.prev = null;
+  liveNets.values = sonDegerler.get(tur) ?? null;
+  liveNets.version++;
+  useKart.setState((s) => ({ chip: null, gate: null, net: null, hover: null, odak: null, bottom: sonAltSekme.get(tur) ?? "ic", tick: s.tick + 1 }));
+});

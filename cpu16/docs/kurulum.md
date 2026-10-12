@@ -5,10 +5,11 @@ bir kurulum belgesi (A4, HTML + PDF), yanında KiCad şemasının PDF'i ve genel
 Hepsi kart tanımlarından (`cpu16/board/*.ts`) üretilir; şema değişirse belgeler de değişir.
 
 ```sh
-npm run cpu16 -- kurulum hepsi            # bütün kartlar + el kitabı → cpu16/kurulum/cikti/
+npm run cpu16 -- kurulum hepsi            # bilgisayarın bütün kartları + el kitabı → cpu16/kurulum/cikti/
 npm run cpu16 -- kurulum cpu              # tek kart
 npm run cpu16 -- kurulum hepsi -o dizin   # başka bir dizine
 npm run cpu16 -- kurulum hepsi --html     # yalnız HTML (PDF ve şema PDF'i yok)
+npm run cpu16 -- kurulum hesap            # 8 bit hesap makinesi (bağımsız alet, "hepsi"ye girmez; rehberi hesap8/docs/)
 ```
 
 Çıktı (depoya girmez, `.gitignore`):

@@ -138,14 +138,16 @@ function kapak(p: KurulumPlani, kk: KurulumKarti, o: BelgeSecenekleri): string {
     ? `<div class="not">Bu kartın <b>${esc(p.haric.join(", "))}</b> bloğu yalnızca simülasyonda vardır, gerçek kartta kurulmaz; bu belgede yer almaz.</div>`
     : "";
   return `<section class="kapak" id="kapak">
-<div class="ust">CPU16 · Kurulum belgesi · kart <span class="mono">${esc(p.kart)}</span></div>
+<div class="ust">${esc(kk.urun ?? "CPU16")} · Kurulum belgesi · kart <span class="mono">${esc(p.kart)}</span></div>
 <h1>${esc(p.baslik)}</h1>
 <p class="alt">${esc(kk.aciklama)}</p>
 <div class="olgular">
 ${olgu(p.cipler.length, "entegre")}${olgu(p.pasifler.length, "pasif eleman")}${olgu(sayi(p.teller.length), "sinyal teli (bağlantı)")}${olgu(sayi(p.beslemePinleri), "besleme pini (VCC / GND)")}
 ${olgu(p.bloklar.filter((b) => b.cipler.length || b.telSayisi).length, "işlev bloğu")}${olgu(`${mm(p.olcu.w)} × ${mm(p.olcu.h)}`, "önerilen yerleşim (mm)")}${olgu(`≈ ${sayi(p.gucButcesi.toplam)} mA`, "besleme (5 V, kaba hesap)")}${olgu(kk.yol, "kurulum yolu")}
 </div>
-<p><b>Deney:</b> ${deneyler || "—"}. Deney rehberi ne yapılacağını ve nasıl test edileceğini anlatır; bu belge hangi bacağın nereye gittiğini.</p>
+${kk.rehber
+    ? `<p><b>Kurulum rehberi:</b> <span class="mono">${esc(kk.rehber)}</span> (PDF hali bu belgenin yanında). Rehber kurma sırasını ve her aşamanın testini anlatır; bu belge hangi bacağın nereye gittiğini.</p>`
+    : `<p><b>Deney:</b> ${deneyler || "—"}. Deney rehberi ne yapılacağını ve nasıl test edileceğini anlatır; bu belge hangi bacağın nereye gittiğini.</p>`}
 ${haric}
 <h3>Bu belgede</h3>
 <ol class="icindekiler">
@@ -393,7 +395,7 @@ function pasifBolumu(p: KurulumPlani): string {
     });
   return `<section class="bolum" id="pasifler">
 <h2>Pasif elemanlar</h2>
-<p>Dirençler, kondansatörler, LED'ler, butonlar, konnektörler. Kutuplu elemanlar: elektrolitik kondansatörde + ucu (1) VCC / sinyal tarafına, LED'de A (anot, uzun bacak) dirence, K (katot, düz kenar) GND'ye. Direnç dizisinde (SIP) 1. pin (nokta) ortak uçtur.</p>
+<p>Dirençler, kondansatörler, LED'ler, butonlar, konnektörler. Kutuplu elemanlar: elektrolitik kondansatörde + ucu (1) VCC / sinyal tarafına, LED'de A (anot, uzun bacak) dirence, K (katot, düz kenar) GND'ye. Direnç dizisinde (SIP) 1. pin (nokta) ortak uçtur.${p.pasifler.some((x) => x.part === "RN_470_ISO_8") ? " Yalıtılmış direnç dizisinde (DIP-16) ortak uç yoktur: her direnç karşılıklı iki bacak arasındadır (1–16, 2–15 … 8–9), 1. pin çentiğin solunda." : ""}${p.pasifler.some((x) => x.part === "DISP_7SEG_CC") ? " 7 segment göstergede nokta (DP, 5. pin) kullanılmaz; iki ortak katot pini (3 ve 8) GND'ye; ondalık nokta altta, 1. pin sol altta." : ""}</p>
 ${rows.length ? `<table class="tablo"><thead><tr><th style="width:5mm"></th><th style="width:14mm">Ref</th><th style="width:36mm">Parça</th><th style="width:42mm">Görev</th><th>Uçlar: net ve teller</th></tr></thead><tbody>${rows.join("")}</tbody></table>` : ""}
 ${dek ? `<h3>Dekuplaj kondansatörleri (100 nF, 1. uç VCC, 2. uç GND)</h3><p class="kucuk">${dek}</p>` : ""}
 <p class="kucuk muted">Kenar konnektörü: "Kenar konnektörü" bölümü.</p>
@@ -402,7 +404,9 @@ ${dek ? `<h3>Dekuplaj kondansatörleri (100 nF, 1. uç VCC, 2. uç GND)</h3><p c
 
 function kenarBolumu(p: KurulumPlani): string {
   if (!p.kenar) {
-    return `<section class="bolum" id="kenar"><h2>Kenar konnektörü</h2><p>Bu kartın arka panel konnektörü yok: tek başına çalışan bir alettir${p.kart === "prog" ? " (Arduino Nano USB'den beslenir ve bilgisayarla USB seri üzerinden konuşur)" : ""}.</p></section>`;
+    const not = p.kart === "prog" ? " (Arduino Nano USB'den beslenir ve bilgisayarla USB seri üzerinden konuşur)"
+      : p.pasifler.some((x) => x.part === "CONN_5V") ? " (5 V, 2 pinli besleme girişinden beslenir; 1. pin +5 V, 2. pin GND)" : "";
+    return `<section class="bolum" id="kenar"><h2>Kenar konnektörü</h2><p>Bu kartın arka panel konnektörü yok: tek başına çalışan bir alettir${not}.</p></section>`;
   }
   const k = p.kenar;
   const hucre = (num: number) => {
@@ -425,11 +429,12 @@ function kenarBolumu(p: KurulumPlani): string {
 </section>`;
 }
 
-function semaBolumu(p: KurulumPlani, o: BelgeSecenekleri): string {
+function semaBolumu(p: KurulumPlani, kk: KurulumKarti, o: BelgeSecenekleri): string {
+  const cokSayfa = kk.kaynak === "hesap";
   return `<section class="bolum" id="sema">
 <h2>Şema</h2>
-<p>KiCad şeması: <span class="mono">cpu16/kicad/${esc(p.kart)}/${esc(p.kart)}.kicad_sch</span>${o.semaDosyasi ? `; PDF hali bu belgenin yanında: <b class="mono">${esc(o.semaDosyasi)}</b>` : ""}. Şemada bağlantılar tel yerine net etiketleriyle yapılmıştır: aynı adlı etiketler aynı nettir; adlar bu belgedeki net adlarıyla aynıdır.</p>
-<p>Bir bağlantıdan şüphelenirsen: net adını şema PDF'inde ara (Ctrl+F), aynı netin bütün uçlarını gör; tel listesinde aynı net adının tellerini işaretle. Simülatörde de aynı ad seçilebilir (Silikon3D → "CPU16 kartı 3D", <span class="mono">kart.secNet("…")</span>).</p>
+<p>KiCad şeması: <span class="mono">cpu16/kicad/${esc(p.kart)}/${esc(p.kart)}.kicad_sch</span>${cokSayfa ? " (çok sayfalı: kök sayfada her blok bir kutu, blokların çipleri kendi sayfalarında; sayfalar arası bağlantılar global etiketlerle)" : ""}${o.semaDosyasi ? `; PDF hali bu belgenin yanında: <b class="mono">${esc(o.semaDosyasi)}</b>` : ""}. Şemada bağlantılar tel yerine net etiketleriyle yapılmıştır: aynı adlı etiketler aynı nettir; adlar bu belgedeki net adlarıyla aynıdır.</p>
+<p>Bir bağlantıdan şüphelenirsen: net adını şema PDF'inde ara (Ctrl+F), aynı netin bütün uçlarını gör; tel listesinde aynı net adının tellerini işaretle. ${cokSayfa ? "Simülatörde de aynı devre çalışır (Silikon3D → 8 bit hesap makinesi): anahtarları çevir, bir çipe tıklayıp pinlerinin netlerini ve değerlerini gör." : `Simülatörde de aynı ad seçilebilir (Silikon3D → "CPU16 kartı 3D", <span class="mono">kart.secNet("…")</span>).`}</p>
 </section>`;
 }
 
@@ -437,7 +442,7 @@ function semaBolumu(p: KurulumPlani, o: BelgeSecenekleri): string {
 export function kartBelgesi(p: KurulumPlani, kk: KurulumKarti, o: BelgeSecenekleri): string {
   const govde = [
     kapak(p, kk, o), malzemeBolumu(p), kullanimBolumu(p, kk), yerlesimBolumu(p), blokSirasiBolumu(p), beslemeBolumu(p),
-    telBolumu(p), cipBolumu(p), pasifBolumu(p), kenarBolumu(p), semaBolumu(p, o),
+    telBolumu(p), cipBolumu(p), pasifBolumu(p), kenarBolumu(p), semaBolumu(p, kk, o),
   ].join("\n");
-  return htmlBelge(`${p.baslik} kurulumu`, govde, `CPU16 ${p.baslik}: yerleşim, besleme, numaralı tel listesi ve çip kartları`);
+  return htmlBelge(`${p.baslik} kurulumu`, govde, `${kk.urun ? "" : "CPU16 "}${p.baslik}: yerleşim, besleme, numaralı tel listesi ve çip kartları`);
 }

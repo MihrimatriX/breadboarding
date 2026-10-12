@@ -1,4 +1,7 @@
-/* primes.c — Eratosthenes kalburu: 2..N arasındaki asal sayılar. */
+/* primes.c — Eratosthenes kalburu: 2..N arasındaki asal sayılar (sayı başına bir bayt).
+ *   npm run cpu16 -- cc cpu16/programs/c/primes.c --run
+ * Beklenen çıktı: 100'den küçük 25 asal, "2000'e kadar 303 asal var, en büyüğü 1999"; çıkış kodu 303.
+ * 65535'e kadar, sayı başına bir bitle: cpu16/bios/ornekler/kalbur.c */
 #include <stdio.h>
 #include <string.h>
 
