@@ -176,7 +176,7 @@ Her katman bir öncekine karşı test edilir (`cpu16/tests/board.test.ts`):
    (CPU dahil) komut komut (`tests/anakart-bellek.test.ts`, `tests/anakart-sistem.test.ts`; bkz.
    [anakart-kartlari.md](anakart-kartlari.md)).
 
-Kapı seviyesi kart tarayıcı dışında saniyede yaklaşık 7 000 saat döngüsü çalışır (her döngüde
+Kapı seviyesi kart tarayıcı dışında saniyede yaklaşık 30 000 saat döngüsü çalışır (her döngüde
 ~1 800 kapı, 4 fazlı değerlendirme).
 
 ## Faz 4'te mikromimaride değişenler
