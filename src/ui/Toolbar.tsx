@@ -2,6 +2,7 @@ import { useApp } from "../state/store";
 import { sim } from "../sim/SimClient";
 import { hzLabel } from "./format";
 import { Group, Meter, PanelToggle } from "./Shell";
+import { Simge } from "./simgeler";
 
 // kaydırıcı logaritmik: 1 Hz .. 4 kHz (yarım çevrim/sn)
 const toHz = (v: number) => Math.round(Math.pow(10, v / 25));
@@ -14,15 +15,16 @@ export function Toolbar({ side, bottom, onSide, onBottom }: { side: boolean; bot
   return (
     <div className="toolbar">
       <Group label="Adım adım">
-        <button onClick={() => sim.halfStep(1)} title="Yarım saat çevrimi · kısayol: .">½ çevrim</button>
+        <button onClick={() => sim.halfStep(1)} title="Yarım saat çevrimi · kısayol: ."><Simge ad="yarim" />½ çevrim</button>
         <button onClick={() => sim.halfStep(2)} title="Bir saat çevrimi">Tam çevrim</button>
-        <button onClick={() => sim.stepInstruction()} title="Bir sonraki komutun başına kadar · kısayol: N">Sonraki komut</button>
+        <button onClick={() => sim.stepInstruction()} title="Bir sonraki komutun başına kadar · kısayol: N"><Simge ad="adim" />Sonraki komut</button>
       </Group>
       <Group label="Çalıştırma">
         <button className="primary" onClick={() => (running ? sim.pause() : sim.run())} title="Kısayol: Boşluk">
+          <Simge ad={running ? "duraklat" : "oynat"} />
           {running ? "Duraklat" : "Çalıştır"}
         </button>
-        <button onClick={() => sim.reset()} title="Kısayol: R">Sıfırla</button>
+        <button onClick={() => sim.reset()} title="Kısayol: R"><Simge ad="sifirla" />Sıfırla</button>
       </Group>
       <Group label="Saat hızı" className="tb-grow">
         <label className="speed" htmlFor="speed">

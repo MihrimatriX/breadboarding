@@ -3,8 +3,9 @@
 //   -o çıktı.hex|.bin|.s   çıktı (varsayılan: ilk dosyanın adı + .hex; --run varsa dosya yazılmaz)
 //   --run                  emülatörde çalıştır, UART çıktısını yazdır
 //   --hedef rom|bios       rom (varsayılan): 0x0000'dan, kendi vektörleriyle; bios: RAM'e 0x4000'dan
-//                          yüklenir, BIOS monitöründen G 4000 ile çalışır (--run anakart + BIOS'ta çalıştırır)
-//   --max N                en fazla komut sayısı (varsayılan 50 milyon)
+//                          yüklenir, BIOS monitöründen G 4000 ile çalışır (--run anakart + BIOS'ta çalıştırır;
+//                          stdin bir boru ya da dosyaysa içeriği programa UART'tan klavye girdisi olarak gider)
+//   --max N                en fazla komut sayısı; BIOS hedefinde döngü sayısı (varsayılan 50 milyon)
 //   -I dizin               başlık arama dizini (birden fazla olabilir)
 //   -D AD[=değer]          makro tanımla
 //   -O0                    iyileştirmeleri kapat
@@ -18,6 +19,7 @@ import { buildProgram, demangle, formatErrors, type BuildResult } from "../cc/in
 import { Machine } from "../emu/machine.ts";
 import { diskReader, loadLib } from "../cc/node.ts";
 import { runProgram } from "../cc/run.ts";
+import { CODEPAGE } from "../video/font.ts";
 
 const hex4 = (n: number) => n.toString(16).toUpperCase().padStart(4, "0");
 
@@ -117,9 +119,22 @@ function runOnBios(res: BuildResult, maxCycles: number): number {
   m.runUntil(() => m.uartOutput.endsWith("> "), 4_000_000);
   for (const [s, e] of res.ranges) m.pokeCpu(s, res.image.subarray(s, e));
   const from = m.uartOutput.length;
-  m.uartOnOutput = (b) => process.stdout.write(Buffer.from([b]));
+  // BIOS'un ekranı CP857'dir (çerçeve karakterleri, Türkçe harfler): 0x80 üstü baytlar terminale
+  // o kod sayfasıyla çözülerek yazılır (machine komutu gibi)
+  m.uartOnOutput = (b) => process.stdout.write(b < 0x80 ? String.fromCharCode(b) : String.fromCodePoint(CODEPAGE[b] || 0x3f));
   m.uartSend("G 4000\r");
-  const done = m.runUntil(() => m.uartOutput.length > from + 8 && m.uartOutput.endsWith("> "), maxCycles);
+  // Boru ya da dosyadan gelen girdi (ör. echo "2+3" | ... --run) G'den sonra UART'tan gönderilir:
+  // program onu bios_getc / bios_getline ile klavyeden yazılmış gibi okur. Terminalde (TTY) beklenmez.
+  if (!process.stdin.isTTY) {
+    const input = readFileSync(0);
+    if (input.length) m.uartSend(input);
+  }
+  // Bitti: monitör istemi ("> ") geldi VE yığın göstergesi BIOS'un yığınında (0xF800 üstü). Program
+  // kendi yığınında (0xF800 altı) çalışır; çıktısında "> " geçse bile o sırada SP 0xF800'ün altındadır.
+  const done = m.runUntil(
+    () => m.uartOutput.length > from + 8 && m.uartOutput.endsWith("> ") && m.cpu.regs[6] > 0xf800,
+    maxCycles,
+  );
   console.error(`\n[${done ? "monitöre döndü" : `${maxCycles} döngü sınırı`}] ${m.cycles} döngü (${(m.cycles / 4e6).toFixed(2)} s, 4 MHz)`);
   console.error(m.renderText().replace(/\s+$/gm, "").replace(/\n{2,}/g, "\n"));
   return done ? 0 : 2;

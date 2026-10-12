@@ -10,6 +10,9 @@ import type { Gate } from "../../cpu16/chips/logic";
 import { breakCodes, makeCodes, textToScancodes } from "../../cpu16/emu/devices/keyboard";
 import { disassemble } from "../../cpu16/emu/disasm";
 import { AppHeader, Group, Meter, PanelToggle, Splitter, Tabs, heightShare, useLayout, type LayoutPrefs, type Shortcut, type TabDef } from "../ui/Shell";
+import { Simge } from "../ui/simgeler";
+import { HataKutusu, Yukleniyor } from "../ui/Yukleniyor";
+import { useYaziTipleri } from "../ui/yaziTipleri";
 import { aktifKart, aktifKartiSec, type HesapGorunumu, type KartTuru } from "./aktif";
 import { BoardScene } from "./BoardScene";
 import { installHesapApi, useHesap } from "./hesap";
@@ -80,14 +83,15 @@ function Toolbar({ lay, setLay }: { lay: LayoutPrefs; setLay: (p: Partial<Layout
   return (
     <div className="toolbar">
       <Group label="Adım adım">
-        <button onClick={() => s.step("cycle")} disabled={!s.ready} title="Bir saat çevrimi · kısayol: .">1 saat</button>
-        <button onClick={() => s.step("instr")} disabled={!s.ready} title="Bir komut · kısayol: N">1 komut</button>
+        <button onClick={() => s.step("cycle")} disabled={!s.ready} title="Bir saat çevrimi · kısayol: ."><Simge ad="yarim" />1 saat</button>
+        <button onClick={() => s.step("instr")} disabled={!s.ready} title="Bir komut · kısayol: N"><Simge ad="adim" />1 komut</button>
       </Group>
       <Group label="Çalıştırma">
         <button className="primary" onClick={() => (s.running ? s.pause() : s.run())} disabled={!s.ready} title="Kısayol: Boşluk">
+          <Simge ad={s.running ? "duraklat" : "oynat"} />
           {s.running ? "Duraklat" : "Çalıştır"}
         </button>
-        <button onClick={s.reset} disabled={!s.ready} title="RESET butonu: program EEPROM'da kalır">Sıfırla</button>
+        <button onClick={s.reset} disabled={!s.ready} title="RESET butonu: program EEPROM'da kalır"><Simge ad="sifirla" />Sıfırla</button>
       </Group>
       <Group label="Saat hızı">
         <label className="speed">
@@ -199,7 +203,7 @@ function VgaPanel() {
     };
   }, [open]);
   if (!open) {
-    return <button className="vga-open" onClick={() => setOpen(true)}>VGA ekranı</button>;
+    return <button className="vga-open" onClick={() => setOpen(true)}><Simge ad="ok" />VGA ekranı</button>;
   }
   const onKey = (e: React.KeyboardEvent, down: boolean) => {
     if (e.key === "Tab" || e.key === "F5" || e.key === "F12") return;
@@ -357,13 +361,15 @@ function PartPanel() {
   const links = useMemo(() => (place ? partLinks(place.ref, place.pins, netEnds()) : []), [place]);
   if (!place || !ref) {
     return (
-      <section>
+      <section className="bos-durum">
+        <span className="bos-simge" aria-hidden="true"><Simge ad="imlec" boyut={22} /></span>
         <h2>Bir entegreye tıkla</h2>
-        <p className="muted">
-          Seçince her pininden aynı netteki pinlere teller çizilir ve aşağıda <b>Bağlantılar</b> listelenir: pin → net → öbür uçlar.
-          Çipin üstünde kalıbı (die) açılır; alt panelde kapıları, transistörleri ya da bellek hücreleri görünür.
-          Teller "hepsi" kipinde bütün {aktifKart() === "hesap" ? "hesap makinesinin" : "bilgisayarın"} kablolamasını gösterir.
-        </p>
+        <p className="muted">Sahnede bir çip ya da pasif eleman seç; ayrıntıları burada açılır.</p>
+        <ol className="bos-adimlar">
+          <li>Her pininden aynı netteki pinlere <b>teller</b> çizilir, aşağıda <b>Bağlantılar</b> listelenir: pin → net → öbür uçlar.</li>
+          <li>Çipin üstünde kalıbı (die) açılır; alt panelde <b>kapıları</b>, transistörleri ya da bellek hücreleri görünür.</li>
+          <li>Araç çubuğundaki <b>Teller: hepsi</b> bütün {aktifKart() === "hesap" ? "hesap makinesinin" : "bilgisayarın"} kablolamasını gösterir.</li>
+        </ol>
       </section>
     );
   }
@@ -714,6 +720,8 @@ function yanSekme(tur: KartTuru, kayitli: string | undefined): SideTab {
 
 /** "8 bit hesap 3D": hesap makinesi kartı; simülasyon ana iş parçacığında (hesap.ts) */
 function HesapGorunumu() {
+  // çip yazıları dokuya bir kez çizilir: sahne yazı tipleri hazır olunca açılır
+  const yazi = useYaziTipleri();
   const hazir = useHesap((s) => s.hazir);
   const hata = useHesap((s) => s.hata);
   const chip = useKart((s) => s.chip);
@@ -754,9 +762,14 @@ function HesapGorunumu() {
       toolbar={<HesapToolbar lay={lay} setLay={setLay} />}
       stage={
         <>
-          <BoardScene />
-          {!hazir && !hata && <div className="overlay">Hesap makinesi kuruluyor…</div>}
-          {hata && <div className="overlay warn">{hata}</div>}
+          {yazi && <BoardScene />}
+          {hata ? (
+            <HataKutusu baslik="Hesap makinesi kurulamadı">{hata}</HataKutusu>
+          ) : !hazir ? (
+            <Yukleniyor alt="kapı seviyesinde devre kuruluyor">Hesap makinesi kuruluyor…</Yukleniyor>
+          ) : (
+            !yazi && <Yukleniyor>3D sahne hazırlanıyor…</Yukleniyor>
+          )}
         </>
       }
     />
@@ -765,6 +778,7 @@ function HesapGorunumu() {
 
 /** "CPU16 kartı 3D": bütün bilgisayar; simülasyon worker'da */
 function MakineGorunumu() {
+  const yazi = useYaziTipleri();
   const ready = useKart((s) => s.ready);
   const error = useKart((s) => s.error);
   const [lay, setLay] = useLayout("kart", { side: true, bottom: true, bottomH: heightShare(0.32, 220, 360), sideTab: "inceleme" });
@@ -806,10 +820,15 @@ function MakineGorunumu() {
       toolbar={<Toolbar lay={lay} setLay={setLay} />}
       stage={
         <>
-          <BoardScene />
+          {yazi && <BoardScene />}
           <VgaPanel />
-          {!ready && !error && <div className="overlay">Bilgisayar kuruluyor…</div>}
-          {error && <div className="overlay warn">{error}</div>}
+          {error ? (
+            <HataKutusu baslik="Simülasyon başlatılamadı">{error}</HataKutusu>
+          ) : !ready ? (
+            <Yukleniyor alt="kartlar kapı seviyesinde kuruluyor, örnek program EEPROM'a yazılıyor">Bilgisayar kuruluyor…</Yukleniyor>
+          ) : (
+            !yazi && <Yukleniyor>3D sahne hazırlanıyor…</Yukleniyor>
+          )}
         </>
       }
     />

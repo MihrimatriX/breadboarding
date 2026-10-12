@@ -7,7 +7,7 @@ mikrodenetleyici, ROM ve saat yoktur: bütün iş yaygın 74HC çiplerinde, tama
 (en kötü ≈ 2 µs) göstergeye gelir.
 
 Şema = kod: devre `hesap8/kart.ts`'te tanımlıdır. Aynı tanımdan kapı seviyesi simülasyon, 3D
-görünüm (Silikon3D → "8 bit hesap makinesi"), KiCad şeması (`cpu16/kicad/hesap/`), BOM ve kurulum
+görünüm (Silikon3D → "8 bit hesap 3D"), KiCad şeması (`cpu16/kicad/hesap/`), BOM ve kurulum
 belgesi üretilir. Bütün 4 × 256 × 256 = 262 144 durum kapı seviyesinde denenmiş ve altın modelle
 (`hesap8/model.ts`) aynı çıkmıştır: `npm run hesap8 -- dogrula --hepsi`.
 
