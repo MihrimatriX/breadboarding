@@ -44,7 +44,7 @@ bu tanımdan üretilir.
 | Anakart kartları kapı seviyesinde | [anakart-kartlari.md](docs/anakart-kartlari.md) (saat, bellek, önbellek), [anakart-gc-video.md](docs/anakart-gc-video.md) (G/Ç, video) |
 | BIOS, monitör, önyükleyici | [bios.md](docs/bios.md) |
 | C derleyicisi | [cc16.md](docs/cc16.md) |
-| Yorumlu C örnekleri | [c-ornekleri.md](docs/c-ornekleri.md) |
+| C örnekleri: rehberli tur, CPU16'da C yazarken bilinmesi gerekenler | [c-ornekleri.md](docs/c-ornekleri.md) |
 | Üretim, zamanlama, kart testi | [uretim.md](docs/uretim.md) |
 | Kurulum belgeleri: tel listesi, çip kartları, el kitabı | [kurulum.md](docs/kurulum.md) |
 | Deney seti | [kit/README.md](kit/README.md), [LED, direnç ve kondansatör](kit/led-ve-direnc.md) |
@@ -64,7 +64,8 @@ npm run cpu16 -- cc cpu16/bios/ornekler/selam.c --hedef bios --run        # anak
 
 # anakart ve EEPROM imajları
 npm run cpu16 -- machine                             # anakart + BIOS, UART terminale bağlı (çıkış: Ctrl-])
-npm run cpu16 -- machine program.s                   # programı önyükleyiciyle RAM'e yükle ve çalıştır
+npm run cpu16 -- machine program.s                   # programı önyükleyiciyle RAM'e yükle ve çalıştır (.c de olur)
+npm run cpu16 -- cc --hedef bios cpu16/bios/ornekler/kalbur.c --run        # C örneği anakart + BIOS'ta
 npm run cpu16 -- machine cpu16/kit/programlar/bellek-deneme.s --rom --led # BIOS'suz deneme programı, FF00 LED'leri
 npm run cpu16 -- bios -o bios.bin                    # 32 KB 28C256 imajı (bios.hex: yalnız BIOS baytları)
 npm run cpu16 -- charrom -o charrom.bin              # video kartının karakter ROM'u

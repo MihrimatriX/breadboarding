@@ -1,4 +1,8 @@
-/* structs.c — struct, union, enum ve malloc ile bağlı liste. */
+/* structs.c — struct, union, enum ve malloc ile bağlı liste.
+ * union'daki 16 bitlik sayının düşük baytı önce gelir: CPU16 küçük uçludur (little-endian).
+ *   npm run cpu16 -- cc cpu16/programs/c/structs.c --run
+ * Beklenen çıktı: "union: düşük bayt 34, yüksek bayt 12", liste ileri ve geri, "4 düğüm silindi; yeni
+ * blok ilk düğümün yerinde: evet". Esnek dizi üyeli kelime listesi: cpu16/bios/ornekler/liste.c */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

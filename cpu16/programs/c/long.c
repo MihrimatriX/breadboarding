@@ -1,6 +1,9 @@
 /* long.c — 32 bitlik aritmetik: faktöriyel, Fibonacci, bölme ve kaydırma.
  * long/unsigned long iki kelimedir (düşük kelime önce); toplama ADC/SBC ile,
- * çarpma/bölme __mul32/__div32 yardımcılarıyla yapılır. */
+ * çarpma/bölme __mul32/__div32 yardımcılarıyla yapılır (CPU16'da çarpma/bölme komutu yok).
+ *   npm run cpu16 -- cc cpu16/programs/c/long.c --run
+ * Beklenen çıktı: 1! ... 12! = 479001600 doğru, 13! 32 bite sığmaz (1932053504 = mod 2^32).
+ * Aynı konunun BIOS'lu, işlemlerin döngü sayısını da ölçen sürümü: cpu16/bios/ornekler/uzun.c */
 #include <stdio.h>
 
 unsigned long factorial(unsigned n)

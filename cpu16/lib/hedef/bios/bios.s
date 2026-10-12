@@ -9,11 +9,13 @@ BIOS_GETC      = 0x0020
 BIOS_TRYGETC   = 0x0028
 BIOS_PUTS      = 0x0030
 BIOS_PUTHEX4   = 0x0038
+BIOS_GETLINE   = 0x0048
 BIOS_NEWLINE   = 0x0050
 BIOS_CLS       = 0x0058
 BIOS_SETCURSOR = 0x0060
 BIOS_SETATTR   = 0x0068
 BIOS_TICKS     = 0x0070
+BIOS_SETIRQHOOK = 0x0090
 
         .text
 ; int putchar(int c): VGA'ya ve UART'a; c & 0xFF döner
@@ -53,6 +55,12 @@ _bios_puthex4:
         LI   r3, BIOS_PUTHEX4
         JALR r3, r3, 0
 
+; int bios_getline(char *buf, int max): bir satır okur (yankılı, Backspace siler, Enter bitirir).
+; En çok max karakter; tampon max + 1 bayt olmalı (sonuna 0 eklenir). Okunan uzunluk döner.
+_bios_getline:
+        LI   r3, BIOS_GETLINE
+        JALR r3, r3, 0
+
 ; void bios_cls(void)
 _bios_cls:
         LI   r3, BIOS_CLS
@@ -71,4 +79,10 @@ _bios_setattr:
 ; unsigned long bios_ticks(void): açılıştan beri 10 ms'lik tıklar
 _bios_ticks:
         LI   r3, BIOS_TICKS
+        JALR r3, r3, 0
+
+; void bios_setirqhook(void (*kanca)(int kaynak)): UART RX / vsync kesmeleri için kullanıcı kancası
+; (0: kaldır). Kanca kesmeler kapalıyken, r0 = kaynak no ile çağrılır; kaynağı onaylayıp dönmeli.
+_bios_setirqhook:
+        LI   r3, BIOS_SETIRQHOOK
         JALR r3, r3, 0
