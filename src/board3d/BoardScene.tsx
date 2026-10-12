@@ -4,7 +4,7 @@
 // çizilir (rengi netin değeri). Bir çipe tıklayınca üstünde çipin "kalıbı" (die) açılır: kapılar ve
 // teller canlı; kapıya tıklayınca alt panelde o kapının transistörleri görünür.
 
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import {
@@ -31,7 +31,7 @@ import { TextQuads, type TextItem } from "./TextQuads";
 import { cipGovdeRengi, useBolum, useBolumVurgusu, useEtiketlerAcik } from "./bolum";
 import { Bolumler3D } from "./Bolumler3D";
 import { BolumKatmani } from "./BolumKatmani";
-import { useSahneRengi } from "../ui/ayarlar";
+import { azHareket, ucusAdimi, useSahneRengi } from "../ui/ayarlar";
 import { allWires, busRouter, netWires, partWires, wireGeometry, type Endpoint, type WireEdge } from "./wires";
 
 /** 1 dünya birimi = 10 mm */
@@ -660,7 +660,7 @@ function CameraFly() {
   useFrame((_, dt) => {
     const a = anim.current;
     if (!a || !controls) return;
-    a.t = Math.min(1, a.t + dt * 1.4);
+    a.t = ucusAdimi(a.t, dt, 1.4);
     const k = 1 - Math.pow(1 - a.t, 3);
     controls.target.lerpVectors(a.t0, a.target, k);
     camera.position.lerpVectors(a.c0, a.cam, k);
@@ -674,6 +674,18 @@ function SelectedDie() {
   const chip = useKart((s) => s.chip);
   const c = findPart(chip)?.chip;
   return c ? <Die key={c.ref} chip={c} /> : null;
+}
+
+/**
+ * Bölüm değişirken (hesap ↔ kart) eski sahnenin R3F kökü bir an daha yaşar. O arada depo yeni kartla
+ * güncellenince (kartDegisince: tick, görünüm) eski sahnenin parçaları yeni kartın verisiyle çizilmeye
+ * kalkmasın: bilgisayarın breadboard verisi yüklenmemişken bbSahnesi() hata atıyordu. Bu bileşen aynı
+ * güncellemede çocuklarından önce çizilir ve kart değiştiyse sahneyi boşaltır.
+ */
+function KartSahnede({ tur, children }: { tur: KartTuru; children: ReactNode }) {
+  useKart((s) => s.tick);
+  useKart((s) => s.gorunum);
+  return aktifKart() === tur ? <>{children}</> : null;
 }
 
 export function BoardScene() {
@@ -702,17 +714,19 @@ export function BoardScene() {
         <color attach="background" args={[zemin]} />
         <hemisphereLight args={["#ffffff", "#1a2028", 1.1]} />
         <directionalLight position={[20, 40, 15]} intensity={1.3} />
-        {bb ? <BreadboardTabani /> : <Cards />}
-        <Chips />
-        {bb ? <Passives3D /> : <Passives />}
-        {bb ? <AtlamaTelleri /> : <Wires />}
-        {bb ? <BbKurulumSahne /> : <KurulumSahne />}
-        <SelectedDie />
-        <Bolumler3D />
-        {tur === "cpu16" && <Monitor />}
-        <OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI * 0.48} minDistance={1.5} maxDistance={260} target={o.target} />
-        <CameraFly />
-        <KameraApi />
+        <KartSahnede tur={tur}>
+          {bb ? <BreadboardTabani /> : <Cards />}
+          <Chips />
+          {bb ? <Passives3D /> : <Passives />}
+          {bb ? <AtlamaTelleri /> : <Wires />}
+          {bb ? <BbKurulumSahne /> : <KurulumSahne />}
+          <SelectedDie />
+          <Bolumler3D />
+          {tur === "cpu16" && <Monitor />}
+          <OrbitControls makeDefault enableDamping={!azHareket()} maxPolarAngle={Math.PI * 0.48} minDistance={1.5} maxDistance={260} target={o.target} />
+          <CameraFly />
+          <KameraApi />
+        </KartSahnede>
       </Canvas>
       <BolumKatmani />
     </>
