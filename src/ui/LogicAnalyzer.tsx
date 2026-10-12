@@ -4,6 +4,7 @@ import { sim } from "../sim/SimClient";
 import { disassemble } from "../sim/asm6502";
 import { flags, h2, h4 } from "./format";
 import { Tabs, type TabDef } from "./Shell";
+import { useAyar } from "./ayarlar";
 
 type AnalyzerTab = "wave" | "trace";
 const TABS: TabDef<AnalyzerTab>[] = [
@@ -32,7 +33,7 @@ function Watched() {
       <span className="hint-text">İzlenen</span>
       {watch.map((w) => (
         <button key={w.node} className="chip" onClick={() => { useApp.getState().toggleWatch(w.node); sim.syncWatch(); }} title="Analizörden çıkar">
-          {index?.namesByNode.get(w.node)?.[0] ?? `#${w.node}`} <span aria-hidden="true">✕</span>
+          {index?.namesByNode.get(w.node)?.[0] ?? `#${w.node}`} <span aria-hidden="true">×</span>
         </button>
       ))}
     </div>
@@ -52,7 +53,7 @@ function TraceTable() {
     <div className="trace" ref={ref}>
       <table>
         <thead>
-          <tr><th>½çevrim</th><th>ab</th><th>db</th><th>rw</th><th>sync</th><th>pc</th><th>a</th><th>x</th><th>y</th><th>s</th><th>p</th><th>komut</th></tr>
+          <tr><th>½ çevrim</th><th>Adres</th><th>Veri</th><th>R/W</th><th>Sync</th><th>PC</th><th>A</th><th>X</th><th>Y</th><th>SP</th><th>P</th><th>Komut</th></tr>
         </thead>
         <tbody>
           {rows.slice(-120).map((r) => (
@@ -69,9 +70,14 @@ function TraceTable() {
   );
 }
 
+/** Kök yazı boyutu (yazı boyutu ayarı: normal 16, büyük 18): tuvaldeki şeritler de onunla büyür */
+const kokPx = () => parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+
 function Waveforms() {
   const watch = useApp((s) => s.watch);
   const index = useApp((s) => s.index);
+  const tema = useAyar((s) => s.tema);
+  const boyut = useAyar((s) => s.boyut);
   const canvas = useRef<HTMLCanvasElement>(null);
   // panel genişliği değişince (yan panel açılıp kapanınca) yeniden çiz
   const [width, setWidth] = useState(0);
@@ -82,6 +88,8 @@ function Waveforms() {
     ro.observe(c);
     return () => ro.disconnect();
   }, []);
+  const k = kokPx() / 16;
+  const lane = Math.round(34 * k);
 
   useEffect(() => {
     const c = canvas.current;
@@ -93,22 +101,35 @@ function Waveforms() {
     g.scale(dpr, dpr);
     g.clearRect(0, 0, w, h);
     const css = getComputedStyle(c);
-    const lane = 26, labelW = 96, n = 128;
+    const labelW = Math.round(104 * k), n = 128;
     const step = (w - labelW - 8) / n;
-    g.font = `12px ${css.getPropertyValue("--mono")}`;
+    const font = Math.round(14 * k);
+    g.font = `500 ${font}px ${css.getPropertyValue("--mono")}`;
+    g.textBaseline = "middle";
     // ızgara: her tam çevrim
     g.strokeStyle = css.getPropertyValue("--wave-grid");
+    g.lineWidth = 1;
     for (let i = 0; i <= n; i += 2) {
-      g.beginPath(); g.moveTo(labelW + i * step, 0); g.lineTo(labelW + i * step, h); g.stroke();
+      const x = Math.round(labelW + i * step) + 0.5;
+      g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke();
     }
+    const dalga = css.getPropertyValue("--wave");
     watch.forEach((tr, li) => {
-      const y0 = 8 + li * lane, hi = y0 + 2, lo = y0 + lane - 8;
-      g.fillStyle = css.getPropertyValue("--text");
-      g.fillText(index?.namesByNode.get(tr.node)?.[0] ?? `#${tr.node}`, 8, lo);
+      const y0 = 10 * k + li * lane, hi = y0 + 4 * k, lo = y0 + lane - 10 * k;
+      g.fillStyle = css.getPropertyValue("--text-muted");
+      g.fillText(index?.namesByNode.get(tr.node)?.[0] ?? `#${tr.node}`, 4, (hi + lo) / 2);
       const s = tr.samples.slice(-n);
       const x0 = labelW + (n - s.length) * step;
-      g.strokeStyle = css.getPropertyValue("--accent");
-      g.lineWidth = 1.6;
+      // yüksek bölümlerin altı hafifçe dolu: 1 ile 0 bir bakışta ayrılır
+      g.globalAlpha = 0.12;
+      g.fillStyle = dalga;
+      s.forEach((v, i) => {
+        if (v) g.fillRect(x0 + i * step, hi, step, lo - hi);
+      });
+      g.globalAlpha = 1;
+      g.strokeStyle = dalga;
+      g.lineWidth = 2;
+      g.lineJoin = "round";
       g.beginPath();
       s.forEach((v, i) => {
         const x = x0 + i * step, y = v ? hi : lo;
@@ -120,14 +141,15 @@ function Waveforms() {
       g.lineWidth = 1;
     });
     if (watch.length === 0) {
+      g.font = `400 ${font}px ${css.getPropertyValue("--sans")}`;
       g.fillStyle = css.getPropertyValue("--text-muted");
-      g.fillText("İzlenen sinyal yok. Die üzerinde bir düğüm seçip \"Analizöre ekle\"ye bas.", 12, 24);
+      g.fillText("İzlenen sinyal yok: die üzerinde bir düğüm seç, \"Analizöre ekle\"ye bas.", 4, 20 * k);
     }
-  }, [watch, index, width]);
+  }, [watch, index, width, tema, boyut, k, lane]);
 
   return (
     <div className="wave">
-      <canvas ref={canvas} style={{ height: Math.max(60, watch.length * 26 + 16) }} />
+      <canvas ref={canvas} style={{ height: Math.max(56 * k, watch.length * lane + 16 * k) }} />
     </div>
   );
 }

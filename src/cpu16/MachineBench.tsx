@@ -3,7 +3,7 @@
 // gerçek kartta olduğu gibi BIOS önyükleyicisine (L / F komutu) UART'tan Intel HEX olarak gönderilir.
 // Aynı yükleyici Web Serial ile gerçek karta da gönderebilir.
 
-import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import biosSource from "../../cpu16/bios/bios.s?raw";
 import { assemble } from "../../cpu16/asm/assembler";
 import { buildProgram } from "../../cpu16/cc/index";
@@ -16,7 +16,9 @@ import { disassemble } from "../../cpu16/emu/disasm";
 import { CPU_HZ, Machine } from "../../cpu16/emu/machine";
 import { SET2 } from "../../cpu16/emu/devices/keyboard";
 import { textToChar } from "../../cpu16/video/font";
-import { AppHeader, Group, Menu, Meter, PanelToggle, Section, Splitter, Tabs, heightShare, useLayout, type Shortcut, type TabDef } from "../ui/Shell";
+import {
+  AppHeader, Group, Menu, Meter, OdakDugmesi, PanelToggle, Section, Splitter, Tabs, YanBolucu, duzenStili, heightShare, useLayout, usePaneller, type Shortcut, type TabDef,
+} from "../ui/Shell";
 import { Simge } from "../ui/simgeler";
 import { dilBul, ornekDili, type Dil } from "./dil";
 import { VgaRenderer } from "./vga";
@@ -85,7 +87,7 @@ const SPEEDS = [
 const FRAME_BUDGET_MS = 11;
 /** Tarayıcı işlevleri için bırakılan tuşlar (yenile, tam ekran, geliştirici araçları). */
 const BROWSER_KEYS = new Set(["Tab", "F5", "F11", "F12"]);
-const REG_NAMES = ["r0", "r1", "r2", "r3", "r4", "r5", "r6 · sp", "r7 · lr"];
+const REG_NAMES = ["r0", "r1", "r2", "r3", "r4", "r5", "r6 sp", "r7 lr"];
 const IRQ_NAMES = ["zamanlayıcı", "klavye", "UART", "vsync"];
 
 const SHORTCUTS: Shortcut[] = [
@@ -151,8 +153,10 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
   const held = useRef(new Set<string>());
   const prevRegs = useRef<number[]>(Array.from(m.cpu.regs));
   // düzenleyici ilk açılışta pencerenin yaklaşık üçte biri; VGA ekranı kalan yere 4:3 sığar
-  const [lay, setLay] = useLayout("cpu16", { side: true, bottom: true, bottomH: heightShare(0.3, 220, 340), sideTab: "durum" });
+  const [lay, setLay] = useLayout("cpu16", { side: true, bottom: true, bottomH: heightShare(0.32, 240, 360), sideTab: "durum" });
   const sideTab = (SIDE_TABS.some((t) => t.id === lay.sideTab) ? lay.sideTab : "durum") as SideTab;
+  // odak modunda düzenleyici ve yan panel gizli: VGA ekranı bütün alanı alır
+  const panel = usePaneller(lay);
 
   const redraw = () => setTick((t) => t + 1);
   const setRun = (on: boolean) => {
@@ -216,7 +220,7 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
   useEffect(() => {
     const el = termRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [term.text, lay.side, sideTab]);
+  }, [term.text, panel.side, sideTab]);
 
   const start = () => {
     if (m.cpu.illegalAt !== null) return;
@@ -486,43 +490,49 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
   const seconds = m.cycles / CPU_HZ;
 
   return (
-    <div className="bench bench-m shell" data-side={lay.side ? "open" : "closed"}>
+    <div className="bench bench-m shell" data-side={panel.side ? "open" : "closed"} style={duzenStili(lay, "--editor-h")}>
       <AppHeader
         mode="cpu16"
         context="CPU16 · anakart + BIOS"
         shortcuts={SHORTCUTS}
         meters={
           <>
-            <Meter label="Süre">{seconds.toFixed(1)} s</Meter>
-            <Meter label="Hız">{running ? mhz.toFixed(2) : "0.00"} MHz</Meter>
-            <Meter label="Komut">{cpu.instructions.toLocaleString("tr-TR")}</Meter>
-            <Meter label="PC">{hex4(cpu.pc)}</Meter>
+            <Meter label="Süre" ikincil>{seconds.toLocaleString("tr-TR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} s</Meter>
+            <Meter label="Hız">{(running ? mhz : 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MHz</Meter>
+            <Meter label="Komut" ikincil>{cpu.instructions.toLocaleString("tr-TR")}</Meter>
+            <Meter label="PC" mono>{hex4(cpu.pc)}</Meter>
           </>
         }
       />
       <div className="toolbar">
-        <Group label="Kip">{switcher}</Group>
         <Group label="Çalıştırma">
-          <button onClick={step} disabled={running || !!busy} title="Bir komut çalıştır"><Simge ad="adim" />Adım</button>
           <button className="primary" onClick={running ? pause : start} disabled={!!busy || !!bad}>
             <Simge ad={running ? "duraklat" : "oynat"} />
             {running ? "Durdur" : "Çalıştır"}
           </button>
+          <button onClick={step} disabled={running || !!busy} title="Bir komut çalıştır"><Simge ad="adim" />Adım</button>
           <button onClick={resetMachine} disabled={!!busy} title="Reset düğmesi: CPU ve cihazlar sıfırlanır, RAM ve EEPROM kalır"><Simge ad="sifirla" />Sıfırla</button>
         </Group>
         <Group label="Saat hızı">
+          <span className="tb-label kisalir">Saat</span>
           <select value={speed} onChange={(e) => pickSpeed(Number(e.target.value))} aria-label="Saat hızı">
             {SPEEDS.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
           </select>
           <span className={`bench-status s-${status.kind}`} role="status">{status.text}</span>
         </Group>
+        <Group label="Kip">
+          <span className="tb-label kisalir">Makine</span>
+          {switcher}
+        </Group>
         <Group label="Paneller" className="tb-end">
+          <PanelToggle which="bottom" open={lay.bottom} onToggle={() => setLay({ bottom: !lay.bottom })} ad="Program düzenleyicisi" />
           <PanelToggle which="side" open={lay.side} onToggle={() => setLay({ side: !lay.side })} />
+          <OdakDugmesi />
         </Group>
       </div>
 
       <div className="workspace">
-        <section className="bench-main" style={{ "--editor-h": `${lay.bottomH}px` } as CSSProperties}>
+        <section className="bench-main">
           <div className="monitor">
             <div className={`vga${focused ? " focused" : ""}`}>
               <canvas
@@ -541,9 +551,9 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
           </div>
           <pre id="cpu16-screen-text" className="sr-only">{m.renderText()}</pre>
 
-          <Splitter value={lay.bottomH} onChange={(h) => setLay({ bottomH: h })} min={220} reserve={180} label="Program düzenleyicisinin yüksekliği" />
+          {panel.bottom && <Splitter value={lay.bottomH} onChange={(h) => setLay({ bottomH: h })} min={220} reserve={180} label="Program düzenleyicisinin yüksekliği" />}
 
-          <div className="bench-src panel">
+          <div className="bench-src panel" hidden={!panel.bottom}>
             <div className="panel-head">
               <h2>Program</h2>
               <select value={prog} onChange={(e) => pick(e.target.value)} aria-label="Örnek program">
@@ -627,34 +637,48 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
             {testOut && <pre className="bench-uart" aria-label="Kart testi sonucu">{testOut}</pre>}
             {boardTerm.text && (
               <>
-                <h2>Kart (Web Serial)</h2>
+                <h3>Kart (Web Serial)</h3>
                 <pre className="bench-uart">{boardTerm.text}</pre>
               </>
             )}
           </div>
         </section>
 
-        {lay.side && (
+        {panel.side && <YanBolucu lay={lay} setLay={setLay} />}
+        {panel.side && (
           <aside className="bench-panel side" aria-label="Makine durumu">
             <Tabs tabs={SIDE_TABS} value={sideTab} onChange={(t) => setLay({ sideTab: t })} label="Yan panel" />
             <div className="side-body" role="tabpanel" hidden={sideTab !== "durum"}>
-              <Section title="Register'lar">
+              <Section title="Register'lar" actions={!running && <span className="hint-text">sarı: son adımda değişen</span>}>
+                <div className="kahraman">
+                  <span className="k-ad">PC</span>
+                  <span className="k-deger">{hex4(cpu.pc)}</span>
+                  <span className="k-ek">{trace.find((t) => t.cur)?.text ?? ""}</span>
+                </div>
                 <div className="bench-regs">
-                  {[...REG_NAMES.map((n, i) => [n, cpu.regs[i], cpu.regs[i] !== prevRegs.current[i]] as const), ["pc", cpu.pc, false] as const].map(([n, v, ch]) => (
+                  {REG_NAMES.map((n, i) => [n, cpu.regs[i], cpu.regs[i] !== prevRegs.current[i]] as const).map(([n, v, ch]) => (
                     <div key={n} className={ch && !running ? "changed" : ""}>
                       <b>{n}<i>{v > 32767 ? v - 65536 : v}</i></b>
                       <span>{hex4(v)}</span>
-                      <span className="leds">{Array.from({ length: 16 }, (_, k) => <i key={k} className={(v >> (15 - k)) & 1 ? "on" : ""} />)}</span>
+                      <span className="leds" aria-hidden="true">{Array.from({ length: 16 }, (_, k) => <i key={k} className={(v >> (15 - k)) & 1 ? "on" : ""} />)}</span>
                     </div>
                   ))}
                 </div>
                 <div className="pins" aria-label="Bayraklar">
-                  {(["n", "z", "c", "v", "i"] as const).map((f) => <span key={f} className={`pin ${cpu[f] ? "on" : ""}`}>{f.toUpperCase()}</span>)}
+                  {(["n", "z", "c", "v", "i"] as const).map((f) => <span key={f} className={`pin ${cpu[f] ? "on" : ""}`} title={`${f.toUpperCase()} = ${cpu[f] ? 1 : 0}`}>{f.toUpperCase()}</span>)}
                   {cpu.irq && <span className="pin on">IRQ</span>}
                 </div>
               </Section>
 
-              <Section title="UART terminali · 115200" actions={<button className="link" onClick={() => { term.clear(); redraw(); }}>temizle</button>}>
+              <Section
+                title="UART terminali"
+                actions={
+                  <>
+                    <span className="hint-text">115 200 baud</span>
+                    <button className="link" onClick={() => { term.clear(); redraw(); }}>temizle</button>
+                  </>
+                }
+              >
                 <pre
                   ref={termRef}
                   id="cpu16-term"
@@ -666,7 +690,7 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
                   {term.text || "UART boş"}
                 </pre>
                 <form className="row" onSubmit={(e) => { e.preventDefault(); sendLine(); }}>
-                  <input value={termLine} onChange={(e) => setTermLine(e.target.value)} placeholder="monitör komutu, ör. D 4000" aria-label="UART'a gönderilecek satır" />
+                  <input className="mono" value={termLine} onChange={(e) => setTermLine(e.target.value)} placeholder="monitör komutu, ör. D 4000" aria-label="UART'a gönderilecek satır" />
                   <button type="submit">Gönder</button>
                 </form>
               </Section>
@@ -684,7 +708,7 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
               <Section title="Anakart">
                 <dl className="bench-kv">
                   <dt>Bank</dt>
-                  <dd>{Array.from(m.banks, (b, i) => `B${i}=${hex2(b)}`).join("  ")}</dd>
+                  <dd className="mono">{Array.from(m.banks, (b, i) => `B${i}=${hex2(b)}`).join("  ")}</dd>
                   <dt>Önbellek</dt>
                   <dd>{m.cache.enabled ? "açık" : "kapalı"} · isabet {hits.toLocaleString("tr-TR")} · ıskalama {misses.toLocaleString("tr-TR")} · %{rate}</dd>
                   <dt>Bekleme</dt>

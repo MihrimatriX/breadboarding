@@ -3,11 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="color-scheme" content="dark" />
-    <meta name="theme-color" content="#07090c" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#1b1f25" />
+    <script>
+      // Tema ve yazı boyutu ilk boyamadan önce (src/ui/ayarlar.ts ile aynı anahtarlar): sayfa açılırken
+      // yanlış temada parlamasın. Tema seçilmemişse işletim sisteminin tercihi.
+      (function () {
+        var t = null, b = null, o = null;
+        try {
+          t = localStorage.getItem("silikon3d.tema");
+          b = localStorage.getItem("silikon3d.boyut");
+          o = localStorage.getItem("silikon3d.odak");
+        } catch (e) {}
+        if (t !== "koyu" && t !== "acik") t = window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches ? "acik" : "koyu";
+        var k = document.documentElement;
+        k.setAttribute("data-tema", t);
+        k.setAttribute("data-boyut", b === "buyuk" ? "buyuk" : "normal");
+        k.setAttribute("data-odak", o === "1" ? "1" : "0");
+      })();
+    </script>
     <meta name="description" content="Silikon3D: bir bilgisayarı transistörden karta kadar tarayıcıda, 3D ve canlı sinyallerle çalıştırır." />
     <title>Silikon3D</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Crect width='28' height='28' rx='7' fill='%23131920'/%3E%3Crect x='8' y='8' width='12' height='12' rx='2' fill='none' stroke='%23e3e7eb' stroke-width='1.6'/%3E%3Crect x='11.25' y='11.25' width='5.5' height='5.5' rx='1' fill='%23ff2a55'/%3E%3C/svg%3E" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Crect width='28' height='28' rx='7' fill='%23131920'/%3E%3Crect x='8' y='8' width='12' height='12' rx='2' fill='none' stroke='%23e3e7eb' stroke-width='1.6'/%3E%3Crect x='11.25' y='11.25' width='5.5' height='5.5' rx='1' fill='%233a6ad6'/%3E%3C/svg%3E" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!-- Yazı tipleri sayfanın açılmasını bekletmez (media="print", yüklenince "all"). Gelmezse (çevrimdışı)
@@ -21,11 +38,14 @@
       onerror="this.dataset.durum='yok'"
     />
     <style>
-      /* JS inene dek: koyu zemin ve küçük bir açılış işareti (React çizince yerini uygulama alır) */
-      html, body { margin: 0; height: 100%; background: #07090c; color: #e3e7eb; }
-      .acilis { height: 100%; display: grid; place-items: center; font: 500 13px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #96a1ac; }
-      .acilis div { display: flex; flex-direction: column; align-items: center; gap: 14px; }
-      .acilis i { width: 28px; height: 28px; border-radius: 50%; border: 2px solid #2a343f; border-top-color: #ff2a55; animation: acilis 0.9s linear infinite; }
+      /* JS inene dek: temanın zemini ve küçük bir açılış işareti (React çizince yerini uygulama alır) */
+      html, body { margin: 0; height: 100%; background: #15181d; color: #e9ecf1; }
+      html[data-tema="acik"], html[data-tema="acik"] body { background: #eef1f4; color: #1a1f27; }
+      .acilis { height: 100%; display: grid; place-items: center; font: 500 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #b1b9c4; }
+      html[data-tema="acik"] .acilis { color: #4a5361; }
+      .acilis div { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+      .acilis i { width: 32px; height: 32px; border-radius: 50%; border: 3px solid #3a414b; border-top-color: #7aa7ff; animation: acilis 0.9s linear infinite; }
+      html[data-tema="acik"] .acilis i { border-color: #cdd3db; border-top-color: #2c62d8; }
       @keyframes acilis { to { transform: rotate(360deg); } }
       @media (prefers-reduced-motion: reduce) { .acilis i { animation-duration: 3s; } }
     </style>

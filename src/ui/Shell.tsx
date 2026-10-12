@@ -1,15 +1,17 @@
 // Uygulama iskeleti: dört bölümün (6502 die, CPU16 tezgâhı, CPU16 kartı 3D, 8 bit hesap 3D) ortak parçaları.
-//   AppHeader: üst çubuk (marka, bölüm geçişi, canlı ölçümler, kısayollar, Başlangıç paneli)
+//   AppHeader: üst çubuk (marka, bölüm geçişi, canlı ölçümler, tema, görünüm ayarları, kısayollar,
+//              Başlangıç paneli)
 //   Tabs: sekmeli paneller (yan ve alt paneller; yeni bir sekme diziye bir satır eklemekle gelir)
-//   Splitter: alt panelin yüksekliğini sürükleyerek ayarlama
-//   PanelToggle: yan / alt paneli açıp kapatan düğmeler
-//   Menu: seyrek kullanılan denetimler için açılır kutu
+//   Splitter: alt panelin yüksekliğini ya da yan panelin genişliğini sürükleyerek ayarlama
+//   PanelToggle, OdakDugmesi: yan / alt paneli açıp kapatan düğmeler, odak modu (paneller gizli)
+//   Menu, TasmaMenusu: seyrek kullanılan denetimler için açılır kutu ("⋯")
 //   useLayout: panel düzeni tercihleri (tarayıcıda saklanır)
 
-import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import { ModeSwitch, type Mode } from "./ModeSwitch";
 import { baslangiciAc } from "./Baslangic";
 import { Simge } from "./simgeler";
+import { useAyar, type TemaSecimi } from "./ayarlar";
 
 // ---------------------------------------------------------------- düzen tercihleri
 
@@ -20,11 +22,17 @@ export interface LayoutPrefs {
   bottomH: number;
   /** yan panelin seçili sekmesi */
   sideTab?: string;
+  /** yan panelin elle ayarlanmış genişliği, piksel (yoksa bölümün varsayılanı) */
+  sideW?: number;
 }
+
+/** Düzen tercihlerinin anahtarı. Yeni arayüzde varsayılanlar değişti (alt panel çoğu bölümde kapalı,
+ * yan panel daha geniş): eski "silikon3d.duzen.*" kayıtları okunmaz. */
+const DUZEN_ANAHTARI = (key: string) => `silikon3d.yerlesim.${key}`;
 
 function loadPrefs(key: string, defaults: LayoutPrefs): LayoutPrefs {
   try {
-    const raw = localStorage.getItem(`silikon3d.duzen.${key}`);
+    const raw = localStorage.getItem(DUZEN_ANAHTARI(key));
     if (raw) return { ...defaults, ...(JSON.parse(raw) as Partial<LayoutPrefs>) };
   } catch {
     // depolama kapalı ya da bozuk: varsayılan düzen
@@ -46,7 +54,7 @@ export function useLayout(key: string, defaults: LayoutPrefs) {
       setPrefs((p) => {
         const next = { ...p, ...patch };
         try {
-          localStorage.setItem(`silikon3d.duzen.${key}`, JSON.stringify(next));
+          localStorage.setItem(DUZEN_ANAHTARI(key), JSON.stringify(next));
         } catch {
           // depolama kapalı: tercih yalnız bu oturumda geçerli
         }
@@ -57,6 +65,20 @@ export function useLayout(key: string, defaults: LayoutPrefs) {
   return [prefs, update] as const;
 }
 
+/** Bölümün kök öğesine yazılan ölçüler: alt panelin yüksekliği ve (elle ayarlandıysa) yan panelin genişliği */
+export function duzenStili(lay: LayoutPrefs, bottomVar = "--bottom-h"): CSSProperties {
+  return {
+    [bottomVar]: `${lay.bottomH}px`,
+    ...(lay.sideW ? { "--side-w": `min(${lay.sideW}px, 60vw)` } : {}),
+  } as CSSProperties;
+}
+
+/** Odak modunda yan ve alt paneller gizlenir: bölümler panelleri bununla açar */
+export function usePaneller(lay: LayoutPrefs): { side: boolean; bottom: boolean; odak: boolean } {
+  const odak = useAyar((s) => s.odak);
+  return { side: lay.side && !odak, bottom: lay.bottom && !odak, odak };
+}
+
 // ---------------------------------------------------------------- üst çubuk
 
 export interface Shortcut {
@@ -65,14 +87,19 @@ export interface Shortcut {
 }
 
 /** Her bölümün kısayol listesinin sonunda */
-const ORTAK_KISAYOLLAR: Shortcut[] = [{ keys: "?", what: "Başlangıç: bölümler ve ipuçları" }];
+const ORTAK_KISAYOLLAR: Shortcut[] = [
+  { keys: "F", what: "Odak modu: yan ve alt panelleri gizle / göster" },
+  { keys: "T", what: "Tema: koyu / açık" },
+  { keys: "Y", what: "Yazı boyutu: normal / büyük" },
+  { keys: "?", what: "Başlangıç: bölümler ve ipuçları" },
+];
 
-/** Üst çubuk: marka ve bölümün kısa açıklaması, bölüm geçişi, canlı ölçümler, kısayol listesi ve Başlangıç. */
+/** Üst çubuk: marka ve bölümün kısa açıklaması, bölüm geçişi, canlı ölçümler, tema, görünüm ayarları, kısayol listesi ve Başlangıç. */
 export function AppHeader({ mode, context, meters, shortcuts }: { mode: Mode; context?: ReactNode; meters?: ReactNode; shortcuts?: Shortcut[] }) {
-  const keys = [...(shortcuts ?? []), ...ORTAK_KISAYOLLAR];
+  const ozel = shortcuts ?? [];
   return (
     <header className="appbar">
-      <div className="brand">
+      <div className="brand" title={typeof context === "string" ? context : undefined}>
         <Logo />
         <div className="brand-text">
           <h1>
@@ -85,10 +112,13 @@ export function AppHeader({ mode, context, meters, shortcuts }: { mode: Mode; co
       <div className="appbar-end">
         {meters && <div className="meter" role="group" aria-label="Canlı ölçümler">{meters}</div>}
         <div className="appbar-tools">
-          <Menu label={<><Simge ad="klavye" /> <span className="menu-label">Kısayollar</span></>} title="Klavye ve fare kısayolları" className="icon-btn" align="end">
+          <TemaDugmesi />
+          <GorunumMenusu />
+          <Menu label={<><Simge ad="klavye" boyut={18} /> <span className="menu-label">Kısayollar</span></>} title="Klavye ve fare kısayolları" className="icon-btn" align="end">
+            <p className="menu-baslik">Kısayollar</p>
             <dl className="keys">
-              {keys.map((s) => (
-                <div key={s.keys}>
+              {[...ozel, ...ORTAK_KISAYOLLAR].map((s, i) => (
+                <div key={s.keys} className={i === ozel.length && ozel.length > 0 ? "ayrac" : undefined}>
                   <dt><kbd>{s.keys}</kbd></dt>
                   <dd>{s.what}</dd>
                 </div>
@@ -96,7 +126,7 @@ export function AppHeader({ mode, context, meters, shortcuts }: { mode: Mode; co
             </dl>
           </Menu>
           <button className="icon-btn" onClick={baslangiciAc} aria-label="Başlangıç ve yardım" data-tip="Başlangıç: bölümler ve ipuçları (?)" data-tip-hiza="son">
-            <Simge ad="yardim" boyut={18} />
+            <Simge ad="yardim" boyut={20} />
           </button>
         </div>
       </div>
@@ -104,10 +134,73 @@ export function AppHeader({ mode, context, meters, shortcuts }: { mode: Mode; co
   );
 }
 
-/** Ölçüm: etiket + tablo rakamlı değer */
-export function Meter({ label, children, title }: { label: string; children: ReactNode; title?: string }) {
+/** Koyu ↔ açık tema (T). Ayar menüsünde "Sistem" de seçilebilir. */
+function TemaDugmesi() {
+  const tema = useAyar((s) => s.tema);
+  const sonraki = tema === "koyu" ? "açık" : "koyu";
   return (
-    <span className="m" title={title}>
+    <button
+      className="icon-btn"
+      onClick={() => useAyar.getState().temaDegistir()}
+      aria-label={`Temayı değiştir: ${sonraki}`}
+      data-tip={`Tema: ${sonraki} (T)`}
+      data-tip-hiza="son"
+    >
+      <Simge ad={tema === "koyu" ? "gunes" : "ay"} boyut={20} />
+    </button>
+  );
+}
+
+const TEMALAR: { t: TemaSecimi; ad: string }[] = [
+  { t: "sistem", ad: "Sistem" },
+  { t: "koyu", ad: "Koyu" },
+  { t: "acik", ad: "Açık" },
+];
+
+/** Görünüm ayarları: tema, yazı boyutu, odak modu */
+function GorunumMenusu() {
+  const secim = useAyar((s) => s.secim);
+  const boyut = useAyar((s) => s.boyut);
+  const odak = useAyar((s) => s.odak);
+  const a = useAyar.getState();
+  return (
+    <Menu label={<Simge ad="ayarlar" boyut={20} />} title="Görünüm: tema, yazı boyutu, odak modu" className="icon-btn tasma" align="end">
+      <p className="menu-baslik">Görünüm</p>
+      <div className="ayar-satiri">
+        <span>Tema</span>
+        <span className="seg" role="group" aria-label="Tema">
+          {TEMALAR.map((x) => (
+            <button key={x.t} className={secim === x.t ? "on" : ""} aria-pressed={secim === x.t} onClick={() => a.temaSec(x.t)}>{x.ad}</button>
+          ))}
+        </span>
+      </div>
+      <div className="ayar-satiri">
+        <span>Yazı boyutu</span>
+        <span className="seg" role="group" aria-label="Yazı boyutu">
+          <button className={boyut === "normal" ? "on" : ""} aria-pressed={boyut === "normal"} onClick={() => a.boyutSec("normal")}>Normal</button>
+          <button className={boyut === "buyuk" ? "on" : ""} aria-pressed={boyut === "buyuk"} onClick={() => a.boyutSec("buyuk")}>Büyük</button>
+        </span>
+      </div>
+      <label className="ayar-satiri chk">
+        <span>Odak modu: paneller gizli</span>
+        <input type="checkbox" checked={odak} onChange={(e) => a.odakSec(e.target.checked)} />
+      </label>
+      <p className="menu-not">
+        <span>Kısayollar:</span>
+        <span><kbd>T</kbd> tema</span>
+        <span><kbd>Y</kbd> yazı boyutu</span>
+        <span><kbd>F</kbd> odak modu</span>
+      </p>
+    </Menu>
+  );
+}
+
+/**
+ * Ölçüm: etiket + tablo rakamlı değer. mono: değer onaltılık (PC gibi); ikincil: dar ekranda gizlenir.
+ */
+export function Meter({ label, children, title, mono = false, ikincil = false }: { label: string; children: ReactNode; title?: string; mono?: boolean; ikincil?: boolean }) {
+  return (
+    <span className={`m${mono ? " mono" : ""}${ikincil ? " ikincil" : ""}`} title={title}>
       <span className="m-label">{label}</span>
       <b>{children}</b>
     </span>
@@ -143,20 +236,54 @@ export function Group({ children, label, className = "" }: { children: ReactNode
   );
 }
 
-/** Yan ya da alt paneli açıp kapatır. */
-export function PanelToggle({ which, open, onToggle }: { which: "side" | "bottom"; open: boolean; onToggle: () => void }) {
-  const name = which === "side" ? "Yan panel" : "Alt panel";
+/** Yan ya da alt paneli açıp kapatır. Odak modundayken basılırsa odak modu kapanır ve panel görünür. */
+export function PanelToggle({ which, open, onToggle, ad }: { which: "side" | "bottom"; open: boolean; onToggle: () => void; ad?: string }) {
+  const odak = useAyar((s) => s.odak);
+  const name = ad ?? (which === "side" ? "Yan panel" : "Alt panel");
+  const gorunur = open && !odak;
+  const tikla = () => {
+    if (odak) {
+      useAyar.getState().odakSec(false);
+      if (!open) onToggle();
+    } else onToggle();
+  };
   return (
-    <button className="icon-btn" aria-pressed={open} onClick={onToggle} data-tip={`${name}: ${open ? "gizle" : "göster"}`} data-tip-hiza="son" aria-label={name}>
-      <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <button className="icon-btn" aria-pressed={gorunur} onClick={tikla} data-tip={`${name}: ${gorunur ? "gizle" : "göster"}`} data-tip-hiza="son" aria-label={name}>
+      <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5">
         <rect x="2.5" y="3.5" width="15" height="13" rx="2" />
         {which === "side" ? (
-          <rect x="12" y="3.5" width="5.5" height="13" rx="0" fill={open ? "currentColor" : "none"} opacity={open ? 0.55 : 1} />
+          <rect x="12" y="3.5" width="5.5" height="13" rx="0" fill={gorunur ? "currentColor" : "none"} opacity={gorunur ? 0.55 : 1} />
         ) : (
-          <rect x="2.5" y="11" width="15" height="5.5" rx="0" fill={open ? "currentColor" : "none"} opacity={open ? 0.55 : 1} />
+          <rect x="2.5" y="11" width="15" height="5.5" rx="0" fill={gorunur ? "currentColor" : "none"} opacity={gorunur ? 0.55 : 1} />
         )}
       </svg>
     </button>
+  );
+}
+
+/** Odak modu (F): yan ve alt paneller gizlenir, sahne bütün alanı alır */
+export function OdakDugmesi() {
+  const odak = useAyar((s) => s.odak);
+  return (
+    <button
+      className="icon-btn"
+      aria-pressed={odak}
+      onClick={() => useAyar.getState().odakSec(!odak)}
+      aria-label="Odak modu"
+      data-tip={odak ? "Odak modundan çık: paneller görünür (F)" : "Odak modu: paneller gizli, sahne tam (F)"}
+      data-tip-hiza="son"
+    >
+      <Simge ad={odak ? "daralt" : "genislet"} boyut={20} />
+    </button>
+  );
+}
+
+/** Araç çubuğunda seyrek kullanılan denetimler: "⋯" düğmesiyle açılan kutu */
+export function TasmaMenusu({ children, title = "Diğer denetimler", align = "start" }: { children: ReactNode; title?: string; align?: "start" | "end" }) {
+  return (
+    <Menu label={<Simge ad="daha" boyut={20} />} title={title} className="icon-btn tasma" align={align}>
+      <div className="menu-col">{children}</div>
+    </Menu>
   );
 }
 
@@ -221,58 +348,75 @@ export function Tabs<T extends string>({ tabs, value, onChange, label, actions, 
 
 // ---------------------------------------------------------------- bölücü
 
-/** Alt panelin üst kenarı: yukarı sürükle büyüt, aşağı sürükle küçült (klavyede ok tuşları). */
-export function Splitter({ value, onChange, min = 140, reserve = 200, label = "Alt panelin yüksekliği" }: {
+/**
+ * Sürüklenebilir bölücü. Yatay (varsayılan): alt panelin üst kenarı; yukarı sürükle büyüt, aşağı
+ * sürükle küçült. Dikey: yan panelin sol kenarı (bölücü yan panelden hemen önce gelir); sola sürükle
+ * genişlet. Klavyede ok tuşları.
+ */
+export function Splitter({ value, onChange, min = 140, reserve = 200, label = "Alt panelin yüksekliği", yon = "yatay" }: {
   value: number;
   onChange: (px: number) => void;
   min?: number;
-  /** panelin üstünde (sahneye) en az bu kadar yer kalır */
+  /** panelin yanında / üstünde (sahneye) en az bu kadar yer kalır */
   reserve?: number;
   label?: string;
+  yon?: "yatay" | "dikey";
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const drag = useRef<{ y: number; h: number } | null>(null);
-  const clamp = (h: number) => {
+  const drag = useRef<{ p: number; v: number } | null>(null);
+  const dikey = yon === "dikey";
+  const sinif = dikey ? "resizing-x" : "resizing";
+  /** dikey bölücüde değer kayıtlı değilse yan panelin o anki genişliği */
+  const simdiki = () => (dikey ? (ref.current?.nextElementSibling as HTMLElement | null)?.getBoundingClientRect().width ?? value : value);
+  const clamp = (v: number) => {
     const parent = ref.current?.parentElement;
-    const max = parent ? Math.max(min, parent.clientHeight - reserve) : 900;
-    return Math.round(Math.min(max, Math.max(min, h)));
+    const boy = parent ? (dikey ? parent.clientWidth : parent.clientHeight) : 900;
+    const max = Math.max(min, boy - reserve);
+    return Math.round(Math.min(max, Math.max(min, v)));
   };
   return (
     <div
       ref={ref}
-      className="splitter"
+      className={`splitter${dikey ? " dikey" : ""}`}
       role="separator"
-      aria-orientation="horizontal"
+      aria-orientation={dikey ? "vertical" : "horizontal"}
       aria-label={label}
-      aria-valuenow={value}
+      aria-valuenow={value || undefined}
       aria-valuemin={min}
       tabIndex={0}
-      title="Sürükle: paneli büyüt / küçült"
+      title={dikey ? "Sürükle: paneli genişlet / daralt" : "Sürükle: paneli büyüt / küçült"}
       onPointerDown={(e) => {
         e.currentTarget.setPointerCapture(e.pointerId);
-        drag.current = { y: e.clientY, h: value };
-        document.body.classList.add("resizing");
+        drag.current = { p: dikey ? e.clientX : e.clientY, v: simdiki() };
+        document.body.classList.add(sinif);
       }}
       onPointerMove={(e) => {
-        if (drag.current) onChange(clamp(drag.current.h + (drag.current.y - e.clientY)));
+        if (drag.current) onChange(clamp(drag.current.v + (drag.current.p - (dikey ? e.clientX : e.clientY))));
       }}
       onPointerUp={(e) => {
         e.currentTarget.releasePointerCapture(e.pointerId);
         drag.current = null;
-        document.body.classList.remove("resizing");
+        document.body.classList.remove(sinif);
       }}
       onPointerCancel={() => {
         drag.current = null;
-        document.body.classList.remove("resizing");
+        document.body.classList.remove(sinif);
       }}
       onKeyDown={(e) => {
-        if (e.key === "ArrowUp") onChange(clamp(value + 24));
-        else if (e.key === "ArrowDown") onChange(clamp(value - 24));
+        const art = dikey ? "ArrowLeft" : "ArrowUp";
+        const azal = dikey ? "ArrowRight" : "ArrowDown";
+        if (e.key === art) onChange(clamp(simdiki() + 24));
+        else if (e.key === azal) onChange(clamp(simdiki() - 24));
         else return;
         e.preventDefault();
       }}
     />
   );
+}
+
+/** Yan panelin sol kenarındaki bölücü: genişlik tercihlere yazılır */
+export function YanBolucu({ lay, setLay }: { lay: LayoutPrefs; setLay: (p: Partial<LayoutPrefs>) => void }) {
+  return <Splitter yon="dikey" value={lay.sideW ?? 0} onChange={(w) => setLay({ sideW: w })} min={320} reserve={420} label="Yan panelin genişliği" />;
 }
 
 // ---------------------------------------------------------------- açılır menü
