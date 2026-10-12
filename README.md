@@ -168,7 +168,7 @@ Ayrıntılar `Dockerfile`, `docker-compose.yml` ve `docker/nginx/default.conf` i
 | `npm run dev` | Vite geliştirme sunucusu, http://localhost:5173 |
 | `npm run build` | tip denetimi (`tsc -b`) + üretim derlemesi `dist/` altına |
 | `npm run preview` | `dist/`'i yerelde sun (http://localhost:4173) |
-| `npm test` | bütün vitest testleri (6502, CPU16, hesap8; ≈ 4 dakika) |
+| `npm test` | bütün vitest testleri (6502, CPU16, hesap8; ≈ 1 dakika) |
 | `npm run typecheck` | yalnız tip denetimi |
 | `npm run check` | tip denetimi + testler: PR açmadan önce bunu çalıştır |
 | `npm run cpu16 -- <komut>` | CPU16 komut satırı (aşağıda) |
@@ -288,7 +288,7 @@ Gerçek çiplerle kurmak isteyenler için sıra:
 ## Testler ve doğrulama
 
 ```bash
-npm test                                                  # bütün testler (690 test, ≈ 4 dakika)
+npm test                                                  # bütün testler (721 test, ≈ 1 dakika)
 npm run check                                             # tip denetimi + testler
 npx vitest run cpu16/tests/emu.test.ts                    # tek dosya
 npx vitest run cpu16/tests/cc-bios.test.ts -t "yılan"     # bir dosyada adı eşleşen testler
