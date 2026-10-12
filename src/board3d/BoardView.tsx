@@ -11,7 +11,7 @@ import type { Gate } from "../../cpu16/chips/logic";
 import { breakCodes, makeCodes, textToScancodes } from "../../cpu16/emu/devices/keyboard";
 import { disassemble } from "../../cpu16/emu/disasm";
 import {
-  AppHeader, Group, Meter, OdakDugmesi, PanelToggle, Section, Splitter, Tabs, TasmaMenusu, YanBolucu, duzenStili, heightShare, useLayout, usePaneller,
+  AppHeader, Bayrak, Group, Meter, OdakDugmesi, PanelToggle, Section, Splitter, Tabs, TasmaMenusu, YanBolucu, duzenStili, heightShare, useLayout, usePaneller,
   type LayoutPrefs, type Shortcut, type TabDef,
 } from "../ui/Shell";
 import { Simge } from "../ui/simgeler";
@@ -111,22 +111,27 @@ function GorunumGrubu({ secenekler }: { secenekler: { g: Gorunum; label: string;
 }
 
 function Toolbar({ lay, setLay }: { lay: LayoutPrefs; setLay: (p: Partial<LayoutPrefs>) => void }) {
-  const s = useKart();
+  // yalnız gereken alanlar: bütün depoyu seçmek araç çubuğunu her fare hareketinde (hover) ve saniyede
+  // ~10 kez (tick) yeniden çizerdi
+  const ready = useKart((x) => x.ready);
+  const running = useKart((x) => x.running);
+  const hz = useKart((x) => x.hz);
+  const s = useKart.getState();
   return (
     <div className="toolbar">
       <GorunumGrubu secenekler={CPU_GORUNUMLERI} />
       <Group label="Çalıştırma">
-        <button className="primary" onClick={() => (s.running ? s.pause() : s.run())} disabled={!s.ready} title="Kısayol: Boşluk">
-          <Simge ad={s.running ? "duraklat" : "oynat"} />
-          {s.running ? "Duraklat" : "Çalıştır"}
+        <button className="primary" onClick={() => (running ? s.pause() : s.run())} disabled={!ready} title="Kısayol: Boşluk">
+          <Simge ad={running ? "duraklat" : "oynat"} />
+          {running ? "Duraklat" : "Çalıştır"}
         </button>
-        <button onClick={() => s.step("instr")} disabled={!s.ready} title="Bir komut · kısayol: N"><Simge ad="adim" />1 komut</button>
-        <button onClick={s.reset} disabled={!s.ready} title="RESET butonu: program EEPROM'da kalır"><Simge ad="sifirla" />Sıfırla</button>
+        <button onClick={() => s.step("instr")} disabled={!ready} title="Bir komut · kısayol: N"><Simge ad="adim" />1 komut</button>
+        <button onClick={s.reset} disabled={!ready} title="RESET butonu: program EEPROM'da kalır"><Simge ad="sifirla" />Sıfırla</button>
       </Group>
       <Group label="Saat hızı">
         <label className="speed">
           <span className="tb-label kisalir">Saat</span>
-          <select value={s.hz} onChange={(e) => s.setHz(+e.target.value)} aria-label="Saat hızı">
+          <select value={hz} onChange={(e) => s.setHz(+e.target.value)} aria-label="Saat hızı">
             {SPEEDS.map((x) => <option key={x.hz} value={x.hz}>{x.label}</option>)}
           </select>
         </label>
@@ -135,7 +140,7 @@ function Toolbar({ lay, setLay }: { lay: LayoutPrefs; setLay: (p: Partial<Layout
       <EtiketGrubu />
       <Group label="Diğer">
         <TasmaMenusu title="Diğer: saat çevrimi, besleme telleri">
-          <button onClick={() => s.step("cycle")} disabled={!s.ready} title="Bir saat çevrimi · kısayol: ."><Simge ad="yarim" />1 saat çevrimi</button>
+          <button onClick={() => s.step("cycle")} disabled={!ready} title="Bir saat çevrimi · kısayol: ."><Simge ad="yarim" />1 saat çevrimi</button>
           <BeslemeSecimi />
           <EtiketMenuSecimi />
         </TasmaMenusu>
@@ -203,7 +208,7 @@ function HesapToolbar({ lay, setLay }: { lay: LayoutPrefs; setLay: (p: Partial<L
         <span className="tb-label kisalir">Kamera</span>
         <span className="seg" role="group" aria-label="Kamera">
           {KAMERA_YERLERI.map((k) => (
-            <button key={k.label} className={odak === k.blok ? "on" : ""} onClick={() => useKart.getState().focusBlock(k.blok)} title={k.title}>{k.label}</button>
+            <button key={k.label} className={odak === k.blok ? "on" : ""} aria-pressed={odak === k.blok} onClick={() => useKart.getState().focusBlock(k.blok)} title={k.title}>{k.label}</button>
           ))}
         </span>
       </Group>
@@ -312,7 +317,7 @@ function StatePanel() {
         <div className="deger"><span>Adım</span><b>{st.step}</b></div>
       </div>
       <div className="pins" aria-label="Bayraklar">
-        {(["n", "z", "c", "v", "i"] as const).map((f) => <span key={f} className={`pin ${st[f] ? "on" : ""}`}>{f.toUpperCase()}</span>)}
+        {(["n", "z", "c", "v", "i"] as const).map((f) => <Bayrak key={f} ad={f} on={st[f]} />)}
       </div>
     </Section>
   );
@@ -487,13 +492,20 @@ const LANG_MODES: { m: LangMode; label: string }[] = [
 ];
 
 function Editor() {
-  const s = useKart();
+  // yalnız düzenleyicinin alanları: bütün depo düzenleyiciyi her hover ve tick'te yeniden çizdirirdi
+  const example = useKart((x) => x.example);
+  const source = useKart((x) => x.source);
+  const langMode = useKart((x) => x.langMode);
+  const errors = useKart((x) => x.errors);
+  const info = useKart((x) => x.info);
+  const ready = useKart((x) => x.ready);
+  const s = useKart.getState();
   const ta = useRef<HTMLTextAreaElement>(null);
   const gutter = useRef<HTMLPreElement>(null);
-  const lang = currentLang(s);
-  const detected = useMemo(() => detectLanguage(s.source), [s.source]);
-  const lines = useMemo(() => s.source.split("\n").length, [s.source]);
-  const bad = useMemo(() => new Set(s.errors.map((e) => e.line)), [s.errors]);
+  const lang = currentLang({ langMode, source });
+  const detected = useMemo(() => detectLanguage(source), [source]);
+  const lines = useMemo(() => source.split("\n").length, [source]);
+  const bad = useMemo(() => new Set(errors.map((e) => e.line)), [errors]);
   const gotoLine = (line: number) => {
     const t = ta.current;
     if (!t || line < 1) return;
@@ -507,19 +519,19 @@ function Editor() {
   return (
     <div className="editor">
       <div className="row wrap editor-bar">
-        <select value={s.example} onChange={(e) => s.loadExample(e.target.value)} aria-label="Örnek program">
-          {!EXAMPLES.some((x) => x.name === s.example) && <option value={s.example}>{s.example || "örnek seç"}</option>}
+        <select value={example} onChange={(e) => s.loadExample(e.target.value)} aria-label="Örnek program">
+          {!EXAMPLES.some((x) => x.name === example) && <option value={example}>{example || "örnek seç"}</option>}
           {EXAMPLES.map((x) => <option key={x.name} value={x.name}>{x.label}</option>)}
         </select>
         <span className="seg" role="group" aria-label="Dil">
           {LANG_MODES.map((x) => (
-            <button key={x.m} className={s.langMode === x.m ? "on" : ""} onClick={() => s.setLangMode(x.m)}>
+            <button key={x.m} className={langMode === x.m ? "on" : ""} aria-pressed={langMode === x.m} onClick={() => s.setLangMode(x.m)}>
               {x.m === "otomatik" ? `Otomatik (${detected === "c" ? "C" : "asm"})` : x.label}
             </button>
           ))}
         </span>
         <button onClick={() => s.check()} title={lang === "c" ? "cc16 (rom hedefi) ile derle" : "as16 ile derle"}>Derle</button>
-        <button className="primary" onClick={() => s.compileAndLoad(true)} disabled={!s.ready} title="Derle, EEPROM bank 0'a yaz, RESET ve çalıştır">
+        <button className="primary" onClick={() => s.compileAndLoad(true)} disabled={!ready} title="Derle, EEPROM bank 0'a yaz, RESET ve çalıştır">
           Yükle ve çalıştır
         </button>
       </div>
@@ -531,7 +543,7 @@ function Editor() {
         </pre>
         <textarea
           ref={ta}
-          value={s.source}
+          value={source}
           spellCheck={false}
           onChange={(e) => s.setSource(e.target.value)}
           onScroll={(e) => {
@@ -552,9 +564,9 @@ function Editor() {
           }}
           aria-label={`Program kaynağı (${lang === "c" ? "C" : "assembly"})`}
         />
-        {s.errors.length > 0 && (
+        {errors.length > 0 && (
           <ul className="errors">
-            {s.errors.map((e, i) => (
+            {errors.map((e, i) => (
               <li key={i}>
                 <button className="link" onClick={() => gotoLine(e.line)} disabled={!e.line}>
                   {e.file ? `${e.file}: ` : e.line ? `${e.line}. satır: ` : ""}
@@ -565,8 +577,8 @@ function Editor() {
           </ul>
         )}
       </div>
-      <p className={`editor-status${s.errors.length ? " err" : ""}`} title={s.info} role="status">
-        {s.info || "Ctrl+Enter: yükle ve çalıştır · Tab: iki boşluk"}
+      <p className={`editor-status${errors.length ? " err" : ""}`} title={info} role="status">
+        {info ||"Ctrl+Enter: yükle ve çalıştır · Tab: iki boşluk"}
       </p>
     </div>
   );
@@ -594,10 +606,10 @@ function Inside() {
   return (
     <div className="analyzer">
       <div className="row between">
-        <div className="seg">
-          <button className={tab === "gates" ? "on" : ""} onClick={() => setTab("gates")}>{behavioral ? "Bellek dizisi" : "Kapılar"} · {chip}</button>
+        <div className="seg" role="group" aria-label="Şema">
+          <button className={tab === "gates" ? "on" : ""} aria-pressed={tab === "gates"} onClick={() => setTab("gates")}>{behavioral ? "Bellek dizisi" : "Kapılar"} · {chip}</button>
           {!behavioral && (
-            <button className={tab === "fets" ? "on" : ""} onClick={() => setTab("fets")} disabled={gate === null}>
+            <button className={tab === "fets" ? "on" : ""} aria-pressed={tab === "fets"} onClick={() => setTab("fets")} disabled={gate === null}>
               Transistörler{gate !== null ? ` · ${board.c.gates[gate].kind}` : ""}
             </button>
           )}

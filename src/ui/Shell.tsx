@@ -1,6 +1,7 @@
 // Uygulama iskeleti: beş bölümün (6502 die, CPU16 tezgâhı, CPU16 kartı 3D, 8 bit hesap 3D, mimari) ortak parçaları.
 //   AppHeader: üst çubuk (marka, bölüm geçişi, canlı ölçümler, tema, görünüm ayarları, kısayollar,
-//              Başlangıç paneli)
+//              Başlangıç paneli); sığmazsa kademe kademe sıkışır (sikisma.ts)
+//   Meter, Bayrak: canlı ölçüm ve bayrak rozetleri
 //   Tabs: sekmeli paneller (yan ve alt paneller; yeni bir sekme diziye bir satır eklemekle gelir)
 //   Splitter: alt panelin yüksekliğini ya da yan panelin genişliğini sürükleyerek ayarlama
 //   PanelToggle, OdakDugmesi: yan / alt paneli açıp kapatan düğmeler, odak modu (paneller gizli)
@@ -12,6 +13,7 @@ import { ModeSwitch, type Mode } from "./ModeSwitch";
 import { baslangiciAc } from "./Baslangic";
 import { Simge } from "./simgeler";
 import { useAyar, type TemaSecimi } from "./ayarlar";
+import { useSikisma } from "./sikisma";
 
 // ---------------------------------------------------------------- düzen tercihleri
 
@@ -97,8 +99,11 @@ const ORTAK_KISAYOLLAR: Shortcut[] = [
 /** Üst çubuk: marka ve bölümün kısa açıklaması, bölüm geçişi, canlı ölçümler, tema, görünüm ayarları, kısayol listesi ve Başlangıç. */
 export function AppHeader({ mode, context, meters, shortcuts }: { mode: Mode; context?: ReactNode; meters?: ReactNode; shortcuts?: Shortcut[] }) {
   const ozel = shortcuts ?? [];
+  // sığmazsa kademe kademe yer açılır (bölüm adları simgeye döner, ikincil ölçümler gizlenir …)
+  const ref = useRef<HTMLElement>(null);
+  useSikisma(ref);
   return (
-    <header className="appbar">
+    <header className="appbar" ref={ref}>
       <div className="brand" title={typeof context === "string" ? context : undefined}>
         <Logo />
         <div className="brand-text">
@@ -197,12 +202,24 @@ function GorunumMenusu() {
 
 /**
  * Ölçüm: etiket + tablo rakamlı değer. mono: değer onaltılık (PC gibi); ikincil: dar ekranda gizlenir.
+ * Etiket dar ekranda görünmez olur (ekran okuyucuda kalır): ipucu verilmemişse etiket ipucu olur.
  */
 export function Meter({ label, children, title, mono = false, ikincil = false }: { label: string; children: ReactNode; title?: string; mono?: boolean; ikincil?: boolean }) {
   return (
-    <span className={`m${mono ? " mono" : ""}${ikincil ? " ikincil" : ""}`} title={title}>
+    <span className={`m${mono ? " mono" : ""}${ikincil ? " ikincil" : ""}`} title={title ?? label}>
       <span className="m-label">{label}</span>
       <b>{children}</b>
+    </span>
+  );
+}
+
+/** Bayrak rozeti (N Z C V I): 1 olan lojik 1 renginde; değeri yalnız renkle değil, ekran okuyucuda da */
+export function Bayrak({ ad, on }: { ad: string; on: boolean }) {
+  const A = ad.toUpperCase();
+  return (
+    <span className={`pin${on ? " on" : ""}`} title={`${A} = ${on ? 1 : 0}`}>
+      {A}
+      <span className="sr-only"> = {on ? 1 : 0}</span>
     </span>
   );
 }
@@ -421,7 +438,7 @@ export function YanBolucu({ lay, setLay }: { lay: LayoutPrefs; setLay: (p: Parti
 
 // ---------------------------------------------------------------- açılır menü
 
-/** Bir düğmeyle açılan küçük kutu: dışına tıklayınca ya da Esc ile kapanır. */
+/** Bir düğmeyle açılan küçük kutu: dışına tıklayınca, Esc ile ya da klavye odağı kutudan çıkınca (Tab) kapanır. */
 export function Menu({ label, title, children, align = "start", placement = "down", keepMounted = false, className = "" }: {
   label: ReactNode;
   title?: string;
@@ -456,7 +473,14 @@ export function Menu({ label, title, children, align = "start", placement = "dow
     };
   }, [open]);
   return (
-    <div className="menu" ref={ref}>
+    <div
+      className="menu"
+      ref={ref}
+      onBlur={(e) => {
+        // odak sayfanın başka bir yerine geçti (pencere değişince relatedTarget boş: açık kalır)
+        if (open && e.relatedTarget && !e.currentTarget.contains(e.relatedTarget as Node)) setOpen(false);
+      }}
+    >
       <button className={`menu-btn ${className}`} aria-expanded={open} aria-controls={id} title={title} onClick={() => setOpen(!open)}>
         {label}
         <svg className="chev" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true">
