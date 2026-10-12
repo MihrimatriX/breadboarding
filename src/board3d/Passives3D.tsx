@@ -48,10 +48,10 @@ function useWorld() {
   return useMemo(() => ({ lay, w: ((x: number, y: number) => [(x - cx) * S, (y - cz) * S]) as W }), [lay, cx, cz]);
 }
 
-/** Elemanın yerel çerçevesi: kaplama dikdörtgeninin ortası, dikeyse −90° döner, mm → dünya ölçeği */
+/** Elemanın yerel çerçevesi: kaplama dikdörtgeninin ortası, dikeyse −90°, tersse 180° döner, mm → dünya ölçeği */
 function partMatrix(p: PassivePlace, w: W, out: Matrix4, extra?: Matrix4): Matrix4 {
   const [x, z] = w(p.x + p.w / 2, p.y + p.h / 2);
-  UP.set(0, p.vertical ? -Math.PI / 2 : 0, 0);
+  UP.set(0, (p.vertical ? -Math.PI / 2 : 0) + (p.ters ? Math.PI : 0), 0);
   tmpQ.setFromEuler(UP);
   out.compose(tmpP.set(x, 0, z), tmpQ, tmpS);
   if (extra) out.multiply(extra);
@@ -62,9 +62,10 @@ function partMatrix(p: PassivePlace, w: W, out: Matrix4, extra?: Matrix4): Matri
 export function localPins(p: PassivePlace): { num: number; lx: number; lz: number }[] {
   const cx = p.x + p.w / 2;
   const cy = p.y + p.h / 2;
+  const t = p.ters ? -1 : 1;
   return p.pins.map((q) => {
-    const dx = q.x - cx;
-    const dy = q.y - cy;
+    const dx = (q.x - cx) * t;
+    const dy = (q.y - cy) * t;
     return p.vertical ? { num: q.num, lx: dy, lz: -dx } : { num: q.num, lx: dx, lz: dy };
   });
 }

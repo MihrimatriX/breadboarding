@@ -8,7 +8,8 @@ import { ISLEMLER, type HesapKarti } from "../../hesap8/kart";
 import { beklenen, type Gorunum, type IslemKodu } from "../../hesap8/model";
 import { HesapSim } from "../../hesap8/sim";
 import { L1 } from "../../cpu16/chips/logic";
-import { aktifKart, hesapKarti, kartYerlesimi } from "./aktif";
+import { aktifKart, hesapKarti, hesapPlani, kartYerlesimi, type HesapGorunumu } from "./aktif";
+import { bbSeciliTel, telKimligi, telTarifi, useBbKurulum } from "./bbKurulum";
 import { netDegerleri, useKart } from "./store";
 
 export type GirisGrubu = "a" | "b" | "op";
@@ -268,6 +269,17 @@ export function installHesapApi(): void {
     secCip: (ref: string | null) => kart().selectChip(ref),
     secKapi: (g: number | null) => kart().selectGate(g),
     teller: (mod: "yok" | "secili" | "hepsi") => kart().setWires(mod),
+    /** görünüm: "breadboard" (varsayılan) ya da "pcb"; verilmezse yalnız okur */
+    gorunum: (g?: HesapGorunumu) => {
+      if (g) kart().setGorunum(g);
+      return kart().gorunum;
+    },
+    /** breadboard kurulum modu: odaktaki tel (delikten deliğe), takılan / toplam */
+    kurulum: () => {
+      const k = useBbKurulum.getState();
+      const t = bbSeciliTel(k);
+      return { acik: k.acik, secili: t ? `${telKimligi(t.no)} ${telTarifi(hesapPlani(), t)}` : null, takilan: k.yapilan.size, toplam: hesapPlani().teller.length };
+    },
     cipler: () => hesapKarti().board.chips.map((c) => `${c.ref} ${c.def.part} · ${c.block} · ${c.role}`),
     pasifler: () => hesapKarti().board.passives.map((p) => `${p.ref} ${p.part} · ${p.block} · ${p.role}`),
   };
