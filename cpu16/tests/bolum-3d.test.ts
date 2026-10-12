@@ -122,7 +122,7 @@ describe("sahnenin bölümleri", () => {
       const k = katalog(tur);
       const panolar = bbSahnesi(tur).panolar;
       const boardKutulari = panolar.flatMap((p) => p.plan.yerlesim.boards.map((b) => {
-        const d = boardDikdortgeni(b.bx, b.by);
+        const d = boardDikdortgeni(b);
         return { kart: p.kart, ad: b.ad, dolu: p.plan.yerlesim.parcalar.some((q) => q.board === b.no), k: { x: p.x + d.x, y: p.y + d.y, w: d.w, h: d.h } };
       }));
       expect(s.modulPlakalari.length, tur).toBeGreaterThanOrEqual(boardKutulari.filter((b) => b.dolu).length);

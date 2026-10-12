@@ -8,8 +8,9 @@
 import { PASSIVES } from "../../cpu16/board/passives.ts";
 import { esc, htmlBelge, kutu } from "../../cpu16/kurulum/stil.ts";
 import { BOLUM_STIL, boardGruplari, bolumlerHtml, grupEtiketleri, HARITA, haritaBolgeleri, haritaBoyu, haritaX, haritaY, katalogu } from "../../cpu16/board/breadboard/bolum-belge.ts";
-import { boardaDegiyor, boardCizimi as cizim, BW, type CizimSecenekleri } from "../../cpu16/board/breadboard/cizim.ts";
-import { ADIM, BY_ADIM } from "./geometri.ts";
+import { boardaDegiyor, boardCizimi as cizim, type CizimSecenekleri } from "../../cpu16/board/breadboard/cizim.ts";
+import { ADIM, BOSLUK } from "./geometri.ts";
+import { plakaBoyu } from "./gorunum.ts";
 import { bbOlcu, noktaBoardu, ucEtiketi, type BbOlcu, type BbPlani, type BbTel } from "./plan.ts";
 import { BB_RENKLERI, renkTanimi } from "./renk.ts";
 import { mimariBolumu } from "../../cpu16/mimari/belge.ts";
@@ -63,7 +64,7 @@ ${olgu(`${sayi(o.kesimM, 0)} m`, "tel (kesim boyu, uçlar dahil)")}
 ${olgu(String(plan.asamalar.length), "aşama, her birinin sonunda test")}
 ${olgu(`${sayi(o.ortalamaMm)} mm`, `ortalama tel (en uzun ${sayi(o.enUzunMm)} mm)`)}
 ${olgu(String(o.renkler.length), "tel rengi (sinyal grubu başına)")}
-${olgu(`≈ ${sayi(Math.ceil((plan.yerlesim.nx * BW + 30) / 10) * 10)} × ${sayi(Math.ceil((plan.yerlesim.ny * BY_ADIM * ADIM + 30) / 10) * 10)} mm`, "taban plakası")}
+${olgu(`≈ ${sayi(Math.ceil(plakaBoyu(plan).w / 10) * 10)} × ${sayi(Math.ceil(plakaBoyu(plan).h / 10) * 10)} mm`, "taban plakası")}
 </div>
 <h3>İçindekiler</h3>
 <ol class="icindekiler">
@@ -242,14 +243,14 @@ function malzeme(plan: BbPlani, o: BbOlcu): string {
     const tn = renkTanimi(r.renk);
     return `<tr><td><span class="sw" style="background:${tn.hex}"></span>${esc(tn.ad)}</td><td>${esc(tn.grup)}</td><td class="sag">${sayi(r.sayi)}</td><td class="sag">${sayi(r.kesimM, 1)} m</td><td class="sag"><b>${Math.ceil(r.kesimM * 1.15)} m</b></td></tr>`;
   }).join("");
-  const plakaW = Math.ceil((plan.yerlesim.nx * BW + 30) / 10) * 10;
-  const plakaH = Math.ceil((plan.yerlesim.ny * BY_ADIM * ADIM + 30) / 10) * 10;
+  const plakaW = Math.ceil(plakaBoyu(plan).w / 10) * 10;
+  const plakaH = Math.ceil(plakaBoyu(plan).h / 10) * 10;
   return `<section class="bolum">
 <h2>7. Malzeme listesi</h2>
 <h3>Breadboard ve taban</h3>
 <table class="tablo"><thead><tr><th>Ne</th><th class="sag" style="width:20mm">Adet</th></tr></thead><tbody>
 <tr><td><b>Tam boy breadboard, 830 delik</b> (BB830 türü: 63 sütun, a–e / f–j, üstte ve altta ikişer ray, <b>raylar kesintisiz</b>; arkası yapışkanlı)</td><td class="sag">${o.board}</td></tr>
-<tr><td>Taban plakası ≈ ${plakaW} × ${plakaH} mm (10 mm kontrplak ya da MDF): board'lar ${plan.yerlesim.nx} × ${plan.yerlesim.ny}, yan yana bitişik, sıralar arasında ≈ 1,3 mm</td><td class="sag">1</td></tr>
+<tr><td>Taban plakası ≈ ${plakaW} × ${plakaH} mm (10 mm kontrplak ya da MDF): board'lar ${plan.yerlesim.nx} × ${plan.yerlesim.ny}; bir modülün board'ları bitişik (sıralar arasında ≈ 1,3 mm), modüller arasında ≈ ${sayi(BOSLUK * ADIM, 0)} mm boşluk (haritadaki adalar)</td><td class="sag">1</td></tr>
 <tr><td>Ray köprüleri (tel listesinde, kırmızı / siyah): board içi (üst ↔ alt ray çifti) ${o.rayIc}, board'lar arası ${o.rayArasi}</td><td class="sag">${o.rayIc + o.rayArasi}</td></tr>
 <tr><td>5 V, en az 2 A adaptör (lamba testinde ≈ 0,6 A) ve J1'e uyan 2 pinli başlık / klemens</td><td class="sag">1</td></tr>
 </tbody></table>

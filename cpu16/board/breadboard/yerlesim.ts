@@ -10,7 +10,7 @@
 
 import type { ChipInstance, Passive } from "../board.ts";
 import { PASSIVES } from "../passives.ts";
-import { BX_ADIM, BY_ADIM, kureselX, kureselY, type BbKonum } from "./geometri.ts";
+import { kureselX, kureselY, type BbKonum } from "./geometri.ts";
 
 export type ParcaTuru =
   | "dip" | "gosterge" | "sip" | "direnc" | "led" | "kondansator" | "elektrolitik" | "buton" | "konnektor"
@@ -95,7 +95,7 @@ export function pinNumaralari(x: ChipInstance | Passive): number[] {
 // ---------------------------------------------------------------- bacak kalıpları
 
 /** Board'un yerel (r, c) deliğinin ızgara noktası */
-export const izgaraNoktasi = (b: BbKonum, r: number, c: number): { X: number; Y: number } => ({ X: kureselX(b.bx, c), Y: kureselY(b.by, r) });
+export const izgaraNoktasi = (b: BbKonum, r: number, c: number): { X: number; Y: number } => ({ X: kureselX(b, c), Y: kureselY(b, r) });
 const G = izgaraNoktasi;
 
 export type Kalip = { bacaklar: BbBacak[]; govde: BbParca["govde"] };
@@ -108,6 +108,23 @@ export function dipBacaklari(b: BbKonum, c0: number, n: number): Kalip {
     const alt = k <= half;
     const c = c0 + (alt ? k - 1 : n - k);
     bacaklar.push({ pin: k, ...G(b, alt ? 10 : 7, c) });
+  }
+  const a = G(b, 7, c0);
+  const z = G(b, 10, c0 + half - 1);
+  return { bacaklar, govde: [a.X, a.Y, z.X, z.Y] };
+}
+
+/**
+ * Ters DIP (180° döndürülmüş): 1. pin e satırında en sağda (c0 + n/2 − 1), pinler sola doğru; n/2 + 1.
+ * pin f satırında en solda. Çubuk göstergede 1. segment (bit 0) sağda kalır.
+ */
+export function tersDipBacaklari(b: BbKonum, c0: number, n: number): Kalip {
+  const half = n / 2;
+  const bacaklar: BbBacak[] = [];
+  for (let k = 1; k <= n; k++) {
+    const ust = k <= half;
+    const c = ust ? c0 + half - k : c0 + k - half - 1;
+    bacaklar.push({ pin: k, ...G(b, ust ? 7 : 10, c) });
   }
   const a = G(b, 7, c0);
   const z = G(b, 10, c0 + half - 1);
@@ -277,8 +294,8 @@ export function tavlama(bolgeler: TavlamaBolgesi[], sabit: Map<number, { X: numb
       for (let k = 0; k < ys; k++) {
         list.push(yBoard.length);
         yBoard.push(b);
-        yX.push(b.bx * BX_ADIM + sol + Math.round(k * en));
-        yY.push(b.by * BY_ADIM);
+        yX.push(b.x0 + sol + Math.round(k * en));
+        yY.push(b.y0);
         yIcerik.push(-1);
       }
       yuvalar.set(b, list);

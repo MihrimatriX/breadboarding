@@ -53,6 +53,73 @@ export function hucreSiniri(hucreler: readonly Hucre[], x0: number, y0: number, 
   return out;
 }
 
+/**
+ * Dikdörtgenlerin birleşiminin sınırı ve içi, içe doğru `ic` kadar kaydırılmış (hucreSiniri gibi, ama
+ * hücreler eşit değil: dikdörtgenlerin kenarları birleşimi düzensiz bir ızgaraya böler). Taban
+ * plakasında modüller arasında boşluk olduğundan board'lar düzgün bir ızgarada durmaz; bir bölgenin
+ * board'ları ve aralarındaki köprüler buradan tek bir çizgiyle sarılır. Dikdörtgenlerin kenarları
+ * birbirinden en az 2·ic uzak olmalı (board'lar ve boşluklar öyle).
+ */
+export function kutularinSiniri(kutular: readonly { x: number; y: number; w: number; h: number }[], ic: number): { kenarlar: number[]; alanlar: { x: number; y: number; w: number; h: number }[] } {
+  const tekil = (a: number[]) => [...new Set(a.map((v) => Math.round(v * 1e6) / 1e6))].sort((p, q) => p - q);
+  const xs = tekil(kutular.flatMap((k) => [k.x, k.x + k.w]));
+  const ys = tekil(kutular.flatMap((k) => [k.y, k.y + k.h]));
+  const dolu = new Set<string>();
+  for (let i = 0; i + 1 < xs.length; i++) {
+    const cx = (xs[i] + xs[i + 1]) / 2;
+    for (let j = 0; j + 1 < ys.length; j++) {
+      const cy = (ys[j] + ys[j + 1]) / 2;
+      if (kutular.some((k) => k.x < cx && cx < k.x + k.w && k.y < cy && cy < k.y + k.h)) dolu.add(`${i},${j}`);
+    }
+  }
+  const v = (i: number, j: number) => dolu.has(`${i},${j}`);
+  // kenarlar hücre hücre (hucreSiniri), sonra aynı doğrudaki bitişik parçalar birleşir
+  const yatay = new Map<number, [number, number][]>();
+  const dikey = new Map<number, [number, number][]>();
+  const ekle = (m: Map<number, [number, number][]>, k: number, a: number, b: number) => {
+    if (!m.has(k)) m.set(k, []);
+    m.get(k)!.push([Math.min(a, b), Math.max(a, b)]);
+  };
+  const alanlar: { x: number; y: number; w: number; h: number }[] = [];
+  for (const s of dolu) {
+    const [i, j] = s.split(",").map(Number);
+    const [xa, xb, ya, yb] = [xs[i], xs[i + 1], ys[j], ys[j + 1]];
+    for (const dj of [-1, 1]) {
+      if (v(i, j + dj)) continue;
+      const sol = !v(i - 1, j) ? ic : v(i - 1, j + dj) ? -ic : 0;
+      const sag = !v(i + 1, j) ? -ic : v(i + 1, j + dj) ? ic : 0;
+      ekle(yatay, dj < 0 ? ya + ic : yb - ic, xa + sol, xb + sag);
+    }
+    for (const di of [-1, 1]) {
+      if (v(i + di, j)) continue;
+      const ust = !v(i, j - 1) ? ic : v(i + di, j - 1) ? -ic : 0;
+      const alt = !v(i, j + 1) ? -ic : v(i + di, j + 1) ? ic : 0;
+      ekle(dikey, di < 0 ? xa + ic : xb - ic, ya + ust, yb + alt);
+    }
+    const [l, r, u, a] = [v(i - 1, j) ? 0 : ic, v(i + 1, j) ? 0 : ic, v(i, j - 1) ? 0 : ic, v(i, j + 1) ? 0 : ic];
+    alanlar.push({ x: xa + l, y: ya + u, w: xb - xa - l - r, h: yb - ya - u - a });
+  }
+  const birlestir = (m: Map<number, [number, number][]>, yatayMi: boolean, out: number[]) => {
+    for (const [k, parcalar] of m) {
+      parcalar.sort((p, q) => p[0] - q[0]);
+      let [a, b] = parcalar[0];
+      const yaz = () => out.push(...(yatayMi ? [a, k, b, k] : [k, a, k, b]));
+      for (const [p, q] of parcalar.slice(1)) {
+        if (p <= b + 1e-6) b = Math.max(b, q);
+        else {
+          yaz();
+          [a, b] = [p, q];
+        }
+      }
+      yaz();
+    }
+  };
+  const kenarlar: number[] = [];
+  birlestir(yatay, true, kenarlar);
+  birlestir(dikey, false, kenarlar);
+  return { kenarlar, alanlar };
+}
+
 /** Hücrelerin içindeki bütün tam dikdörtgenler (hücre aralıkları, uçlar dahil) */
 export function tamDikdortgenler(hucreler: readonly Hucre[]): { i0: number; j0: number; i1: number; j1: number }[] {
   const var_ = new Set(hucreler.map((h) => `${h.i},${h.j}`));

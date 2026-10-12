@@ -19,7 +19,7 @@
 // LED'ler, buton, besleme girişi. 100 nF'lar çipin hemen üstünde, üst ray çiftinin arasında.
 
 import type { ChipInstance } from "../../cpu16/board/board.ts";
-import { boardAdi, rayDeligiVar } from "../../cpu16/board/breadboard/geometri.ts";
+import { boardAdi, kafesKonumu, rayDeligiVar } from "../../cpu16/board/breadboard/geometri.ts";
 import {
   dipBacaklari, gostergeBacaklari, ikiBacak, izgaraNoktasi, pinNeti, tavlama, type Asama, type BbBacak, type BbBoard, type BbParca, type BbYerlesim, type ParcaTuru,
 } from "../../cpu16/board/breadboard/yerlesim.ts";
@@ -65,6 +65,9 @@ const IZGARA: string[][] = [
   ["t", "G1", "G2", "b", "b"],
 ];
 
+/** Board kodunun modülü (taban plakasındaki ada): d…, g…, o… ve G… kodları ilk harfleriyle birer modül */
+export const MODUL_KODU = (kod: string): string => (/^[dgoG]/.test(kod) ? kod[0] : kod);
+
 const ROL_ADI: Record<string, [string, number]> = {
   dA: ["Gösterge: A", 2], dB: ["Gösterge: B", 3], dS1: ["Gösterge: sonuç (−, 4, 3)", 7], dS2: ["Gösterge: sonuç (2, 1, 0) ve HATA", 7], dK: ["Gösterge: kalan", 7],
   gA: ["Sürücüler: A", 2], gB: ["Sürücüler: B", 3], gS: ["Sürücüler: sonuç", 7], gK: ["Sürücüler: kalan", 7],
@@ -105,12 +108,15 @@ export function bbYerlesimi(k: HesapKarti, yerler?: Map<string, [string, number]
   const nx = IZGARA[0].length;
   const boards: BbBoard[] = [];
   const kodBoardlari = new Map<string, BbBoard[]>();
+  // modüller arasında boşluk: göstergeler, sürücüler, onluğa çevirme ve giriş birer modül (A, B, sonuç
+  // ve kalan kolları aynı modülde), çarpma, bölme, toplama ve sonuç seçici birer modül
+  const kafes = kafesKonumu(nx, ny, (bx, by) => MODUL_KODU(IZGARA[by][bx]));
   for (let by = 0; by < ny; by++) {
     for (let bx = 0; bx < nx; bx++) {
       const kod = IZGARA[by][bx];
       const [rol, asama] = ROL_ADI[kod];
       const no = boards.length;
-      const bb: BbBoard = { no, ad: boardAdi(no), bx, by, rol, asama };
+      const bb: BbBoard = { no, ad: boardAdi(no), bx, by, ...kafes(bx, by), rol, asama };
       boards.push(bb);
       if (!kodBoardlari.has(kod)) kodBoardlari.set(kod, []);
       kodBoardlari.get(kod)!.push(bb);

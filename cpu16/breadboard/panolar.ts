@@ -26,7 +26,11 @@ export interface KartAsamasi extends Asama {
   deney?: number;
 }
 
-/** Bir bölge: blokları (çipin bloğu; yapıştırıcı çipte birimlerinin çoğunluğunun bloğu) */
+/**
+ * Bir bölge: blokları (çipin bloğu; yapıştırıcı çipte birimlerinin çoğunluğunun bloğu). Modüler panoda
+ * (düzen) bölgenin parçaları board'larındaki grupların parçalarıdır; bloklar yalnız blokların hangi
+ * bölgenin altında anlatılacağını söyler (boş olabilir: veriyolu kontrolü birkaç bloktan parça taşır).
+ */
 export interface Bolge {
   /** board'ların görevi (belgelerde, 3D'de) */
   ad: string;
@@ -52,7 +56,9 @@ export interface PanoTanimi {
    * Modüler yerleşim (isteğe bağlı): her board'a hangi çip grupları (bolum-metin.ts'teki grup
    * kimlikleri, boşlukla ayrılmış), satır satır ızgarayla aynı boyda. Bir grup birden çok board'da
    * geçerse çipleri o board'lara tavlamayla dağılır; tek grubu olan board'da çipler referans sırasıyla
-   * (düşük bayt solda). Verilmezse çipler bölgelerinin bütün board'larına dağılır.
+   * (düşük bayt solda). "grup+" grubun göstergelerinin (LED'ler, çubuk göstergeler ve dirençleri)
+   * board'u; yoksa göstergeler grubun ilk board'unda. Verilmezse çipler bölgelerinin bütün board'larına
+   * dağılır.
    */
   duzen?: string[][];
 }
@@ -65,47 +71,58 @@ const tabanTesti =
 export const PANOLAR: PanoTanimi[] = [
   {
     kart: "cpu", kisa: "CPU", baslik: "CPU kartı", sira: "arka", yuva: 5,
-    // modül modül, arkadan öne: register'lar (R0–R7 her biri kendi board'unda, seçiciler sağ uçta),
-    // sabit birimi, ALU ve bayraklar, kontrol birimi (mikrokod kapı ağı, çözücüler, kontrol register'ı),
-    // ön kenarda (uyarlayıcının yanında) adım seçicileri, IR, program sayacı, MAR ve bellek arayüzü.
-    // Modüllerin yeri bölgelerinin içinde tahmini tel boyunu en kısa yapan yer (aynı işin board'ları
-    // yan yana); her board'un etiketi işini söyler.
+    // modül modül, arkadan öne (James Sharman'ın breadboard bilgisayarı gibi): her bölge taban plakasında
+    // ayrı bir ada (aralarında ≈ 20 mm boşluk), her board'un tek bir işi var ve etiketi onu söyler.
+    // Register'lar (R0–R7 her biri kendi board'unda, değeri hemen önündeki board'un çubuk
+    // göstergelerinde), sağda veriyolu kontrolü (register seçicileri, veriyolu göstergesi, kaynak
+    // çözücüsü); sabit birimi; ALU ve sağında bayraklar; kontrol birimi (mikrokod kapı ağı, adım
+    // seçicileri, IR); ön kenarda (uyarlayıcının yanında) program sayacı ve bellek arayüzü. Göstergeli
+    // modüllerde "grup+" board'u grubun LED'lerini ve çubuk göstergelerini taşır.
     izgara: [
-      "RRRRR",
-      "RRRRR",
+      "RRRRV",
+      "RRRRV",
+      "RRRRV",
+      "RRRRV",
       "SSSSS",
-      "AAAAA",
-      "AAAAA",
-      "AAAAA",
-      "AAAAA",
+      "AAAAF",
+      "AAAAF",
+      "AAAAF",
+      "AAAAF",
       "KKKKK",
       "KKKKK",
       "KKKKK",
-      "KKKPP",
-      "PPPPP",
+      "KKKKK",
+      "PPBBB",
+      "PPBBB",
     ],
     duzen: [
       ["r0", "r1", "r2", "r3", "register-cozuculeri register-saatleri"],
+      ["r0+", "r1+", "r2+", "r3+", "veriyolu-gostergeleri"],
       ["r4", "r5", "r6", "r7", "register-secimi"],
+      ["r4+", "r5+", "r6+", "r7+", "bus-cozucu veriyolu-cekme"],
       ["sabit-dusuk", "sabit-dusuk", "sabit-surucu", "sabit-yuksek", "sabit-yuksek"],
-      ["alu-kapilari", "alu-giris-kapilari", "toplayici", "tasma-kapilari cv-secici", "bayraklar kosul"],
+      ["alu-kapilari", "alu-giris-kapilari", "toplayici", "tasma-kapilari cv-secici alu-surucu", "bayraklar kosul"],
       ["alu-kapilari", "alu-giris-kapilari", "alu-giris-kapilari", "ta tb", "bayrak-surucu"],
       ["mantik-dusuk", "mantik-dusuk", "mantik-yuksek", "mantik-yuksek", "bayrak-girisi bayrak-kapilari"],
-      ["alu-islem alu-cozucu", "sifir", "sonuc-secici", "sonuc-secici", "alu-surucu"],
-      ["mikrokod-kapilari", "mikrokod-kapilari", "mikrokod-kapilari", "mikrokod-kapilari", "halt-hata bus-cozucu"],
+      ["alu-islem alu-cozucu", "sonuc-secici", "sonuc-secici", "sonuc-secici+", "sifir"],
+      ["mikrokod-kapilari", "mikrokod-kapilari", "mikrokod-kapilari", "mikrokod-kapilari", "halt-hata durum-ledleri"],
       ["mikrokod-kapilari", "mikrokod-kapilari", "mikrokod-kapilari", "kontrol-registeri", "kontrol-kapilari"],
       ["komut-cozucu alt-cozucu", "mikrokod-kapilari", "mikrokod-kapilari", "mikrokod-kapilari", "adim-cozucu adim-sayaci"],
-      ["adim-secici", "adim-secici", "adim-secici", "ir saat-kapilari", "pc-surucu"],
-      ["bayt-okuma bellek-kapilari", "bayt-seritleri", "bellek-kapilari", "mar", "pc"],
+      ["adim-secici", "adim-secici", "adim-secici", "ir saat-kapilari", "ir+"],
+      ["pc+", "pc-surucu", "mar+ bellek-ledleri", "mar", "bayt-seritleri"],
+      ["pc", "pc", "bellek-kapilari arka-panel", "bellek-kapilari", "bayt-okuma"],
     ],
     bolgeler: {
       R: { ad: "Register dosyası", bloklar: ["Register dosyası"] },
+      V: { ad: "Veriyolu kontrolü", bloklar: [] },
       S: { ad: "Sabit birimi", bloklar: ["Sabit birimi"] },
-      A: { ad: "ALU, geçici register'lar ve bayraklar", bloklar: ["Geçici register'lar", "ALU", "ALU kod çözücü", "Bayraklar ve koşul"] },
+      A: { ad: "ALU ve geçici register'lar", bloklar: ["Geçici register'lar", "ALU", "ALU kod çözücü"] },
+      F: { ad: "Bayraklar ve koşul", bloklar: ["Bayraklar ve koşul"] },
       K: { ad: "Kontrol birimi", bloklar: ["Kontrol birimi", "Kontrol"] },
-      P: { ad: "Program sayacı, MAR, IR ve bellek arayüzü", bloklar: ["Program sayacı", "MAR ve IR", "Bellek arayüzü", "Besleme ve arka panel"] },
+      P: { ad: "Program sayacı", bloklar: ["Program sayacı"] },
+      B: { ad: "Bellek arayüzü ve MAR", bloklar: ["MAR ve IR", "Bellek arayüzü", "Besleme ve arka panel"] },
     },
-    uyarlayici: { bx: 2, by: 11, c0: 30 },
+    uyarlayici: { bx: 2, by: 14, c0: 30 },
     asamalar: [
       { ...TABAN, test: tabanTesti },
       { no: 2, ad: "Register dosyası ve iç veriyolu", bloklar: ["Register dosyası"], deney: 4, test: "Deney 4: veriyoluna anahtarlarla değer ver, bir register'a yaz, geri oku; sürülmeyen veriyolu 0 okunur (RN1, RN2)." },

@@ -13,13 +13,16 @@
 //   board'da hiçbir board boş kalmaz. Geniş DIP'ler (62256, 28C256) d ve h satırlarına oturur.
 // - Modüler pano (tanımda `duzen`, CPU kartı): her çip grubunun çipleri yalnız grubun board'larına;
 //   tek gruplu board'da çipler referans sırasıyla (R0'ın düşük baytı solda, yüksek baytı sağda).
+//   Göstergeler (hata ayıklama LED'leri, çubuk göstergeler ve dirençleri) grubun "grup+" board'unda
+//   ya da grubun ilk board'unun sağ ucunda: çubuk göstergeler bit 0 sağda (sayı okunur gibi), yüksek
+//   bayt solda; her çubuğun direnç dizisi dış yanında; tek LED'ler bir sütunluk LED modülü.
 // - Her çipin 100 nF'ı çipin hemen üstünde, üst ray çiftinin arasında (hesap makinesindeki gibi).
 
 import type { Board, ChipInstance, Passive } from "../board/board.ts";
 import { kartMetinleri, refleriAc } from "../board/bolum-bilgi.ts";
-import { boardAdi, kureselX, kureselY, rayDeligiVar } from "../board/breadboard/geometri.ts";
+import { boardAdi, kafesKonumu, kureselX, kureselY, rayDeligiVar } from "../board/breadboard/geometri.ts";
 import {
-  dipBacaklari, genisDipBacaklari, ikiBacak, izgaraNoktasi, pinNeti, siraBacaklari, sutunlariDiz, tavlama, type BbBacak, type BbBoard, type BbParca, type BbYerlesim, type Kalip, type ParcaTuru,
+  dipBacaklari, genisDipBacaklari, ikiBacak, tersDipBacaklari, izgaraNoktasi, pinNeti, siraBacaklari, sutunlariDiz, tavlama, type BbBacak, type BbBoard, type BbParca, type BbYerlesim, type Kalip, type ParcaTuru,
 } from "../board/breadboard/yerlesim.ts";
 import { panoTanimi, type PanoTanimi } from "./panolar.ts";
 
@@ -77,13 +80,15 @@ export function kartYerlesimi(board: Board, kart: string, o: KartYerlesimSecenek
   // ---- board'lar
   const boards: BbBoard[] = [];
   const kodBoardlari = new Map<string, BbBoard[]>();
+  // modüller (bölgeler) arasında boşluk: her bölge taban plakasında ayrı bir ada
+  const kafes = kafesKonumu(nx, ny, (bx, by) => tanim.izgara[by][bx]);
   for (let by = 0; by < ny; by++) {
     for (let bx = 0; bx < nx; bx++) {
       const kod = tanim.izgara[by][bx];
       const bolge = tanim.bolgeler[kod];
       if (!bolge) throw new Error(`${kart}: bilinmeyen bölge kodu ${kod}`);
       const no = boards.length;
-      const bb: BbBoard = { no, ad: boardAdi(no), bx, by, rol: bolge.ad, asama: 99 };
+      const bb: BbBoard = { no, ad: boardAdi(no), bx, by, ...kafes(bx, by), rol: bolge.ad, asama: 99 };
       boards.push(bb);
       if (!kodBoardlari.has(kod)) kodBoardlari.set(kod, []);
       kodBoardlari.get(kod)!.push(bb);
@@ -100,14 +105,21 @@ export function kartYerlesimi(board: Board, kart: string, o: KartYerlesimSecenek
   const grubu = new Map<string, string>();
   /** grup → board'ları (duzen'deki sırayla) */
   const grupBoardlari = new Map<string, BbBoard[]>();
+  /** grup → göstergelerinin board'u ("grup+") */
+  const gostergeBoardu = new Map<string, BbBoard>();
   if (tanim.duzen) {
     if (tanim.duzen.length !== ny || tanim.duzen.some((r) => r.length !== nx)) throw new Error(`${kart}: düzen ızgarayla aynı boyda değil`);
     for (const g of kartMetinleri(kart).gruplar) for (const r of refleriAc(g.refs)) grubu.set(r, g.id);
     for (const b of boards) {
-      b.gruplar = tanim.duzen[b.by][b.bx].split(/\s+/).filter(Boolean);
-      for (const g of b.gruplar) {
+      const ogeler = tanim.duzen[b.by][b.bx].split(/\s+/).filter(Boolean);
+      b.gruplar = ogeler.map((g) => g.replace(/\+$/, ""));
+      for (const o of ogeler) {
+        const g = o.replace(/\+$/, "");
         if (!kartMetinleri(kart).gruplar.some((x) => x.id === g)) throw new Error(`${kart}: düzende bilinmeyen grup: ${g}`);
-        grupBoardlari.set(g, [...(grupBoardlari.get(g) ?? []), b]);
+        if (o.endsWith("+")) {
+          if (gostergeBoardu.has(g)) throw new Error(`${kart}: ${g} göstergeleri iki board'da`);
+          gostergeBoardu.set(g, b);
+        } else grupBoardlari.set(g, [...(grupBoardlari.get(g) ?? []), b]);
       }
     }
   }
@@ -139,8 +151,8 @@ export function kartYerlesimi(board: Board, kart: string, o: KartYerlesimSecenek
   };
   const yerelOf = (X: number, Y: number): { b: BbBoard; r: number; c: number } => {
     for (const b of boards) {
-      const r = Y - b.by * 22;
-      const c = X - b.bx * 65;
+      const r = Y - b.y0;
+      const c = X - b.x0;
       if (r >= -2 && r <= 19 && c >= 0 && c <= 64) return { b, r, c };
     }
     throw new Error(`${kart}: board dışında bacak (${X}, ${Y})`);
@@ -179,12 +191,12 @@ export function kartYerlesimi(board: Board, kart: string, o: KartYerlesimSecenek
     isaretle(ref, k.bacaklar, (pin) => p.pins[String(pin)] ?? -1, !ek.bagliCip);
     yerlesti.add(ref);
     const asama = ek.asama ?? asamaOf(p.block);
-    parcalar.push({ ref, part: p.part, cipMi: false, tur, blok: p.block, rol: p.role, board: b.no, asama, bacaklar: k.bacaklar, govde: k.govde, sutun: sutun ?? Math.min(...k.bacaklar.map((x) => x.X)) - b.bx * 65, ...ek });
+    parcalar.push({ ref, part: p.part, cipMi: false, tur, blok: p.block, rol: p.role, board: b.no, asama, bacaklar: k.bacaklar, govde: k.govde, sutun: sutun ?? Math.min(...k.bacaklar.map((x) => x.X)) - b.x0, ...ek });
   };
   /** yalnız fiziksel parça (netlistte yok): besleme girişi, ek 100 µF */
   const ekParca = (ref: string, part: string, rol: string, b: BbBoard, tur: ParcaTuru, k: Kalip, netler: Record<number, number>) => {
     isaretle(ref, k.bacaklar, (pin) => netler[pin] ?? -1, true);
-    parcalar.push({ ref, part, cipMi: false, tur, blok: "Besleme ve arka panel", rol, board: b.no, asama: 1, bacaklar: k.bacaklar, govde: k.govde, sutun: Math.min(...k.bacaklar.map((x) => x.X)) - b.bx * 65, ek: netler });
+    parcalar.push({ ref, part, cipMi: false, tur, blok: "Besleme ve arka panel", rol, board: b.no, asama: 1, bacaklar: k.bacaklar, govde: k.govde, sutun: Math.min(...k.bacaklar.map((x) => x.X)) - b.x0, ek: netler });
   };
   const cipEkle = (ci: ChipInstance, b: BbBoard, c0: number) => {
     if (yerlesti.has(ci.ref)) throw new Error(`${kart}: iki kez yerleşti: ${ci.ref}`);
@@ -339,15 +351,92 @@ export function kartYerlesimi(board: Board, kart: string, o: KartYerlesimSecenek
     ["R701", "R702", "R703", "R704", "R705", "R706"].forEach((r, i) => ikili(varsa(r), xb, 56 + i, "direnc"));
   }
 
+  /** modüler panoda board'a çip gelecek mi (bir çipli grubu orada) */
+  const cipli = (b: BbBoard): boolean =>
+    !tanim.duzen || kartCipleri.some((c) => {
+      const g = grubu.get(c.ref);
+      return !!g && !!grupBoardlari.get(g)?.includes(b);
+    });
+
+  // ---- 3b. göstergeler (modüler panoda): grubun "grup+" board'unda ya da grubun ilk board'unun sağ
+  // ucunda. Çubuk gösterge (DIP-20) ters takılır: 1. pin sağ üstte, 1. segment (bit 0) sağda; anotlar
+  // üst şeritlerde (direnç dizisinin üst şeritlerine), katotlar alt şeritlerde (alt − rayına kısa tel).
+  // Direnç dizisi (DIP-16) düz: k. direnç sinyalle (alt şerit) anot arasında (üst şerit), çubuğun dış
+  // yanında. Tek LED'ler bir sütunluk LED modülü (ledModulu), ray deliği olan tek sütunlarda.
+  if (tanim.duzen) {
+    const gostergeMi = (q: Passive) => q.part === "LED" || q.part === "DISP_BAR_10" || q.part === "RN_1K_ISO_8";
+    const bekleyen = kartPasifleri.filter((q) => gostergeMi(q) && !yerlesti.has(q.ref));
+    /** board → çubuk çiftleri (yüksek bayt önce) ve LED'ler */
+    const yerler = new Map<BbBoard, { cubuklar: { rn: Passive; bar: Passive; ilk: number }[]; ledler: { r: Passive; d: Passive }[] }>();
+    const hedef = (q: Passive): BbBoard => {
+      const g = grubu.get(q.ref);
+      const b = g ? (gostergeBoardu.get(g) ?? grupBoardlari.get(g)?.[0]) : undefined;
+      if (!b) throw new Error(`${kart}: ${q.ref} göstergesinin board'u yok (grubu: ${g ?? "yok"})`);
+      if (!yerler.has(b)) yerler.set(b, { cubuklar: [], ledler: [] });
+      return b;
+    };
+    const ortakNet = (a: Passive, b: Passive) => Object.values(a.pins).some((n) => n > 1 && Object.values(b.pins).includes(n));
+    for (const bar of bekleyen.filter((q) => q.part === "DISP_BAR_10")) {
+      const rn = bekleyen.find((q) => q.part === "RN_1K_ISO_8" && ortakNet(q, bar));
+      if (!rn) throw new Error(`${kart}: ${bar.ref} çubuğunun direnç dizisi yok`);
+      // çubuğun ilk segmentinin bit numarası (anot netinin adındaki sayı: BAR_BUS8 → 8)
+      const anot = Object.entries(bar.pins).filter(([pin]) => Number(pin) <= 10).map(([, n]) => board.netName(n));
+      const ilk = Math.min(...anot.map((a) => Number(/(\d+)$/.exec(a)?.[1] ?? 0)));
+      yerler.get(hedef(bar))!.cubuklar.push({ rn, bar, ilk });
+    }
+    for (const d of bekleyen.filter((q) => q.part === "LED")) {
+      const r = kartPasifleri.find((q) => q.part.startsWith("R_") && !yerlesti.has(q.ref) && ortakNet(q, d));
+      if (!r) throw new Error(`${kart}: ${d.ref} LED'inin direnci yok`);
+      yerler.get(hedef(d))!.ledler.push({ r, d });
+    }
+    for (const [b, { cubuklar, ledler }] of yerler) {
+      cubuklar.sort((x, y) => y.ilk - x.ilk);
+      const ledSutunu = (c: number) => {
+        while (!rayDeligiVar(c) || c % 2 === 0) c++;
+        return c;
+      };
+      const en = cubuklar.length * 19 + ledler.length * 2;
+      // çipli board'da göstergeler sağ uçta (çipler solda), çipsizde ortada
+      let c = cipli(b) ? Math.max(26, 59 - en) : Math.max(6, Math.round((63 - en) / 2));
+      cubuklar.forEach((x, i) => {
+        // yüksek bayt: dizi solda, çubuk sağda; düşük bayt: çubuk solda, dizi sağda (iki çubuk yan yana)
+        const disSolda = i % 2 === 0;
+        const yerlestir = (q: Passive, tur: "dip" | "cubuk") => {
+          const n = Number(q.part === "DISP_BAR_10" ? 20 : 16);
+          const k = tur === "cubuk" ? tersDipBacaklari(b, c, n) : dipBacaklari(b, c, n);
+          pasifEkle(q.ref, b, "dip", k, tur === "cubuk" ? { ters: true } : {}, c);
+          c += n / 2 + 1;
+        };
+        if (disSolda) {
+          yerlestir(x.rn, "dip");
+          yerlestir(x.bar, "cubuk");
+        } else {
+          yerlestir(x.bar, "cubuk");
+          yerlestir(x.rn, "dip");
+        }
+      });
+      for (const { r, d } of ledler.sort((x, y) => Number(x.d.ref.slice(1)) - Number(y.d.ref.slice(1)))) {
+        c = ledSutunu(c);
+        if (c > 58) throw new Error(`${kart}: ${b.ad}: göstergeler sığmıyor`);
+        ledModulu(r.ref, d.ref, b, c);
+        c += 2;
+      }
+    }
+  }
+
   // ---- 4. mantık çipleri: bölge bölge tavlama
+  // modüler panoda çipin bölgesi grubunun board'larının bölgesi; öbür panolarda bloğunun bölgesi
   const bolgeKodu = (ci: ChipInstance): string => {
+    const g = grubu.get(ci.ref);
+    const gb = g ? grupBoardlari.get(g)?.[0] : undefined;
+    if (tanim.duzen && gb) return tanim.izgara[gb.by][gb.bx];
     const blok = cipBlogu(ci);
     for (const [kod, bolge] of Object.entries(tanim.bolgeler)) if (bolge.bloklar.includes(blok)) return kod;
     throw new Error(`${kart}: ${ci.ref} bloğunun (${blok}) bölgesi yok`);
   };
   const aralik = (b: BbBoard): [number, number] => {
     const el = elSutun.get(b.no);
-    if (!el?.length) return [1, 61];
+    if (!el?.length || !cipli(b)) return [1, 61];
     const lo = Math.min(...el);
     const hi = Math.max(...el);
     if (lo >= 26) return [1, lo - 2];
@@ -436,7 +525,7 @@ export function kartYerlesimi(board: Board, kart: string, o: KartYerlesimSecenek
     for (const c of [p.sutun + 1, p.sutun + 2, p.sutun + 3, p.sutun + 4, p.sutun + 5, p.sutun - 1, p.sutun - 2, p.sutun + 6, p.sutun + n / 2, p.sutun + 7, p.sutun + 8]) {
       // 3–5 ve 59–61: ray köprülerinin uçları
       if (c < 6 || c > 58 || !rayDeligiVar(c)) continue;
-      if (delik.has(`${kureselX(b.bx, c)},${kureselY(b.by, 0)}`) || delik.has(`${kureselX(b.bx, c)},${kureselY(b.by, 1)}`)) continue;
+      if (delik.has(`${kureselX(b, c)},${kureselY(b, 0)}`) || delik.has(`${kureselX(b, c)},${kureselY(b, 1)}`)) continue;
       cx = c;
       break;
     }
