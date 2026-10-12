@@ -29,7 +29,7 @@ npm run hesap8 -- hesapla 255 x 7       # A [255]  B [  7]  sonuç [  1785]  kal
 npm run hesap8 -- hesapla 255 / 7       # A [255]  B [  7]  sonuç [    36]  kalan [  3]
 npm run hesap8 -- hesapla 12 - 200      # A [ 12]  B [200]  sonuç [-  188]  kalan [   ]
 npm run hesap8 -- dogrula               # 3 024 durum (uç değerler + 2 000 örnek), bir iki saniye
-npm run hesap8 -- dogrula --hepsi       # 262 144 durumun hepsi (iş parçacıklarına bölünür, 4 çekirdekte ≈ 25 s)
+npm run hesap8 -- dogrula --hepsi       # 262 144 durumun hepsi (iş parçacıklarına bölünür, 4 çekirdek / 8 iş parçacığında ≈ 12 s)
 npm run cpu16 -- board kicad            # KiCad dosyalarını yeniden üret (cpu16/kicad/hesap/)
 npm run cpu16 -- kurulum hesap -o out   # PCB kurulum belgesi (HTML + PDF) ve şema PDF'i
 npm run hesap8 -- breadboard            # 60 board, 2 784 tel; bağlantı netlistle birebir aynı mı
