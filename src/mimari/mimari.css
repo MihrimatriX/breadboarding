@@ -1,0 +1,81 @@
+/*
+ * Mimari bölümü: blok diyagramları (cpu16/mimari). Diyagramın kendi çizim stili (yazı boyları, çizgi
+ * kalınlıkları) cpu16/mimari/agac.ts'teki svgStili()'nden gelir; burada yalnız temanın belirteçleri ve
+ * etkileşim durumları (üstüne gelince, seçili, soluk) var.
+ *
+ * Renk rolleri (iki temada da kâğıt üzerinde yazı olarak en az 4,5:1, kutu çizgisi olarak en az 3:1;
+ * scripts/kontrast.mjs bu dosyayı da okur):
+ *   yollar   veri: mavi · adres: kiremit (hata kırmızısı değil) · kontrol: yeşil · saat ve reset: mor ·
+ *            yerel bağlantı: kurşuni · dış bağlantı: camgöbeği
+ *   kutular  register / sayaç: kehribar · işlem birimi: eflatun · seçici / kod çözücü: yeşil ·
+ *            tampon: mavi · bellek: camgöbeği · kontrol / zamanlama: mor · G/Ç ve bağlantı: kurşuni ·
+ *            not: kesik çizgili gri
+ * Kırmızı yalnız hata ve lojik 1 için ayrılmış kalır (styles.css).
+ */
+
+:root,
+:root[data-tema="koyu"] {
+  --mm-kagit: #171b21;
+  --mm-cerceve: #3a414b;
+  --mm-baslik-bg: #2f5fc6;
+  --mm-baslik-yazi: #ffffff;
+  --mm-grup-bg: rgba(255, 255, 255, 0.03);
+  --mm-grup-cizgi: #4c5562;
+
+  --mm-y-veri: #74a6ff;
+  --mm-y-adres: #f39066;
+  --mm-y-kontrol: #5fd38d;
+  --mm-y-saat: #b79cff;
+  --mm-y-yerel: #a3aebb;
+  --mm-y-dis: #5ccfdd;
+
+  --mm-k-register: #e5b24f;
+  --mm-k-register-soft: rgba(229, 178, 79, 0.12);
+  --mm-k-islem: #e88ae0;
+  --mm-k-islem-soft: rgba(232, 138, 224, 0.11);
+  --mm-k-secici: #5fd38d;
+  --mm-k-secici-soft: rgba(95, 211, 141, 0.1);
+  --mm-k-tampon: #74a6ff;
+  --mm-k-tampon-soft: rgba(116, 166, 255, 0.11);
+  --mm-k-bellek: #5ccfdd;
+  --mm-k-bellek-soft: rgba(92, 207, 221, 0.1);
+  --mm-k-kontrol: #b79cff;
+  --mm-k-kontrol-soft: rgba(183, 156, 255, 0.11);
+  --mm-k-gc: #a3aebb;
+  --mm-k-gc-soft: rgba(163, 174, 187, 0.09);
+  --mm-k-not: #8a94a3;
+  --mm-k-not-soft: rgba(138, 148, 163, 0.06);
+}
+
+:root[data-tema="acik"] {
+  --mm-kagit: #ffffff;
+  --mm-cerceve: #cdd3db;
+  --mm-baslik-bg: #2c62d8;
+  --mm-baslik-yazi: #ffffff;
+  --mm-grup-bg: rgba(30, 50, 90, 0.035);
+  --mm-grup-cizgi: #aeb6c1;
+
+  --mm-y-veri: #1f5bd1;
+  --mm-y-adres: #b5461e;
+  --mm-y-kontrol: #17803f;
+  --mm-y-saat: #6b45c9;
+  --mm-y-yerel: #556171;
+  --mm-y-dis: #0b7585;
+
+  --mm-k-register: #9a6700;
+  --mm-k-register-soft: rgba(154, 103, 0, 0.09);
+  --mm-k-islem: #a3329a;
+  --mm-k-islem-soft: rgba(163, 50, 154, 0.07);
+  --mm-k-secici: #17803f;
+  --mm-k-secici-soft: rgba(23, 128, 63, 0.08);
+  --mm-k-tampon: #1f5bd1;
+  --mm-k-tampon-soft: rgba(31, 91, 209, 0.07);
+  --mm-k-bellek: #0b7585;
+  --mm-k-bellek-soft: rgba(11, 117, 133, 0.08);
+  --mm-k-kontrol: #6b45c9;
+  --mm-k-kontrol-soft: rgba(107, 69, 201, 0.07);
+  --mm-k-gc: #556171;
+  --mm-k-gc-soft: rgba(85, 97, 113, 0.07);
+  --mm-k-not: #6b7584;
+  --mm-k-not-soft: rgba(107, 117, 132, 0.05);
+}
