@@ -3,7 +3,17 @@
 //   npm run hesap8 -- hesapla 255 x 7      kapı seviyesi devreyi çalıştır, göstergeleri yaz (+ - x /)
 //   npm run hesap8 -- dogrula              2000 örnek + uç durumlar, altın modelle karşılaştır
 //   npm run hesap8 -- dogrula --hepsi      bütün 4 × 256 × 256 = 262 144 durum (iş parçacıklarına bölünür)
+//   npm run hesap8 -- breadboard           breadboard planı: ölçüler, bağlantının netlistle doğrulanması
+//   npm run hesap8 -- breadboard --uret    yerleşimi ve telleri yeniden üret (hesap8/breadboard/veri.ts)
+//   npm run hesap8 -- breadboard-belge [-o dizin] [--html]
+//                                          breadboard kurulum belgesi (HTML + PDF; varsayılan dizin
+//                                          hesap8/breadboard/cikti/, depoya girmez)
 
+import { mkdirSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import { execSync } from "node:child_process";
 import { availableParallelism } from "node:os";
 import { isMainThread, parentPort, Worker, workerData } from "node:worker_threads";
 import { erc } from "../cpu16/board/board.ts";
@@ -11,9 +21,91 @@ import { birlesimselYol } from "../cpu16/board/zamanlama.ts";
 import { buildHesapBoard, ISLEMLER } from "./kart.ts";
 import { beklenen, ornekDurumlar, type Durum, type Gorunum, type IslemKodu } from "./model.ts";
 import { HesapSim } from "./sim.ts";
+import { bbDogrula } from "./breadboard/dogrulama.ts";
+import { bbOlcu, bbPlani, bbPlaniUret, type BbPlani, type BbVeri } from "./breadboard/plan.ts";
+import { renkTanimi } from "./breadboard/renk.ts";
 
 const ayni = (x: Gorunum, y: Gorunum) => x.a === y.a && x.b === y.b && x.sonuc === y.sonuc && x.kalan === y.kalan && x.hata === y.hata;
 const goster = (g: Gorunum) => `A [${g.a}]  B [${g.b}]  sonuç [${g.sonuc}]  kalan [${g.kalan}]${g.hata ? "  HATA" : ""}`;
+
+/** Üretilen breadboard verisinin kaynak dosyası */
+function veriDosyasi(v: BbVeri): string {
+  const dizi = (a: string[]) => a.map((x) => `    ${JSON.stringify(x)},`).join("\n");
+  return `// Breadboard yerleşimi ve telleri: ÜRETİLİR, elle değiştirme (npm run hesap8 -- breadboard --uret).
+// Mantık çiplerinin yerleri ("ref|board|1. pinin sütunu") ve kurulum sırasıyla teller ("net|aşama|r: ray
+// köprüsü|yol": başlangıç deliği "X,Y" ızgarada, sonra parçalar R/L/D/U + adım). plan.ts okur.
+
+import type { BbVeri } from "./plan.ts";
+
+export const BB_VERI: BbVeri = {
+  parmakIzi: ${JSON.stringify(v.parmakIzi)},
+  cipler: [
+${dizi(v.cipler)}
+  ],
+  teller: [
+${dizi(v.teller)}
+  ],
+};
+`;
+}
+
+/** playwright: önce depodan, sonra global kurulumdan (cpu16 kurulum belgeleri gibi) */
+function playwrightBul(): { chromium: { launch(o?: object): Promise<any> } } | null {
+  const req = createRequire(import.meta.url);
+  try {
+    return req("playwright");
+  } catch {
+    /* depoda yok */
+  }
+  try {
+    const root = execSync("npm root -g", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+    return req(join(root, "playwright"));
+  } catch {
+    return null;
+  }
+}
+
+/** Breadboard kurulum belgesi: HTML, sonra Chromium ile A4 PDF (alt bilgide sayfa numarası) */
+async function bbBelgeYaz(args: string[]): Promise<number> {
+  const i = args.indexOf("-o");
+  const out = i >= 0 ? args[i + 1] : "hesap8/breadboard/cikti";
+  if (!out) {
+    console.error("kullanım: npm run hesap8 -- breadboard-belge [-o dizin] [--html]");
+    return 1;
+  }
+  const { bbBelgesi } = await import("./breadboard/belge.ts");
+  const { KurulumVerisi } = await import("../cpu16/kurulum/kartlar.ts");
+  const { pdfSayfaSayisi } = await import("../cpu16/kurulum/cli.ts");
+  const plan = bbPlani();
+  const tarih = new Date().toISOString().slice(0, 10);
+  mkdirSync(out, { recursive: true });
+  const html = join(out, "hesap8-breadboard-kurulum.html");
+  writeFileSync(html, bbBelgesi(plan, { eskiTel: new KurulumVerisi().plan("hesap").teller.length, tarih }));
+  console.log(`${html}: ${plan.yerlesim.boards.length} board, ${plan.teller.length} tel`);
+  if (args.includes("--html")) return 0;
+  const pw = playwrightBul();
+  if (!pw) {
+    console.error("playwright bulunamadı: PDF üretilmedi (HTML'i tarayıcıda açıp yazdırabilirsin)");
+    return 0;
+  }
+  const pdf = join(out, "hesap8-breadboard-kurulum.pdf");
+  const browser = await pw.chromium.launch();
+  try {
+    const page = await browser.newPage();
+    await page.goto(pathToFileURL(resolve(html)).href, { waitUntil: "load" });
+    await page.pdf({
+      path: pdf, format: "A4", printBackground: true, preferCSSPageSize: true, displayHeaderFooter: true,
+      headerTemplate: "<span></span>",
+      footerTemplate: `<div style="font-size:7pt;font-family:Inter,'DejaVu Sans',Arial,sans-serif;color:#666;width:100%;padding:0 11mm;display:flex;justify-content:space-between;">
+<span>8 bit hesap makinesi · breadboard kurulumu · ${tarih}</span><span><span class="pageNumber"></span> / <span class="totalPages"></span></span></div>`,
+      margin: { top: "12mm", bottom: "15mm", left: "11mm", right: "11mm" },
+    });
+  } finally {
+    await browser.close();
+  }
+  console.log(`${pdf}: ${pdfSayfaSayisi(pdf)} sayfa`);
+  return 0;
+}
 
 /** Durumları sırayla devreye uygula; farklı çıkanları döndür (en çok `sinir` tane) */
 function sina(sim: HesapSim, durumlar: Iterable<Durum>, sinir = 20): { sayi: number; farklar: string[] } {
@@ -130,8 +222,38 @@ if (!isMainThread) {
       }
       console.log(`${r.sayi} durumun hepsi altın modelle aynı (${sn} s); bütün durumlar için: dogrula --hepsi`);
     }
+  } else if (cmd === "breadboard") {
+    let plan: BbPlani;
+    if (rest.includes("--uret")) {
+      const t = performance.now();
+      const r = bbPlaniUret(buildHesapBoard(), { log: (x) => console.log(`  ${x}`) });
+      writeFileSync(new URL("./breadboard/veri.ts", import.meta.url), veriDosyasi(r.veri));
+      console.log(`hesap8/breadboard/veri.ts yazıldı (${((performance.now() - t) / 1000).toFixed(1)} s): ${r.binme} üst üste binen tel parçası, ${r.kesisme} kesişme`);
+      plan = r.plan;
+    } else {
+      plan = bbPlani();
+    }
+    const d = bbDogrula(plan.kart.board, plan.yerlesim, plan.teller);
+    const o = bbOlcu(plan);
+    const sayi = (n: number) => n.toLocaleString("tr-TR");
+    console.log(`Breadboard: ${o.board} board (BB830), ${sayi(plan.yerlesim.parcalar.length)} parça, ${sayi(o.tel)} atlama teli`);
+    console.log(`  ray köprüsü: ${o.rayIc} board içi (üst ↔ alt ray çifti), ${o.rayArasi} board'lar arası`);
+    console.log(`  delikten deliğe ${o.toplamM.toFixed(1)} m, kesim (uçlar dahil) ${o.kesimM.toFixed(1)} m, ortalama ${o.ortalamaMm.toFixed(0)} mm, en uzun ${o.enUzunMm.toFixed(0)} mm`);
+    let alt = 0;
+    console.log(`  kesim boyu: ${o.dagilim.map(([s, n]) => { const x = `${alt}–${s === Infinity ? "" : s} mm: ${n}`; alt = s; return x; }).join(", ")}`);
+    console.log(`  renkler: ${o.renkler.map((r) => `${renkTanimi(r.renk).ad} ${r.sayi} (${r.kesimM.toFixed(1)} m)`).join(", ")}`);
+    console.log(`  aşamalar: ${o.asamalar.map((a) => `${a.no}. ${a.tel}`).join(", ")}`);
+    console.log(`Bağlantı (yalnız fiziksel modelden, birleşim-bul): ${d.netSayisi} net, ${d.pinSayisi} bacak, ${d.telSayisi} tel`);
+    if (d.hatalar.length) {
+      console.log(d.hatalar.slice(0, 40).join("\n"));
+      console.log(`${d.hatalar.length} SORUN`);
+      process.exit(1);
+    }
+    console.log("  netlistle birebir aynı: açık devre yok, kısa devre yok, her bacak bir delikte, hiçbir delikte iki şey yok, gövde ve tel ucu üstünden geçen tel yok");
+  } else if (cmd === "breadboard-belge") {
+    process.exit(await bbBelgeYaz(rest));
   } else {
-    console.error(`bilinmeyen komut: ${cmd} (ozet | hesapla | dogrula [--hepsi])`);
+    console.error(`bilinmeyen komut: ${cmd} (ozet | hesapla | dogrula [--hepsi] | breadboard [--uret] | breadboard-belge [-o dizin] [--html])`);
     process.exit(1);
   }
 }

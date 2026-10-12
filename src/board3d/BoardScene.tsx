@@ -8,7 +8,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import {
-  BufferAttribute, BufferGeometry, CanvasTexture, Color, DoubleSide, InstancedMesh, LineBasicMaterial, LineSegments, Object3D, SRGBColorSpace, Vector3,
+  BufferAttribute, BufferGeometry, CanvasTexture, Color, InstancedMesh, LineBasicMaterial, LineSegments, Object3D, SRGBColorSpace, Vector3,
   type InterleavedBufferAttribute, type PerspectiveCamera,
 } from "three";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
@@ -26,6 +26,8 @@ import { Passives3D } from "./Passives3D";
 import { updateScreenCanvas, screenCanvas } from "./screenCanvas";
 import { boardLayoutData, boardModel, findPart, liveNets, netEnds, useKart } from "./store";
 import { KurulumSahne } from "./KurulumSahne";
+import { AtlamaTelleri, BbKurulumSahne, BreadboardTabani, breadboardGenelBakis, breadboardSahnede } from "./Breadboard3D";
+import { TextQuads, type TextItem } from "./TextQuads";
 import { allWires, busRouter, netWires, partWires, wireGeometry, type Endpoint, type WireEdge } from "./wires";
 
 /** 1 dünya birimi = 10 mm */
@@ -52,88 +54,6 @@ function useLayoutWorld() {
 }
 
 const level = (v: Uint8Array | null, net: number) => (net < 0 ? 2 : net <= 1 ? net : v ? (v[net] ?? 3) : 3);
-
-// ---------------------------------------------------------------- yazı atlası
-
-interface TextItem {
-  text: string;
-  sub?: string;
-  /** dünya koordinatında dikdörtgen (x, z, genişlik, derinlik) ve yükseklik */
-  x: number;
-  z: number;
-  w: number;
-  d: number;
-  y: number;
-  color: string;
-  align?: "left" | "center";
-}
-
-/** Birçok yazıyı dokulara çizer (doku başına en çok 2048 × 4096) ve her dokuyu tek bir ağla gösterir */
-function TextQuads({ items, cellW = 256, cellH = 80, font = 30 }: { items: TextItem[]; cellW?: number; cellH?: number; font?: number }) {
-  const chunks = useMemo(() => {
-    const cols = Math.floor(2048 / cellW);
-    const perTex = cols * Math.floor(4096 / cellH);
-    const out: { geometry: BufferGeometry; texture: CanvasTexture }[] = [];
-    for (let start = 0; start < items.length; start += perTex) {
-      const list = items.slice(start, start + perTex);
-      const rows = Math.ceil(list.length / cols);
-      const canvas = document.createElement("canvas");
-      canvas.width = cols * cellW;
-      canvas.height = Math.max(1, rows * cellH);
-      const ctx = canvas.getContext("2d")!;
-      ctx.textBaseline = "middle";
-      const pos: number[] = [];
-      const uv: number[] = [];
-      const idx: number[] = [];
-      list.forEach((it, i) => {
-        const ox = (i % cols) * cellW;
-        const oy = Math.floor(i / cols) * cellH;
-        ctx.fillStyle = it.color;
-        ctx.textAlign = it.align === "left" ? "left" : "center";
-        const tx = it.align === "left" ? ox + 6 : ox + cellW / 2;
-        if (it.sub) {
-          ctx.font = `600 ${font}px "IBM Plex Mono", ui-monospace, monospace`;
-          ctx.fillText(it.text, tx, oy + cellH * 0.32, cellW - 8);
-          ctx.font = `${Math.round(font * 0.72)}px "IBM Plex Mono", ui-monospace, monospace`;
-          ctx.globalAlpha = 0.75;
-          ctx.fillText(it.sub, tx, oy + cellH * 0.72, cellW - 8);
-          ctx.globalAlpha = 1;
-        } else {
-          ctx.font = `600 ${font}px "IBM Plex Sans", system-ui, sans-serif`;
-          ctx.fillText(it.text, tx, oy + cellH / 2, cellW - 8);
-        }
-        const u0 = ox / canvas.width;
-        const u1 = (ox + cellW) / canvas.width;
-        const v0 = 1 - oy / canvas.height;
-        const v1 = 1 - (oy + cellH) / canvas.height;
-        const b = pos.length / 3;
-        pos.push(it.x, it.y, it.z, it.x + it.w, it.y, it.z, it.x + it.w, it.y, it.z + it.d, it.x, it.y, it.z + it.d);
-        uv.push(u0, v0, u1, v0, u1, v1, u0, v1);
-        idx.push(b, b + 2, b + 1, b, b + 3, b + 2);
-      });
-      const geometry = new BufferGeometry();
-      geometry.setAttribute("position", new BufferAttribute(new Float32Array(pos), 3));
-      geometry.setAttribute("uv", new BufferAttribute(new Float32Array(uv), 2));
-      geometry.setIndex(idx);
-      geometry.computeVertexNormals();
-      const texture = new CanvasTexture(canvas);
-      texture.colorSpace = SRGBColorSpace;
-      texture.anisotropy = 8;
-      out.push({ geometry, texture });
-    }
-    return out;
-  }, [items, cellW, cellH, font]);
-  useEffect(() => () => chunks.forEach((c) => { c.geometry.dispose(); c.texture.dispose(); }), [chunks]);
-  return (
-    <>
-      {chunks.map((c, i) => (
-        <mesh key={i} geometry={c.geometry} raycast={noRaycast}>
-          <meshBasicMaterial map={c.texture} transparent depthWrite={false} side={DoubleSide} />
-        </mesh>
-      ))}
-    </>
-  );
-}
 
 // ---------------------------------------------------------------- kartlar ve arka panel
 
@@ -639,6 +559,7 @@ function Monitor() {
  * kart önden (göstergelerin olduğu alt kenardan) eğik bakılarak; göstergeler ve anahtarlar okunur.
  */
 function overview(width: number, height: number, tur: KartTuru) {
+  if (tur === "hesap" && breadboardSahnede()) return breadboardGenelBakis(width, height);
   if (tur === "hesap") {
     // uzun ve dar kart: 30° eğik, yukarıdan; bütün boyu dikey görüş açısına sığar, yakın kenardaki
     // göstergeler en büyük görünür
@@ -746,11 +667,14 @@ function SelectedDie() {
 export function BoardScene() {
   const lay = boardLayoutData();
   const tur = aktifKart();
+  // hesap makinesinin görünümü değişince sahne baştan kurulur (yerleşim başka)
+  const gorunum = useKart((s) => s.gorunum);
+  const bb = breadboardSahnede();
   // aynı nesne kalmalı: her yeniden çizimde yeni bir hedef OrbitControls'un hedefini genel bakışa sıfırlardı
   const o = useMemo(() => overview(lay.width, lay.height, tur), [lay, tur]);
   return (
     <Canvas
-      key={tur}
+      key={tur === "hesap" ? `${tur}-${gorunum}` : tur}
       camera={{ position: o.cam.toArray(), fov: 40, near: 0.2, far: 800 }}
       dpr={[1, 2]}
       onPointerMissed={() => {
@@ -762,11 +686,11 @@ export function BoardScene() {
       <color attach="background" args={["#07090c"]} />
       <hemisphereLight args={["#ffffff", "#1a2028", 1.1]} />
       <directionalLight position={[20, 40, 15]} intensity={1.3} />
-      <Cards />
+      {bb ? <BreadboardTabani /> : <Cards />}
       <Chips />
-      <Passives />
-      <Wires />
-      <KurulumSahne />
+      {bb ? <Passives3D /> : <Passives />}
+      {bb ? <AtlamaTelleri /> : <Wires />}
+      {bb ? <BbKurulumSahne /> : <KurulumSahne />}
       <SelectedDie />
       {tur === "cpu16" && <Monitor />}
       <OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI * 0.48} minDistance={1.5} maxDistance={260} target={o.target} />

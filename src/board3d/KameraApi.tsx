@@ -1,6 +1,7 @@
 // Konsoldan ve otomatik ekran görüntülerinden kamera: kart.yakinlas("D201") bir elemana yaklaşır,
 // kart.kamera() kameranın yerini ve baktığı noktayı verir, kart.kamera([x,y,z], [x,y,z]) ayarlar;
-// kart.ekranda("U3", 1) bir bacağın ekrandaki yerini verir (otomatik tıklama testleri).
+// kart.ekranda("U3", 1) bir bacağın ekrandaki yerini verir (otomatik tıklama testleri); kart.cizim()
+// son karenin çizim çağrısı ve üçgen sayısı.
 // window.kart (bilgisayar) ya da window.hesap (hesap makinesi) BoardView'da kurulur; bu bileşen kendi
 // işlevlerini sahnedeki kartınkine ekler.
 
@@ -46,6 +47,8 @@ export function KameraApi() {
         set([x + d * Math.cos(e) * Math.sin(a), 0.2 + d * Math.sin(e), z + d * Math.cos(e) * Math.cos(a)], [x, 0.2, z]);
         return true;
       },
+      /** Son karenin çizim çağrısı ve üçgen sayısı (başarım ölçümü) */
+      cizim: () => ({ cagri: gl.info.render.calls, ucgen: gl.info.render.triangles }),
       /** Bir bacağın (pin verilmezse elemanın ortasının) ekrandaki yeri, sayfa pikseli; yükseklik mm */
       ekranda: (ref: string, pin?: number, yukseklik = 0) => {
         const part = findPart(ref);
