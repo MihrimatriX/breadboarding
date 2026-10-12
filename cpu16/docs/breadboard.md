@@ -206,8 +206,9 @@ Delik adları: `BB07 c14` = BB07'nin c satırı, 14. sütunu; raylar `BB07 üst+
 ## 3D: Görünüm ve kurulum modu
 
 - **Görünüm: PCB | Breadboard** (araç çubuğu, `kart.gorunum("breadboard")`): breadboard'da bütün
-  panolar masada, koridorda şerit kablo (damarları canlı renklerle), teller seviyelerine göre canlı
-  renkte (0 mavi, 1 kırmızı, Z mor, X sarı). Çipe tıklamak, VGA ekranı, program düzenleyicisi, saat
+  panolar masada, koridorda şerit kablo (damarları canlı seviyenin renginde). Teller yalıtımlarının
+  renginde (renk kodu); bir çip ya da net seçilince o netlerin telleri, **Teller: hepsi** kipinde
+  bütün teller canlı seviyenin renginde (0 mavi, 1 kırmızı). Çipe tıklamak, VGA ekranı, program düzenleyicisi, saat
   ve konsol PCB görünümündeki gibi çalışır. Breadboard verisi ayrı bir parçadır, yalnız bu görünüm
   açılınca yüklenir. Seçim `localStorage`'da hatırlanır (`cpu16.kart.gorunum`); yoksa PCB.
 - **Kurulum** (breadboard görünümünde; konsolda `kart.bbKurulum("cpu", 3)`): pano ve aşama seçilir; tel tel

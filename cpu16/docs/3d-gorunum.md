@@ -29,8 +29,9 @@ düzenleyicisi ikisinde de aynıdır; değişen yalnız yerleşimdir.
 - **PCB**: yukarıdaki kartlar, arka panel şeritleri, tel kipleri.
 - **Breadboard**: yedi pano masada (kart başına bir taban plakası, 129 BB830), aradaki koridorda
   64 damarlı şerit kablo ve IDC soketleri. Her parça bacaklarıyla deliklerine oturur; 6 793 atlama
-  teli kurulumdaki yollarıyla (düz, dik açılı) ve seviyelerine göre canlı renkte çizilir, şerit
-  kablonun damarları da. Breadboard verisi ayrı bir parçadır: yalnız bu görünüm ilk açılınca yüklenir.
+  teli kurulumdaki yollarıyla (düz, dik açılı) ve yalıtımının renginde (renk kodu) çizilir; seçili
+  çipin ya da netin telleri, **hepsi** kipinde bütün teller ve şerit kablonun damarları canlı seviyenin
+  renginde. Breadboard verisi ayrı bir parçadır: yalnız bu görünüm ilk açılınca yüklenir.
 - **Kurulum** (breadboard görünümünde): pano ve aşama seçilir, teller numara sırasıyla gezilir;
   sıradaki tel 3D'de vurgulanır ve tarifi yazılır (`CPU · BB07 c14 → BB08 h3, 42 mm, sarı`).
   İşaretlenenler pano başına hatırlanır. Ayrıntı: [breadboard.md](breadboard.md).
