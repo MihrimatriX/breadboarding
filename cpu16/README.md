@@ -17,8 +17,8 @@ kartlar arası şerit kablo; [docs/breadboard.md](docs/breadboard.md)).
 |---|---|
 | İşlemci | 16 bit, 8 register (`r6` = SP, `r7` = LR), sabit 16 bit komutlar, NZCV bayrakları, byte adresli 64 KB, `0xFF00–0xFFFF` bellek eşlemeli G/Ç. Donanım çarpma/bölme ve barrel shifter yok (yazılımda). |
 | Kontrol | Mikrokod (`micro/cpu16.ucode`, 32 bitlik kontrol kelimesi), ROM'da değil 74HC kapılarıyla kurulu (`board/kontrol.ts` üretir). Komut başına ortalama ≈ 5 saat döngüsü. |
-| CPU kartı | 194 entegre: register dosyası, ALU (4 × 74HC283), PC, MAR, IR, bayraklar, kontrol birimi |
-| Anakart | CPU + 6 kart, toplam 444 entegre: saat ve reset (10), bellek (34: 32 KB EEPROM + 128 KB RAM, bank register'ları), önbellek (46: 2 KB, bekleme durumları, sayaçlar), G/Ç (65: UART, PS/2, zamanlayıcı, kesmeler), video (73: VGA 640 × 480, 80 × 30 metin, 16 renk), kendin yap bellek (22: 16 bayt, eğitim kartı) |
+| CPU kartı | 210 entegre: register dosyası, ALU (4 × 74HC283), PC, MAR, IR, bayraklar, kontrol birimi; hata ayıklama için 39 LED ve 26 çubuk gösterge, register'ların içeriği dahil ([kartlar.md](docs/kartlar.md)) |
+| Anakart | CPU + 6 kart, toplam 460 entegre: saat ve reset (10), bellek (34: 32 KB EEPROM + 128 KB RAM, bank register'ları), önbellek (46: 2 KB, bekleme durumları, sayaçlar), G/Ç (65: UART, PS/2, zamanlayıcı, kesmeler), video (73: VGA 640 × 480, 80 × 30 metin, 16 renk), kendin yap bellek (22: 16 bayt, eğitim kartı) |
 | Parçalar | yalnız yaygın 7400 serisi lojik ve iki bellek çipi (62256 SRAM, 28C256 EEPROM) |
 | Yazılım | as16 assembler, cc16 C derleyicisi ve libc16, BIOS (monitör, Intel HEX önyükleyici), Web IDE |
 | Hız | ilk gerçek kart hedefi 1 MHz (8 MHz osilatör); simülasyonda anakart modeli 4 MHz sayar |

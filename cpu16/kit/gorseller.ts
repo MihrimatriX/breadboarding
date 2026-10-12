@@ -50,6 +50,8 @@ interface KartLed {
   ohm: number;
   sinyal: string;
   surucu: string;
+  /** VCC → direnç → LED → sinyal: sinyal 0 iken yanar */
+  aktifDusuk: boolean;
 }
 
 let tahtaOnbellek: ReturnType<typeof buildFullMachineBoard>["board"] | null = null;
@@ -63,7 +65,10 @@ function kartLedleri(): KartLed[] {
     const anot = p.pins["1"];
     const r = board.passives.find((q) => q !== p && q.part.startsWith("R_") && Object.values(q.pins).includes(anot));
     if (!r) continue;
-    const sinyal = Object.values(r.pins).find((x) => x !== anot)!;
+    let sinyal = Object.values(r.pins).find((x) => x !== anot)!;
+    // direncin öbür ucu VCC: aktif düşük LED, sinyal katotta
+    const aktifDusuk = board.netName(sinyal) === "VCC";
+    if (aktifDusuk) sinyal = p.pins["2"];
     // sürücü: o nete çıkışı bağlı çip pini
     let surucu = board.netName(sinyal);
     for (const ch of board.chips) {
@@ -76,10 +81,32 @@ function kartLedleri(): KartLed[] {
     const d = pasifDegeri(r.part);
     out.push({
       ref: p.ref, role: p.role, renk: ledRengi(p.role), direnc: r.ref, ohm: d?.tur === "direnc" ? d.ohm : 330,
-      sinyal: board.netName(sinyal), surucu,
+      sinyal: board.netName(sinyal), surucu, aktifDusuk,
     });
   }
   return out;
+}
+
+/**
+ * Bir renkteki LED'lerin kısa listesi (renk tablosunun son sütunu): tek ya da iki LED ise ref ve
+ * sinyal ("D2 FAULT"); çoksa sayısı ve sıralı sinyaller birleşik ("10 LED: ~ROE0–7, MEMRD …").
+ */
+function ledOzeti(ls: KartLed[]): string {
+  if (ls.length <= 2) return ls.map((l) => `${l.ref} ${l.sinyal}`).join(", ");
+  const parca: string[] = [];
+  for (const l of ls) {
+    const m = /^(.*?)(\d+)$/.exec(l.sinyal);
+    const son = parca.length ? /^(.*?)(\d+)(?:–(\d+))?$/.exec(parca[parca.length - 1]) : null;
+    if (m && son && son[1] === m[1] && Number(son[3] ?? son[2]) + 1 === Number(m[2])) parca[parca.length - 1] = `${m[1]}${son[2]}–${m[2]}`;
+    else parca.push(l.sinyal);
+  }
+  let metin = "";
+  for (const x of parca) {
+    const yeni = metin ? `${metin}, ${x}` : x;
+    if (yeni.length > 30) return `${ls.length} LED: ${metin} …`;
+    metin = yeni;
+  }
+  return `${ls.length} LED: ${metin}`;
 }
 
 /** Bir hattın çekme direnci ve alıcısı (şemadan) */
@@ -112,8 +139,8 @@ function dekuplaj(ref: string): DekuplajCizim {
 export function gorselDosyalari(): { path: string; content: string }[] {
   const ledler = kartLedleri();
   const kartta: Partial<Record<LedRenk, string>> = {};
-  for (const l of ledler) kartta[l.renk] = [kartta[l.renk], `${l.ref} ${l.sinyal}`].filter(Boolean).join(", ");
-  const saat = ledler.find((l) => l.renk === "mavi") ?? ledler[0];
+  for (const r of new Set(ledler.map((l) => l.renk))) kartta[r] = ledOzeti(ledler.filter((l) => l.renk === r));
+  const saat = ledler.find((l) => l.renk === "mavi" && /CLK/.test(l.sinyal)) ?? ledler.find((l) => l.renk === "mavi") ?? ledler[0];
   const dosyalar: [string, string, Parca][] = [];
 
   // renk kodu
@@ -135,11 +162,13 @@ export function gorselDosyalari(): { path: string; content: string }[] {
 
   // seri direnç
   const devre = (l: KartLed | undefined, seviye: number): Parca =>
-    ledDevreCizimi(l ? { surucu: l.surucu, sinyal: l.sinyal, direnc: l.direnc, ohm: l.ohm, led: l.ref, renk: l.renk, seviye } : { surucu: "74HC", sinyal: "X", direnc: "R", ohm: 330, led: "D", renk: "kirmizi", seviye }, pal);
+    ledDevreCizimi(l ? { surucu: l.surucu, sinyal: l.sinyal, direnc: l.direnc, ohm: l.ohm, led: l.ref, renk: l.renk, seviye, aktifDusuk: l.aktifDusuk } : { surucu: "74HC", sinyal: "X", direnc: "R", ohm: 330, led: "D", renk: "kirmizi", seviye }, pal);
   const kirmizi = ledler.find((l) => l.renk === "kirmizi");
+  const dusuk = ledler.find((l) => l.aktifDusuk);
   dosyalar.push(["seri-direnc", "LED'in seri direnci", izgara([
     [baslik("LED'in seri direnci", "R = (5 V − Vf) / I · LED'i her zaman bir dirençle sür; akımı direnç belirler")],
     [devre(saat, 1), devre(kirmizi, 0)],
+    ...(dusuk ? [[baslik("Aktif düşük sinyal: LED VCC'den sinyale", "çıkış 0 olunca akımı çeker, LED yanar · 1 iken iki uç da 5 V, akım yok")], [devre(dusuk, 0), devre(dusuk, 1)]] : []),
   ], 20)]);
 
   // çekme dirençleri

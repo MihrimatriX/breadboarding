@@ -638,7 +638,7 @@
       (property "Footprint" "Package_DIP:DIP-20_W7.62mm" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
       (property "Datasheet" "" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
       (property "ki_description" "8 bit üç durumlu tampon (iki aktif düşük OE)" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
-      (property "CPU16_Kullanim" "İç veriyolu sürücüleri (PC, ALU, sabit birimi → veriyolu), adres tamponu" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+      (property "CPU16_Kullanim" "İç veriyolu sürücüleri (register'lar, PC, ALU, sabit birimi → veriyolu), adres tamponu" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
       (symbol "74HC541_0_1"
         (rectangle (start -7.62 15.24) (end 7.62 -15.24) (stroke (width 0.254) (type default)) (fill (type background)))
       )

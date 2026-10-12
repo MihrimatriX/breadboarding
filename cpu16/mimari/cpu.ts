@@ -15,25 +15,25 @@ export function cpuDiyagrami(board: Board): Diyagram {
   const kontrolNetleri = KONTROL_NETLERI.filter((n) => board.has(n));
   const kutular: Kutu[] = [
     {
-      id: "reg", ad: "REGISTER DOSYASI (R0–R7)", rol: "register", x: 90, y: 116, w: 290, h: 200, bloklar: cpu("Register dosyası"),
+      id: "reg", ad: "REGISTER DOSYASI (R0–R7)", rol: "register", x: 90, y: 116, w: 290, h: 216, bloklar: cpu("Register dosyası"),
       gorev: "8 × 16 bit; RSEL ve IR alanlarıyla seçilir",
-      aciklama: "Sekiz adet 16 bitlik genel amaçlı register (r6 yığın göstericisi SP, r7 dönüş adresi LR). Her register iki 74HC574'tür (düşük ve yüksek bayt); üç durumlu çıkışları doğrudan iç veri yoluna bağlıdır. Hangi register'ın okunup yazılacağını kontrol kelimesinin RSEL alanı ve komuttaki register alanları (rd, rs1, rs2) belirler: üç 74HC151 indeksi seçer, iki 74HC138 okuma ve yazma hattına çevirir.",
+      aciklama: "Sekiz adet 16 bitlik genel amaçlı register (r6 yığın göstericisi SP, r7 dönüş adresi LR). Her register iki 74HC574'tür (düşük ve yüksek bayt); çıkışları hep açıktır, değeri iki çubuk göstergede görünür, iç veri yoluna iki 74HC541 tamponla çıkar. Hangi register'ın okunup yazılacağını kontrol kelimesinin RSEL alanı ve komuttaki register alanları (rd, rs1, rs2) belirler: üç 74HC151 indeksi seçer, iki 74HC138 okuma ve yazma hattına çevirir.",
     },
     {
-      id: "gecici", ad: "GEÇİCİ REGISTER'LAR", rol: "register", x: 430, y: 116, w: 220, h: 200, bloklar: cpu("Geçici register'lar"),
+      id: "gecici", ad: "GEÇİCİ REGISTER'LAR", rol: "register", x: 430, y: 116, w: 220, h: 216, bloklar: cpu("Geçici register'lar"),
       gorev: "TA ve TB: ALU'nun iki girişi",
       aciklama: "Tek bir veri yolu olduğu için ALU'nun iki işleneni sırayla, birer saat döngüsünde TA ve TB'ye alınır; ALU onları sürekli görür. Her biri iki 74HC574 (çıkışları hep açık).",
     },
     {
-      id: "alu", ad: "ALU", rol: "islem", x: 720, y: 116, w: 390, h: 200, bloklar: cpu("ALU kod çözücü", "ALU"),
+      id: "alu", ad: "ALU", rol: "islem", x: 720, y: 116, w: 390, h: 216, bloklar: cpu("ALU kod çözücü", "ALU"),
       gorev: "", bolmeler: [
-        { ad: "ALU KOD ÇÖZÜCÜ", bloklar: ["ALU kod çözücü"], x: 0, y: 0, w: 390, h: 90, gorev: "işlem kodu → 24 ALU denetim biti" },
-        { ad: "ALU (ARİTMETİK MANTIK BİRİMİ)", bloklar: ["ALU"], x: 0, y: 90, w: 390, h: 110, gorev: "toplama, çıkarma, mantık, kaydırma" },
+        { ad: "ALU KOD ÇÖZÜCÜ", bloklar: ["ALU kod çözücü"], x: 0, y: 0, w: 390, h: 88, gorev: "işlem kodu → 24 ALU denetim biti" },
+        { ad: "ALU (ARİTMETİK MANTIK BİRİMİ)", bloklar: ["ALU"], x: 0, y: 88, w: 390, h: 128, gorev: "toplama, çıkarma, mantık, kaydırma" },
       ],
       aciklama: "16 bitlik aritmetik mantık birimi. Toplayıcı dört 74HC283'tür (çıkarmada girişler XOR ile terslenir); mantık işlemleri her bit için bir 74HC151 doğruluk tablosuyla yapılır; 74HC153'ler toplam, mantık, sola ve sağa kaydırma arasından sonucu seçer. İki 74HC688 sonucun sıfır olduğunu (Z) bulur; sonuç iki 74HC541 ile veri yoluna sürülür. ALU kod çözücü işlem kodunu (5 bit), komutun h bitini ve C bayrağını 24 denetim bitine çevirir (ROM yerine 74HC138'ler ve kapılar).",
     },
     {
-      id: "bayrak", ad: "BAYRAKLAR VE KOŞUL", rol: "kontrol", x: 1190, y: 116, w: 270, h: 200, bloklar: cpu("Bayraklar ve koşul"),
+      id: "bayrak", ad: "BAYRAKLAR VE KOŞUL", rol: "kontrol", x: 1190, y: 116, w: 270, h: 216, bloklar: cpu("Bayraklar ve koşul"),
       gorev: "N Z C V ve I bayrakları; dallanma koşulu (COND)",
       aciklama: "N (negatif), Z (sıfır), C (elde) ve V (taşma) bayrakları ALU'dan, RETI'de veri yolundan yüklenir (74HC74 flip-flop'lar). I kesme izni bayrağıdır. Koşul birimi (74HC151) komutun koşul alanına göre bayraklardan dallanma koşulunu (COND) üretir ve kontrol birimine verir; C bayrağı ALU kod çözücüye de gider (ADC, SBC, ROL, ROR).",
     },
@@ -90,7 +90,7 @@ export function cpuDiyagrami(board: Board): Diyagram {
       ],
       govde: [[[220, 360], [1290, 360]]],
       kollar: [
-        [[220, 316], [220, 360]], [[540, 316], [540, 360]], [[900, 316], [900, 360]], [[1290, 316], [1290, 360]],
+        [[220, 332], [220, 360]], [[540, 332], [540, 360]], [[900, 332], [900, 360]], [[1290, 332], [1290, 360]],
         [[220, 410], [220, 360]], [[540, 410], [540, 360]], [[900, 410], [900, 360]], [[1290, 410], [1290, 360]],
       ],
       etiketler: [{ x: 380, y: 350, metin: "VERİ YOLU (16 BİT)" }, { x: 1095, y: 350, metin: "BUS0–BUS15" }],
@@ -162,9 +162,9 @@ export function cpuDiyagrami(board: Board): Diyagram {
       id: "kosul", tur: "kontrol", ad: "KOŞUL, I", netler: ["COND", "IFLAG"],
       aciklama: "Koşul biriminin çıkışı (COND: dallanma koşulu doğru mu) mikrokod tablosunun girişidir; I bayrağı kesmenin kabul edilip edilmeyeceğini belirler.",
       uclar: [{ kutu: "bayrak", yon: "cikis" }, { kutu: "kontrol", yon: "giris" }],
-      kollar: [[[1430, 316], [1430, 340]], [[1250, 833], [1250, 805]]],
+      kollar: [[[1430, 332], [1430, 346]], [[1250, 833], [1250, 805]]],
       baglayicilar: [
-        { nokta: [1430, 340], metin: "KOŞUL, I → KONTROL", yon: "asagi" },
+        { nokta: [1430, 346], metin: "KOŞUL, I → KONTROL", yon: "asagi" },
         { nokta: [1250, 833], metin: "KOŞUL, I ← BAYRAKLAR", yon: "asagi" },
       ],
       etiketler: [],

@@ -73,7 +73,7 @@ export function panoParcalari(board: Board, y: BbYerlesim, o: PanoYerlesimSecene
       x: cx - w / 2, y: cy - h / 2, w, h, height: s.height, vertical: dikey,
       ...(p.ters ? { ters: true } : {}),
       ...(p.bagliCip ? { chip: p.bagliCip } : {}),
-      ...(s.kind === "led" ? { led: ledRengi(x.role) } : {}),
+      ...(s.kind === "led" || s.kind === "cubuk" ? { led: ledRengi(x.role) } : {}),
       pins: p.bacaklar.map((b) => ({ num: b.pin, name: adlar.get(b.pin) ?? String(b.pin), net: x.pins[String(b.pin)] ?? -1, ...pinYeri(b.X, b.Y) })),
     });
   }

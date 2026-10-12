@@ -53,6 +53,13 @@ export interface SchematicOptions {
    * yanlarında etiket payı gerekmez. Çok çipli kartın (CPU) A0'a sığması için.
    */
   densePassives?: boolean;
+  /**
+   * Entegreler de sıkı: iki yandaki etiket payı 50 yerine 30 mm (CPU kartının en uzun etiketi
+   * ≈ 10 mm, iki komşu sütunun etiketleri yan yana sığar), alt alta iki entegre arası daha az (VCC ve
+   * GND etiketlerine yetecek kadar). Hata ayıklama LED'leri ve çubuk göstergelerle CPU kartı A0'a
+   * böyle sığar.
+   */
+  denseChips?: boolean;
 }
 
 const PAPER = { A4: [297, 210], A3: [420, 297], A2: [594, 420], A1: [841, 594], A0: [1189, 841] } as const;
@@ -91,7 +98,7 @@ function libSymbols(placed: Placed[]): string[] {
  */
 function layoutPage(
   board: Board, placed: Placed[], uses: Map<number, number>, paper: SchematicOptions["paper"], densePassives: boolean,
-  uuid: () => string, path: string, project: string, global: boolean,
+  uuid: () => string, path: string, project: string, global: boolean, denseChips = false,
 ): { instances: string[]; labels: string[] } | null {
   const [pw, ph] = PAPER[paper];
   const margin = 25;
@@ -103,9 +110,9 @@ function layoutPage(
   const sorted = [...placed].sort((a, b) => order(a) - order(b));
   for (const p of sorted) {
     const lay = symbolLayout(p.def);
-    const height = 2 * lay.h + 4 * G + 8;
     const twoPin = p.def.pins.length === 2;
-    const width = 2 * lay.w + 2 * G + (densePassives && twoPin ? 15 : 50); // etiketler için iki yanda pay
+    const height = 2 * lay.h + (denseChips && !twoPin ? 3 * G + 6 : 4 * G + 8);
+    const width = 2 * lay.w + 2 * G + (densePassives && twoPin ? 15 : denseChips ? 30 : 50); // etiketler için iki yanda pay
     if (y + height > ph - margin) {
       x += colW;
       y = margin + 20;
@@ -145,7 +152,7 @@ export function cardSchematic(board: Board, card: string, o: SchematicOptions): 
   out.push(`  (paper ${q(o.paper)})`);
   out.push(`  (title_block (title ${q(o.title)}) (date ${q(o.date)}) (rev "1") (company "CPU16") (comment 1 "Bu dosya cpu16/board kaynak kodundan üretildi: npm run cpu16 -- board kicad"))`);
   out.push(...libSymbols(placed));
-  const page = layoutPage(board, placed, uses, o.paper, !!o.densePassives, uuid, rootUuid, o.project, false);
+  const page = layoutPage(board, placed, uses, o.paper, !!o.densePassives, uuid, rootUuid, o.project, false, !!o.denseChips);
   if (!page) throw new Error(`${card} kartı ${o.paper} kâğıdına sığmadı`);
   out.push(...page.instances, ...page.labels);
   out.push(`  (sheet_instances (path "/" (page "1")))`);

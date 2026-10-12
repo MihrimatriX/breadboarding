@@ -31,8 +31,10 @@ interface Bolge { x: number; y: number; w: number; h: number }
 const PASIF_RENK: Record<string, string> = {
   direnc: "#e6cf9f", kondansator: "#f2bd6b", elektrolitik: "#4f78a6", led: "#e04b3c", dizi: "#e6cf9f", konnektor: "#4a4a4a",
   osilator: "#b9c0c8", buton: "#8f8f8f", anahtar: "#8f8f8f", pot: "#5788b8", modul: "#2c7fb8",
+  // CPU kartının çubuk göstergeleri ve önlerindeki DIP-16 direnç dizileri: kara gövde
+  cubuk: "#1c1d20", dipdizi: "#2b2e33",
 };
-const KOYU = new Set(["elektrolitik", "konnektor", "modul", "led", "pot"]);
+const KOYU = new Set(["elektrolitik", "konnektor", "modul", "led", "pot", "cubuk", "dipdizi"]);
 
 /** Kartın (ya da bir bölgesinin) üstten görünüşü. olcek: kâğıtta mm / kart mm'si. */
 function haritaSvg(p: KurulumPlani, b: Bolge, olcek: number, o: { ayrinti: boolean; vurgu?: string }): string {
