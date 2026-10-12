@@ -4,7 +4,17 @@
 import { LogicSim, L1 } from "../cpu16/chips/logic.ts";
 import { RAKAM_SEGMENT, SEGMENTLER } from "../cpu16/chips/parts/gosterge.ts";
 import { buildHesapBoard, type GostergeGrubu, type HesapKarti } from "./kart.ts";
-import type { Gorunum, IslemKodu } from "./model.ts";
+import type { Durum, Gorunum, IslemKodu } from "./model.ts";
+
+/**
+ * Durumlar simülasyona verilecek sırada: B, sonra işlem, sonra A. Devre birleşimsel olduğundan sıra
+ * sonucu değiştirmez, ama ardışık durumlar arasında az anahtar değişir (aynı durum arka arkaya gelince
+ * hiç) ve devre çok daha az kapı değerlendirerek yerleşir. A'yı en içte değiştirmek B'yi
+ * değiştirmekten ucuz: B bölücünün sekiz basamağına da girer, A'nın düşük bitleri yalnız son
+ * basamaklara.
+ */
+export const simSirasi = (durumlar: Iterable<Durum>): Durum[] =>
+  [...durumlar].sort((x, y) => x[1] - y[1] || x[2] - y[2] || x[0] - y[0]);
 
 /** Segment değerlerinden (a..g) görünen karakter: sönük → boşluk, rakam, tanınmayan desen → "?" */
 export function segmentKarakteri(seg: readonly number[]): string {

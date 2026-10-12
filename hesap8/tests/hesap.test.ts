@@ -16,7 +16,7 @@ import { HC4511, RAKAM_SEGMENT, SEGMENTLER } from "../../cpu16/chips/parts/goste
 import { modulYerleri } from "../bcd.ts";
 import { buildHesapBoard, HESAP_SAYFALARI, type HesapKarti } from "../kart.ts";
 import { beklenen, hesapla, ornekDurumlar, type IslemKodu } from "../model.ts";
-import { HesapSim, segmentKarakteri } from "../sim.ts";
+import { HesapSim, segmentKarakteri, simSirasi } from "../sim.ts";
 
 describe("74HC4511 gösterge sürücüsü", () => {
   const bench = new ChipBench(HC4511);
@@ -166,7 +166,10 @@ describe("hesap makinesi kapı seviyesinde (altın modelle)", () => {
   it("3 024 durum (uç değerler × 4 işlem + 2 000 örnek) altın modelle aynı", { timeout: 120_000 }, () => {
     let farkli = 0;
     let ilk = "";
-    for (const [a, b, op] of ornekDurumlar()) {
+    // simülasyon sırası yalnız sıralar: aynı durumlar, aynı sayıda
+    const durumlar = simSirasi(ornekDurumlar());
+    expect(durumlar.map(String).sort()).toEqual([...ornekDurumlar()].map(String).sort());
+    for (const [a, b, op] of durumlar) {
       const o = dene(a, b, op);
       const e = beklenen(a, b, op);
       if (JSON.stringify(o) !== JSON.stringify(e)) {

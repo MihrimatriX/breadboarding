@@ -10,6 +10,7 @@ import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import type { Tel } from "../../cpu16/kurulum/plan";
+import { ucusAdimi } from "../ui/ayarlar";
 import { seciliTel, sahnedeVar, ucKonumu, useKurulum } from "./kurulum";
 import { boardLayoutData } from "./store";
 import { arcPoints } from "./wires";
@@ -146,7 +147,7 @@ function KurulumKamera({ tel }: { tel: Tel | null }) {
   useFrame((_, dt) => {
     const an = anim.current;
     if (!an || !controls) return;
-    an.t = Math.min(1, an.t + dt * 1.6);
+    an.t = ucusAdimi(an.t, dt, 1.6);
     const k = 1 - Math.pow(1 - an.t, 3);
     controls.target.lerpVectors(an.t0, an.target, k);
     camera.position.lerpVectors(an.c0, an.cam, k);

@@ -22,19 +22,20 @@ export interface EepromHandle extends MemoryHandle {
   now: () => number;
 }
 
-/** Bir dizi seviyeden sayı: biri bilinmiyorsa null */
-function word(levels: readonly Level[]): number | null {
+/** levels[from..to) seviyelerinden sayı: biri bilinmiyorsa null */
+function word(levels: readonly Level[], from: number, to: number): number | null {
   let v = 0;
-  for (let i = 0; i < levels.length; i++) {
+  for (let i = from; i < to; i++) {
     const l = levels[i];
     if (l !== L0 && l !== L1) return null;
-    v |= l << i;
+    v |= l << (i - from);
   }
   return v;
 }
 
-const zBus = (n: number): Level[] => Array(n).fill(LZ);
-const xBus = (n: number): Level[] => Array(n).fill(LX);
+/** Sabit çıkışlar (simülatör yalnız okur, her değerlendirmede yeni dizi gerekmez) */
+const Z8: readonly Level[] = Array(8).fill(LZ);
+const X8: readonly Level[] = Array(8).fill(LX);
 const bitsOf = (v: number, n: number): Level[] => Array.from({ length: n }, (_, i) => ((v >> i) & 1) as Level);
 
 /**
@@ -44,19 +45,19 @@ const bitsOf = (v: number, n: number): Level[] => Array.from({ length: n }, (_, 
 function sramBehavior(h: MemoryHandle, addrBits: number): Behavior {
   return {
     eval(ins) {
-      const addr = word(ins.slice(0, addrBits));
-      const [ce, oe, we] = ins.slice(addrBits, addrBits + 3);
-      const data = word(ins.slice(addrBits + 3));
-      if (ce === L1) return zBus(8);
-      if (ce !== L0) return xBus(8);
+      const addr = word(ins, 0, addrBits);
+      const ce = ins[addrBits], oe = ins[addrBits + 1], we = ins[addrBits + 2];
+      if (ce === L1) return Z8;
+      if (ce !== L0) return X8;
       if (we === L0) {
         // yazma çevrimi: çıkışlar kapalı, veri seviye duyarlı olarak yazılır (son değer kalır)
+        const data = word(ins, addrBits + 3, ins.length);
         if (addr !== null && data !== null) h.data[addr] = data;
-        return zBus(8);
+        return Z8;
       }
-      if (we !== L1) return xBus(8);
-      if (oe === L1) return zBus(8);
-      if (oe !== L0 || addr === null) return xBus(8);
+      if (we !== L1) return X8;
+      if (oe === L1) return Z8;
+      if (oe !== L0 || addr === null) return X8;
       return bitsOf(h.data[addr], 8);
     },
   };
@@ -98,18 +99,18 @@ function flashBehavior(h: MemoryHandle, addrBits: number): Behavior {
   };
   return {
     eval(ins, prev) {
-      const addr = word(ins.slice(0, addrBits));
-      const [ce, oe, we] = ins.slice(addrBits, addrBits + 3);
-      const [pce, , pwe] = prev.slice(addrBits, addrBits + 3);
-      const data = word(ins.slice(addrBits + 3));
+      const addr = word(ins, 0, addrBits);
+      const ce = ins[addrBits], oe = ins[addrBits + 1], we = ins[addrBits + 2];
+      const pce = prev[addrBits], pwe = prev[addrBits + 2];
+      const data = word(ins, addrBits + 3, ins.length);
       // yazma kenarı: ~WE yükselirken ~CE düşük, ya da ~CE yükselirken ~WE düşük
       const weEdge = pwe === L0 && we === L1 && ce === L0;
       const ceEdge = pce === L0 && ce === L1 && we === L0;
       if ((weEdge || ceEdge) && addr !== null && data !== null) cmd(addr, data);
-      if (ce === L1) return zBus(8);
-      if (ce !== L0 || we !== L1) return we === L0 && ce === L0 ? zBus(8) : xBus(8);
-      if (oe === L1) return zBus(8);
-      if (oe !== L0 || addr === null) return xBus(8);
+      if (ce === L1) return Z8;
+      if (ce !== L0 || we !== L1) return we === L0 && ce === L0 ? Z8 : X8;
+      if (oe === L1) return Z8;
+      if (oe !== L0 || addr === null) return X8;
       if (idMode) return bitsOf(addr === 0 ? 0xbf : addr === 1 ? 0xb5 : 0xff, 8);
       return bitsOf(h.data[addr], 8);
     },
@@ -123,19 +124,19 @@ function flashBehavior(h: MemoryHandle, addrBits: number): Behavior {
 function eepromBehavior(h: EepromHandle, addrBits: number): Behavior {
   return {
     eval(ins, prev) {
-      const addr = word(ins.slice(0, addrBits));
-      const [ce, oe, we] = ins.slice(addrBits, addrBits + 3);
-      const [pce, poe, pwe] = prev.slice(addrBits, addrBits + 3);
-      const data = word(ins.slice(addrBits + 3));
+      const addr = word(ins, 0, addrBits);
+      const ce = ins[addrBits], oe = ins[addrBits + 1], we = ins[addrBits + 2];
+      const pce = prev[addrBits], poe = prev[addrBits + 1], pwe = prev[addrBits + 2];
+      const data = word(ins, addrBits + 3, ins.length);
       const weEdge = pwe === L0 && we === L1 && ce === L0;
       const ceEdge = pce === L0 && ce === L1 && we === L0;
       if ((weEdge || ceEdge) && addr !== null && data !== null) h.core.write(addr, data, h.now());
       const reading = ce === L0 && oe === L0 && we === L1;
       if (reading && !(pce === L0 && poe === L0 && pwe === L1)) h.core.readCycle(h.now());
-      if (ce === L1) return zBus(8);
-      if (ce !== L0 || we !== L1) return we === L0 && ce === L0 ? zBus(8) : xBus(8);
-      if (oe === L1) return zBus(8);
-      if (oe !== L0 || addr === null) return xBus(8);
+      if (ce === L1) return Z8;
+      if (ce !== L0 || we !== L1) return we === L0 && ce === L0 ? Z8 : X8;
+      if (oe === L1) return Z8;
+      if (oe !== L0 || addr === null) return X8;
       return bitsOf(h.core.output(addr), 8);
     },
   };

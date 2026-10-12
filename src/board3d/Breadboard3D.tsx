@@ -26,6 +26,7 @@ import {
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { delikVar, noktaninBoardu, KENAR_ALT, KENAR_SAG, KENAR_SOL, KENAR_UST, mmX, mmY, satirHarfi, SUTUN } from "../../cpu16/board/breadboard/geometri";
 import { telYollari3B, type BbTel } from "../../cpu16/board/breadboard/plan";
+import { ucusAdimi } from "../ui/ayarlar";
 import { aktifGorunum, bbSahnesi, panodakiBoard, type BbPanosu, type BbSahnesi } from "./aktif";
 import { bbPano, bbSeciliTel, useBbKurulum } from "./bbKurulum";
 import { sahneBolumleri, useEtiketlerAcik } from "./bolum";
@@ -772,7 +773,7 @@ function KurulumKamera({ tel, p }: { tel: BbTel; p: BbPanosu }) {
   useFrame((_, dt) => {
     const an = anim.current;
     if (!an || !controls) return;
-    an.t = Math.min(1, an.t + dt * 1.6);
+    an.t = ucusAdimi(an.t, dt, 1.6);
     const k = 1 - Math.pow(1 - an.t, 3);
     controls.target.lerpVectors(an.t0, an.target, k);
     camera.position.lerpVectors(an.c0, an.cam, k);

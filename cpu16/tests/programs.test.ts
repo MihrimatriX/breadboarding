@@ -103,6 +103,12 @@ d:    .word lo(0x1234), hi(0x1234), (2 + 3) * 4 | 1
     expect(assemble(`B near\n.space 254\nnear: HALT`).errors).toEqual([]);
   });
 
+  it("yazılan aralıklar: sırasız .org blokları, bitişik bloklar birleşir, 0xFFFF'ten 0'a sarma", () => {
+    expect(assembleOrThrow("").ranges).toEqual([]);
+    const r = assembleOrThrow(".org 0x8000\n.word 1\n.org 0x10\n.byte 1, 2\n.org 0x12\n.byte 3\n.org 0xfffe\n.word 7, 8");
+    expect(r.ranges).toEqual([[0, 2], [0x10, 0x13], [0x8000, 0x8002], [0xfffe, 0x10000]]);
+  });
+
   it("Intel HEX gidiş-dönüş", () => {
     const r = assembleOrThrow(".org 0x100\n.word 1,2,3\n.org 0x8000\nHALT");
     const hex = toIntelHex(r.image, r.ranges);

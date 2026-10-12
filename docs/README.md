@@ -15,7 +15,7 @@ gerekmiyor: önce "Önce dene" bölümünü yap, sonra amacına uyan yolu seç.
 ## Önce dene
 
 1. [README](../README.md#hızlı-başlangıç): `npm run dev` ya da `docker compose up -d`, sonra tarayıcıda
-   beş bölümü sırayla aç: 6502 die, CPU16 tezgâhı, CPU16 kartı 3D, 8 bit hesap 3D, Mimari. Kartlarda
+   altı bölümü sırayla aç: 6502 die, CPU16 tezgâhı, CPU16 kartı 3D, 8 bit hesap 3D, Mimari, Belgeler. Kartlarda
    kaybolursan Mimari bölümündeki blok diyagramlarına dön: hangi kutu ne iş yapar, hangi yolla bağlı.
 2. Komut satırında ilk CPU16 programı: `npm run cpu16 -- run cpu16/programs/hello.s`. Kaynağı
    ([hello.s](../cpu16/programs/hello.s)) aç: yirmi satırlık, yorumlu bir program.

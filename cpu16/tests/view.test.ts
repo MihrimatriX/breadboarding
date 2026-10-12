@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it, vi } from "vitest";
 import { findVgaOutput, dacVolts, resistance } from "../../src/board3d/beam.ts";
 import { colWindow, memGeometry, rowWindow } from "../../src/board3d/memview.ts";
 import { BANK0_END, compileProgram, detectLanguage, flashImage, FLASH_SIZE } from "../../src/board3d/program.ts";
@@ -487,7 +488,7 @@ describe("3D görünüm: program düzenleyicisi", () => {
       const r = compileProgram(readFileSync(file, "utf8"), "asm", lib);
       expect(r.errors, f).toEqual([]);
       expect(r.flash!.length).toBe(FLASH_SIZE);
-      expect(Buffer.from(r.flash!).equals(Buffer.from(romImage(file.pathname))), f).toBe(true);
+      expect(Buffer.from(r.flash!).equals(Buffer.from(romImage(fileURLToPath(file)))), f).toBe(true);
     }
   });
 
@@ -569,6 +570,38 @@ describe("3D görünüm: bellek çipinin içi", () => {
       expect(c.col).toBeGreaterThanOrEqual(c.first);
       expect(c.col).toBeLessThan(c.first + c.count);
       expect(c.first + c.count).toBeLessThanOrEqual(g.bytesPerRow);
+    }
+  });
+});
+
+describe("arayüz: üst çubuğun sıkışması", () => {
+  it("sığan ilk kademe seçilir; hiçbiri sığmazsa en sonuncusu; işaretler birikir", async () => {
+    const { sigenKademe, kademeIsareti, SIKISMA_EN_COK } = await import("../../src/ui/sikisma.ts");
+    // her kademe 60 px açar, 130 px eksik: üçüncü denemede (k = 3) sığar
+    const denenen: number[] = [];
+    expect(sigenKademe((k) => (denenen.push(k), 130 - 60 * k))).toBe(3);
+    expect(denenen).toEqual([0, 1, 2, 3]);
+    expect(sigenKademe(() => 0)).toBe(0);
+    expect(sigenKademe(() => 999)).toBe(SIKISMA_EN_COK);
+    expect(kademeIsareti(0)).toBe("");
+    expect(kademeIsareti(3)).toBe("1 2 3");
+  });
+});
+
+describe("3D görünüm: kamera uçuşu", () => {
+  it("uçuş süreyle ilerler ve sonda durur; işletim sisteminde hareket azaltılmışsa hemen sona geçer", async () => {
+    const { ucusAdimi } = await import("../../src/ui/ayarlar.ts");
+    expect(ucusAdimi(0, 0.1, 1.4)).toBeCloseTo(0.14);
+    expect(ucusAdimi(0.95, 0.1, 1.4)).toBe(1);
+    vi.resetModules();
+    vi.stubGlobal("window", { matchMedia: (q: string) => ({ matches: q.includes("reduced-motion"), addEventListener() {}, removeEventListener() {} }) });
+    try {
+      const az = await import("../../src/ui/ayarlar.ts");
+      expect(az.azHareket()).toBe(true);
+      expect(az.ucusAdimi(0, 0.016, 1.4)).toBe(1);
+    } finally {
+      vi.unstubAllGlobals();
+      vi.resetModules();
     }
   });
 });

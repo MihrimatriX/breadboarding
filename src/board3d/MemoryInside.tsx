@@ -6,12 +6,20 @@
 
 import { useMemo, useState } from "react";
 import type { ChipInstance } from "../../cpu16/board/board";
+import { svgDugme } from "./InsideDiagram";
 import { LEVEL_VAR, levelOf } from "./levels";
 import { colWindow, memGeometry, rowWindow, type MemGeometry } from "./memview";
 import { liveMem, liveNets, useKart } from "./store";
 
 const CELL = 11;
 const hex = (v: number, n: number) => v.toString(16).toUpperCase().padStart(n, "0");
+
+/** Pin: tıklayınca (ya da klavyeyle) neti seçilir; GND / VCC ve bağlı olmayan pin seçilmez */
+function pinDugmesi(ad: string, net: number | undefined, lv: number) {
+  return svgDugme(`${ad} pini = ${"01ZX"[lv]}: netini seç`, () => {
+    if (net !== undefined && net > 1) useKart.getState().selectNet(net);
+  });
+}
 
 function PinColumn({ ci, names, x, y, gap = 13, anchor = "end" }: { ci: ChipInstance; names: string[]; x: number; y: number; gap?: number; anchor?: "start" | "end" }) {
   const v = liveNets.values;
@@ -21,7 +29,7 @@ function PinColumn({ ci, names, x, y, gap = 13, anchor = "end" }: { ci: ChipInst
         const net = ci.nets[n];
         const lv = net === undefined ? 2 : levelOf(v, net);
         return (
-          <g key={n} className="ipin" onClick={() => net !== undefined && net > 1 && useKart.getState().selectNet(net)}>
+          <g key={n} className="ipin" {...pinDugmesi(n, net, lv)}>
             <rect x={x - 4} y={y + i * gap - 4} width={8} height={8} style={{ fill: LEVEL_VAR[lv] }} />
             <text x={anchor === "end" ? x - 8 : x + 8} y={y + i * gap + 4} textAnchor={anchor}>{n}</text>
           </g>
@@ -135,7 +143,7 @@ function ArrayView({ ci, g }: { ci: ChipInstance; g: MemGeometry }) {
         {" "}· pencere: {rw.count} satır × {cw.count} bayt
       </p>
       <div className="row wrap" style={{ alignItems: "flex-start" }}>
-        <svg className="inside-svg mem-svg" viewBox={`0 0 ${width} ${height}`} width={width} height={height} role="img" aria-label={`${ci.ref} bellek dizisi`}>
+        <svg className="inside-svg mem-svg" viewBox={`0 0 ${width} ${height}`} width={width} height={height} role="group" aria-label={`${ci.ref} bellek dizisi`}>
           <text x={4} y={14} className="sel">satır adresi</text>
           <PinColumn ci={ci} names={rowAddrPins} x={x0} y={26} />
           <text x={4} y={34 + rowAddrPins.length * 13} className="sel">sütun adresi</text>
@@ -215,7 +223,7 @@ function ArrayView({ ci, g }: { ci: ChipInstance; g: MemGeometry }) {
                   const lv = net === undefined ? 2 : levelOf(v, net);
                   const x = arrX + 10 + i * Math.max(28, w / g.dataPins.length);
                   return (
-                    <g key={n} className="ipin" onClick={() => net !== undefined && net > 1 && useKart.getState().selectNet(net)}>
+                    <g key={n} className="ipin" {...pinDugmesi(n, net, lv)}>
                       <rect x={x - 4} y={yMux + 58} width={8} height={8} style={{ fill: LEVEL_VAR[lv] }} />
                       <text x={x} y={yMux + 78} textAnchor="middle">{n}</text>
                     </g>

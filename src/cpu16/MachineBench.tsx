@@ -17,7 +17,7 @@ import { CPU_HZ, Machine } from "../../cpu16/emu/machine";
 import { SET2 } from "../../cpu16/emu/devices/keyboard";
 import { textToChar } from "../../cpu16/video/font";
 import {
-  AppHeader, Group, Menu, Meter, OdakDugmesi, PanelToggle, Section, Splitter, Tabs, YanBolucu, duzenStili, heightShare, useLayout, usePaneller, type Shortcut, type TabDef,
+  AppHeader, Bayrak, Group, Menu, Meter, OdakDugmesi, PanelToggle, Section, Splitter, Tabs, YanBolucu, duzenStili, heightShare, useLayout, usePaneller, type Shortcut, type TabDef,
 } from "../ui/Shell";
 import { Simge } from "../ui/simgeler";
 import { dilBul, ornekDili, type Dil } from "./dil";
@@ -665,7 +665,7 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
                   ))}
                 </div>
                 <div className="pins" aria-label="Bayraklar">
-                  {(["n", "z", "c", "v", "i"] as const).map((f) => <span key={f} className={`pin ${cpu[f] ? "on" : ""}`} title={`${f.toUpperCase()} = ${cpu[f] ? 1 : 0}`}>{f.toUpperCase()}</span>)}
+                  {(["n", "z", "c", "v", "i"] as const).map((f) => <Bayrak key={f} ad={f} on={cpu[f]} />)}
                   {cpu.irq && <span className="pin on">IRQ</span>}
                 </div>
               </Section>

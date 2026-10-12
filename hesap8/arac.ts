@@ -20,7 +20,7 @@ import { erc } from "../cpu16/board/board.ts";
 import { birlesimselYol } from "../cpu16/board/zamanlama.ts";
 import { buildHesapBoard, ISLEMLER } from "./kart.ts";
 import { beklenen, ornekDurumlar, type Durum, type Gorunum, type IslemKodu } from "./model.ts";
-import { HesapSim } from "./sim.ts";
+import { HesapSim, simSirasi } from "./sim.ts";
 import { bbDogrula } from "./breadboard/dogrulama.ts";
 import { bbOlcu, bbPlani, bbPlaniUret, type BbPlani, type BbVeri } from "./breadboard/plan.ts";
 import { renkTanimi } from "./breadboard/renk.ts";
@@ -121,17 +121,20 @@ function sina(sim: HesapSim, durumlar: Iterable<Durum>, sinir = 20): { sayi: num
   return { sayi, farklar };
 }
 
-/** Bir A aralığı için bütün B'ler ve bütün işlemler */
-function* aralik(a0: number, a1: number): Generator<Durum> {
-  for (let a = a0; a < a1; a++) for (const op of [0, 1, 2, 3] as IslemKodu[]) for (let b = 0; b < 256; b++) yield [a, b, op];
+/**
+ * Bir iş parçacığının durumları: ortak sayaçtan sıradaki B'yi alır (B'den B'ye durum başına iş üç kat
+ * kadar değişir, böylece hepsi aynı anda biter); her B ve işlem için A, Gray
+ * sırasıyla: ardışık iki durumda tek anahtar değişir, yarısında bu bölücünün yalnız son basamağına
+ * giren A0'dır (bkz. simSirasi).
+ */
+function* dilim(sayac: Int32Array): Generator<Durum> {
+  for (let b = Atomics.add(sayac, 0, 1); b < 256; b = Atomics.add(sayac, 0, 1))
+    for (const op of [0, 1, 2, 3] as IslemKodu[]) for (let i = 0; i < 256; i++) yield [i ^ (i >> 1), b, op];
 }
 
 if (!isMainThread) {
-  // iş parçacığı: kendi devresini kurar, A aralığını dener
-  const { a0, a1 } = workerData as { a0: number; a1: number };
-  const sim = new HesapSim();
-  const r = sina(sim, aralik(a0, a1));
-  parentPort!.postMessage(r);
+  // iş parçacığı: kendi devresini kurar, B'leri ortak sayaçtan alarak dener
+  parentPort!.postMessage(sina(new HesapSim(), dilim((workerData as { sayac: Int32Array }).sayac)));
 } else {
   const [cmd = "ozet", ...rest] = process.argv.slice(2);
   if (cmd === "ozet") {
@@ -192,12 +195,13 @@ if (!isMainThread) {
     if (rest.includes("--hepsi")) {
       const n = Math.min(availableParallelism(), 8);
       console.log(`Bütün 262 144 durum, ${n} iş parçacığı …`);
-      const parcalar = Array.from({ length: n }, (_, i) => [Math.floor((256 * i) / n), Math.floor((256 * (i + 1)) / n)]);
+      const sayac = new Int32Array(new SharedArrayBuffer(4)); // sıradaki B
       const sonuclar = await Promise.all(
-        parcalar.map(
-          ([a0, a1]) =>
+        Array.from(
+          { length: n },
+          () =>
             new Promise<{ sayi: number; farklar: string[] }>((ok, hata) => {
-              const w = new Worker(new URL(import.meta.url), { workerData: { a0, a1 } });
+              const w = new Worker(new URL(import.meta.url), { workerData: { sayac } });
               w.once("message", ok);
               w.once("error", hata);
             }),
@@ -213,7 +217,7 @@ if (!isMainThread) {
       }
       console.log(`${sayi} durumun hepsi altın modelle aynı (${sn} s)`);
     } else {
-      const r = sina(new HesapSim(), ornekDurumlar());
+      const r = sina(new HesapSim(), simSirasi(ornekDurumlar()));
       const sn = ((performance.now() - t) / 1000).toFixed(1);
       if (r.farklar.length) {
         console.log(r.farklar.join("\n"));

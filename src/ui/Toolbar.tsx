@@ -51,10 +51,14 @@ export function Toolbar({ side, bottom, onSide, onBottom }: { side: boolean; bot
 export function Meters() {
   const running = useApp((s) => s.running);
   const measured = useApp((s) => s.measuredHz);
-  const t = useApp((s) => s.snapshot?.trace);
+  // seçici metni döndürür: her karede gelen yeni anlık görüntü, sayı değişmedikçe yeniden çizdirmez
+  const cevrim = useApp((s) => {
+    const t = s.snapshot?.trace;
+    return t ? Math.floor(t.halfCycle / 2) + (t.halfCycle % 2 ? "½" : "") : "-";
+  });
   return (
     <>
-      <Meter label="Çevrim">{t ? Math.floor(t.halfCycle / 2) + (t.halfCycle % 2 ? "½" : "") : "-"}</Meter>
+      <Meter label="Çevrim">{cevrim}</Meter>
       <Meter label="Ölçülen hız">{running ? hzLabel(measured) : "durdu"}</Meter>
     </>
   );
