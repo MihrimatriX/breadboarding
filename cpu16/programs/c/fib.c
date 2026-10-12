@@ -1,5 +1,8 @@
 /* fib.c — Fibonacci: özyinelemeli ve döngülü sürümler.
- * 16 bitlik unsigned int fib(24) = 46368'e kadar taşmadan yeter. */
+ * 16 bitlik unsigned int fib(24) = 46368'e kadar taşmadan yeter (fib(25) = 75025 > 65535).
+ * Özyinelemeli sürümün her çağrısı yığına lr ve korunan register'ları iter (yığın 0xFF00'dan aşağı).
+ *   npm run cpu16 -- cc cpu16/programs/c/fib.c --run
+ * Beklenen çıktı: 0 1 1 2 3 5 8 ... 28657 46368, sonra fib_rec(18) = 2584. */
 #include <stdio.h>
 
 unsigned fib_rec(unsigned n)

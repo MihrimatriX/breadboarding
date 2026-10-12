@@ -19,6 +19,7 @@ Tamamen 74HC entegrelerinden kurulan, kendi komut seti, kendi C derleyicisi ve 3
 | Anakart kartları kapı seviyesinde | [anakart-kartlari.md](docs/anakart-kartlari.md) (saat, bellek, önbellek), [anakart-gc-video.md](docs/anakart-gc-video.md) (G/Ç, video) |
 | BIOS, monitör, önyükleyici | [bios.md](docs/bios.md) |
 | C derleyicisi | [cc16.md](docs/cc16.md) |
+| C örnekleri: rehberli tur, CPU16'da C yazarken bilinmesi gerekenler | [c-ornekleri.md](docs/c-ornekleri.md) |
 | Üretim, zamanlama, kart testi | [uretim.md](docs/uretim.md) |
 | Kurulum belgeleri: tel listesi, çip kartları, el kitabı | [kurulum.md](docs/kurulum.md) |
 
@@ -28,6 +29,7 @@ Tamamen 74HC entegrelerinden kurulan, kendi komut seti, kendi C derleyicisi ve 3
 npm run cpu16 -- run cpu16/programs/hello.s          # Merhaba, CPU16! (referans emülatör)
 npm run cpu16 -- machine                             # anakart + BIOS, UART terminale bağlı (çıkış: Ctrl-])
 npm run cpu16 -- cc --hedef bios cpu16/bios/ornekler/yilan.c -o yilan.s   # C → assembly
+npm run cpu16 -- cc --hedef bios cpu16/bios/ornekler/kalbur.c --run        # C örneği anakart + BIOS'ta
 npm run cpu16 -- machine cpu16/kit/programlar/bellek-deneme.s --rom --led # BIOS'suz deneme programı, FF00 LED'leri
 npm run cpu16 -- kontrol                             # mikrokod değişince: kontrol birimini (74HC kapıları) yeniden üret ve denetle
 npm run cpu16 -- zamanlama --anakart                 # şemadan statik zamanlama analizi
