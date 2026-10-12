@@ -35,6 +35,14 @@ hane hiç sönmez (sıfır "0" görünür). İşlem LED'leri (yeşil) hangi işl
 Sayılar 216 entegre, hepsi yaygın 74HC: 74HC00, 02, 04, 08, 30, 32, 86 (kapılar), 74HC283 (4 bit
 toplayıcı), 74HC157 ve 153 (seçiciler), 74HC4511 (gösterge sürücüsü).
 
+![8 bit hesap makinesi: mimari (blok) diyagramı](img/mimari-hesap.svg)
+
+Blok diyagramı: kutular aşağıdaki bloklar (içindeki entegreler ve sayıları devreden), çizgiler aralarındaki
+yollar; ok sürenden okuyana. Her kutunun blokları ve her yolun netleri netlistle denetlenir
+(`hesap8/tests/mimari.test.ts`); devre değişince `npm run cpu16 -- mimari hesap` resmi yeniler.
+Etkileşimli hali uygulamanın Mimari bölümünde (`#mimari/hesap`): kutuya tıklayınca entegreler çip çip,
+"3D'de göster" ile kartta yeri. Diyagramların genel anlatımı: [cpu16/docs/mimari.md](../../cpu16/docs/mimari.md).
+
 | Blok | Entegre | Ne yapar |
 |---|---|---|
 | Anahtarlar | 3 | DIP anahtarlar 10 kΩ dizilerle aşağı çekilir; işlem kodu 4 sinyale çözülür (TOPLA, ÇIKAR, ÇARP, BÖL) ve LED'lere gider |

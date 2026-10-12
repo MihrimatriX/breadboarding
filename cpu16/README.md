@@ -41,6 +41,7 @@ bu tanımdan üretilir.
 | Mikromimari ve mikrokod | [mikromimari.md](docs/mikromimari.md) |
 | 74HC parça kütüphanesi | [parcalar.md](docs/parcalar.md) |
 | Kartlar (şema = kod, KiCad, ERC) | [kartlar.md](docs/kartlar.md) |
+| Mimari (blok) diyagramları: CPU kartı, bütün bilgisayar | [mimari.md](docs/mimari.md) |
 | 3D kart görünümü | [3d-gorunum.md](docs/3d-gorunum.md) |
 | Anakart: bellek, önbellek, G/Ç, video (model ve register haritası) | [anakart.md](docs/anakart.md) |
 | Anakart kartları kapı seviyesinde | [anakart-kartlari.md](docs/anakart-kartlari.md) (saat, bellek, önbellek), [anakart-gc-video.md](docs/anakart-gc-video.md) (G/Ç, video) |
@@ -86,6 +87,7 @@ npm run cpu16 -- kit                                 # deney rehberlerinin otoma
 npm run cpu16 -- kurulum hepsi                       # kurulum belgeleri (HTML + PDF): tel listesi, çip kartları, el kitabı
 npm run cpu16 -- breadboard                          # breadboard panoları: ölçüler, besleme, bağlantının netlistle doğrulanması
 npm run cpu16 -- breadboard-belge hepsi              # breadboard kurulum belgeleri (HTML + PDF): kart başına pano + dizin
+npm run cpu16 -- mimari [cpu|makine|hesap|hepsi] [-o dizin]   # blok diyagramları SVG (dizinsiz: docs/img/ ve hesap8/docs/img/)
 npm run cpu16 -- kart-testi --port /dev/ttyUSB0      # gerçek kartı UART üzerinden simülatörle karşılaştır
 
 npx vitest run cpu16                                 # CPU16 testleri
@@ -110,11 +112,13 @@ dosyalarının başındaki yorumlarda.
 | `programs/` | düz bellekte çalışan örnekler: assembly (hello, fib, add32, bubble, irq), `merhaba.c`; `c/` altında cc16 örnekleri |
 | `kit/` | deney rehberleri, görseller, BIOS'tan önceki deneylerin programları (`programlar/`) |
 | `kurulum/` | kurulum belgesi üreteci; çıktı `kurulum/cikti/` (depoya girmez) |
+| `mimari/` | mimari (blok) diyagramları: yerleşim (`cpu.ts`, `makine.ts`; hesap makinesi `hesap8/mimari.ts`), devreden içerik ve netlist denetimi (`model.ts`, `denetim.ts`), çizim (`cizim.ts`, `agac.ts`), SVG ve belge sayfası |
 | `breadboard/` | breadboard panoları (yerleşim, teller, şerit kablo, besleme), üretilmiş veri (`veri/`), belge üreteci; çıktı `breadboard/cikti/` (depoya girmez). Ortak motor `board/breadboard/` |
 | `programlayici/` | Arduino Nano + 2 × 74HC595 EEPROM programlayıcısı (`.ino`) ve `yaz.py` |
 | `video/` | karakter ROM'u (8 × 16 font) |
 | `tools/` | `npm run cpu16` komutları |
 | `tests/` | vitest testleri |
 
-Silikon3D içindeki CPU16 bölümleri `src/cpu16/` (tezgâh, Web IDE, Web Serial) ve `src/board3d/`
-(kart 3D görünümü) altında; ikisi de bu klasördeki kodu doğrudan kullanır.
+Silikon3D içindeki CPU16 bölümleri `src/cpu16/` (tezgâh, Web IDE, Web Serial), `src/board3d/`
+(kart 3D görünümü) ve `src/mimari/` (blok diyagramları) altında; hepsi bu klasördeki kodu doğrudan
+kullanır.

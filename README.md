@@ -22,9 +22,9 @@ referans modele bağlı.
 
 ## Neler var
 
-### Silikon3D: dört bölüm
+### Silikon3D: beş bölüm
 
-Uygulamanın üst çubuğunda dört bölüm var. Adres çubuğundaki `#...` açık olan bölümü gösterir; bu
+Uygulamanın üst çubuğunda beş bölüm var. Adres çubuğundaki `#...` açık olan bölümü gösterir; bu
 adresleri yer imi olarak kaydedebilirsin.
 
 | Bölüm | Adres | Ne görürsün |
@@ -33,6 +33,7 @@ adresleri yer imi olarak kaydedebilirsin.
 | **CPU16 tezgâhı** | `#cpu16` | CPU16 için küçük bir geliştirme ortamı (Web IDE). Assembly ya da C yazıp derliyorsun, programı BIOS'lu anakartta (VGA ekran, PS/2 klavye, UART terminali) ya da düz 64 KB bellekte çalıştırıyorsun. Gerçek kart bağlıysa Web Serial ile programı karta da gönderiyorsun. |
 | **CPU16 kartı 3D** | `#kart` | Bütün bilgisayar tek sahnede: 7 kart, 444 entegre, 495 pasif eleman, ~5 000 kapı. Hepsi bir Web Worker'da kapı seviyesinde, saat saat çalışıyor. Bilgisayardan karta, karttan çipe, çipten kapıya, kapıdan transistöre iniyorsun; her seviyede sinyaller canlı. Monitörde programın görüntüsü var, klavyeyle yazabiliyorsun. |
 | **8 bit hesap 3D** | `#hesap` | Hesap makinesinin kartı: 216 entegre, 15 hane 7 segment gösterge. Anahtarları çeviriyorsun, sonuç kapı gecikmeleriyle göstergelere geliyor; her bloğun o an ne hesapladığı yan panelde. |
+| **Mimari** | `#mimari` | Blok diyagramları: CPU kartı, bütün bilgisayar (7 kart, arka panel, dış cihazlar) ve hesap makinesi. Her kutu bir işlev bloğu: görevi, içindeki entegreler ve sayıları (devreden sayılır). Çizgiler veri, adres ve kontrol yolları; kalınlık bit sayısı, ok yön. Bir kutunun üstüne gelince yolları öne çıkıyor; tıklayınca entegreleri, kapıları ve yolları yan panelde, "3D'de göster" ile 3D karttaki yeri. Ayrıntı: [mimari.md](cpu16/docs/mimari.md). |
 
 <details>
 <summary>6502 die bölümünün ayrıntıları ve kısayollar</summary>
@@ -195,6 +196,7 @@ Docker'da aynı komutlar `npm run` yerine `docker compose run --rm cli` ile baş
 | `npm run cpu16 -- zamanlama [--anakart]` | şemadan statik zamanlama analizi |
 | `npm run cpu16 -- kit` | deney rehberlerinin otomatik bölümlerini yeniden üret |
 | `npm run cpu16 -- kurulum hepsi` | kurulum belgeleri (tel listesi, çip kartları, el kitabı) |
+| `npm run cpu16 -- mimari [cpu\|makine\|hesap\|hepsi] [-o dizin]` | mimari (blok) diyagramları tek başına SVG olarak (dizinsiz: belgelerdeki resimler) |
 | `npm run cpu16 -- kart-testi --port /dev/ttyUSB0` | gerçek kartı UART üzerinden simülatörle karşılaştır |
 | `npm run hesap8 -- ozet [--yol]` | hesap makinesi: blok blok çipler, en uzun yol, ERC |
 | `npm run hesap8 -- hesapla 255 x 7` | kapı seviyesi devreyi çalıştır, göstergeleri yaz (`+ - x /`) |
@@ -210,7 +212,8 @@ breadboarding/
 │   ├── chip/ sim/ render/  6502 die: çip veri biçimi, anahtar seviyesi motor, 3D katmanlar
 │   ├── ui/ state/          paneller, bölüm geçişi, zustand deposu
 │   ├── cpu16/              CPU16 tezgâhı: Web IDE, anakart + BIOS, Web Serial
-│   └── board3d/            CPU16 ve hesap makinesi kartlarının 3D görünümü (kapı seviyesi, Web Worker)
+│   ├── board3d/            CPU16 ve hesap makinesi kartlarının 3D görünümü (kapı seviyesi, Web Worker)
+│   └── mimari/             Mimari bölümü: blok diyagramları (kaydırma, yakınlaştırma, ayrıntı paneli)
 ├── cpu16/                  CPU16 bilgisayarı (ayrıntı: cpu16/README.md)
 │   ├── docs/               tasarım belgeleri: spec, mikromimari, kartlar, anakart, BIOS, cc16, üretim
 │   ├── emu/ asm/ micro/    referans emülatör (altın model), as16 assembler, mikrokod
@@ -221,6 +224,7 @@ breadboarding/
 │   ├── programs/           örnek assembly ve C programları
 │   ├── kit/                deney seti: 14 deney rehberi, deneme programları
 │   ├── kurulum/            kurulum belgesi üreteci (HTML + PDF)
+│   ├── mimari/             blok diyagramları: yerleşim, devreden içerik, netlist denetimi, SVG
 │   ├── programlayici/      Arduino EEPROM programlayıcısı ve yaz.py
 │   ├── tools/              npm run cpu16 komutları
 │   └── tests/              vitest testleri
@@ -248,6 +252,7 @@ Yeni başlıyorsan belgeleri sırayla okuman için bir yol: **[docs/README.md](d
 | Mikromimari, mikrokod, kapılarla kontrol birimi | [mikromimari.md](cpu16/docs/mikromimari.md) |
 | 74HC parça kütüphanesi | [parcalar.md](cpu16/docs/parcalar.md) |
 | Kartlar: şema = kod, KiCad, ERC | [kartlar.md](cpu16/docs/kartlar.md) |
+| Mimari (blok) diyagramları: CPU kartı, bütün bilgisayar, hesap makinesi | [mimari.md](cpu16/docs/mimari.md) |
 | Anakart: bellek, önbellek, G/Ç, video | [anakart.md](cpu16/docs/anakart.md), [anakart-kartlari.md](cpu16/docs/anakart-kartlari.md), [anakart-gc-video.md](cpu16/docs/anakart-gc-video.md) |
 | 3D kart görünümü ve konsol API'si | [3d-gorunum.md](cpu16/docs/3d-gorunum.md) |
 | BIOS, monitör, önyükleyici | [bios.md](cpu16/docs/bios.md) |
@@ -326,6 +331,7 @@ src/
   ui/              Paneller, bölüm geçişi
   cpu16/           CPU16 tezgâhı (cpu16/ altındaki emülatörü ve derleyiciyi doğrudan kullanır)
   board3d/         Kart 3D görünümü; board.worker.ts kapı seviyesi makineyi çalıştırır
+  mimari/          Blok diyagramları (çizim cpu16/mimari'den; SVG elle, kütüphanesiz)
 ```
 
 **Veri akışı (6502):** Worker her ~16 ms'de bütçesi kadar yarım çevrim koşar, düğüm ve transistör
