@@ -1,5 +1,4 @@
-/// <reference types="vitest" />
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 
 /**
@@ -26,6 +25,8 @@ const VENDOR: Record<string, string> = {
   maath: "vendor-efekt",
 };
 
+const PARCALAR = ["vendor-react", "vendor-three", "vendor-r3f", "vendor-efekt"];
+
 function vendorParcasi(id: string): string | undefined {
   // Vite'ın ön yükleme yardımcısı ilk açılışta gerekir; 3D parçasına düşerse giriş three'yi de çekerdi
   if (id.includes("vite/preload-helper") || id.includes("commonjsHelpers")) return "vendor-react";
@@ -44,9 +45,13 @@ export default defineConfig({
   base: "./",
   worker: { format: "es" },
   build: {
-    rollupOptions: {
+    rolldownOptions: {
       output: {
-        manualChunks: vendorParcasi,
+        // her parça ayrı grup, sırası öncelik: rolldown bir grubun yakaladığı modülün bağımlılıklarını da
+        // yanına çeker; postprocessing three'yi import ettiği için three önce kendi grubuna düşmeli
+        codeSplitting: {
+          groups: PARCALAR.map((ad, i) => ({ name: ad, test: (id: string) => vendorParcasi(id) === ad, priority: PARCALAR.length - i })),
+        },
         // tezgâhla kart bölümünün ortak parçası (C derleyicisi, assembler, emülatör): adı ilk modülden
         // ("serial") gelmesin, ne olduğu belli olsun
         chunkFileNames: (c) => (c.moduleIds.some((id) => id.includes("/cpu16/cc/")) ? "assets/cpu16-ortak-[hash].js" : "assets/[name]-[hash].js"),
@@ -55,5 +60,6 @@ export default defineConfig({
     // three'nin çekirdeği tek başına ~700 kB (sıkıştırılmış ~180 kB) ve bölünemez; uyarı ondan büyükler için
     chunkSizeWarningLimit: 750,
   },
-  test: { environment: "node", exclude: ["**/node_modules/**", "dist/**", ".claude/**"] },
+  // vitest 3'ten beri eşzamanlı testler de süre sınırına tabi; kapı seviyesi testler tek başına 10-15 s sürer
+  test: { environment: "node", testTimeout: 60_000, exclude: ["**/node_modules/**", "dist/**", ".claude/**"] },
 });
