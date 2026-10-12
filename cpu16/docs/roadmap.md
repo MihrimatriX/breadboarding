@@ -1,6 +1,6 @@
 # CPU16 — Yol Haritası
 
-> **Şu an:** Fazların simülasyon tarafı bitti (2026-10-11): altı kartlı anakart kapı seviyesinde BIOS'u açıyor ve emülatörle komut komut aynı; KiCad şemaları, zamanlama analizi, C derleyicisi ve 13 deneyin rehberi hazır. **Sıradaki:** gerçek kartlar, Deney 1'den başlayarak (Faz 9'un bitti ölçütü kart testi). Açık soru: işlemcinin kalıcı adı.
+> **Şu an:** Fazların simülasyon tarafı bitti (2026-10-11): altı kartlı anakart kapı seviyesinde BIOS'u açıyor ve emülatörle komut komut aynı; KiCad şemaları, zamanlama analizi, C derleyicisi ve 14 deneyin rehberi hazır. **Sıradaki:** gerçek kartlar, Deney 1'den başlayarak (Faz 9'un bitti ölçütü kart testi). Açık soru: işlemcinin kalıcı adı.
 > Bu satır her faz bittiğinde güncellenir. Kaybolursan önce buraya bak.
 
 ## Kaybolmamak için 5 kural
