@@ -66,7 +66,7 @@ kartıdır: bilgisayarın çalışması için gerekmez, 13 deneyin bilgisayarın
 | Araç | Neden |
 |---|---|
 | 5 V, en az 2 A ayarlı/akım sınırlı güç kaynağı | Tam bilgisayar ≈ 400 entegre; ilk açılışta akım sınırı kısa devreyi yakalar |
-| Breadboard (830 delik) × 25–35, tek göbekli 0,5 mm kablo | CPU kartı tek başına ≈ 195 entegre. Bütün bilgisayar breadboard panolarında: 129 board, ≈ 730 m 22 AWG tel ([docs/breadboard.md](../docs/breadboard.md)) |
+| Breadboard (830 delik) × 25–35, tek göbekli 0,5 mm kablo | CPU kartı tek başına ≈ 195 entegre. Bütün bilgisayar breadboard panolarında: 134 board, ≈ 820 m 22 AWG tel ([docs/breadboard.md](../docs/breadboard.md)) |
 | Multimetre | besleme ve seviye ölçümü |
 | Lojik prob ya da 8 kanallı USB lojik analizör (sigrok / PulseView) | saat, UART, PS/2, VGA zamanlaması |
 | Arduino Nano (klon olur) + ZIF-28 soket | EEPROM programlayıcı (Deney 3) |

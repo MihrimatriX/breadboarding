@@ -166,6 +166,7 @@ arasındaki bölüm (malzeme ve bacak bacak bağlantılar) kart tanımlarından 
 | `cpu16/kicad/cpu16.kicad_sym` (yalnız sembol kütüphanesi) | `npm run cpu16 -- kicad-sym` | çip ya da pasif eklenince | evet | `chips.test.ts` |
 | `cpu16/micro/cpu16-ucode.ts` (mikrokodun gömülü kopyası) | `npm run cpu16 -- kontrol` | `cpu16/micro/cpu16.ucode` değişince | evet | `kontrol.test.ts` |
 | `cpu16/kit/deney-*.md` otomatik bölümleri, `cpu16/kit/gorseller/*.svg` | `npm run cpu16 -- kit` | kart tanımı ya da `kit/deneyler.ts` değişince | evet | `kit.test.ts` |
+| `cpu16/docs/img/mimari-*.svg`, `hesap8/docs/img/mimari-hesap.svg` (blok diyagramları) | `npm run cpu16 -- mimari` | kart tanımı, diyagram yerleşimi (`cpu16/mimari/`, `hesap8/mimari.ts`) ya da tema renkleri (`src/mimari/mimari.css`, `src/styles.css`) değişince | evet | `cpu16/tests/mimari.test.ts` |
 | `cpu16/kurulum/cikti/` (kurulum belgeleri HTML + PDF, şema PDF'leri) | `npm run cpu16 -- kurulum hepsi`, `… kurulum hesap` | istediğinde (yazdırmak için) | hayır (`.gitignore`) | `kurulum.test.ts` (HTML içeriği) |
 | `public/chips/mos6502/chip.json` | `npm run import:6502` | visual6502 verisi ya da dönüştürücü değişince | evet | `tests/mos6502.test.ts` |
 | `dist/` | `npm run build` | yayın | hayır | CI |

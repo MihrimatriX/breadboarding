@@ -16,6 +16,8 @@
 //   breadboard [--uret [kart,…]]                 breadboard panoları: ölçüler, besleme, şerit kablo, netlistle doğrulama
 //   breadboard-belge [kart|hepsi] [-o dizin] [--html]
 //                                               breadboard kurulum belgeleri (HTML + PDF, kart başına + dizin)
+//   mimari [cpu|makine|hesap|hepsi] [-o dizin] [--koyu]
+//                                               mimari (blok) diyagramları SVG olarak (dizinsiz: belgelerin resimleri)
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { assemble } from "../asm/assembler.ts";
@@ -62,6 +64,10 @@ if (cmd === "breadboard-belge") {
   const { breadboardBelgeMain } = await import("../breadboard/belge-cli.ts");
   process.exit(await breadboardBelgeMain(process.argv.slice(3)));
 }
+if (cmd === "mimari") {
+  const { mimariMain } = await import("../mimari/cli.ts");
+  process.exit(await mimariMain(process.argv.slice(3)));
+}
 if (cmd === "kart-testi") {
   const { kartTestiMain } = await import("./kart-testi.ts");
   process.exit(await kartTestiMain(process.argv.slice(3)));
@@ -74,7 +80,7 @@ const machineCmds: Record<string, (args: string[]) => void | Promise<void>> = {
 if (cmd && cmd in machineCmds) {
   await machineCmds[cmd](process.argv.slice(3));
 } else if (!cmd || !file) {
-  console.log("kullanım: npm run cpu16 -- asm|run|dis|ucode|cc <dosya> [seçenekler]  ·  bios|charrom|machine|kit|kurulum|breadboard|breadboard-belge|kart-testi|zamanlama [seçenekler]");
+  console.log("kullanım: npm run cpu16 -- asm|run|dis|ucode|cc <dosya> [seçenekler]  ·  bios|charrom|machine|kit|kurulum|breadboard|breadboard-belge|mimari|kart-testi|zamanlama [seçenekler]");
   process.exit(cmd ? 1 : 0);
 } else if (cmd === "cc") {
   process.exitCode = ccMain([file, ...rest]);

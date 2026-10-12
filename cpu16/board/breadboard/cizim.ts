@@ -46,11 +46,62 @@ export function boardZemini(): string {
   return s.join("");
 }
 
+/** Board çiziminin üstünde bir çip grubunun etiketi (cpu16/board/breadboard/bolum-belge.ts) */
+export interface GrupEtiketi {
+  id: string;
+  etiket: string;
+  /** bölgesinin rengi (pano haritasındaki çerçeve) */
+  renk: string;
+}
+
 export interface CizimSecenekleri {
   /** SIP direnç dizisinin yazısı */
   sipYazisi?: (p: BbParca) => string;
   /** LED'in rengi */
   ledRengi?: (p: BbParca) => string;
+  /** parçanın çip grubu: board'un üstünde grubun sütunlarını kapsayan bir köşeli çizgi ve etiketi */
+  grup?: (ref: string) => GrupEtiketi | undefined;
+}
+
+/** grup etiketinin yazı boyu ve bir sıranın yüksekliği (mm) */
+const GRUP_YAZI = 1.9;
+const GRUP_SIRA = 3.1;
+
+/**
+ * Board'un üstündeki grup etiketleri: soldan sağa her grubun parçalarının sütun aralığı (aynı grubun
+ * arada başka grup olmayan parçaları tek aralıkta), üstünde etiketi. Aralığından taşan etiket komşusuyla çakışırsa bir
+ * üst sıraya çıkar. Döner: SVG ve kaç sıra kullanıldığı.
+ */
+function grupSeritleri(parcalar: BbParca[], b: BbBoard, grup: (ref: string) => GrupEtiketi | undefined): { svg: string; sira: number } {
+  const araliklar = parcalar.filter((p) => p.tur !== "kondansator").flatMap((p) => {
+    const g = grup(p.ref);
+    if (!g) return [];
+    const cs = p.bacaklar.map((k) => k.X - b.bx * BX_ADIM);
+    return [{ g, x0: bx(Math.min(...cs)) - 1.1, x1: bx(Math.max(...cs)) + 1.1 }];
+  }).sort((a, c) => a.x0 - c.x0);
+  const seritler: { g: GrupEtiketi; x0: number; x1: number }[] = [];
+  for (const a of araliklar) {
+    const son = seritler[seritler.length - 1];
+    if (son && son.g.id === a.g.id) son.x1 = Math.max(son.x1, a.x1);
+    else seritler.push({ ...a });
+  }
+  const sonlar: number[] = [];
+  const out: string[] = [];
+  for (const s of seritler) {
+    // BÜYÜK HARF kalın DejaVu Sans ≈ 0,61 em (ölçülmüş); biraz payla
+    const yaziEni = 0.66 * GRUP_YAZI * s.g.etiket.length;
+    const bitis = Math.max(s.x1, s.x0 + yaziEni);
+    let k = sonlar.findIndex((x) => x + 1.2 < s.x0);
+    if (k < 0) {
+      k = sonlar.length;
+      sonlar.push(0);
+    }
+    sonlar[k] = bitis;
+    const y = -1.3 - k * GRUP_SIRA;
+    out.push(`<path d="M${f(s.x0)} ${f(y + 0.9)}V${f(y)}H${f(s.x1)}V${f(y + 0.9)}" fill="none" stroke="${s.g.renk}" stroke-width="0.45"/>`);
+    out.push(`<text x="${f(s.x0)}" y="${f(y - 0.55)}" font-size="${GRUP_YAZI}" font-weight="700" fill="#2a2a2a">${esc(s.g.etiket)}</text>`);
+  }
+  return { svg: out.join(""), sira: sonlar.length };
 }
 
 /** Çipin ikinci satırı: kısa değer */
@@ -146,13 +197,16 @@ export function boardCizimi(y: BbYerlesim, b: BbBoard, teller: BbTel[], renkHex:
       .map(([X, Y]) => `<circle cx="${f(bx(X - ox))}" cy="${f(by(Y - oy))}" r="0.55" fill="${renkHex(t)}" stroke="#000" stroke-width="0.2"/>`).join("");
   };
   const parcalar = y.parcalar.filter((p) => p.board === b.no);
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1 -1 ${f(BW + 2)} ${f(BH + 2)}" width="186mm" font-family="DejaVu Sans, Arial, sans-serif">
+  const gruplar = o.grup ? grupSeritleri(parcalar, b, o.grup) : { svg: "", sira: 0 };
+  const ust = 1 + gruplar.sira * GRUP_SIRA;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1 ${f(-ust)} ${f(BW + 2)} ${f(BH + 1 + ust)}" width="186mm" font-family="DejaVu Sans, Arial, sans-serif">
 <clipPath id="${id}k"><rect x="0" y="0" width="${f(BW)}" height="${f(BH)}"/></clipPath>
 ${boardZemini()}
 ${parcalar.filter((p) => p.tur === "kondansator").map((p) => parcaCizimi(p, b, o)).join("")}
 <g clip-path="url(#${id}k)">${teller.map((t) => tel(t, true)).join("")}${teller.map((t) => tel(t, false)).join("")}${teller.map(uc).join("")}</g>
 ${parcalar.filter((p) => p.tur !== "kondansator").map((p) => parcaCizimi(p, b, o)).join("")}
 <text x="1.2" y="2.4" font-size="2.4" font-weight="700" fill="#4b463d">${esc(b.ad)}</text>
+${gruplar.svg}
 </svg>`;
 }
 

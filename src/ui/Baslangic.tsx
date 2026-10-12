@@ -1,4 +1,4 @@
-// Başlangıç paneli: ilk ziyarette sol altta açılan, sahneyi kapatmayan küçük bir tanıtım. Dört bölümü
+// Başlangıç paneli: ilk ziyarette sol altta açılan, sahneyi kapatmayan küçük bir tanıtım. Beş bölümü
 // birkaç cümleyle anlatır, fare ve klavye ipuçlarını verir. Üst çubuktaki "?" düğmesi ya da "?" tuşu
 // istendiği an yeniden açar. Kapatınca tarayıcı hatırlar; otomatik testlerde (navigator.webdriver)
 // kendiliğinden açılmaz ki ekran görüntülerinde sahneyi örtmesin.
@@ -80,7 +80,7 @@ export function Baslangic({ mode }: { mode: Mode }) {
         </button>
       </div>
       <p className="bs-giris">
-        Bir bilgisayarı transistörden karta kadar tarayıcıda, canlı sinyallerle çalıştırır. Dört bölüm var; üst çubuktan istediğin an
+        Bir bilgisayarı transistörden karta kadar tarayıcıda, canlı sinyallerle çalıştırır. Beş bölüm var; üst çubuktan istediğin an
         geçebilirsin, her bölüm kaldığı yerden devam eder.
       </p>
       <ul className="bs-bolumler">

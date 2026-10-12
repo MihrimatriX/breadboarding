@@ -1,0 +1,635 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="mm-svg" viewBox="0 0 1900 1280" width="1900" height="1280">
+  <!-- ÜRETİLİR, elle değiştirme: npm run cpu16 -- mimari makine (cpu16/mimari/) -->
+  <title>CPU16 bilgisayarı: mimari</title>
+  <desc>Bütün bilgisayar: yedi kart aynı arka panele takılır. CPU adresi ve bellek denetimini sürer; bellek kartı adresi bank register'larıyla fiziksel adrese çevirir ve G/Ç alanını çözer; önbellek ıskalamada CPU'yu bekletir; G/Ç ve video kartları FFxx alanındaki register'larla konuşur. Kartların içindeki ayrıntı (CPU için) ayrı diyagramda.</desc>
+  <style>
+.mm-t { font-family: "IBM Plex Sans", Inter, "DejaVu Sans", "Segoe UI", Arial, sans-serif; fill: #1a1f27; }
+.mm-kagit { fill: #ffffff; stroke: #cdd3db; stroke-width: 1; }
+.mm-baslik-bg { fill: #2c62d8; }
+.mm-t-baslik { font-size: 26px; font-weight: 700; fill: #ffffff; letter-spacing: 0.02em; }
+.mm-t-alt-baslik { font-size: 15px; fill: #ffffff; }
+.mm-grup-govde { fill: #f7f8f9; stroke: #858e9a; stroke-width: 1.5; }
+.mm-grup-cizgi { stroke: #858e9a; stroke-width: 1; }
+.mm-t-grup-ad { font-size: 15px; font-weight: 700; }
+.mm-t-grup-ek { font-size: 13px; fill: #4a5361; }
+.mm-t-grup-link { font-size: 13px; font-weight: 600; fill: #2b5bcc; }
+.mm-kutu-govde { stroke-width: 2; }
+.mm-cihaz .mm-kutu-govde, .mm-k-not .mm-kutu-govde { stroke-dasharray: 6 4; }
+.mm-bolme { fill: none; stroke-width: 1; stroke-dasharray: 4 3; }
+.mm-t-ad { font-size: 15px; font-weight: 700; }
+.mm-t-bolme-ad { font-size: 13.5px; font-weight: 700; }
+.mm-t-parca { font-family: "IBM Plex Mono", "DejaVu Sans Mono", Consolas, monospace; font-size: 12.5px; fill: #4a5361; }
+.mm-t-pasif { font-size: 12.5px; fill: #4a5361; }
+.mm-t-kapi { font-size: 12px; fill: #5d6775; font-style: italic; }
+.mm-t-gorev { font-size: 12.5px; fill: #4a5361; }
+.mm-hale { fill: none; stroke: #ffffff; stroke-linejoin: round; }
+.mm-cizgi { fill: none; stroke-linejoin: round; stroke-linecap: butt; }
+.mm-nokta { stroke: #ffffff; stroke-width: 1.5; }
+.mm-bag { fill: #ffffff; stroke-width: 1.5; }
+.mm-t-etiket { font-size: 12.5px; font-weight: 700; letter-spacing: 0.02em; paint-order: stroke; stroke: #ffffff; stroke-width: 4px; stroke-linejoin: round; }
+.mm-t-bag { font-size: 12px; font-weight: 700; }
+.mm-lejant-govde { fill: #ffffff; stroke: #858e9a; stroke-width: 1.2; }
+.mm-lej-cizgi { fill: none; }
+.mm-lej-kutu { stroke-width: 1.5; }
+.mm-t-lej-baslik { font-size: 13px; font-weight: 700; fill: #4a5361; letter-spacing: 0.04em; }
+.mm-t-lej { font-size: 12.5px; fill: #4a5361; }
+.mm-t-lej-kisa { font-size: 12.5px; font-weight: 700; }
+.mm-y-veri .mm-cizgi, .mm-lej-cizgi.mm-y-veri { stroke: #1f5bd1; } .mm-y-veri .mm-ok, .mm-y-veri .mm-nokta { fill: #1f5bd1; } .mm-y-veri .mm-t-etiket, .mm-y-veri .mm-t-bag { fill: #1f5bd1; } .mm-y-veri .mm-bag { stroke: #1f5bd1; }
+.mm-y-adres .mm-cizgi, .mm-lej-cizgi.mm-y-adres { stroke: #b5461e; } .mm-y-adres .mm-ok, .mm-y-adres .mm-nokta { fill: #b5461e; } .mm-y-adres .mm-t-etiket, .mm-y-adres .mm-t-bag { fill: #b5461e; } .mm-y-adres .mm-bag { stroke: #b5461e; }
+.mm-y-kontrol .mm-cizgi, .mm-lej-cizgi.mm-y-kontrol { stroke: #17803f; } .mm-y-kontrol .mm-ok, .mm-y-kontrol .mm-nokta { fill: #17803f; } .mm-y-kontrol .mm-t-etiket, .mm-y-kontrol .mm-t-bag { fill: #17803f; } .mm-y-kontrol .mm-bag { stroke: #17803f; }
+.mm-y-saat .mm-cizgi, .mm-lej-cizgi.mm-y-saat { stroke: #6b45c9; } .mm-y-saat .mm-ok, .mm-y-saat .mm-nokta { fill: #6b45c9; } .mm-y-saat .mm-t-etiket, .mm-y-saat .mm-t-bag { fill: #6b45c9; } .mm-y-saat .mm-bag { stroke: #6b45c9; }
+.mm-y-yerel .mm-cizgi, .mm-lej-cizgi.mm-y-yerel { stroke: #556171; } .mm-y-yerel .mm-ok, .mm-y-yerel .mm-nokta { fill: #556171; } .mm-y-yerel .mm-t-etiket, .mm-y-yerel .mm-t-bag { fill: #556171; } .mm-y-yerel .mm-bag { stroke: #556171; }
+.mm-y-dis .mm-cizgi, .mm-lej-cizgi.mm-y-dis { stroke: #0b7585; } .mm-y-dis .mm-ok, .mm-y-dis .mm-nokta { fill: #0b7585; } .mm-y-dis .mm-t-etiket, .mm-y-dis .mm-t-bag { fill: #0b7585; } .mm-y-dis .mm-bag { stroke: #0b7585; }
+.mm-k-register .mm-kutu-govde, .mm-lej-kutu.mm-k-register { stroke: #9a6700; fill: #f6f1e8; } .mm-k-register .mm-bolme { stroke: #9a6700; }
+.mm-k-islem .mm-kutu-govde, .mm-lej-kutu.mm-k-islem { stroke: #a3329a; fill: #f9f1f8; } .mm-k-islem .mm-bolme { stroke: #a3329a; }
+.mm-k-secici .mm-kutu-govde, .mm-lej-kutu.mm-k-secici { stroke: #17803f; fill: #ecf5f0; } .mm-k-secici .mm-bolme { stroke: #17803f; }
+.mm-k-tampon .mm-kutu-govde, .mm-lej-kutu.mm-k-tampon { stroke: #1f5bd1; fill: #eff4fc; } .mm-k-tampon .mm-bolme { stroke: #1f5bd1; }
+.mm-k-bellek .mm-kutu-govde, .mm-lej-kutu.mm-k-bellek { stroke: #0b7585; fill: #ebf4f5; } .mm-k-bellek .mm-bolme { stroke: #0b7585; }
+.mm-k-kontrol .mm-kutu-govde, .mm-lej-kutu.mm-k-kontrol { stroke: #6b45c9; fill: #f5f2fb; } .mm-k-kontrol .mm-bolme { stroke: #6b45c9; }
+.mm-k-gc .mm-kutu-govde, .mm-lej-kutu.mm-k-gc { stroke: #556171; fill: #f3f4f5; } .mm-k-gc .mm-bolme { stroke: #556171; }
+.mm-k-not .mm-kutu-govde, .mm-lej-kutu.mm-k-not { stroke: #6b7584; fill: #f8f8f9; } .mm-k-not .mm-bolme { stroke: #6b7584; }
+</style>
+  <rect class="mm-kagit" x="0.5" y="0.5" width="1899" height="1279" rx="10"/>
+  <path class="mm-baslik-bg" d="M0.5 56 V10.5 A10 10 0 0 1 10.5 0.5 H1889.5 A10 10 0 0 1 1899.5 10.5 V56 Z"/>
+  <g class="mm-baslik">
+    <text class="mm-t mm-t-baslik" x="24" y="37.4" text-anchor="start">CPU16 BİLGİSAYARI · MİMARİ</text>
+    <text class="mm-t mm-t-alt-baslik" x="1876" y="33.4" text-anchor="end">7 kart · 64 hatlı arka panel · 444 entegre</text>
+  </g>
+  <g class="mm-grup" data-kutu="clk">
+    <rect class="mm-grup-govde" x="1570" y="80" width="300" height="358" rx="12"/>
+    <path class="mm-grup-cizgi" d="M1571 114 H1869"/>
+    <text class="mm-t mm-t-grup-ad" x="1584" y="103" text-anchor="start">SAAT VE RESET</text>
+    <text class="mm-t mm-t-grup-ek" x="1710.7" y="103" text-anchor="start">10 entegre · 4 kapı çipi</text>
+  </g>
+  <g class="mm-grup mm-ayrintili" data-kutu="cpu" data-ayrinti="cpu">
+    <rect class="mm-grup-govde" x="30" y="80" width="520" height="358" rx="12"/>
+    <path class="mm-grup-cizgi" d="M31 114 H549"/>
+    <text class="mm-t mm-t-grup-ad" x="44" y="103" text-anchor="start">CPU KARTI</text>
+    <text class="mm-t mm-t-grup-ek" x="135.4" y="103" text-anchor="start">194 entegre · 68 kapı çipi</text>
+    <text class="mm-t mm-t-grup-link" x="536" y="103" text-anchor="end">ayrıntı ›</text>
+  </g>
+  <g class="mm-grup" data-kutu="bellek">
+    <rect class="mm-grup-govde" x="570" y="80" width="470" height="358" rx="12"/>
+    <path class="mm-grup-cizgi" d="M571 114 H1039"/>
+    <text class="mm-t mm-t-grup-ad" x="584" y="103" text-anchor="start">BELLEK KARTI</text>
+    <text class="mm-t mm-t-grup-ek" x="700.8" y="103" text-anchor="start">34 entegre · 9 kapı çipi</text>
+  </g>
+  <g class="mm-grup" data-kutu="onbellek">
+    <rect class="mm-grup-govde" x="1060" y="80" width="490" height="358" rx="12"/>
+    <path class="mm-grup-cizgi" d="M1061 114 H1549"/>
+    <text class="mm-t mm-t-grup-ad" x="1074" y="103" text-anchor="start">ÖNBELLEK KARTI</text>
+    <text class="mm-t mm-t-grup-ek" x="1214.5" y="103" text-anchor="start">46 entegre · 13 kapı çipi</text>
+  </g>
+  <g class="mm-grup" data-kutu="gc">
+    <rect class="mm-grup-govde" x="30" y="718" width="720" height="358" rx="12"/>
+    <path class="mm-grup-cizgi" d="M31 752 H749"/>
+    <text class="mm-t mm-t-grup-ad" x="44" y="741" text-anchor="start">G/Ç KARTI</text>
+    <text class="mm-t mm-t-grup-ek" x="131.9" y="741" text-anchor="start">65 entegre · 22 kapı çipi</text>
+  </g>
+  <g class="mm-grup" data-kutu="video">
+    <rect class="mm-grup-govde" x="770" y="718" width="720" height="358" rx="12"/>
+    <path class="mm-grup-cizgi" d="M771 752 H1489"/>
+    <text class="mm-t mm-t-grup-ad" x="784" y="741" text-anchor="start">VİDEO KARTI</text>
+    <text class="mm-t mm-t-grup-ek" x="891.3" y="741" text-anchor="start">73 entegre · 17 kapı çipi</text>
+  </g>
+  <g class="mm-grup" data-kutu="kyb">
+    <rect class="mm-grup-govde" x="1510" y="718" width="360" height="358" rx="12"/>
+    <path class="mm-grup-cizgi" d="M1511 752 H1869"/>
+    <text class="mm-t mm-t-grup-ad" x="1524" y="741" text-anchor="start">KENDİN YAP BELLEK</text>
+    <text class="mm-t mm-t-grup-ek" x="1689.1" y="741" text-anchor="start">22 entegre</text>
+  </g>
+  <g class="mm-grup" data-kutu="arka">
+    <rect class="mm-grup-govde" x="30" y="450" width="1840" height="248" rx="12"/>
+    <text class="mm-t mm-t-grup-ad" x="44" y="473" text-anchor="start">ARKA PANEL</text>
+    <text class="mm-t mm-t-grup-ek" x="150.5" y="473" text-anchor="start">64 hat · 7 kart yuvası</text>
+  </g>
+  <g class="mm-yol mm-y-adres" data-yol="pa">
+    <path class="mm-hale" d="M360 500 L1862 500" stroke-width="9.5"/>
+    <path class="mm-cizgi" d="M360 500 L1862 500" stroke-width="3.5"/>
+  </g>
+  <g class="mm-yol mm-y-kontrol" data-yol="bekleme">
+    <path class="mm-hale" d="M360 522 L1862 522" stroke-width="8.2"/>
+    <path class="mm-cizgi" d="M360 522 L1862 522" stroke-width="2.2"/>
+  </g>
+  <g class="mm-yol mm-y-saat" data-yol="saat">
+    <path class="mm-hale" d="M360 546 L1862 546" stroke-width="9.5"/>
+    <path class="mm-cizgi" d="M360 546 L1862 546" stroke-width="3.5"/>
+  </g>
+  <g class="mm-yol mm-y-adres" data-yol="adres">
+    <path class="mm-hale" d="M360 574 L1862 574" stroke-width="11.5"/>
+    <path class="mm-cizgi" d="M360 574 L1862 574" stroke-width="5.5"/>
+  </g>
+  <g class="mm-yol mm-y-veri" data-yol="veri">
+    <path class="mm-hale" d="M360 604 L1862 604" stroke-width="11.5"/>
+    <path class="mm-cizgi" d="M360 604 L1862 604" stroke-width="5.5"/>
+  </g>
+  <g class="mm-yol mm-y-kontrol" data-yol="denetim">
+    <path class="mm-hale" d="M360 632 L1862 632" stroke-width="9.5"/>
+    <path class="mm-cizgi" d="M360 632 L1862 632" stroke-width="3.5"/>
+  </g>
+  <g class="mm-yol mm-y-kontrol" data-yol="io">
+    <path class="mm-hale" d="M360 656 L1862 656" stroke-width="8.2"/>
+    <path class="mm-cizgi" d="M360 656 L1862 656" stroke-width="2.2"/>
+  </g>
+  <g class="mm-yol mm-y-kontrol" data-yol="kesme">
+    <path class="mm-hale" d="M360 678 L1862 678" stroke-width="9.5"/>
+    <path class="mm-cizgi" d="M360 678 L1862 678" stroke-width="3.5"/>
+  </g>
+  <g class="mm-yol mm-y-adres" data-yol="pa">
+    <path class="mm-hale" d="M780 438 L780 487.7" stroke-width="9.5"/>
+    <path class="mm-hale" d="M1290 448.6 L1290 495.3" stroke-width="9.5"/>
+    <path class="mm-cizgi" d="M780 438 L780 487.7" stroke-width="3.5" data-kutular="bellek"/>
+    <path class="mm-cizgi" d="M1290 448.6 L1290 500" stroke-width="3.5" data-kutular="onbellek"/>
+    <circle class="mm-nokta" cx="1290" cy="500" r="4.6"/>
+  </g>
+  <g class="mm-yol mm-y-kontrol" data-yol="bekleme">
+    <path class="mm-hale" d="M1330 438 L1330 511.9" stroke-width="8.2"/>
+    <path class="mm-hale" d="M1760 447 L1760 517.9" stroke-width="8.2"/>
+    <path class="mm-hale" d="M820 447 L820 517.9" stroke-width="8.2"/>
+    <path class="mm-cizgi" d="M1330 438 L1330 511.9" stroke-width="2.2" data-kutular="onbellek"/>
+    <path class="mm-cizgi" d="M1760 447 L1760 522" stroke-width="2.2" data-kutular="clk"/>
+    <path class="mm-cizgi" d="M820 447 L820 522" stroke-width="2.2" data-kutular="bellek"/>
+    <circle class="mm-nokta" cx="1760" cy="522" r="3.6"/>
+    <circle class="mm-nokta" cx="820" cy="522" r="3.6"/>
+  </g>
+  <g class="mm-yol mm-y-saat" data-yol="saat">
+    <path class="mm-hale" d="M1800 438 L1800 533.7" stroke-width="9.5"/>
+    <path class="mm-hale" d="M380 448.6 L380 541.3" stroke-width="9.5"/>
+    <path class="mm-hale" d="M860 448.6 L860 541.3" stroke-width="9.5"/>
+    <path class="mm-hale" d="M1370 448.6 L1370 541.3" stroke-width="9.5"/>
+    <path class="mm-hale" d="M570 707.4 L570 550.8" stroke-width="9.5"/>
+    <path class="mm-hale" d="M1060 707.4 L1060 550.8" stroke-width="9.5"/>
+    <path class="mm-cizgi" d="M1800 438 L1800 533.7" stroke-width="3.5" data-kutular="clk"/>
+    <path class="mm-cizgi" d="M380 448.6 L380 546" stroke-width="3.5" data-kutular="cpu"/>
+    <path class="mm-cizgi" d="M860 448.6 L860 546" stroke-width="3.5" data-kutular="bellek"/>
+    <path class="mm-cizgi" d="M1370 448.6 L1370 546" stroke-width="3.5" data-kutular="onbellek"/>
+    <path class="mm-cizgi" d="M570 707.4 L570 546" stroke-width="3.5" data-kutular="gc"/>
+    <path class="mm-cizgi" d="M1060 707.4 L1060 546" stroke-width="3.5" data-kutular="video"/>
+    <circle class="mm-nokta" cx="380" cy="546" r="4.6"/>
+    <circle class="mm-nokta" cx="860" cy="546" r="4.6"/>
+    <circle class="mm-nokta" cx="1370" cy="546" r="4.6"/>
+    <circle class="mm-nokta" cx="570" cy="546" r="4.6"/>
+    <circle class="mm-nokta" cx="1060" cy="546" r="4.6"/>
+  </g>
+  <g class="mm-yol mm-y-adres" data-yol="adres">
+    <path class="mm-hale" d="M420 438 L420 558.3" stroke-width="11.5"/>
+    <path class="mm-hale" d="M900 451 L900 568.3" stroke-width="11.5"/>
+    <path class="mm-hale" d="M1410 451 L1410 568.3" stroke-width="11.5"/>
+    <path class="mm-hale" d="M600 705 L600 579.8" stroke-width="11.5"/>
+    <path class="mm-hale" d="M1100 705 L1100 579.8" stroke-width="11.5"/>
+    <path class="mm-hale" d="M1580 705 L1580 579.8" stroke-width="11.5"/>
+    <path class="mm-cizgi" d="M420 438 L420 558.3" stroke-width="5.5" data-kutular="cpu"/>
+    <path class="mm-cizgi" d="M900 451 L900 574" stroke-width="5.5" data-kutular="bellek"/>
+    <path class="mm-cizgi" d="M1410 451 L1410 574" stroke-width="5.5" data-kutular="onbellek"/>
+    <path class="mm-cizgi" d="M600 705 L600 574" stroke-width="5.5" data-kutular="gc"/>
+    <path class="mm-cizgi" d="M1100 705 L1100 574" stroke-width="5.5" data-kutular="video"/>
+    <path class="mm-cizgi" d="M1580 705 L1580 574" stroke-width="5.5" data-kutular="kyb"/>
+    <circle class="mm-nokta" cx="900" cy="574" r="6.2"/>
+    <circle class="mm-nokta" cx="1410" cy="574" r="6.2"/>
+    <circle class="mm-nokta" cx="600" cy="574" r="6.2"/>
+    <circle class="mm-nokta" cx="1100" cy="574" r="6.2"/>
+    <circle class="mm-nokta" cx="1580" cy="574" r="6.2"/>
+  </g>
+  <g class="mm-yol mm-y-veri" data-yol="veri">
+    <path class="mm-hale" d="M460 451 L460 588.3" stroke-width="11.5"/>
+    <path class="mm-hale" d="M940 451 L940 588.3" stroke-width="11.5"/>
+    <path class="mm-hale" d="M1450 451 L1450 588.3" stroke-width="11.5"/>
+    <path class="mm-hale" d="M630 705 L630 619.8" stroke-width="11.5"/>
+    <path class="mm-hale" d="M1140 705 L1140 619.8" stroke-width="11.5"/>
+    <path class="mm-hale" d="M1620 705 L1620 619.8" stroke-width="11.5"/>
+    <path class="mm-cizgi" d="M460 451 L460 588.3" stroke-width="5.5" data-kutular="cpu"/>
+    <path class="mm-cizgi" d="M940 451 L940 588.3" stroke-width="5.5" data-kutular="bellek"/>
+    <path class="mm-cizgi" d="M1450 451 L1450 588.3" stroke-width="5.5" data-kutular="onbellek"/>
+    <path class="mm-cizgi" d="M630 705 L630 619.8" stroke-width="5.5" data-kutular="gc"/>
+    <path class="mm-cizgi" d="M1140 705 L1140 619.8" stroke-width="5.5" data-kutular="video"/>
+    <path class="mm-cizgi" d="M1620 705 L1620 619.8" stroke-width="5.5" data-kutular="kyb"/>
+  </g>
+  <g class="mm-yol mm-y-kontrol" data-yol="denetim">
+    <path class="mm-hale" d="M500 438 L500 619.7" stroke-width="9.5"/>
+    <path class="mm-hale" d="M980 448.6 L980 627.3" stroke-width="9.5"/>
+    <path class="mm-hale" d="M1490 448.6 L1490 627.3" stroke-width="9.5"/>
+    <path class="mm-hale" d="M660 707.4 L660 636.8" stroke-width="9.5"/>
+    <path class="mm-hale" d="M1180 707.4 L1180 636.8" stroke-width="9.5"/>
+    <path class="mm-hale" d="M1660 707.4 L1660 636.8" stroke-width="9.5"/>
+    <path class="mm-cizgi" d="M500 438 L500 619.7" stroke-width="3.5" data-kutular="cpu"/>
+    <path class="mm-cizgi" d="M980 448.6 L980 632" stroke-width="3.5" data-kutular="bellek"/>
+    <path class="mm-cizgi" d="M1490 448.6 L1490 632" stroke-width="3.5" data-kutular="onbellek"/>
+    <path class="mm-cizgi" d="M660 707.4 L660 632" stroke-width="3.5" data-kutular="gc"/>
+    <path class="mm-cizgi" d="M1180 707.4 L1180 632" stroke-width="3.5" data-kutular="video"/>
+    <path class="mm-cizgi" d="M1660 707.4 L1660 632" stroke-width="3.5" data-kutular="kyb"/>
+    <circle class="mm-nokta" cx="980" cy="632" r="4.6"/>
+    <circle class="mm-nokta" cx="1490" cy="632" r="4.6"/>
+    <circle class="mm-nokta" cx="660" cy="632" r="4.6"/>
+    <circle class="mm-nokta" cx="1180" cy="632" r="4.6"/>
+    <circle class="mm-nokta" cx="1660" cy="632" r="4.6"/>
+  </g>
+  <g class="mm-yol mm-y-kontrol" data-yol="io">
+    <path class="mm-hale" d="M1020 438 L1020 645.9" stroke-width="8.2"/>
+    <path class="mm-hale" d="M1530 447 L1530 651.9" stroke-width="8.2"/>
+    <path class="mm-hale" d="M690 709 L690 660.1" stroke-width="8.2"/>
+    <path class="mm-hale" d="M1220 709 L1220 660.1" stroke-width="8.2"/>
+    <path class="mm-hale" d="M1700 709 L1700 660.1" stroke-width="8.2"/>
+    <path class="mm-cizgi" d="M1020 438 L1020 645.9" stroke-width="2.2" data-kutular="bellek"/>
+    <path class="mm-cizgi" d="M1530 447 L1530 656" stroke-width="2.2" data-kutular="onbellek"/>
+    <path class="mm-cizgi" d="M690 709 L690 656" stroke-width="2.2" data-kutular="gc"/>
+    <path class="mm-cizgi" d="M1220 709 L1220 656" stroke-width="2.2" data-kutular="video"/>
+    <path class="mm-cizgi" d="M1700 709 L1700 656" stroke-width="2.2" data-kutular="kyb"/>
+    <circle class="mm-nokta" cx="1530" cy="656" r="3.6"/>
+    <circle class="mm-nokta" cx="690" cy="656" r="3.6"/>
+    <circle class="mm-nokta" cx="1220" cy="656" r="3.6"/>
+    <circle class="mm-nokta" cx="1700" cy="656" r="3.6"/>
+  </g>
+  <g class="mm-yol mm-y-kontrol" data-yol="kesme">
+    <path class="mm-hale" d="M720 707.4 L720 690.4" stroke-width="9.5"/>
+    <path class="mm-hale" d="M540 448.6 L540 673.3" stroke-width="9.5"/>
+    <path class="mm-hale" d="M1260 718 L1260 690.4" stroke-width="9.5"/>
+    <path class="mm-cizgi" d="M720 707.4 L720 690.4" stroke-width="3.5" data-kutular="gc"/>
+    <path class="mm-cizgi" d="M540 448.6 L540 678" stroke-width="3.5" data-kutular="cpu"/>
+    <path class="mm-cizgi" d="M1260 718 L1260 690.4" stroke-width="3.5" data-kutular="video"/>
+    <circle class="mm-nokta" cx="540" cy="678" r="4.6"/>
+  </g>
+  <g class="mm-yol mm-y-dis" data-yol="usb">
+    <path class="mm-hale" d="M154 1074.6 L154 1105.4" stroke-width="9.5"/>
+    <path class="mm-cizgi" d="M154 1074.6 L154 1105.4" stroke-width="3.5" data-kutular="gc-uart pc"/>
+  </g>
+  <g class="mm-yol mm-y-dis" data-yol="ps2">
+    <path class="mm-hale" d="M390 1074.6 L390 1105.4" stroke-width="9.5"/>
+    <path class="mm-cizgi" d="M390 1074.6 L390 1105.4" stroke-width="3.5" data-kutular="gc-ps2 klavye"/>
+  </g>
+  <g class="mm-yol mm-y-dis" data-yol="vga">
+    <path class="mm-hale" d="M894 1064 L894 1105.4" stroke-width="9.5"/>
+    <path class="mm-cizgi" d="M894 1064 L894 1105.4" stroke-width="3.5" data-kutular="video-dac monitor"/>
+  </g>
+  <g class="mm-kutu mm-k-kontrol" data-kutu="clk-osc">
+    <rect class="mm-kutu-govde" x="1582" y="126" width="276" height="144" rx="8"/>
+    <text class="mm-t mm-t-ad" x="1720" y="166.8" text-anchor="middle">OSİLATÖR VE RESET</text>
+    <text class="mm-t mm-t-parca" x="1720" y="185.9" text-anchor="middle">74HC14</text>
+    <text class="mm-t mm-t-pasif" x="1720" y="204.9" text-anchor="middle">buton ×2, iki konumlu anahtar ×2,</text>
+    <text class="mm-t mm-t-pasif" x="1720" y="220.9" text-anchor="middle">kristal osilatör, potansiyometre</text>
+    <text class="mm-t mm-t-gorev" x="1720" y="239.9" text-anchor="middle">kristal ya da yavaş saat; RESET, ADIM</text>
+  </g>
+  <g class="mm-kutu mm-k-register" data-kutu="clk-uretim">
+    <rect class="mm-kutu-govde" x="1582" y="282" width="276" height="144" rx="8"/>
+    <text class="mm-t mm-t-ad" x="1720" y="313.8" text-anchor="middle">SAAT ÜRETİMİ VE DAĞITIMI</text>
+    <text class="mm-t mm-t-parca" x="1720" y="332.9" text-anchor="middle">74HC74 ×2, 74HC157, 74HC175,</text>
+    <text class="mm-t mm-t-parca" x="1720" y="348.9" text-anchor="middle">74HC541</text>
+    <text class="mm-t mm-t-pasif" x="1720" y="367.9" text-anchor="middle">LED</text>
+    <text class="mm-t mm-t-kapi" x="1720" y="386.2" text-anchor="middle">+ 14 kapı (yapıştırıcı lojikte)</text>
+    <text class="mm-t mm-t-gorev" x="1720" y="404.9" text-anchor="middle">CLK, WR_WIN, TCLK; adım ve bekleme</text>
+  </g>
+  <g class="mm-kutu mm-k-register mm-ayrintili" data-kutu="cpu-reg" data-ayrinti="cpu">
+    <rect class="mm-kutu-govde" x="42" y="126" width="242" height="144" rx="8"/>
+    <text class="mm-t mm-t-ad" x="163" y="150.3" text-anchor="middle">REGISTER'LAR VE SABİT</text>
+    <text class="mm-t mm-t-ad" x="163" y="168.3" text-anchor="middle">BİRİMİ</text>
+    <text class="mm-t mm-t-parca" x="163" y="187.4" text-anchor="middle">74HC574 ×24, 74HC151 ×19,</text>
+    <text class="mm-t mm-t-parca" x="163" y="203.4" text-anchor="middle">74HC161 ×4, 74HC541 ×4,</text>
+    <text class="mm-t mm-t-parca" x="163" y="219.4" text-anchor="middle">74HC138 ×2</text>
+    <text class="mm-t mm-t-kapi" x="163" y="237.7" text-anchor="middle">+ 14 kapı (yapıştırıcı lojikte)</text>
+    <text class="mm-t mm-t-gorev" x="163" y="256.4" text-anchor="middle">R0–R7, TA, TB, PC, MAR, IR, sabitler</text>
+  </g>
+  <g class="mm-kutu mm-k-islem mm-ayrintili" data-kutu="cpu-alu" data-ayrinti="cpu">
+    <rect class="mm-kutu-govde" x="296" y="126" width="242" height="144" rx="8"/>
+    <text class="mm-t mm-t-ad" x="417" y="151.3" text-anchor="middle">ALU VE BAYRAKLAR</text>
+    <text class="mm-t mm-t-parca" x="417" y="170.4" text-anchor="middle">74HC151 ×17, 74HC153 ×9,</text>
+    <text class="mm-t mm-t-parca" x="417" y="186.4" text-anchor="middle">74HC283 ×4, 74HC541 ×4,</text>
+    <text class="mm-t mm-t-parca" x="417" y="202.4" text-anchor="middle">74HC138 ×3, 74HC157 ×3,</text>
+    <text class="mm-t mm-t-parca" x="417" y="218.4" text-anchor="middle">74HC74 ×3, 74HC688 ×2</text>
+    <text class="mm-t mm-t-kapi" x="417" y="236.7" text-anchor="middle">+ 100 kapı (yapıştırıcı lojikte)</text>
+    <text class="mm-t mm-t-gorev" x="417" y="255.4" text-anchor="middle">16 bit aritmetik ve mantık; N Z C V</text>
+  </g>
+  <g class="mm-kutu mm-k-kontrol mm-ayrintili" data-kutu="cpu-kontrol" data-ayrinti="cpu">
+    <rect class="mm-kutu-govde" x="42" y="282" width="242" height="144" rx="8"/>
+    <text class="mm-t mm-t-ad" x="163" y="305.8" text-anchor="middle">KONTROL BİRİMİ</text>
+    <text class="mm-t mm-t-parca" x="163" y="324.9" text-anchor="middle">74HC151 ×10, 74HC138 ×7,</text>
+    <text class="mm-t mm-t-parca" x="163" y="340.9" text-anchor="middle">74HC574 ×4, 74HC74 ×2,</text>
+    <text class="mm-t mm-t-parca" x="163" y="356.9" text-anchor="middle">74HC161</text>
+    <text class="mm-t mm-t-pasif" x="163" y="375.9" text-anchor="middle">LED ×2</text>
+    <text class="mm-t mm-t-kapi" x="163" y="394.2" text-anchor="middle">+ 126 kapı (yapıştırıcı lojikte)</text>
+    <text class="mm-t mm-t-gorev" x="163" y="412.9" text-anchor="middle">mikrokod: 32 kontrol hattı</text>
+  </g>
+  <g class="mm-kutu mm-k-tampon mm-ayrintili" data-kutu="cpu-bellek" data-ayrinti="cpu">
+    <rect class="mm-kutu-govde" x="296" y="282" width="242" height="144" rx="8"/>
+    <text class="mm-t mm-t-ad" x="417" y="323.3" text-anchor="middle">BELLEK ARAYÜZÜ</text>
+    <text class="mm-t mm-t-parca" x="417" y="342.4" text-anchor="middle">74HC245 ×3, 74HC541</text>
+    <text class="mm-t mm-t-kapi" x="417" y="360.7" text-anchor="middle">+ 16 kapı (yapıştırıcı lojikte)</text>
+    <text class="mm-t mm-t-gorev" x="417" y="379.4" text-anchor="middle">iç veri yolu ↔ DE, DO; okuma / yazma</text>
+    <text class="mm-t mm-t-gorev" x="417" y="395.4" text-anchor="middle">darbeleri</text>
+  </g>
+  <g class="mm-kutu mm-k-secici" data-kutu="bellek-cozme">
+    <rect class="mm-kutu-govde" x="582" y="126" width="217" height="144" rx="8"/>
+    <text class="mm-t mm-t-ad" x="690.5" y="168.3" text-anchor="middle">ADRES ÇÖZME</text>
+    <text class="mm-t mm-t-parca" x="690.5" y="187.4" text-anchor="middle">74HC688 ×2, 74HC138,</text>
+    <text class="mm-t mm-t-parca" x="690.5" y="203.4" text-anchor="middle">74HC139</text>
+    <text class="mm-t mm-t-gorev" x="690.5" y="222.4" text-anchor="middle">G/Ç alanı (~IO), bank register'ları,</text>
+    <text class="mm-t mm-t-gorev" x="690.5" y="238.4" text-anchor="middle">çip seçimi</text>
+  </g>
+  <g class="mm-kutu mm-k-register" data-kutu="bellek-bank">
+    <rect class="mm-kutu-govde" x="811" y="126" width="217" height="144" rx="8"/>
+    <text class="mm-t mm-t-ad" x="919.5" y="159.3" text-anchor="middle">BANK REGISTER'LARI</text>
+    <text class="mm-t mm-t-parca" x="919.5" y="178.4" text-anchor="middle">74HC273 ×4, 74HC541 ×4,</text>
+    <text class="mm-t mm-t-parca" x="919.5" y="194.4" text-anchor="middle">74HC153 ×3</text>
+    <text class="mm-t mm-t-kapi" x="919.5" y="212.7" text-anchor="middle">+ 14 kapı (yapıştırıcı lojikte)</text>
+    <text class="mm-t mm-t-gorev" x="919.5" y="231.4" text-anchor="middle">16 bit adres → 20 bit fiziksel</text>
+    <text class="mm-t mm-t-gorev" x="919.5" y="247.4" text-anchor="middle">adres</text>
+  </g>
+  <g class="mm-kutu mm-k-tampon" data-kutu="bellek-sira">
+    <rect class="mm-kutu-govde" x="582" y="282" width="217" height="144" rx="8"/>
+    <text class="mm-t mm-t-ad" x="690.5" y="323.3" text-anchor="middle">BAYT SIRALAYICI</text>
+    <text class="mm-t mm-t-parca" x="690.5" y="342.4" text-anchor="middle">74HC245 ×2, 74HC74 ×2,</text>
+    <text class="mm-t mm-t-parca" x="690.5" y="358.4" text-anchor="middle">74HC574</text>
+    <text class="mm-t mm-t-kapi" x="690.5" y="376.7" text-anchor="middle">+ 15 kapı (yapıştırıcı lojikte)</text>
+    <text class="mm-t mm-t-gorev" x="690.5" y="395.4" text-anchor="middle">16 bitlik erişim, 8 bitlik çipler</text>
+  </g>
+  <g class="mm-kutu mm-k-bellek" data-kutu="bellek-cip">
+    <rect class="mm-kutu-govde" x="811" y="282" width="217" height="144" rx="8"/>
+    <text class="mm-t mm-t-ad" x="919.5" y="332.3" text-anchor="middle">EEPROM VE RAM</text>
+    <text class="mm-t mm-t-parca" x="919.5" y="351.4" text-anchor="middle">62256 ×4, 28C256</text>
+    <text class="mm-t mm-t-gorev" x="919.5" y="370.4" text-anchor="middle">32 KB EEPROM (BIOS), 4 × 32 KB</text>
+    <text class="mm-t mm-t-gorev" x="919.5" y="386.4" text-anchor="middle">RAM</text>
+  </g>
+  <g class="mm-kutu mm-k-kontrol" data-kutu="onbellek-sira">
+    <rect class="mm-kutu-govde" x="1072" y="126" width="227" height="144" rx="8"/>
+    <text class="mm-t mm-t-ad" x="1185.5" y="159.3" text-anchor="middle">G/Ç ÇÖZME VE SIRALAMA</text>
+    <text class="mm-t mm-t-parca" x="1185.5" y="178.4" text-anchor="middle">74HC74 ×3, 74HC139,</text>
+    <text class="mm-t mm-t-parca" x="1185.5" y="194.4" text-anchor="middle">74HC688</text>
+    <text class="mm-t mm-t-kapi" x="1185.5" y="212.7" text-anchor="middle">+ 32 kapı (yapıştırıcı lojikte)</text>
+    <text class="mm-t mm-t-gorev" x="1185.5" y="231.4" text-anchor="middle">isabette beklemesiz; ıskalamada</text>
+    <text class="mm-t mm-t-gorev" x="1185.5" y="247.4" text-anchor="middle">~WAIT</text>
+  </g>
+  <g class="mm-kutu mm-k-bellek" data-kutu="onbellek-etiket">
+    <rect class="mm-kutu-govde" x="1311" y="126" width="227" height="144" rx="8"/>
+    <text class="mm-t mm-t-ad" x="1424.5" y="159.3" text-anchor="middle">ETİKET BELLEĞİ</text>
+    <text class="mm-t mm-t-parca" x="1424.5" y="178.4" text-anchor="middle">74HC157 ×3, 74HC161 ×3,</text>
+    <text class="mm-t mm-t-parca" x="1424.5" y="194.4" text-anchor="middle">62256 ×2, 74HC541 ×2,</text>
+    <text class="mm-t mm-t-parca" x="1424.5" y="210.4" text-anchor="middle">74HC688 ×2, 74HC74</text>
+    <text class="mm-t mm-t-kapi" x="1424.5" y="228.7" text-anchor="middle">+ 5 kapı (yapıştırıcı lojikte)</text>
+    <text class="mm-t mm-t-gorev" x="1424.5" y="247.4" text-anchor="middle">satır başına etiket ve geçerli biti</text>
+  </g>
+  <g class="mm-kutu mm-k-bellek" data-kutu="onbellek-veri">
+    <rect class="mm-kutu-govde" x="1072" y="282" width="227" height="144" rx="8"/>
+    <text class="mm-t mm-t-ad" x="1185.5" y="340.3" text-anchor="middle">VERİ BELLEĞİ</text>
+    <text class="mm-t mm-t-parca" x="1185.5" y="359.4" text-anchor="middle">62256 ×2</text>
+    <text class="mm-t mm-t-gorev" x="1185.5" y="378.4" text-anchor="middle">önbelleğe alınmış kelimeler</text>
+  </g>
+  <g class="mm-kutu mm-k-register" data-kutu="onbellek-sayac">
+    <rect class="mm-kutu-govde" x="1311" y="282" width="227" height="144" rx="8"/>
+    <text class="mm-t mm-t-ad" x="1424.5" y="323.3" text-anchor="middle">SAYAÇLAR</text>
+    <text class="mm-t mm-t-parca" x="1424.5" y="342.4" text-anchor="middle">74HC161 ×8, 74HC541 ×5</text>
+    <text class="mm-t mm-t-kapi" x="1424.5" y="360.7" text-anchor="middle">+ 7 kapı (yapıştırıcı lojikte)</text>
+    <text class="mm-t mm-t-gorev" x="1424.5" y="379.4" text-anchor="middle">isabet ve ıskalama sayaçları (16</text>
+    <text class="mm-t mm-t-gorev" x="1424.5" y="395.4" text-anchor="middle">bit)</text>
+  </g>
+  <g class="mm-kutu mm-k-secici" data-kutu="gc-cozme">
+    <rect class="mm-kutu-govde" x="42" y="764" width="224" height="144" rx="8"/>
+    <text class="mm-t mm-t-ad" x="154" y="813.3" text-anchor="middle">ADRES ÇÖZME</text>
+    <text class="mm-t mm-t-parca" x="154" y="832.4" text-anchor="middle">74HC138 ×4, 74HC74</text>
+    <text class="mm-t mm-t-kapi" x="154" y="850.7" text-anchor="middle">+ 5 kapı (yapıştırıcı lojikte)</text>
+    <text class="mm-t mm-t-gorev" x="154" y="869.4" text-anchor="middle">FF00–FF0B register'ları</text>
+  </g>
+  <g class="mm-kutu mm-k-register" data-kutu="gc-zaman">
+    <rect class="mm-kutu-govde" x="278" y="764" width="224" height="144" rx="8"/>
+    <text class="mm-t mm-t-ad" x="390" y="797.3" text-anchor="middle">ZAMANLAYICI</text>
+    <text class="mm-t mm-t-parca" x="390" y="816.4" text-anchor="middle">74HC161 ×7, 74HC541 ×4,</text>
+    <text class="mm-t mm-t-parca" x="390" y="832.4" text-anchor="middle">74HC574 ×2, 74HC688 ×2,</text>
+    <text class="mm-t mm-t-parca" x="390" y="848.4" text-anchor="middle">74HC175, 74HC74</text>
+    <text class="mm-t mm-t-kapi" x="390" y="866.7" text-anchor="middle">+ 26 kapı (yapıştırıcı lojikte)</text>
+    <text class="mm-t mm-t-gorev" x="390" y="885.4" text-anchor="middle">1 kHz tık, 16 bit geri sayıcı</text>
+  </g>
+  <g class="mm-kutu mm-k-kontrol" data-kutu="gc-kesme">
+    <rect class="mm-kutu-govde" x="514" y="764" width="224" height="144" rx="8"/>
+    <text class="mm-t mm-t-ad" x="626" y="813.3" text-anchor="middle">KESME DENETLEYİCİSİ</text>
+    <text class="mm-t mm-t-parca" x="626" y="832.4" text-anchor="middle">74HC541 ×3, 74HC175</text>
+    <text class="mm-t mm-t-kapi" x="626" y="850.7" text-anchor="middle">+ 13 kapı (yapıştırıcı lojikte)</text>
+    <text class="mm-t mm-t-gorev" x="626" y="869.4" text-anchor="middle">istekleri maskele → IRQ</text>
+  </g>
+  <g class="mm-kutu mm-k-gc" data-kutu="gc-uart">
+    <rect class="mm-kutu-govde" x="42" y="920" width="224" height="144" rx="8"/>
+    <text class="mm-t mm-t-ad" x="154" y="951.8" text-anchor="middle">UART</text>
+    <text class="mm-t mm-t-parca" x="154" y="970.9" text-anchor="middle">74HC161 ×6, 74HC74 ×2,</text>
+    <text class="mm-t mm-t-parca" x="154" y="986.9" text-anchor="middle">74HC165, 74HC595</text>
+    <text class="mm-t mm-t-pasif" x="154" y="1005.9" text-anchor="middle">USB-UART modülü</text>
+    <text class="mm-t mm-t-kapi" x="154" y="1024.2" text-anchor="middle">+ 33 kapı (yapıştırıcı lojikte)</text>
+    <text class="mm-t mm-t-gorev" x="154" y="1042.9" text-anchor="middle">seri port (8N1)</text>
+  </g>
+  <g class="mm-kutu mm-k-gc" data-kutu="gc-ps2">
+    <rect class="mm-kutu-govde" x="278" y="920" width="224" height="144" rx="8"/>
+    <text class="mm-t mm-t-ad" x="390" y="951.8" text-anchor="middle">PS/2 KLAVYE</text>
+    <text class="mm-t mm-t-parca" x="390" y="970.9" text-anchor="middle">74HC05, 74HC14, 74HC161,</text>
+    <text class="mm-t mm-t-parca" x="390" y="986.9" text-anchor="middle">74HC595</text>
+    <text class="mm-t mm-t-pasif" x="390" y="1005.9" text-anchor="middle">PS/2 konnektörü</text>
+    <text class="mm-t mm-t-kapi" x="390" y="1024.2" text-anchor="middle">+ 11 kapı (yapıştırıcı lojikte)</text>
+    <text class="mm-t mm-t-gorev" x="390" y="1042.9" text-anchor="middle">klavyeden tarama kodları</text>
+  </g>
+  <g class="mm-kutu mm-k-register" data-kutu="gc-durum">
+    <rect class="mm-kutu-govde" x="514" y="920" width="224" height="144" rx="8"/>
+    <text class="mm-t mm-t-ad" x="626" y="978.3" text-anchor="middle">DURUM REGISTER'LARI</text>
+    <text class="mm-t mm-t-parca" x="626" y="997.4" text-anchor="middle">74HC541 ×2, 74HC74</text>
+    <text class="mm-t mm-t-gorev" x="626" y="1016.4" text-anchor="middle">UART ve klavye durumu</text>
+  </g>
+  <g class="mm-kutu mm-k-tampon" data-kutu="video-cpu">
+    <rect class="mm-kutu-govde" x="782" y="764" width="224" height="144" rx="8"/>
+    <text class="mm-t mm-t-ad" x="894" y="789.3" text-anchor="middle">CPU ARAYÜZÜ</text>
+    <text class="mm-t mm-t-parca" x="894" y="808.4" text-anchor="middle">74HC74 ×5, 74HC138 ×4,</text>
+    <text class="mm-t mm-t-parca" x="894" y="824.4" text-anchor="middle">74HC161 ×4, 74HC574 ×4,</text>
+    <text class="mm-t mm-t-parca" x="894" y="840.4" text-anchor="middle">74HC541</text>
+    <text class="mm-t mm-t-kapi" x="894" y="858.7" text-anchor="middle">+ 10 kapı (yapıştırıcı lojikte)</text>
+    <text class="mm-t mm-t-gorev" x="894" y="877.4" text-anchor="middle">FF20–FF26; VRAM'e yazma,</text>
+    <text class="mm-t mm-t-gorev" x="894" y="893.4" text-anchor="middle">okuma</text>
+  </g>
+  <g class="mm-kutu mm-k-kontrol" data-kutu="video-zaman">
+    <rect class="mm-kutu-govde" x="1018" y="764" width="224" height="144" rx="8"/>
+    <text class="mm-t mm-t-ad" x="1130" y="787.8" text-anchor="middle">TARAMA ZAMANLAMASI</text>
+    <text class="mm-t mm-t-parca" x="1130" y="806.9" text-anchor="middle">74HC161 ×5, 74AC161,</text>
+    <text class="mm-t mm-t-parca" x="1130" y="822.9" text-anchor="middle">74AC74, 74HC393, 74HC541,</text>
+    <text class="mm-t mm-t-parca" x="1130" y="838.9" text-anchor="middle">74HC688, 74HC74</text>
+    <text class="mm-t mm-t-pasif" x="1130" y="857.9" text-anchor="middle">25,175 MHz osilatör</text>
+    <text class="mm-t mm-t-kapi" x="1130" y="876.2" text-anchor="middle">+ 31 kapı (yapıştırıcı lojikte)</text>
+    <text class="mm-t mm-t-gorev" x="1130" y="894.9" text-anchor="middle">640 × 480, 60 Hz tarama</text>
+  </g>
+  <g class="mm-kutu mm-k-register" data-kutu="video-imlec">
+    <rect class="mm-kutu-govde" x="1254" y="764" width="224" height="144" rx="8"/>
+    <text class="mm-t mm-t-ad" x="1366" y="822.3" text-anchor="middle">İMLEÇ</text>
+    <text class="mm-t mm-t-parca" x="1366" y="841.4" text-anchor="middle">74HC541 ×2, 74HC574 ×2</text>
+    <text class="mm-t mm-t-gorev" x="1366" y="860.4" text-anchor="middle">imlecin sütunu ve satırı</text>
+  </g>
+  <g class="mm-kutu mm-k-gc" data-kutu="video-dac">
+    <rect class="mm-kutu-govde" x="782" y="920" width="224" height="144" rx="8"/>
+    <text class="mm-t mm-t-ad" x="894" y="959.8" text-anchor="middle">RENK VE DAC</text>
+    <text class="mm-t mm-t-parca" x="894" y="978.9" text-anchor="middle">74HC157</text>
+    <text class="mm-t mm-t-pasif" x="894" y="997.9" text-anchor="middle">VGA konnektörü</text>
+    <text class="mm-t mm-t-kapi" x="894" y="1016.2" text-anchor="middle">+ 7 kapı (yapıştırıcı lojikte)</text>
+    <text class="mm-t mm-t-gorev" x="894" y="1034.9" text-anchor="middle">IRGB → analog VGA</text>
+  </g>
+  <g class="mm-kutu mm-k-islem" data-kutu="video-piksel">
+    <rect class="mm-kutu-govde" x="1018" y="920" width="224" height="144" rx="8"/>
+    <text class="mm-t mm-t-ad" x="1130" y="953.3" text-anchor="middle">PİKSEL YOLU</text>
+    <text class="mm-t mm-t-parca" x="1130" y="972.4" text-anchor="middle">74HC574 ×5, 74HC175 ×3,</text>
+    <text class="mm-t mm-t-parca" x="1130" y="988.4" text-anchor="middle">74HC688 ×2, 28C256,</text>
+    <text class="mm-t mm-t-parca" x="1130" y="1004.4" text-anchor="middle">74HC166</text>
+    <text class="mm-t mm-t-kapi" x="1130" y="1022.7" text-anchor="middle">+ 5 kapı (yapıştırıcı lojikte)</text>
+    <text class="mm-t mm-t-gorev" x="1130" y="1041.4" text-anchor="middle">karakter ROM'u → piksel kaydırıcı</text>
+  </g>
+  <g class="mm-kutu mm-k-bellek" data-kutu="video-vram">
+    <rect class="mm-kutu-govde" x="1254" y="920" width="224" height="144" rx="8"/>
+    <text class="mm-t mm-t-ad" x="1366" y="961.3" text-anchor="middle">VRAM</text>
+    <text class="mm-t mm-t-parca" x="1366" y="980.4" text-anchor="middle">74HC157 ×3, 74HC161 ×3,</text>
+    <text class="mm-t mm-t-parca" x="1366" y="996.4" text-anchor="middle">62256 ×2, 74HC574 ×2</text>
+    <text class="mm-t mm-t-kapi" x="1366" y="1014.7" text-anchor="middle">+ 7 kapı (yapıştırıcı lojikte)</text>
+    <text class="mm-t mm-t-gorev" x="1366" y="1033.4" text-anchor="middle">80 × 30 karakter ve renkleri</text>
+  </g>
+  <g class="mm-kutu mm-k-secici" data-kutu="kyb-cozme">
+    <rect class="mm-kutu-govde" x="1522" y="764" width="336" height="92" rx="8"/>
+    <text class="mm-t mm-t-ad" x="1690" y="796.3" text-anchor="middle">ADRES ÇÖZME</text>
+    <text class="mm-t mm-t-parca" x="1690" y="815.4" text-anchor="middle">74HC138 ×4</text>
+    <text class="mm-t mm-t-gorev" x="1690" y="834.4" text-anchor="middle">FF40–FF4F</text>
+  </g>
+  <g class="mm-kutu mm-k-tampon" data-kutu="kyb-tampon">
+    <rect class="mm-kutu-govde" x="1522" y="868" width="336" height="92" rx="8"/>
+    <text class="mm-t mm-t-ad" x="1690" y="900.3" text-anchor="middle">VERİYOLU TAMPONU</text>
+    <text class="mm-t mm-t-parca" x="1690" y="919.4" text-anchor="middle">74HC245 ×2</text>
+    <text class="mm-t mm-t-gorev" x="1690" y="938.4" text-anchor="middle">DE, DO ↔ kart içi bayt hatları</text>
+  </g>
+  <g class="mm-kutu mm-k-register" data-kutu="kyb-hucre">
+    <rect class="mm-kutu-govde" x="1522" y="972" width="336" height="92" rx="8"/>
+    <text class="mm-t mm-t-ad" x="1690" y="1004.3" text-anchor="middle">BELLEK HÜCRELERİ</text>
+    <text class="mm-t mm-t-parca" x="1690" y="1023.4" text-anchor="middle">74HC574 ×16</text>
+    <text class="mm-t mm-t-gorev" x="1690" y="1042.4" text-anchor="middle">16 bayt (8 kelime), 74HC574'lerle</text>
+  </g>
+  <g class="mm-kutu mm-k-gc mm-cihaz" data-kutu="pc">
+    <rect class="mm-kutu-govde" x="42" y="1116" width="224" height="60" rx="8"/>
+    <text class="mm-t mm-t-ad" x="154" y="1141.8" text-anchor="middle">BİLGİSAYAR</text>
+    <text class="mm-t mm-t-gorev" x="154" y="1160.9" text-anchor="middle">USB üzerinden seri terminal</text>
+  </g>
+  <g class="mm-kutu mm-k-gc mm-cihaz" data-kutu="klavye">
+    <rect class="mm-kutu-govde" x="278" y="1116" width="224" height="60" rx="8"/>
+    <text class="mm-t mm-t-ad" x="390" y="1141.8" text-anchor="middle">PS/2 KLAVYE</text>
+    <text class="mm-t mm-t-gorev" x="390" y="1160.9" text-anchor="middle">tarama kodları</text>
+  </g>
+  <g class="mm-kutu mm-k-gc mm-cihaz" data-kutu="monitor">
+    <rect class="mm-kutu-govde" x="782" y="1116" width="224" height="60" rx="8"/>
+    <text class="mm-t mm-t-ad" x="894" y="1141.8" text-anchor="middle">VGA MONİTÖR</text>
+    <text class="mm-t mm-t-gorev" x="894" y="1160.9" text-anchor="middle">640 × 480, 60 Hz</text>
+  </g>
+  <g class="mm-yol-ust mm-y-adres" data-yol="pa">
+    <path class="mm-ok" d="M780 498.3 L773 485 L787 485 Z" data-kutular="bellek"/>
+    <path class="mm-ok" d="M1290 438 L1297 451.3 L1283 451.3 Z" data-kutular="onbellek"/>
+    <text class="mm-t mm-t-etiket" x="44" y="504.5" text-anchor="start">BANK ADRESİ · PA14–PA19 (6)</text>
+  </g>
+  <g class="mm-yol-ust mm-y-kontrol" data-yol="bekleme">
+    <path class="mm-ok" d="M1330 520.9 L1324.1 509.6 L1335.9 509.6 Z" data-kutular="onbellek"/>
+    <path class="mm-ok" d="M1760 438 L1765.9 449.3 L1754.1 449.3 Z" data-kutular="clk"/>
+    <path class="mm-ok" d="M820 438 L825.9 449.3 L814.1 449.3 Z" data-kutular="bellek"/>
+    <text class="mm-t mm-t-etiket" x="44" y="526.5" text-anchor="start">BEKLEME · ~WAIT</text>
+  </g>
+  <g class="mm-yol-ust mm-y-saat" data-yol="saat">
+    <path class="mm-ok" d="M1800 544.3 L1793 531 L1807 531 Z" data-kutular="clk"/>
+    <path class="mm-ok" d="M380 438 L387 451.3 L373 451.3 Z" data-kutular="cpu"/>
+    <path class="mm-ok" d="M860 438 L867 451.3 L853 451.3 Z" data-kutular="bellek"/>
+    <path class="mm-ok" d="M1370 438 L1377 451.3 L1363 451.3 Z" data-kutular="onbellek"/>
+    <path class="mm-ok" d="M570 718 L563 704.8 L577 704.8 Z" data-kutular="gc"/>
+    <path class="mm-ok" d="M1060 718 L1053 704.8 L1067 704.8 Z" data-kutular="video"/>
+    <text class="mm-t mm-t-etiket" x="44" y="550.5" text-anchor="start">SAAT · CLK, WR_WIN, TCLK, OSC, ~RESET</text>
+  </g>
+  <g class="mm-yol-ust mm-y-adres" data-yol="adres">
+    <path class="mm-ok" d="M420 571.3 L411.3 555 L428.7 555 Z" data-kutular="cpu"/>
+    <path class="mm-ok" d="M900 438 L908.7 454.3 L891.3 454.3 Z" data-kutular="bellek"/>
+    <path class="mm-ok" d="M1410 438 L1418.7 454.3 L1401.3 454.3 Z" data-kutular="onbellek"/>
+    <path class="mm-ok" d="M600 718 L591.3 701.8 L608.7 701.8 Z" data-kutular="gc"/>
+    <path class="mm-ok" d="M1100 718 L1091.3 701.8 L1108.7 701.8 Z" data-kutular="video"/>
+    <path class="mm-ok" d="M1580 718 L1571.3 701.8 L1588.7 701.8 Z" data-kutular="kyb"/>
+    <text class="mm-t mm-t-etiket" x="44" y="578.5" text-anchor="start">ADRES YOLU · A0–A15 (16 BİT)</text>
+  </g>
+  <g class="mm-yol-ust mm-y-veri" data-yol="veri">
+    <path class="mm-ok" d="M460 438 L468.7 454.3 L451.3 454.3 Z" data-kutular="cpu"/>
+    <path class="mm-ok" d="M460 601.3 L451.3 585 L468.7 585 Z" data-kutular="cpu"/>
+    <path class="mm-ok" d="M940 438 L948.7 454.3 L931.3 454.3 Z" data-kutular="bellek"/>
+    <path class="mm-ok" d="M940 601.3 L931.3 585 L948.7 585 Z" data-kutular="bellek"/>
+    <path class="mm-ok" d="M1450 438 L1458.7 454.3 L1441.3 454.3 Z" data-kutular="onbellek"/>
+    <path class="mm-ok" d="M1450 601.3 L1441.3 585 L1458.7 585 Z" data-kutular="onbellek"/>
+    <path class="mm-ok" d="M630 718 L621.3 701.8 L638.7 701.8 Z" data-kutular="gc"/>
+    <path class="mm-ok" d="M630 606.8 L638.7 623 L621.3 623 Z" data-kutular="gc"/>
+    <path class="mm-ok" d="M1140 718 L1131.3 701.8 L1148.7 701.8 Z" data-kutular="video"/>
+    <path class="mm-ok" d="M1140 606.8 L1148.7 623 L1131.3 623 Z" data-kutular="video"/>
+    <path class="mm-ok" d="M1620 718 L1611.3 701.8 L1628.7 701.8 Z" data-kutular="kyb"/>
+    <path class="mm-ok" d="M1620 606.8 L1628.7 623 L1611.3 623 Z" data-kutular="kyb"/>
+    <text class="mm-t mm-t-etiket" x="44" y="608.5" text-anchor="start">VERİ YOLU · DE0–DE7, DO0–DO7 (16 BİT)</text>
+  </g>
+  <g class="mm-yol-ust mm-y-kontrol" data-yol="denetim">
+    <path class="mm-ok" d="M500 630.3 L493 617 L507 617 Z" data-kutular="cpu"/>
+    <path class="mm-ok" d="M980 438 L987 451.3 L973 451.3 Z" data-kutular="bellek"/>
+    <path class="mm-ok" d="M1490 438 L1497 451.3 L1483 451.3 Z" data-kutular="onbellek"/>
+    <path class="mm-ok" d="M660 718 L653 704.8 L667 704.8 Z" data-kutular="gc"/>
+    <path class="mm-ok" d="M1180 718 L1173 704.8 L1187 704.8 Z" data-kutular="video"/>
+    <path class="mm-ok" d="M1660 718 L1653 704.8 L1667 704.8 Z" data-kutular="kyb"/>
+    <text class="mm-t mm-t-etiket" x="44" y="636.5" text-anchor="start">BELLEK DENETİMİ · ~MRD, ~MWE_E, ~MWE_O</text>
+  </g>
+  <g class="mm-yol-ust mm-y-kontrol" data-yol="io">
+    <path class="mm-ok" d="M1020 654.9 L1014.1 643.6 L1025.9 643.6 Z" data-kutular="bellek"/>
+    <path class="mm-ok" d="M1530 438 L1535.9 449.3 L1524.1 449.3 Z" data-kutular="onbellek"/>
+    <path class="mm-ok" d="M690 718 L684.1 706.7 L695.9 706.7 Z" data-kutular="gc"/>
+    <path class="mm-ok" d="M1220 718 L1214.1 706.7 L1225.9 706.7 Z" data-kutular="video"/>
+    <path class="mm-ok" d="M1700 718 L1694.1 706.7 L1705.9 706.7 Z" data-kutular="kyb"/>
+    <text class="mm-t mm-t-etiket" x="44" y="660.5" text-anchor="start">G/Ç ALANI · ~IO</text>
+  </g>
+  <g class="mm-yol-ust mm-y-kontrol" data-yol="kesme">
+    <path class="mm-ok" d="M720 718 L713 704.8 L727 704.8 Z" data-kutular="gc"/>
+    <path class="mm-ok" d="M720 679.8 L727 693 L713 693 Z" data-kutular="gc"/>
+    <path class="mm-ok" d="M540 438 L547 451.3 L533 451.3 Z" data-kutular="cpu"/>
+    <path class="mm-ok" d="M1260 679.8 L1267 693 L1253 693 Z" data-kutular="video"/>
+    <text class="mm-t mm-t-etiket" x="44" y="682.5" text-anchor="start">KESME · IRQ, VSYNC_REQ</text>
+  </g>
+  <g class="mm-yol-ust mm-y-dis" data-yol="usb">
+    <path class="mm-ok" d="M154 1064 L161 1077.3 L147 1077.3 Z" data-kutular="gc-uart"/>
+    <path class="mm-ok" d="M154 1116 L147 1102.8 L161 1102.8 Z" data-kutular="gc-uart"/>
+    <text class="mm-t mm-t-etiket" x="162" y="1104" text-anchor="start">USB (TXD, RXD, CTS)</text>
+  </g>
+  <g class="mm-yol-ust mm-y-dis" data-yol="ps2">
+    <path class="mm-ok" d="M390 1064 L397 1077.3 L383 1077.3 Z" data-kutular="gc-ps2"/>
+    <path class="mm-ok" d="M390 1116 L383 1102.8 L397 1102.8 Z" data-kutular="gc-ps2"/>
+    <text class="mm-t mm-t-etiket" x="398" y="1104" text-anchor="start">PS/2 (CLK, DATA)</text>
+  </g>
+  <g class="mm-yol-ust mm-y-dis" data-yol="vga">
+    <path class="mm-ok" d="M894 1116 L887 1102.8 L901 1102.8 Z" data-kutular="video-dac"/>
+    <text class="mm-t mm-t-etiket" x="902" y="1104" text-anchor="start">VGA (R, G, B, HSYNC, VSYNC)</text>
+  </g>
+  <g class="mm-lejant">
+    <rect class="mm-lejant-govde" x="1030" y="1116" width="840" height="144" rx="8"/>
+    <path class="mm-lej-cizgi mm-y-adres" d="M1046 1163 L1076 1163" stroke-width="4"/>
+    <path class="mm-lej-cizgi mm-y-kontrol" d="M1046 1182 L1076 1182" stroke-width="4"/>
+    <path class="mm-lej-cizgi mm-y-saat" d="M1046 1201 L1076 1201" stroke-width="4"/>
+    <path class="mm-lej-cizgi mm-y-veri" d="M1046 1220 L1076 1220" stroke-width="4"/>
+    <path class="mm-lej-cizgi mm-y-dis" d="M1046 1239 L1076 1239" stroke-width="4"/>
+    <rect class="mm-lej-kutu mm-k-kontrol" x="1211.2337499999999" y="1156" width="24" height="15" rx="3"/>
+    <rect class="mm-lej-kutu mm-k-register" x="1211.2337499999999" y="1175" width="24" height="15" rx="3"/>
+    <rect class="mm-lej-kutu mm-k-islem" x="1211.2337499999999" y="1194" width="24" height="15" rx="3"/>
+    <rect class="mm-lej-kutu mm-k-tampon" x="1211.2337499999999" y="1213" width="24" height="15" rx="3"/>
+    <rect class="mm-lej-kutu mm-k-secici" x="1211.2337499999999" y="1232" width="24" height="15" rx="3"/>
+    <rect class="mm-lej-kutu mm-k-bellek" x="1390.4087499999998" y="1156" width="24" height="15" rx="3"/>
+    <rect class="mm-lej-kutu mm-k-gc" x="1390.4087499999998" y="1175" width="24" height="15" rx="3"/>
+    <text class="mm-t mm-t-lej-baslik" x="1046" y="1142" text-anchor="start">YOLLAR</text>
+    <text class="mm-t mm-t-lej" x="1086" y="1167" text-anchor="start">Adres yolu</text>
+    <text class="mm-t mm-t-lej" x="1086" y="1186" text-anchor="start">Kontrol hatları</text>
+    <text class="mm-t mm-t-lej" x="1086" y="1205" text-anchor="start">Saat ve reset</text>
+    <text class="mm-t mm-t-lej" x="1086" y="1224" text-anchor="start">Veri yolu</text>
+    <text class="mm-t mm-t-lej" x="1086" y="1243" text-anchor="start">Dış bağlantı</text>
+    <text class="mm-t mm-t-lej-baslik" x="1211.2337499999999" y="1142" text-anchor="start">KUTULAR</text>
+    <text class="mm-t mm-t-lej" x="1245.2337499999999" y="1167" text-anchor="start">Kontrol, zamanlama</text>
+    <text class="mm-t mm-t-lej" x="1245.2337499999999" y="1186" text-anchor="start">Register, sayaç</text>
+    <text class="mm-t mm-t-lej" x="1245.2337499999999" y="1205" text-anchor="start">İşlem birimi</text>
+    <text class="mm-t mm-t-lej" x="1245.2337499999999" y="1224" text-anchor="start">Tampon, alıcı-verici</text>
+    <text class="mm-t mm-t-lej" x="1245.2337499999999" y="1243" text-anchor="start">Seçici, kod çözücü</text>
+    <text class="mm-t mm-t-lej" x="1424.4087499999998" y="1167" text-anchor="start">Bellek (ROM, RAM)</text>
+    <text class="mm-t mm-t-lej" x="1424.4087499999998" y="1186" text-anchor="start">Giriş / çıkış, bağlantı</text>
+    <text class="mm-t mm-t-lej-baslik" x="1583.5049999999999" y="1142" text-anchor="start">KISALTMALAR</text>
+    <text class="mm-t mm-t-lej-kisa" x="1583.5049999999999" y="1167" text-anchor="start">~IO</text>
+    <text class="mm-t mm-t-lej" x="1639.1902499999999" y="1167" text-anchor="start">G/Ç alanı seçimi (FFxx)</text>
+    <text class="mm-t mm-t-lej-kisa" x="1583.5049999999999" y="1186" text-anchor="start">~WAIT</text>
+    <text class="mm-t mm-t-lej" x="1639.1902499999999" y="1186" text-anchor="start">Bekleme isteği</text>
+    <text class="mm-t mm-t-lej-kisa" x="1583.5049999999999" y="1205" text-anchor="start">PA</text>
+    <text class="mm-t mm-t-lej" x="1639.1902499999999" y="1205" text-anchor="start">Fiziksel adresin üst bitleri</text>
+    <text class="mm-t mm-t-lej-kisa" x="1583.5049999999999" y="1224" text-anchor="start">TCLK</text>
+    <text class="mm-t mm-t-lej" x="1639.1902499999999" y="1224" text-anchor="start">Zamanlama saati (4 × CLK)</text>
+    <text class="mm-t mm-t-lej-kisa" x="1583.5049999999999" y="1243" text-anchor="start">DE, DO</text>
+    <text class="mm-t mm-t-lej" x="1639.1902499999999" y="1243" text-anchor="start">Çift / tek adresli bayt</text>
+  </g>
+</svg>

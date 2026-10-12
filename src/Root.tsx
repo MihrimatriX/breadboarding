@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { modeFromHash, type Mode } from "./ui/ModeSwitch";
-import { yukle6502, yukleKart, yukleTezgah } from "./bolumler";
+import { yukle6502, yukleKart, yukleMimari, yukleTezgah } from "./bolumler";
 import { Baslangic } from "./ui/Baslangic";
 import { BolumSiniri, BolumYukleniyor } from "./ui/Yukleniyor";
 import { useApp } from "./state/store";
@@ -11,6 +11,7 @@ import { useAyarlariUygula } from "./ui/ayarlar";
 const App = lazy(() => yukle6502().then((m) => ({ default: m.App })));
 const Cpu16Bench = lazy(() => yukleTezgah().then((m) => ({ default: m.Cpu16Bench })));
 const BoardView = lazy(() => yukleKart().then((m) => ({ default: m.BoardView })));
+const MimariView = lazy(() => yukleMimari().then((m) => ({ default: m.MimariView })));
 
 /** Bölüm: kod inerken iskelet, yüklenemezse açıklama */
 function Bolum({ mode, aktif, children }: { mode: Mode; aktif: boolean; children: ReactNode }) {
@@ -22,9 +23,9 @@ function Bolum({ mode, aktif, children }: { mode: Mode; aktif: boolean; children
 }
 
 /**
- * 6502 die görünümü, CPU16 tezgâhı, CPU16 kartı ve 8 bit hesap makinesi arasında geçiş. Die görünümü
- * ilk açıldığında yüklenir, sonra bağlı kalır, başka bölüme geçince yalnız durdurulur. İki 3D kart
- * bölümü aynı görünümü kullanır (BoardView), aynı anda yalnız biri açıktır.
+ * 6502 die görünümü, CPU16 tezgâhı, CPU16 kartı, 8 bit hesap makinesi ve mimari diyagramları arasında
+ * geçiş. Die görünümü ilk açıldığında yüklenir, sonra bağlı kalır, başka bölüme geçince yalnız
+ * durdurulur. İki 3D kart bölümü aynı görünümü kullanır (BoardView), aynı anda yalnız biri açıktır.
  */
 export function Root() {
   // tema, yazı boyutu ve odak modu: <html> işaretleri ve T / Y / F kısayolları
@@ -63,6 +64,11 @@ export function Root() {
       {mode === "hesap" && (
         <Bolum key="hesap" mode="hesap" aktif>
           <BoardView key="hesap" tur="hesap" />
+        </Bolum>
+      )}
+      {mode === "mimari" && (
+        <Bolum mode="mimari" aktif>
+          <MimariView />
         </Bolum>
       )}
       <Baslangic mode={mode} />
