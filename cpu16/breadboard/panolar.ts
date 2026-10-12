@@ -125,10 +125,10 @@ export const PANOLAR: PanoTanimi[] = [
     uyarlayici: { bx: 2, by: 14, c0: 30 },
     asamalar: [
       { ...TABAN, test: tabanTesti },
-      { no: 2, ad: "Register dosyası ve iç veriyolu", bloklar: ["Register dosyası"], deney: 4, test: "Deney 4: veriyoluna anahtarlarla değer ver, bir register'a yaz, geri oku; sürülmeyen veriyolu 0 okunur (RN1, RN2)." },
-      { no: 3, ad: "ALU, geçici register'lar ve bayraklar", bloklar: ["Geçici register'lar", "ALU", "ALU kod çözücü", "Bayraklar ve koşul"], deney: 5, test: "Deney 5: iki geçici register'a değer yükle, ALU işlemlerini (toplama, çıkarma, mantık, kaydırma) ve Z/N/C/V bayraklarını tabloyla karşılaştır." },
-      { no: 4, ad: "Program sayacı, MAR, IR ve bellek arayüzü", bloklar: ["Program sayacı", "MAR ve IR", "Bellek arayüzü"], deney: 6, test: "Deney 6: PC'yi sıfırla ve adım adım artır; MAR'ın adres hatlarını (uyarlayıcının 9–24. pinleri) LED'le izle." },
-      { no: 5, ad: "Kontrol birimi, sabit birimi ve durum LED'leri", bloklar: ["Kontrol birimi", "Kontrol", "Sabit birimi"], deney: 7, test: "Deney 7: saat kartı ve test belleğiyle ilk komutları adım adım çalıştır; HALT komutunda HALTED LED'i yanar, FAULT sönük kalır." },
+      { no: 2, ad: "Register dosyası ve iç veriyolu", bloklar: ["Register dosyası"], deney: 4, test: "Deney 4: veriyoluna anahtarlarla değer ver, bir register'a yaz, geri oku: yazarken o register'ın WSEL LED'i, okurken ROE LED'i yanar, register'ın çubukları içeriğini, veriyolu çubukları veriyolundaki değeri gösterir; sürülmeyen veriyolu 0 okunur (RN1, RN2). Veriyolunu anahtar modülüyle sürerken veriyolu çubuklarının dizilerini (RN3, RN4) çıkar." },
+      { no: 3, ad: "ALU, geçici register'lar ve bayraklar", bloklar: ["Geçici register'lar", "ALU", "ALU kod çözücü", "Bayraklar ve koşul"], deney: 5, test: "Deney 5: iki geçici register'a değer yükle, ALU işlemlerini (toplama, çıkarma, mantık, kaydırma) ve Z/N/C/V bayraklarını tabloyla karşılaştır; TA/TB yükleme LED'leri, sonuç çubukları (ALU çıkışı) ve bayrak LED'leri her adımı gösterir." },
+      { no: 4, ad: "Program sayacı, MAR, IR ve bellek arayüzü", bloklar: ["Program sayacı", "MAR ve IR", "Bellek arayüzü"], deney: 6, test: "Deney 6: PC'yi sıfırla ve adım adım artır; PC çubuklarında adresin, MAR çubuklarında bellek adresinin, IR çubuklarında komutun değiştiğini, bellek okuma (yeşil) ve yazma (turuncu) LED'lerinde erişimi izle." },
+      { no: 5, ad: "Kontrol birimi, sabit birimi ve durum LED'leri", bloklar: ["Kontrol birimi", "Kontrol", "Sabit birimi"], deney: 7, test: "Deney 7: saat kartı ve test belleğiyle ilk komutları adım adım çalıştır; mikro adım LED'leri her saatte bir ilerler, HALT komutunda HALTED LED'i yanar, FAULT sönük kalır." },
     ],
   },
   {
