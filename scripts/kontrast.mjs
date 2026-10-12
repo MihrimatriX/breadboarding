@@ -1,5 +1,6 @@
 // Tema renklerinin karşıtlık denetimi (WCAG 2 oranı). src/styles.css içindeki koyu ve açık tema
-// belirteçlerini okur, yazı / zemin çiftlerinin oranını yazar ve eşiğin altında kalan varsa 1 ile çıkar.
+// belirteçlerini (ve mimari diyagramlarının src/mimari/mimari.css'teki renklerini) okur, yazı / zemin
+// çiftlerinin oranını yazar ve eşiğin altında kalan varsa 1 ile çıkar.
 //
 //   node scripts/kontrast.mjs
 //
@@ -11,21 +12,24 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-const css = readFileSync(fileURLToPath(new URL("../src/styles.css", import.meta.url)), "utf8");
+const oku = (yol) => readFileSync(fileURLToPath(new URL(yol, import.meta.url)), "utf8");
+const css = oku("../src/styles.css");
+const mimariCss = oku("../src/mimari/mimari.css");
 
 /** Bir seçicinin ilk bloğundaki --ad: değer çiftleri */
-function blok(secici) {
-  const i = css.indexOf(secici);
-  if (i < 0) throw new Error(`styles.css içinde yok: ${secici}`);
-  const bas = css.indexOf("{", i);
-  const son = css.indexOf("}", bas);
+function blok(secici, metin = css, dosya = "styles.css") {
+  const i = metin.indexOf(secici);
+  if (i < 0) throw new Error(`${dosya} içinde yok: ${secici}`);
+  const bas = metin.indexOf("{", i);
+  const son = metin.indexOf("}", bas);
   const degerler = {};
-  for (const m of css.slice(bas + 1, son).matchAll(/--([\w-]+)\s*:\s*([^;]+);/g)) degerler[m[1]] = m[2].trim();
+  for (const m of metin.slice(bas + 1, son).matchAll(/--([\w-]+)\s*:\s*([^;]+);/g)) degerler[m[1]] = m[2].trim();
   return degerler;
 }
 
-const KOYU = blok(':root[data-tema="koyu"]');
-const TEMALAR = { koyu: KOYU, acik: { ...KOYU, ...blok(':root[data-tema="acik"]') } };
+const mimari = (secici) => blok(secici, mimariCss, "mimari.css");
+const KOYU = { ...blok(':root[data-tema="koyu"]'), ...mimari(':root[data-tema="koyu"]') };
+const TEMALAR = { koyu: KOYU, acik: { ...KOYU, ...blok(':root[data-tema="acik"]'), ...mimari(':root[data-tema="acik"]') } };
 
 /** "#rrggbb", "#rgb" ya da "rgba(r, g, b, a)" → [r, g, b, a] (0..255, a 0..1) */
 function renk(deger) {
@@ -98,6 +102,27 @@ const CIFTLER = [
   ["--sema-cizgi", ["--sema-bg", "--sema-govde"], GRAFIK, "şema çizgisi"],
   ["--sema-yazi", ["--sema-bg", "--sema-govde"], YAZI, "şema yazısı"],
 ];
+
+// mimari diyagramları: kâğıt, kart çerçevesi (yarı saydam, kâğıdın üstünde) ve kutuların renkli zeminleri
+const KAGIT = "--mm-kagit";
+const CERCEVE = "--mm-grup-bg/--mm-kagit";
+const YOLLAR = ["veri", "adres", "kontrol", "saat", "yerel", "dis"];
+const KUTULAR = ["register", "islem", "secici", "tampon", "bellek", "kontrol", "gc", "not"];
+CIFTLER.push(
+  ["--mm-baslik-yazi", ["--mm-baslik-bg"], YAZI, "mimari: başlık çubuğu"],
+  ["--text", [KAGIT, CERCEVE], YAZI, "mimari: kart başlığı, lejant"],
+  ["--text-muted", [KAGIT, CERCEVE], YAZI, "mimari: kart başlığının sayıları, lejant"],
+  ["--link", [KAGIT, CERCEVE], YAZI, "mimari: \"ayrıntı ›\""],
+  ["--mm-grup-cizgi", [KAGIT, CERCEVE], GRAFIK, "mimari: kart çerçevesi, lejant kutusu"],
+  ...YOLLAR.map((y) => [`--mm-y-${y}`, [KAGIT, CERCEVE], YAZI, `mimari: ${y} yolu (çizgi ve etiket)`]),
+  ...KUTULAR.map((k) => [`--mm-k-${k}`, [KAGIT, CERCEVE], GRAFIK, `mimari: ${k} kutusunun çizgisi`]),
+  ...["--text", "--text-muted", "--text-faint"].map((y) => [
+    y,
+    KUTULAR.flatMap((k) => [`--mm-k-${k}-soft/${KAGIT}`, `--mm-k-${k}-soft/${CERCEVE}`]),
+    YAZI,
+    "mimari: kutu yazısı (ad, parçalar, kapılar)",
+  ]),
+);
 
 let hata = 0;
 for (const [ad, t] of Object.entries(TEMALAR)) {
