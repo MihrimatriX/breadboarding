@@ -167,7 +167,7 @@ Ayrıntılar `Dockerfile`, `docker-compose.yml` ve `docker/nginx/default.conf` i
 | `npm run dev` | Vite geliştirme sunucusu, http://localhost:5173 |
 | `npm run build` | tip denetimi (`tsc -b`) + üretim derlemesi `dist/` altına |
 | `npm run preview` | `dist/`'i yerelde sun (http://localhost:4173) |
-| `npm test` | bütün vitest testleri (6502, CPU16, hesap8; 1–2 dakika) |
+| `npm test` | bütün vitest testleri (6502, CPU16, hesap8; ≈ 4 dakika) |
 | `npm run typecheck` | yalnız tip denetimi |
 | `npm run check` | tip denetimi + testler: PR açmadan önce bunu çalıştır |
 | `npm run cpu16 -- <komut>` | CPU16 komut satırı (aşağıda) |
@@ -248,6 +248,7 @@ Yeni başlıyorsan belgeleri sırayla okuman için bir yol: **[docs/README.md](d
 | Konu | Belge |
 |---|---|
 | Katkı: kurulum, dal ve PR akışı, kurallar | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| Kısa dizin: klasörler, komutlar, değişmez kurallar, tuzaklar (Claude Code her oturumda okur) | [CLAUDE.md](CLAUDE.md) |
 | CPU16'ya genel bakış ve komutlar | [cpu16/README.md](cpu16/README.md) |
 | Yol haritası, fazlar, şu anki aşama | [roadmap.md](cpu16/docs/roadmap.md) |
 | Tasarım, komut seti, bellek haritası | [spec.md](cpu16/docs/spec.md), [isa-ayrintilari.md](cpu16/docs/isa-ayrintilari.md) |
@@ -286,7 +287,7 @@ Gerçek çiplerle kurmak isteyenler için sıra:
 ## Testler ve doğrulama
 
 ```bash
-npm test                                                  # bütün testler (569 test, 1–2 dakika)
+npm test                                                  # bütün testler (690 test, ≈ 4 dakika)
 npm run check                                             # tip denetimi + testler
 npx vitest run cpu16/tests/emu.test.ts                    # tek dosya
 npx vitest run cpu16/tests/cc-bios.test.ts -t "yılan"     # bir dosyada adı eşleşen testler

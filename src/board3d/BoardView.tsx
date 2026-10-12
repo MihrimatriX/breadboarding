@@ -92,7 +92,7 @@ function Meters() {
 /** Bilgisayarın görünümleri (seçim tarayıcıda saklanır) */
 const CPU_GORUNUMLERI: { g: Gorunum; label: string; title: string }[] = [
   { g: "pcb", label: "PCB", title: "Anakart ve kartlar: yeşil PCB'ler, pinden pine teller" },
-  { g: "breadboard", label: "Breadboard", title: "Her kart kendi breadboard panosunda (7 pano, 134 board), aralarında 64 damarlı şerit kablo: delik delik kurulum" },
+  { g: "breadboard", label: "Breadboard", title: "Her kart kendi breadboard panosunda (7 pano, 149 board), aralarında 64 damarlı şerit kablo: delik delik kurulum" },
 ];
 
 /** Görünüm seçimi (PCB / breadboard): iki kartta da aynı düğme grubu */
@@ -905,7 +905,7 @@ function MakineGorunumu() {
           ) : !ready ? (
             <Yukleniyor alt="kartlar kapı seviyesinde kuruluyor, örnek program EEPROM'a yazılıyor">Bilgisayar kuruluyor…</Yukleniyor>
           ) : gorunumYukleniyor ? (
-            <Yukleniyor alt="7 pano, 134 board, atlama telleri">Breadboard panoları yükleniyor…</Yukleniyor>
+            <Yukleniyor alt="7 pano, 149 board, atlama telleri">Breadboard panoları yükleniyor…</Yukleniyor>
           ) : (
             !yazi && <Yukleniyor>3D sahne hazırlanıyor…</Yukleniyor>
           )}
