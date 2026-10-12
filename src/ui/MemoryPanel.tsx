@@ -4,8 +4,9 @@ import { sim } from "../sim/SimClient";
 import { h2, h4 } from "./format";
 import { Section } from "./Shell";
 
-export function MemoryPanel() {
-  const snap = useApp((s) => s.snapshot);
+/** visible: sekme gizliyken her karede 256 hücre yeniden çizilmesin (seçim ve sayfa korunur) */
+export function MemoryPanel({ visible = true }: { visible?: boolean }) {
+  const snap = useApp((s) => (visible ? s.snapshot : null));
   const [page, setPage] = useState<0 | 1>(0);
   const [sel, setSel] = useState<number | null>(null);
   const [val, setVal] = useState("");

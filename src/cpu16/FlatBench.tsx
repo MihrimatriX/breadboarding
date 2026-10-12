@@ -9,6 +9,7 @@ import { LIB } from "../../cpu16/cc/lib-vite";
 import { Cpu16, SimpleBus, type StepResult } from "../../cpu16/emu/cpu";
 import { disassemble } from "../../cpu16/emu/disasm";
 import { AppHeader, Group, Meter, PanelToggle, Section, Tabs, useLayout, type Shortcut, type TabDef } from "../ui/Shell";
+import { Simge } from "../ui/simgeler";
 import { dilBul, ornekDili, type Dil } from "./dil";
 
 const sources = import.meta.glob("../../cpu16/programs/*.{s,c}", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
@@ -238,9 +239,12 @@ export function FlatBench({ switcher }: { switcher: ReactNode }) {
       <div className="toolbar">
         <Group label="Kip">{switcher}</Group>
         <Group label="Çalıştırma">
-          <button onClick={step} disabled={!cpu || running} title="Bir komut çalıştır">Adım</button>
-          <button className="primary" onClick={running ? pause : run} disabled={!cpu}>{running ? "Durdur" : "Çalıştır"}</button>
-          <button onClick={() => build(src, lang)} title="Programı yeniden yükle, CPU'yu sıfırla">Sıfırla</button>
+          <button onClick={step} disabled={!cpu || running} title="Bir komut çalıştır"><Simge ad="adim" />Adım</button>
+          <button className="primary" onClick={running ? pause : run} disabled={!cpu}>
+            <Simge ad={running ? "duraklat" : "oynat"} />
+            {running ? "Durdur" : "Çalıştır"}
+          </button>
+          <button onClick={() => build(src, lang)} title="Programı yeniden yükle, CPU'yu sıfırla"><Simge ad="sifirla" />Sıfırla</button>
           <button onClick={raiseIrq} disabled={!cpu} title="IRQ hattını kaldır (irq.s örneği için)">IRQ</button>
         </Group>
         <Group label="Durum">
@@ -279,7 +283,7 @@ export function FlatBench({ switcher }: { switcher: ReactNode }) {
               <ol className="bench-errors">{errors.map((e, i) => <li key={i}>satır {e.line}: {e.message}</li>)}</ol>
             )}
             <div className="panel-foot">
-              <button className="primary" onClick={() => build(src, lang)} title="Ctrl+Enter">Derle ve yükle</button>
+              <button className="primary" onClick={() => build(src, lang)} title="Ctrl+Enter"><Simge ad="yukle" />Derle ve yükle</button>
               <p className="info" role="status">{info}</p>
             </div>
           </div>
