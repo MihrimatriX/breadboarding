@@ -6,7 +6,7 @@
 
 | Dosya | İçerik |
 |---|---|
-| `chips/logic.ts` | Kapı seviyesi simülatör: 0/1/Z/X lojiği, çok sürücülü netler (veriyolu), dalga tabanlı zamanlama, DFF / mandal / üç durumlu tampon / davranışsal blok |
+| `chips/logic.ts` | Kapı seviyesi simülatör: 0/1/Z/X lojiği, çok sürücülü netler (veriyolu), dalga tabanlı zamanlama, DFF / mandal / üç durumlu tampon / davranışsal blok. Netlist kurulurken düz tiplenmiş dizilere (CSR) çevrilir; bir dalga hiç nesne ayırmadan hesaplanır |
 | `chips/parts/*.ts` | 38 çipin tanımı: pinler (veri sayfasındaki numaralarla), kapı devresi, veri sayfası fonksiyon tablosu (referans model) |
 | `chips/cmos.ts` | Kapı → CMOS transistör açılımı; çıktı Silikon3D'nin anahtar seviyesi motorunun okuduğu biçimde |
 | `chips/bench.ts`, `chips/transistor-bench.ts` | Tek çipi kapı veya transistör seviyesinde çalıştıran tezgâhlar |

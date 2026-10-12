@@ -29,7 +29,7 @@ export type GateKind =
 
 /** Davranışsal blok: her değerlendirmede girişlerin şimdiki ve önceki değerleriyle çağrılır. */
 export interface Behavior {
-  eval(inputs: readonly Level[], prev: readonly Level[]): Level[];
+  eval(inputs: readonly Level[], prev: readonly Level[]): readonly Level[];
 }
 
 export interface Gate {
@@ -106,41 +106,51 @@ export class Circuit {
 // ---- dört değerli kapı fonksiyonları
 const isX = (v: number) => v >= LZ;
 
-function evalAnd(vals: number[]): Level {
+// Sıcak döngüde dize karşılaştırması yerine kapı türünün sayı kodu
+const K_NOT = 0, K_BUF = 1, K_AND = 2, K_NAND = 3, K_OR = 4, K_NOR = 5, K_XOR = 6, K_XNOR = 7;
+const K_TBUF = 8, K_DFF = 9, K_LATCH = 10, K_BEHAV = 11;
+const KIND_CODE: Record<GateKind, number> = {
+  NOT: K_NOT, BUF: K_BUF, AND: K_AND, NAND: K_NAND, OR: K_OR, NOR: K_NOR, XOR: K_XOR, XNOR: K_XNOR,
+  TBUF: K_TBUF, DFF: K_DFF, LATCH: K_LATCH, BEHAV: K_BEHAV,
+};
+
+// Girişler `nets[s..e)` netlerinin `v`'deki değerleri
+function evalAnd(v: Uint8Array, nets: Int32Array, s: number, e: number): Level {
   let unknown = false;
-  for (const v of vals) {
-    if (v === L0) return L0;
-    if (isX(v)) unknown = true;
+  for (let k = s; k < e; k++) {
+    const x = v[nets[k]];
+    if (x === L0) return L0;
+    if (isX(x)) unknown = true;
   }
   return unknown ? LX : L1;
 }
 
-function evalOr(vals: number[]): Level {
+function evalOr(v: Uint8Array, nets: Int32Array, s: number, e: number): Level {
   let unknown = false;
-  for (const v of vals) {
-    if (v === L1) return L1;
-    if (isX(v)) unknown = true;
+  for (let k = s; k < e; k++) {
+    const x = v[nets[k]];
+    if (x === L1) return L1;
+    if (isX(x)) unknown = true;
   }
   return unknown ? LX : L0;
 }
 
-function evalXor(vals: number[]): Level {
+function evalXor(v: Uint8Array, nets: Int32Array, s: number, e: number): Level {
   let p = 0;
-  for (const v of vals) {
-    if (isX(v)) return LX;
-    p ^= v;
+  for (let k = s; k < e; k++) {
+    const x = v[nets[k]];
+    if (isX(x)) return LX;
+    p ^= x;
   }
   return p as Level;
 }
 
-const inv = (v: Level): Level => (v === L0 ? L1 : v === L1 ? L0 : LX);
+const inv = (v: number): Level => (v === L0 ? L1 : v === L1 ? L0 : LX);
 
-interface SeqState {
-  q: Level;
-  lastClk: Level;
-}
-
-/** Olay güdümlü, dalga tabanlı kapı seviyesi simülatör. */
+/**
+ * Olay güdümlü, dalga tabanlı kapı seviyesi simülatör. Bütün durum düz tiplenmiş dizilerde
+ * (CSR): bir dalga hiç nesne ayırmadan hesaplanır, yalnız davranışsal bloklar (bellek) dizi alır.
+ */
 export class LogicSim {
   readonly circuit: Circuit;
   /** Her netin çözümlenmiş değeri */
@@ -149,20 +159,34 @@ export class LogicSim {
   private readonly ext: Uint8Array;
   /** Zayıf çekme direnci: net hiç sürülmüyorsa bu değeri alır (LZ = direnç yok) */
   private readonly pullv: Uint8Array;
-  /** Her kapı çıkışının (sürücünün) değeri: driverStart[g] + çıkış sırası */
+  /** Kapı türü kodu (K_*) */
+  private readonly kind: Uint8Array;
+  /** kapı → giriş netleri, sırasıyla (CSR) */
+  private readonly inStart: Int32Array;
+  private readonly inNet: Int32Array;
+  /** Her kapı çıkışının (sürücünün) değeri ve neti: driverStart[g] + çıkış sırası */
   private readonly drv: Uint8Array;
+  private readonly outNet: Int32Array;
   private readonly driverStart: Int32Array;
+  /** Dalganın hesapladığı yeni sürücü değerleri (yazılmadan önce) */
+  private readonly next: Uint8Array;
   /** net → sürücü listesi (CSR) */
   private readonly netDrvStart: Int32Array;
   private readonly netDrv: Int32Array;
   /** net → giriş olarak bağlı kapılar (CSR) */
   private readonly fanStart: Int32Array;
   private readonly fan: Int32Array;
-  private readonly seq: (SeqState | null)[];
+  /** Flip-flop / mandalın durumu ve son gördüğü saat */
+  private readonly q: Uint8Array;
+  private readonly lastClk: Uint8Array;
   private readonly behaviors: (Behavior | null)[];
   private readonly prevInputs: (Level[] | null)[];
-  private queue: number[] = [];
+  /** Bekleyen kapılar ve bir önceki dalganın (yeniden kullanılan) dizisi */
+  private queue: Int32Array;
+  private spare: Int32Array;
+  private queueLen = 0;
   private readonly queued: Uint8Array;
+  private readonly dirty: Int32Array;
   private readonly dirtyNets: Uint8Array;
   /** Toplam dalga sayısı (yayılım gecikmesi ölçüsü) */
   waves = 0;
@@ -177,9 +201,16 @@ export class LogicSim {
     this.ext[circuit.GND] = L0;
     this.ext[circuit.VCC] = L1;
 
+    this.kind = Uint8Array.from(gates, (g) => KIND_CODE[g.kind]);
+    this.inStart = new Int32Array(gates.length + 1);
+    gates.forEach((g, i) => (this.inStart[i + 1] = this.inStart[i] + g.inputs.length));
+    this.inNet = Int32Array.from(gates.flatMap((g) => g.inputs));
+
     this.driverStart = new Int32Array(gates.length + 1);
     gates.forEach((g, i) => (this.driverStart[i + 1] = this.driverStart[i] + g.outputs.length));
     this.drv = new Uint8Array(this.driverStart[gates.length]).fill(LZ);
+    this.next = new Uint8Array(this.drv.length);
+    this.outNet = Int32Array.from(gates.flatMap((g) => g.outputs));
 
     const drvCount = new Int32Array(n + 1);
     const fanCount = new Int32Array(n + 1);
@@ -202,10 +233,14 @@ export class LogicSim {
       for (const i of new Set(g.inputs)) this.fan[fFill[i]++] = gi;
     });
 
-    this.seq = gates.map((g) => (g.kind === "DFF" || g.kind === "LATCH" ? { q: LX, lastClk: LX } : null));
+    this.q = new Uint8Array(gates.length).fill(LX);
+    this.lastClk = new Uint8Array(gates.length).fill(LX);
     this.behaviors = gates.map((g) => (g.kind === "BEHAV" && g.behavior ? g.behavior() : null));
     this.prevInputs = gates.map((g) => (g.kind === "BEHAV" ? g.inputs.map(() => LX as Level) : null));
+    this.queue = new Int32Array(gates.length);
+    this.spare = new Int32Array(gates.length);
     this.queued = new Uint8Array(gates.length);
+    this.dirty = new Int32Array(n);
     this.dirtyNets = new Uint8Array(n);
 
     for (let i = 0; i < n; i++) this.value[i] = this.resolve(i);
@@ -236,9 +271,8 @@ export class LogicSim {
    * test başlangıç durumu (gerçek donanımda güç açılışında değerler rastgeledir).
    */
   setState(gate: number, v: Level): void {
-    const s = this.seq[gate];
-    if (!s) throw new Error(`Kapı ${gate} sıralı eleman değil`);
-    s.q = v;
+    if (!this.isSeq(gate)) throw new Error(`Kapı ${gate} sıralı eleman değil`);
+    this.q[gate] = v;
     this.schedule(gate);
   }
 
@@ -254,7 +288,12 @@ export class LogicSim {
 
   /** Bir sıralı elemanın iç durumu (görselleştirme) */
   stateOf(gate: number): Level | null {
-    return this.seq[gate]?.q ?? null;
+    return this.isSeq(gate) ? (this.q[gate] as Level) : null;
+  }
+
+  private isSeq(gate: number): boolean {
+    const k = this.kind[gate];
+    return k === K_DFF || k === K_LATCH;
   }
 
   private touch(net: number): void {
@@ -267,7 +306,7 @@ export class LogicSim {
   private schedule(g: number): void {
     if (this.queued[g]) return;
     this.queued[g] = 1;
-    this.queue.push(g);
+    this.queue[this.queueLen++] = g;
   }
 
   private resolve(net: number): Level {
@@ -283,93 +322,107 @@ export class LogicSim {
 
   /** Bütün değişiklikler yayılana kadar dalga dalga hesapla. */
   settle(maxWaves = 10_000): void {
-    const gates = this.circuit.gates;
+    const { drv, next, outNet, driverStart, dirtyNets, dirty } = this;
     let waves = 0;
-    while (this.queue.length > 0) {
+    while (this.queueLen > 0) {
       if (++waves > maxWaves) throw new Error("Devre kararlı hale gelmedi (salınım)");
       const wave = this.queue;
-      this.queue = [];
-      for (const g of wave) this.queued[g] = 0;
+      const len = this.queueLen;
+      this.queue = this.spare;
+      this.spare = wave;
+      this.queueLen = 0;
+      for (let i = 0; i < len; i++) this.queued[wave[i]] = 0;
       // 1) hesapla (eski net değerleriyle)
-      const results: Level[][] = wave.map((g) => this.evalGate(g));
+      for (let i = 0; i < len; i++) this.evalGate(wave[i]);
       // 2) yaz
-      const dirty: number[] = [];
-      wave.forEach((g, wi) => {
-        const outs = gates[g].outputs;
-        const res = results[wi];
-        for (let k = 0; k < outs.length; k++) {
-          const d = this.driverStart[g] + k;
-          if (this.drv[d] === res[k]) continue;
-          this.drv[d] = res[k];
-          if (!this.dirtyNets[outs[k]]) {
-            this.dirtyNets[outs[k]] = 1;
-            dirty.push(outs[k]);
+      let nDirty = 0;
+      for (let i = 0; i < len; i++) {
+        const g = wave[i];
+        for (let d = driverStart[g], e = driverStart[g + 1]; d < e; d++) {
+          if (drv[d] === next[d]) continue;
+          drv[d] = next[d];
+          const net = outNet[d];
+          if (!dirtyNets[net]) {
+            dirtyNets[net] = 1;
+            dirty[nDirty++] = net;
           }
         }
-      });
-      for (const net of dirty) {
-        this.dirtyNets[net] = 0;
-        this.touch(net);
+      }
+      for (let i = 0; i < nDirty; i++) {
+        dirtyNets[dirty[i]] = 0;
+        this.touch(dirty[i]);
       }
     }
     this.waves += waves;
   }
 
-  private evalGate(gi: number): Level[] {
-    const g = this.circuit.gates[gi];
+  /** Kapının yeni çıkışlarını `next`'e yazar (sıralı elemanların durumu burada ilerler) */
+  private evalGate(gi: number): void {
     const v = this.value;
-    const ins = g.inputs.map((i) => v[i]);
-    switch (g.kind) {
-      case "NOT": return [inv(isX(ins[0]) ? LX : (ins[0] as Level))];
-      case "BUF": return [isX(ins[0]) ? LX : (ins[0] as Level)];
-      case "AND": return [evalAnd(ins)];
-      case "NAND": return [inv(evalAnd(ins))];
-      case "OR": return [evalOr(ins)];
-      case "NOR": return [inv(evalOr(ins))];
-      case "XOR": return [evalXor(ins)];
-      case "XNOR": return [inv(evalXor(ins))];
-      case "TBUF": {
-        const [a, en] = ins;
-        if (en === L0) return [LZ];
-        if (en === L1) return [isX(a) ? LX : (a as Level)];
-        return [LX];
+    const nets = this.inNet;
+    const s = this.inStart[gi];
+    const e = this.inStart[gi + 1];
+    const o = this.driverStart[gi];
+    const next = this.next;
+    switch (this.kind[gi]) {
+      case K_NOT: next[o] = inv(v[nets[s]]); return;
+      case K_BUF: { const a = v[nets[s]]; next[o] = isX(a) ? LX : a; return; }
+      case K_AND: next[o] = evalAnd(v, nets, s, e); return;
+      case K_NAND: next[o] = inv(evalAnd(v, nets, s, e)); return;
+      case K_OR: next[o] = evalOr(v, nets, s, e); return;
+      case K_NOR: next[o] = inv(evalOr(v, nets, s, e)); return;
+      case K_XOR: next[o] = evalXor(v, nets, s, e); return;
+      case K_XNOR: next[o] = inv(evalXor(v, nets, s, e)); return;
+      case K_TBUF: {
+        const a = v[nets[s]];
+        const en = v[nets[s + 1]];
+        next[o] = en === L0 ? LZ : en === L1 ? (isX(a) ? LX : a) : LX;
+        return;
       }
-      case "DFF": return this.evalDff(gi, ins);
-      case "LATCH": {
-        const s = this.seq[gi]!;
-        const [d, en] = ins;
-        if (en === L1) s.q = isX(d) ? LX : (d as Level);
-        else if (isX(en) && s.q !== d) s.q = LX;
-        return [s.q, inv(s.q)];
+      case K_DFF: this.evalDff(gi, v[nets[s]], v[nets[s + 1]], v[nets[s + 2]], v[nets[s + 3]], o); return;
+      case K_LATCH: {
+        const d = v[nets[s]];
+        const en = v[nets[s + 1]];
+        const q = this.q;
+        if (en === L1) q[gi] = isX(d) ? LX : d;
+        else if (isX(en) && q[gi] !== d) q[gi] = LX;
+        next[o] = q[gi];
+        next[o + 1] = inv(q[gi]);
+        return;
       }
-      case "BEHAV": {
-        const prev = this.prevInputs[gi]!;
-        const out = this.behaviors[gi]!.eval(ins as Level[], prev);
-        this.prevInputs[gi] = ins as Level[];
-        return out;
+      case K_BEHAV: {
+        const ins: Level[] = [];
+        for (let k = s; k < e; k++) ins.push(v[nets[k]] as Level);
+        const out = this.behaviors[gi]!.eval(ins, this.prevInputs[gi]!);
+        this.prevInputs[gi] = ins;
+        for (let k = 0, n = this.driverStart[gi + 1] - o; k < n; k++) next[o + k] = out[k];
+        return;
       }
     }
   }
 
-  private evalDff(gi: number, ins: number[]): Level[] {
-    const s = this.seq[gi]!;
-    const [d, clk, preN, clrN] = ins;
-    const clkL = (isX(clk) ? LX : clk) as Level;
+  private evalDff(gi: number, d: number, clk: number, preN: number, clrN: number, o: number): void {
+    const q = this.q;
+    const last = this.lastClk[gi];
+    const clkL = isX(clk) ? LX : clk;
     // kenar yalnızca saat girişi gerçekten değiştiyse: 0→1 kesin, 0→X / X→1 belki
-    const changed = clkL !== s.lastClk;
-    const rising = changed && s.lastClk === L0 && clkL === L1;
-    const maybeRising = changed && !rising && s.lastClk !== L1 && clkL !== L0;
-    s.lastClk = clkL;
+    const changed = clkL !== last;
+    const rising = changed && last === L0 && clkL === L1;
+    const maybeRising = changed && !rising && last !== L1 && clkL !== L0;
+    this.lastClk[gi] = clkL;
     if (preN === L0 && clrN === L0) {
       // veri sayfası: ikisi birden aktifken Q = Q̅ = 1 (kararsız durum)
-      s.q = L1;
-      return [L1, L1];
+      q[gi] = L1;
+      this.next[o] = L1;
+      this.next[o + 1] = L1;
+      return;
     }
-    if (preN === L0) s.q = L1;
-    else if (clrN === L0) s.q = L0;
-    else if (isX(preN) || isX(clrN)) s.q = LX;
-    else if (rising) s.q = isX(d) ? LX : (d as Level);
-    else if (maybeRising && s.q !== d) s.q = LX;
-    return [s.q, inv(s.q)];
+    if (preN === L0) q[gi] = L1;
+    else if (clrN === L0) q[gi] = L0;
+    else if (isX(preN) || isX(clrN)) q[gi] = LX;
+    else if (rising) q[gi] = isX(d) ? LX : d;
+    else if (maybeRising && q[gi] !== d) q[gi] = LX;
+    this.next[o] = q[gi];
+    this.next[o + 1] = inv(q[gi]);
   }
 }

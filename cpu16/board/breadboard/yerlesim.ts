@@ -342,7 +342,7 @@ export function tavlama(bolgeler: TavlamaBolgesi[], sabit: Map<number, { X: numb
   const px = new Float64Array(enCokUc);
   const py = new Float64Array(enCokUc);
   const enYakin = new Float64Array(enCokUc);
-  const agacta = new Uint8Array(enCokUc);
+  const disarida = new Int32Array(enCokUc);
   const netMaliyeti = (j: number): number => {
     let k = 0;
     for (const u of hUc[j]) {
@@ -361,20 +361,26 @@ export function tavlama(bolgeler: TavlamaBolgesi[], sabit: Map<number, { X: numb
       const d = Math.abs(px[0] - px[1]) + Math.abs(py[0] - py[1]);
       return ceza && d > ceza.esik ? d + (d - ceza.esik) * ceza.kat : d;
     }
-    for (let i = 0; i < k; i++) { enYakin[i] = Infinity; agacta[i] = 0; }
+    // Prim: ağaca girmemiş uçlar `disarida[0..m)` listesinde (girenin yerine sonuncusu gelir); en yakın
+    // uç seçilirken eşitlikte küçük numaralı uç kazanır, toplama sırası hep aynı
+    let m = k - 1;
+    for (let i = 1; i < k; i++) { enYakin[i] = Infinity; disarida[i - 1] = i; }
     let son = 0;
-    agacta[0] = 1;
     let toplam = 0;
-    for (let adim = 1; adim < k; adim++) {
+    while (m > 0) {
       let en = Infinity;
       let ei = -1;
-      for (let i = 0; i < k; i++) {
-        if (agacta[i]) continue;
-        const d = Math.abs(px[i] - px[son]) + Math.abs(py[i] - py[son]);
-        if (d < enYakin[i]) enYakin[i] = d;
-        if (enYakin[i] < en) { en = enYakin[i]; ei = i; }
+      let eq = -1;
+      const sx = px[son];
+      const sy = py[son];
+      for (let q = 0; q < m; q++) {
+        const i = disarida[q];
+        const d = Math.abs(px[i] - sx) + Math.abs(py[i] - sy);
+        let e = enYakin[i];
+        if (d < e) enYakin[i] = e = d;
+        if (e < en || (e === en && i < ei)) { en = e; ei = i; eq = q; }
       }
-      agacta[ei] = 1;
+      disarida[eq] = disarida[--m];
       toplam += en;
       if (ceza && en > ceza.esik) toplam += (en - ceza.esik) * ceza.kat;
       son = ei;

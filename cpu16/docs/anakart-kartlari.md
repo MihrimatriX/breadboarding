@@ -183,7 +183,8 @@ olmadığı için yerlerini 4 × 62256 ve 28C256 aldı (AFU kararı, [spec.md](s
    kartın netleriyle aynı (`board.test.ts`, kurulu değilse atlanır). ERC: `buildMachineBoard()`'da
    çakışan çıkış ve boşta giriş yok.
 
-Hız (tarayıcı dışında): `BusMaster` saniyede ≈ 10 000, `GateMachine` ≈ 5 000–7 000 CPU döngüsü.
+Hız (tarayıcı dışında): `BusMaster` saniyede ≈ 18 000, `GateMachine` ≈ 9 000 CPU döngüsü (G/Ç, video
+ve kendin yap bellek kartları da takılıyken ≈ 7 000).
 
 ## Bilinen farklar ve kısıtlar
 
