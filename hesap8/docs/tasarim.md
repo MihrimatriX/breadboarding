@@ -178,4 +178,14 @@ npm run cpu16 -- board kicad            KiCad dosyaları (cpu16/kicad/hesap/)
 npm run cpu16 -- kurulum hesap -o dizin kurulum belgesi (HTML + PDF) ve şema PDF'i
 ```
 
+`dogrula --hepsi` her durumda kapı seviyesi simülasyonun yerleşmesini bekler; süreyi durum sayısından
+çok, ardışık iki durum arasında hangi anahtarların değiştiği belirler. Devre birleşimsel olduğundan
+sıra sonucu değiştirmez, araç durumları ucuz sırayla dener: her B ve işlem için A, Gray sırasıyla
+(ardışık iki durumda tek anahtar değişir; yarısında bu, bölücünün yalnız son basamağına giren A0'dır).
+B'yi değiştirmek pahalıdır: B bölücünün sekiz basamağına da girer. Bu sıra durum başına kapı
+değerlendirmesini ≈ 5 100'den ≈ 2 900'e indirir. Durum başına iş B'den B'ye üç kat kadar değiştiğinden
+iş parçacıkları B'leri ortak bir sayaçtan sırayla alır, hepsi aynı anda biter. `dogrula` ve testlerdeki
+örnek durumlar da simülasyondan önce aynı ilkeyle sıralanır (`sim.ts`, `simSirasi`); aynı durum arka
+arkaya gelince devre hiç değişmez.
+
 Fiziksel kurulum: [kurulum-rehberi.md](kurulum-rehberi.md).
