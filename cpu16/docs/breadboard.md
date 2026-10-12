@@ -21,13 +21,13 @@ kurulum modunu açar (aşağıda).
 
 | | |
 |---|---|
-| Panolar | 7 (kart başına bir), iki sıra halinde ortadaki koridora bakar; masa ≈ 1 690 × 1 250 mm |
-| Breadboard | 134 tam boy BB830 (63 sütun, a–e / f–j, üstte ve altta ikişer ray, raylar kesintisiz) |
-| Parçalar | 444 entegre, 522 pasif eleman ve modül (PCB'deki 495 pasif + 27 yalnız breadboard'a özgü besleme girişi ve 100 µF) |
-| Teller | 6 838 atlama teli (542'si ray köprüsü), delikten deliğe 706 m, kesim boyu 819 m, ortalama 103 mm |
-| Uzun tel | %94,9'u 300 mm'den kısa; en uzun 1 133 mm (CPU kartı, modül modül dizildiği için: aşağıda) |
-| Arka panel | 64 damarlı düz şerit kablo, 7 adet 2 × 32 IDC soketi, kesim ≈ 3 280 mm |
-| Besleme | tek 5 V kaynak, ≈ 975 mA (veri sayfası değerleriyle); 17 besleme girişi, yıldız bağlantı |
+| Panolar | 7 (kart başına bir), iki sıra halinde ortadaki koridora bakar; masa ≈ 1 720 × 1 560 mm |
+| Breadboard | 149 tam boy BB830 (63 sütun, a–e / f–j, üstte ve altta ikişer ray, raylar kesintisiz); bir modülün board'ları bitişik, modüller arasında ≈ 20 mm boşluk (her modül bir ada) |
+| Parçalar | 460 entegre, 678 pasif eleman ve modül (PCB'deki 641 pasif + 37 yalnız breadboard'a özgü besleme girişi ve 100 µF); CPU kartında 39 hata ayıklama LED'i ve 26 çubuk gösterge |
+| Teller | 7 868 atlama teli (602'si ray köprüsü), delikten deliğe 852 m, kesim boyu 983 m, ortalama 108 mm |
+| Uzun tel | %94,6'sı 300 mm'den kısa; en uzun 1 534 mm (CPU kartı, modül modül dizildiği için: aşağıda) |
+| Arka panel | 64 damarlı düz şerit kablo, 7 adet 2 × 32 IDC soketi, kesim ≈ 3 300 mm |
+| Besleme | tek 5 V kaynak, ≈ 1,7 A en kötü durumda (veri sayfası değerleriyle, bütün LED'ler yanık); 22 besleme girişi, yıldız bağlantı |
 | Doğrulama | bağlantı yalnız fiziksel modelden birleşim-bul ile kurulur: her pano, her aşamanın sonu ve bütün makine netlistle birebir aynı |
 
 ## Neden kart başına bir pano
@@ -45,7 +45,7 @@ yanında arka panelle en çok konuşan bloklar (adres çözme, veriyolu tamponla
 bloklar. Her board'a en çok 4–5 mantık çipi konur, aralarında tellere yer kalsın diye.
 
 ```
-arka sıra (uyarlayıcılar ön kenarda):        önbellek 2×6     CPU 5×12     bellek 2×6
+arka sıra (uyarlayıcılar ön kenarda):        önbellek 2×6     CPU 5×15     bellek 2×6
 ───────────────────── koridor (140 mm): 64 damarlı şerit kablo ─────────────────────
 ön sıra (uyarlayıcılar arka kenarda):     KYB 1×6  saat 1×5  video 3×7  G/Ç 3×6
                                           (butonlar, VGA, PS/2, USB-seri ön kenarda: sana yakın)
@@ -53,52 +53,92 @@ arka sıra (uyarlayıcılar ön kenarda):        önbellek 2×6     CPU 5×12   
 
 | Pano | Board | Taban | Çip | Tel | Kesim | En uzun | > 300 mm | Akım | Giriş | Aşamalar (deney) |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Saat ve reset (`clk`) | 1 × 5 | 191 × 302 mm | 10 | 146 | 8 m | 224 mm | 0 | 44 mA | 1 | taban; osilatör, reset, butonlar (1); saat üretimi (1) |
-| CPU (`cpu`) | 5 × 12 | 851 × 693 mm | 194 | 2 941 | 421 m | 1 133 mm | 285 | 212 mA | 5 | taban; register dosyası (4); ALU (5); PC, MAR, IR (6); kontrol birimi (7) |
-| Bellek (`bellek`) | 2 × 6 | 356 × 358 mm | 34 | 659 | 84 m | 607 mm | 22 | 179 mA | 2 | taban; adres çözme (8); EEPROM ve RAM (8) |
-| Önbellek (`onbellek`) | 2 × 6 | 356 × 358 mm | 46 | 718 | 67 m | 815 mm | 10 | 162 mA | 2 | taban; G/Ç çözme, bekleme (8); etiket ve veri belleği (9) |
-| G/Ç (`gc`) | 3 × 6 | 521 × 358 mm | 65 | 902 | 87 m | 599 mm | 14 | 165 mA | 3 | taban; adres çözme (10); UART (10); zamanlayıcı ve kesme (10); PS/2 (10) |
-| Video (`video`) | 3 × 7 | 521 × 414 mm | 73 | 1 063 | 116 m | 747 mm | 20 | 191 mA | 3 | taban; CPU arayüzü ve VRAM (11); piksel saati (11); piksel yolu, DAC (11) |
-| Kendin yap bellek (`kyb`) | 1 × 6 | 191 × 358 mm | 22 | 409 | 36 m | 310 mm | 1 | 22 mA | 1 | taban; adres çözme (14); bellek hücreleri (14) |
+| Saat ve reset (`clk`) | 1 × 5 | 191 × 363 mm | 10 | 146 | 9 m | 284 mm | 0 | 44 mA | 1 | taban; osilatör, reset, butonlar (1); saat üretimi (1) |
+| CPU (`cpu`) | 5 × 15 | 871 × 942 mm | 210 | 3 914 | 559 m | 1 534 mm | 343 | 969 mA | 10 | taban; register dosyası (4); ALU (5); PC, MAR, IR (6); kontrol birimi (7) |
+| Bellek (`bellek`) | 2 × 6 | 376 × 439 mm | 34 | 670 | 89 m | 617 mm | 19 | 179 mA | 2 | taban; adres çözme (8); EEPROM ve RAM (8) |
+| Önbellek (`onbellek`) | 2 × 6 | 356 × 398 mm | 46 | 718 | 68 m | 579 mm | 13 | 162 mA | 2 | taban; G/Ç çözme, bekleme (8); etiket ve veri belleği (9) |
+| G/Ç (`gc`) | 3 × 6 | 541 × 439 mm | 65 | 928 | 98 m | 737 mm | 24 | 165 mA | 3 | taban; adres çözme (10); UART (10); zamanlayıcı ve kesme (10); PS/2 (10) |
+| Video (`video`) | 3 × 7 | 521 × 475 mm | 73 | 1 080 | 121 m | 660 mm | 16 | 191 mA | 3 | taban; CPU arayüzü ve VRAM (11); piksel saati (11); piksel yolu, DAC (11) |
+| Kendin yap bellek (`kyb`) | 1 × 6 | 191 × 398 mm | 22 | 412 | 39 m | 396 mm | 8 | 22 mA | 1 | taban; adres çözme (14); bellek hücreleri (14) |
 
-### CPU panosu: modül modül
+Tabanlar, modüller arasındaki ≈ 20 mm boşluklarla birlikte ölçülmüştür (bir modülün board'ları
+bitişik, ayrı modüller ayrı adalar: hangi board'ların birlikte bir iş yaptığı uzaktan bile görünür).
 
-CPU panosunda her board'un tek bir işi var, James Sharman'ın ve Ben Eater'ın breadboard
-bilgisayarlarındaki gibi: bir board'a bakınca ne olduğu belli olur. Hangi board'un ne olduğu
-`cpu16/breadboard/panolar.ts`'teki `duzen` tablosunda yazılı; 3D görünümde (yaklaşınca her board'un
-üstünde kendi etiketi) ve kurulum belgelerinde (harita, board çizimleri) o adla görünür. Tek işli
-board'da çipler referans sırasıyla dizilir (düşük bitler solda); aynı çipten oluşan diziler (mantık
-birimi, sonuç seçici, sabit birimi) board'larına sırayla paylaşılır.
+### CPU panosu: modül modül, ada ada
+
+CPU panosu James Sharman'ın ve Ben Eater'ın breadboard bilgisayarları gibi okunur: her board'un tek
+bir işi var, aynı modülün board'ları bitişik, modüller arasında ≈ 20 mm boşluk (her modül taban
+plakasında ayrı bir ada). 3D görünümde her adanın altında kendi renginde bir taban ve uzaktan bakınca
+üstünde büyük başlığı var: **REGISTER DOSYASI, VERİYOLU KONTROLÜ, SABİT BİRİMİ, ALU, BAYRAKLAR, KONTROL
+BİRİMİ, PROGRAM SAYACI, BELLEK ARAYÜZÜ**. Genel bakışta teller soluk çizilir, modüller öne çıksın.
+Yaklaşınca her board'un kendi etiketi görünür ("R0", "TOPLAYICI", "R0 GÖSTERGELERİ" …; göstergeli
+board'da etiket LED'lerin ve çubukların yanına yazılır, onları örtmez). Hangi board'un ne olduğu
+`cpu16/breadboard/panolar.ts`'teki `duzen` tablosunda yazılı; kurulum belgelerinde (harita, board
+çizimleri) aynı adlarla. Tek işli board'da çipler referans sırasıyla dizilir (düşük bitler solda); aynı
+çipten oluşan diziler (mantık birimi, sonuç seçici, sabit birimi) board'larına sırayla paylaşılır.
 
 ```
         1                  2                  3                  4                  5
 arka    R0                 R1                 R2                 R3                 reg. çözücüleri, saatleri
-        R4                 R5                 R6 (SP)            R7 (LR)            register seçicisi
+        R0 göstergeleri    R1 göstergeleri    R2 göstergeleri    R3 göstergeleri    veriyolu göstergeleri
+        R4                 R5                 R6 (SP)            R7 (LR)            register seçimi
+        R4 göstergeleri    R5 göstergeleri    R6 göstergeleri    R7 göstergeleri    bus çözücü, çekme
+        ─────────────────────────────── sabit birimi ────────────────────────────────────────────
         sabit bit 0–7      sabit bit 0–7      sabit sürücüsü     sabit bit 8–15     sabit bit 8–15
-        ALU kontrol kap.   toplayıcı girişi   16 bit toplayıcı   taşma, C/V seçici  bayraklar, koşul
-        ALU kontrol kap.   toplayıcı girişi   toplayıcı girişi   TA, TB             bayrak sürücüsü
+        ───────────────────────────── ALU ─────────────────────────────────────── bayraklar ───
+        ALU kontrol kap.   toplayıcı girişi   toplayıcı          taşma, C/V, sürücü bayraklar, koşul ●
+        ALU kontrol kap.   toplayıcı girişi   toplayıcı girişi   TA, TB ●           bayrak sürücüsü
         mantık bit 0–7     mantık bit 0–7     mantık bit 8–15    mantık bit 8–15    bayrak girişi, kapıları
-        ALU işlem, çözücü  sıfır algılama     sonuç seçici       sonuç seçici       ALU sürücüsü
-        mikrokod kapı ağı  mikrokod kapı ağı  mikrokod kapı ağı  mikrokod kapı ağı  HALT/hata, bus seçimi
+        ALU işlem, çözücü  sonuç seçici       sonuç seçici       sonuç göstergeleri sıfır algılama
+        ─────────────────────────────── kontrol birimi ──────────────────────────────────────────
+        mikrokod kapı ağı  mikrokod kapı ağı  mikrokod kapı ağı  mikrokod kapı ağı  HALT/hata, durum ●
         mikrokod kapı ağı  mikrokod kapı ağı  mikrokod kapı ağı  kontrol register'ı kontrol kapıları
-        komut çözücü       mikrokod kapı ağı  mikrokod kapı ağı  mikrokod kapı ağı  adım çözücü, sayacı
-        adım seçicileri    adım seçicileri    adım seçicileri    IR, saat kapıları  PC sürücüsü
-ön      bayt okuma         bayt şeritleri     bellek kapıları ▲  MAR                PC
-                                              (▲ şerit kablo uyarlayıcısı)
+        komut çözücü       mikrokod kapı ağı  mikrokod kapı ağı  mikrokod kapı ağı  adım çözücü, sayacı ●
+        adım seçicileri    adım seçicileri    adım seçicileri    IR, saat kapıları  IR göstergeleri
+        ─────── program sayacı ─────────────── bellek arayüzü ve MAR ────────────────────────────
+        PC göstergeleri    PC sürücüsü        MAR gös., bellek ● MAR                bayt şeritleri
+ön      PC                 PC                 bellek kapıları ▲  bellek kapıları    bayt okuma
+                                              (▲ şerit kablo uyarlayıcısı; ● LED'leri çiplerin yanında)
 ```
 
-Bölgeler arkadan öne: register dosyası, sabit birimi, ALU ve bayraklar, kontrol birimi, program
-sayacı / MAR / IR / bellek arayüzü. Modüllerin bölge içindeki yeri, tahmini tel boyunu en kısa yapan
-yerdir: birden çok board'u dolduran modülün board'ları yan yana; arka panelle konuşan bellek erişim
-kapıları ön sırada uyarlayıcının iki yanında.
+Bölgeler arkadan öne: register dosyası ve sağında veriyolu kontrolü, sabit birimi, ALU ve sağında
+bayraklar, kontrol birimi (IR dahil), program sayacı ve bellek arayüzü / MAR. Her bölge dikdörtgendir;
+modüllerin bölge içindeki yeri, tahmini tel boyunu en kısa yapan yerdir.
 
-Bedeli teldir: modül modül dizilimde 16 hatlık veriyolu her register board'una, ALU'nun bit
-dilimleri arasında da A, B ve sonuç hatları board'dan board'a gider. CPU panosu, çiplerin bölge
-içinde serbestçe tavlandığı önceki düzene göre %29 daha çok tel ister (288 m → 373 m
-delikten deliğe) ve 285 teli 300 mm'den uzundur (önceki düzende 125). İki ara düzen de denendi
-(ALU ve kontrol birimi serbest: 351 m, 178 uzun tel; yalnız kontrol birimi serbest: 377 m, 261
-uzun tel); ALU'nun yapısını gizledikleri için seçilmedi. 1 MHz hedefinde uzun teller zamanlamaya
-sorun değildir ("Sınırlar ve riskler").
+Bedeli teldir: modül modül dizilimde 16 hatlık veriyolu her register board'una, ALU'nun bit dilimleri
+arasında da A, B ve sonuç hatları board'dan board'a gider; göstergeler (26 çubuk, her biri 8 tel ve bir
+direnç dizisi) ve modüller arasındaki boşluklar da tel ister. CPU panosu 75 board, 3 914 tel, delikten
+deliğe 494 m; 343 teli 300 mm'den uzun (en uzunu `BUS5`, 1 534 mm: register dosyasından ön kenara).
+1 MHz hedefinde uzun teller zamanlamaya sorun değildir ("Sınırlar ve riskler").
+
+### Hata ayıklama LED'leri ve çubuk göstergeler
+
+Göstergeler hata ayıklamak için: hangi register okunuyor ya da yazılıyor, veriyolunu kim sürüyor,
+bellek ne zaman okunuyor ya da yazılıyor; veriyolunda, register'larda, PC'de, adreste, IR'de ve ALU
+sonucunda hangi değer var. Hepsi 74HC çıkışlarından doğrudan sürülür (1 kΩ ile ≈ 3 mA); karmaşık çip
+yok. 39 tek LED (aktif düşük sinyallerde LED VCC'den sinyale bağlı, çıkış 0 iken yanar), 26 on
+segmentli çubuk gösterge (her biri bir bayt, bit 0 sağda) ve her çubuğun yanında 8'li 1 kΩ direnç
+dizisi. Her göstergenin board'u gösterdiği modülün hemen yanında (`duzen`'de `grup+`):
+
+| Gösterge | Board | Renk |
+|---|---|---|
+| R0–R7'nin değeri (16 çubuk), okuma `~ROE` ve yazma `~WSEL` LED'leri | her register'ın önündeki board | çubuk sarı, okuma yeşil, yazma amber |
+| İç veriyolunun değeri (2 çubuk), veriyolunu süren kaynak (`~SRC_REG/ALU/PC/MEM/IMM/FLAGS`) | veriyolu göstergeleri | sarı; kaynak beyaz |
+| ALU sonucu (2 çubuk) | sonuç göstergeleri | sarı |
+| TA ve TB yükleme | TA, TB board'u | amber |
+| N, Z, C, V, I bayrakları | bayraklar board'u | mavi |
+| Mikro adım `STEP0–3`; HALTED, FAULT | adım sayacının ve HALT / hata board'unun ucunda | sarı; HALTED amber, FAULT kırmızı |
+| IR'nin değeri (2 çubuk), IR yükleme | IR göstergeleri | sarı, amber |
+| PC'nin değeri (2 çubuk; bit 0 hep 0), PC yükleme ve artırma | PC göstergeleri | sarı, amber |
+| MAR'ın adresi (2 çubuk), MAR yükleme; bellek okuma `MEMRD` ve yazma `MEMW` | MAR göstergeleri ve bellek LED'leri | sarı, amber; okuma yeşil, yazma amber |
+
+Register'ların değeri her an görünsün diye her register'ın iki 74HC574'ünün çıkışı hep açıktır ve
+çubuklarını sürer; register'ı veriyoluna iki 74HC541 çıkarır (CPU kartı 194 → 210 çip, zamanlama
+değişmedi: [uretim.md](uretim.md)). 3D görünümde LED'ler ve çubukların segmentleri simülasyondan yanar.
+Akım en kötü durumda (bütün segmentler yanık) CPU panosunda ≈ 969 mA'dir, gerçekte yaklaşık yarısı;
+bu yüzden CPU panosunun en arka sırasında da birer besleme girişi var (aşağıda). Deney 4'te veriyolunu
+2,2 kΩ'luk anahtar modülüyle sürerken veriyolu çubuklarının dizilerini (RN3, RN4) çıkar: hat ancak
+≈ 2,7 V'a çıkar ([kit/led-ve-direnc.md](../kit/led-ve-direnc.md)).
 
 ## Arka panel: şerit kablo
 
@@ -152,13 +192,14 @@ makinesiyle aynı motor, aynı kurallar):
   girişler en yakın raya.
 - **Raylar.** Her board'un üst ve alt + rayları, üst ve alt − rayları board'un sağ ucundan ray
   köprüsüyle bağlıdır; board'lar arası köprüler sıradan sıraya (arka-ön, sol uçta) ve en arka ile en ön
-  sırada yan yana. 522 ray köprüsü. Raylar boydan boya kesintisiz varsayılır (BB830); ortadan bölük
+  sırada yan yana; sütunları kayık board'lar arasında köprü modüller arasındaki boşluktan dolanır.
+  602 ray köprüsü. Raylar boydan boya kesintisiz varsayılır (BB830); ortadan bölük
   raylı board'larda her rayın iki yarısı ayrıca köprülenir (belgelerde uyarı var).
 - **En uzun tel 300 mm.** Daha uzun bağlantılar yolları üstündeki boş bir şeritte (yalnız tellerin
-  uğradığı **aktarma şeridi**) ikiye bölünür. Bütün makinede tellerin %94,9'u kısa kalır; kalan 352
-  tel (285'i CPU kartında, modül modül dizilmiş 5 × 12 board'luk panoda board'lar arası) yolu boyunca
-  boş şerit kalmadığı için uzundur: 168'i veri, 118'i kontrol, 28'i adres, 20'si seçim, 11'i saat,
-  6'sı reset ve kesme hattı, 1'i dış bağlantı (saat telleri aşağıda, "Sınırlar ve riskler").
+  uğradığı **aktarma şeridi**) ikiye bölünür. Bütün makinede tellerin %94,6'sı kısa kalır; kalan 423
+  tel (343'ü CPU kartında, modül modül dizilmiş 5 × 15 board'luk panoda board'lar arası) yolu boyunca
+  boş şerit kalmadığı için uzundur: 212'si veri, 130'u kontrol, 29'u seçim, 28'i adres, 13'ü saat,
+  10'u reset ve kesme hattı, 1'i dış bağlantı (saat telleri aşağıda, "Sınırlar ve riskler").
 - **Kurulum sırası.** Aşama aşama (aşama = deney rehberindeki blok); aşamanın içinde önce ray
   köprüleri, sonra besleme (kırmızı / siyah), sonra sinyaller, board board soldan sağa. Her aşamanın
   sonunda o ana dek takılan parçaların bütün netleri tamdır, aşamanın testi yapılabilir.
@@ -177,24 +218,27 @@ Tek bir 5 V regüleli kaynak (en az 2 A, tercihen 3 A) bir dağıtım bloğuna; 
 girişine oradan ayrı bir kablo çifti (yıldız bağlantı). Girişler uyarlayıcının board sırasında, her
 board sütununa birer tane (2 pinli başlık ya da klemens, + ve − rayına), yanında 100 µF: kartın kendi
 100 µF'ı (C1, C204 …) ilk girişte, öteki girişlerdekiler yalnız breadboard'a özgü ek parça (CB…).
+CPU panosu uzun (15 sıra) ve LED'leri çok akım çeker: en arka sırasında da beş giriş var (JB6–JB10,
+pano tanımında `ekBesleme`), her board en yakın girişten beslenir.
 Şerit kablonun VCC ve GND damarları panoları birbirine de bağlar, ama asıl akım kendi kablolarından gelir.
 
 Akım parçaların veri sayfası değerleriyle hesaplanır (PCB kurulum belgelerindeki bütçeyle aynı tablo,
 `kurulum/plan.ts` `akim`): girişten uzaklaşan her board'un akımı aradaki ray ve köprülerden geçer
 (köprü başına ≈ 50 mΩ: ray şeridi, iki temas ve 22 AWG köprü; + ve − rayında ayrı ayrı) ve düşüm
-verir. En kötü pano bellek kartı: iki girişin yüklüsü
-≈ 137 mA, en uzak board'da ≈ 57 mV düşüm (74HC için 4,5–5,5 V aralığında rahat).
+verir. En kötü pano önbellek kartı: iki girişin yüklüsü
+≈ 139 mA, en uzak board'da ≈ 59 mV düşüm (74HC için 4,5–5,5 V aralığında rahat). CPU panosunun akımı
+LED'lerin en kötü durumudur (bütün segmentler yanık).
 
 | Pano | Giriş | Akım | En yüklü giriş | En uzak board'da düşüm |
 |---|---|---|---|---|
 | Saat ve reset | 1 | 44 mA | 44 mA | ≈ 13 mV |
-| CPU | 5 | 212 mA | 58 mA | ≈ 30 mV |
-| Bellek | 2 | 179 mA | 137 mA | ≈ 57 mV |
-| Önbellek | 2 | 162 mA | 82 mA | ≈ 33 mV |
-| G/Ç | 3 | 165 mA | 120 mA | ≈ 54 mV |
-| Video | 3 | 191 mA | 110 mA | ≈ 27 mV |
+| CPU | 10 | 969 mA | 135 mA | ≈ 35 mV |
+| Bellek | 2 | 179 mA | 134 mA | ≈ 56 mV |
+| Önbellek | 2 | 162 mA | 139 mA | ≈ 59 mV |
+| G/Ç | 3 | 165 mA | 117 mA | ≈ 54 mV |
+| Video | 3 | 191 mA | 116 mA | ≈ 35 mV |
 | Kendin yap bellek | 1 | 22 mA | 22 mA | ≈ 6 mV |
-| **Toplam** | **17** | **≈ 975 mA** | | |
+| **Toplam** | **22** | **≈ 1 732 mA** | | |
 
 ## Doğrulama
 
@@ -208,7 +252,7 @@ yok, kısa devre yok.
 
 - **Kart kart**: her pano tek başına (öteki kartlara giden netler uyarlayıcıda biter), ayrıca her
   aşamanın sonunda o ana dek takılanlarla.
-- **Bütün makine**: 7 pano + şerit kablo = anakartın netlisti: 1 680 net, 8 937 bacak, 6 838 tel.
+- **Bütün makine**: 7 pano + şerit kablo = anakartın netlisti: 2 054 net, 10 401 bacak, 7 868 tel.
 - **Bozuk kopyalar**: doğrulayıcının hata bulduğu da sınanır: eksik tel, başka şeride kayan uç, gövde
   üstünden geçen tel, aynı delikte iki uç, takılmamış soket.
 - Saklanan veri (`breadboard/veri/*.ts`) netlistin parmak izini taşır: devre değişirse plan kurulmaz,
@@ -240,7 +284,7 @@ kesik; üstünde çip gruplarının etiketleri, altında parça tablosu); numara
 test satırı); kesim listesi (renk ve boy); malzeme listesi (breadboard, taban plakası, uyarlayıcı,
 IDC soketi, besleme girişleri, renk renk tel metrajı, entegreler, pasifler, aletler).
 
-Sayfa sayıları (bütün belgeler, 2026-10): saat 14, CPU 95, bellek 27, önbellek 28, G/Ç 37, video 41,
+Sayfa sayıları (bütün belgeler, 2026-10): saat 14, CPU 130, bellek 27, önbellek 28, G/Ç 38, video 41,
 kendin yap bellek 19, dizin 10.
 
 Delik adları: `BB07 c14` = BB07'nin c satırı, 14. sütunu; raylar `BB07 üst+16`, `üst−`, `alt−`,
@@ -254,6 +298,10 @@ Delik adları: `BB07 c14` = BB07'nin c satırı, 14. sütunu; raylar `BB07 üst+
   bütün teller canlı seviyenin renginde (0 mavi, 1 kırmızı). Çipe tıklamak, VGA ekranı, program düzenleyicisi, saat
   ve konsol PCB görünümündeki gibi çalışır. Breadboard verisi ayrı bir parçadır, yalnız bu görünüm
   açılınca yüklenir. Seçim `localStorage`'da hatırlanır (`cpu16.kart.gorunum`); yoksa PCB.
+- **Modüller**: her panonun her modülü (bölge) kendi renginde bir taban üstünde ayrı bir ada; uzaktan
+  bakınca büyük başlığı, yaklaşınca board'ların etiketleri. Genel bakışta teller soluk, modüller ve
+  göstergeler öne çıkar. CPU kartının LED'leri ve çubuk göstergeleri simülasyondan yanar: program
+  çalışırken hangi register'ın okunup yazıldığı, belleğe ne zaman erişildiği ve değerler izlenir.
 - **Kurulum** (breadboard görünümünde; konsolda `kart.bbKurulum("cpu", 3)`): pano ve aşama seçilir; tel tel
   gezilir, sıradaki tel 3D'de vurgulanır ve tarifi yazılır: `CPU · BB07 c14 → BB08 h3, 42 mm, sarı`.
   İşaretlenen teller pano başına tarayıcıda hatırlanır; aşama açılınca o aşamanın testi gösterilir.
@@ -267,20 +315,20 @@ Delik adları: `BB07 c14` = BB07'nin c satırı, 14. sütunu; raylar `BB07 üst+
 
 - **Hız.** Breadboard şeritleri ve uzun teller her hatta pikofaradlar ekler; ilk hedef 1 MHz CPU
   saatidir (PCB'deki gibi). En riskli yer video kartının piksel saatidir (25,175 MHz, 74AC161 /
-  74AC74): `VID_OSC`'nin telleri 18–287 mm, `V_PIX`'inki 259 mm. Ekran titrerse önce osilatörün ve
+  74AC74): `VID_OSC`'nin telleri 53–198 mm, `V_PIX`'inki 241 mm. Ekran titrerse önce osilatörün ve
   74AC'lerin dekuplajına, lojik analizörle piksel saatinin kenarlarına bak.
-- **Uzun saat telleri.** Yönlendirici saat netlerini öteki netlerden ayırmaz: 11 saat teli 300 mm'den
-  uzun. CPU kartında register saatleri (`CLK_R0`, `CLK_R1`, `CLK_R4`, `CLK_R5`, `CLK_R6`: saat kapılarının
-  board'undan R0–R7 board'larına) 376–810 mm, `CLKR` / `~CLKR` 366–589 mm, `CLK_TB` 460 mm, `CLK`
-  452 mm; bellek kartında `TCLK` 538 mm. Bir metre tel ≈ 5 ns gecikme ekler
+- **Uzun saat telleri.** Yönlendirici saat netlerini öteki netlerden ayırmaz: 13 saat teli 300 mm'den
+  uzun. CPU kartında register saatleri (`CLK_R0`, `CLK_R1`, `CLK_R2`, `CLK_R4`, `CLK_R5`, `CLK_R6`: saat
+  kapılarının board'undan R0–R7 board'larına) 424–1 128 mm, `CLKR` 381–610 mm, `CLK_TA` 528 mm,
+  `CLK_TB` 724 mm, `CLK` 566 mm; bellek kartında `TCLK` 475 mm, video kartında `V_H2` 310 mm. Bir metre tel ≈ 5 ns gecikme ekler
   (1 MHz'de periyodun ‰5'i), ama uzun tel çınlamaya ve kuplaja açıktır: bu telleri öteki tellerden
   ayrı, düz döşe ve ilk açılışta saat kenarlarını lojik analizörle ölç.
-- **Uzun teller.** 352 tel 300 mm'den uzun (en uzun 1 133 mm, CPU kartında board'lar arası). Bunları
+- **Uzun teller.** 423 tel 300 mm'den uzun (en uzun 1 534 mm, CPU kartında board'lar arası). Bunları
   ötekilerin üstünden, gergin olmadan döşe.
 - **Uyarlayıcı** hazır bir ürün değildir: delikli pertinaksa 2 × 32 başlık ve iki sıra 1 × 32 uzun
   bacaklı pin başlığıyla (sıralar arası 7,62 mm) yapılır.
-- **Akım** veri sayfası tipik değerleridir; ilk açılışta kaynağın akım sınırını ≈ 300 mA'e koy, pano
-  pano artır.
+- **Akım** veri sayfası tipik değerleridir, LED'ler en kötü durumla (bütün segmentler yanık); ilk
+  açılışta kaynağın akım sınırını ≈ 300 mA'e koy, pano pano artır.
 - Yerleşim ve teller üretilmiştir (`breadboard/veri/`, elle değiştirilmez); devre değişince
   `npm run cpu16 -- breadboard --uret` hepsini yeniden üretir (kart başına saniyeler – bir dakika) ve
   tel numaraları değişebilir: belgeleri yeniden bas.
