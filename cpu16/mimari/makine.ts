@@ -17,10 +17,11 @@ export const MAKINE_KARTLARI = ["clk", "cpu", "bellek", "onbellek", "gc", "video
 
 // ---- yerleşim ölçüleri
 const UST_Y = 80; // üst sıradaki kartlar
+const UST_KART_H = 374; // üst sıra: CPU kartının kutularında hata ayıklama LED'leri ve çubuk göstergeler de yazar
 const KART_H = 358;
-const BANT_Y = 450; // arka panel bandı
+const BANT_Y = UST_Y + UST_KART_H + 12; // arka panel bandı
 const BANT_H = 248;
-const ALT_Y = 718; // alt sıradaki kartlar
+const ALT_Y = BANT_Y + BANT_H + 20; // alt sıradaki kartlar
 const CIHAZ_Y = ALT_Y + KART_H + 40; // dış cihazlar
 const SERIT_X0 = 360; // şeritlerin başı (solunda şerit adları)
 const SERIT_X1 = 1862;
@@ -29,10 +30,10 @@ const BASLIK = 46; // çerçeve başlığı (kutuların üstü)
 
 /** Kartların çerçeveleri: x, genişlik, üst sırada mı, sütun sayısı, satır yükseklikleri */
 const KART_YERI: Record<string, { x: number; w: number; ust: boolean; sutun: number; satirlar: number[] }> = {
-  cpu: { x: 30, w: 520, ust: true, sutun: 2, satirlar: [144, 144] },
-  bellek: { x: 570, w: 470, ust: true, sutun: 2, satirlar: [144, 144] },
-  onbellek: { x: 1060, w: 490, ust: true, sutun: 2, satirlar: [144, 144] },
-  clk: { x: 1570, w: 300, ust: true, sutun: 1, satirlar: [144, 144] },
+  cpu: { x: 30, w: 520, ust: true, sutun: 2, satirlar: [160, 144] },
+  bellek: { x: 570, w: 470, ust: true, sutun: 2, satirlar: [152, 152] },
+  onbellek: { x: 1060, w: 490, ust: true, sutun: 2, satirlar: [152, 152] },
+  clk: { x: 1570, w: 300, ust: true, sutun: 1, satirlar: [152, 152] },
   gc: { x: 30, w: 720, ust: false, sutun: 3, satirlar: [144, 144] },
   video: { x: 770, w: 720, ust: false, sutun: 3, satirlar: [144, 144] },
   kyb: { x: 1510, w: 360, ust: false, sutun: 1, satirlar: [92, 92, 92] },
@@ -40,7 +41,7 @@ const KART_YERI: Record<string, { x: number; w: number; ust: boolean; sutun: num
 
 const kartCercevesi = (card: string) => {
   const k = KART_YERI[card];
-  return { x: k.x, y: k.ust ? UST_Y : ALT_Y, w: k.w, h: KART_H };
+  return { x: k.x, y: k.ust ? UST_Y : ALT_Y, w: k.w, h: k.ust ? UST_KART_H : KART_H };
 };
 
 /** Kartın içinde bir kutunun yeri (sütun, satır) */

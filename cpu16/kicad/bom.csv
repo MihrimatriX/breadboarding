@@ -28,12 +28,14 @@ C_100N;211;100 nF seramik kondansatör (dekuplaj);Capacitor_THT:C_Disc_D5.0mm_W2
 C_100U;3;100 µF elektrolitik kondansatör (kart girişi);Capacitor_THT:CP_Radial_D6.3mm_P2.50mm;cpu mem clk;C1 C301 C204
 C_10U;1;10 µF elektrolitik kondansatör;Capacitor_THT:CP_Radial_D5.0mm_P2.00mm;clk;C201
 C_1U;2;1 µF kondansatör;Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm;clk;C202 C203
-LED;3;3 mm LED;LED_THT:LED_D3.0mm;cpu clk;D1 D2 D201
+DISP_BAR_10;10;10 segmentli LED çubuk gösterge (DIP-20, ör. Kingbright DC-10YWA, Broadcom HDSP-4840);Display:HDSP-4830;cpu;DS1 DS2 DS3 DS4 DS5 DS6 DS7 DS8 DS9 DS10
+LED;42;3 mm LED;LED_THT:LED_D3.0mm;cpu clk;D1 D2 D201 D3 D4 D5 D6 D7 D8 D9 D10 D11 D12 D13 D14 D15 D16 D17 D18 D19 D20 D21 D22 D23 D24 D25 D26 D27 D28 D29 D30 D31 D32 D33 D34 D35 D36 D37 D38 D39 D40 D41
 OSC_CAN;1;Kristal osilatör modülü (DIP-14 kılıf, 5 V);Oscillator:Oscillator_DIP-14;clk;X201
 POT_100K;1;100 kΩ trimpot;Potentiometer_THT:Potentiometer_Bourns_3386P_Vertical;clk;RV201
 R_10K;3;10 kΩ direnç;Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal;clk;R201 R202 R204
-R_1K;1;1 kΩ direnç;Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal;clk;R203
+R_1K;40;1 kΩ direnç;Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal;clk cpu;R203 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15 R16 R17 R18 R19 R20 R21 R22 R23 R24 R25 R26 R27 R28 R29 R30 R31 R32 R33 R34 R35 R36 R37 R38 R39 R40 R41
 R_330;3;330 Ω direnç (LED akımı);Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal;cpu clk;R1 R2 R205
 RN_10K_8;2;8 × 10 kΩ direnç dizisi (SIP-9, ortak uç);Resistor_THT:R_Array_SIP9;cpu;RN1 RN2
+RN_1K_ISO_8;10;8 × 1 kΩ yalıtılmış direnç dizisi (DIP-16, ör. 4116R-1-102);Package_DIP:DIP-16_W7.62mm;cpu;RN3 RN4 RN5 RN6 RN7 RN8 RN9 RN10 RN11 RN12
 SW_PUSH;2;Basmalı buton (6 mm);Button_Switch_THT:SW_PUSH_6mm;clk;SW201 SW202
 SW_SPDT;2;Sürgülü anahtar (1 kutup, 2 konum);Button_Switch_THT:SW_Slide_1P2T_CK_OS102011MS2Q;clk;SW203 SW204

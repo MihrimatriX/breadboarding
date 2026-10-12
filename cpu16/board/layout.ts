@@ -40,7 +40,9 @@ export interface ChipPlace {
 export type PassiveKind =
   | "direnc" | "kondansator" | "elektrolitik" | "led" | "dizi" | "konnektor" | "osilator" | "buton" | "anahtar" | "pot" | "modul"
   // 8 bit hesap makinesi: DIP anahtar, 7 segment gösterge, DIP-16 direnç dizisi
-  | "dip" | "gosterge" | "dipdizi";
+  | "dip" | "gosterge" | "dipdizi"
+  // CPU kartının değer göstergeleri: 10 segmentli LED çubuk (DIP-20)
+  | "cubuk";
 
 export interface PassivePlace {
   ref: string;
@@ -64,7 +66,7 @@ export interface PassivePlace {
   chip?: string;
   /** kartın arka panele takılan kenar konnektörü */
   edge?: boolean;
-  /** LED'in rengi (görevinden: passives.ts, LED_RENK_KURALLARI) */
+  /** LED'in ve çubuk göstergenin rengi (görevinden: passives.ts, LED_RENK_KURALLARI) */
   led?: LedRenk;
   pins: PinPlace[];
 }
@@ -208,6 +210,21 @@ export function passiveShape(part: string, pinCount: number): PassiveShape {
       },
     };
   }
+  if (/HDSP-48|Bargraph/.test(fp)) {
+    // 10 segmentli çubuk gösterge: 25,4 × 10,16 mm gövde, DIP-20 gibi iki sıra (7,62 mm); 1–10 alt
+    // sırada soldan sağa (anotlar), 11–20 üst sırada sağdan sola (katotlar). k. segment k. sütunda.
+    const w = 25.4;
+    const h = 10.16;
+    return {
+      kind: "cubuk", w, h, height: 6.5,
+      pin: (n) => {
+        const k = n - 1;
+        const bottom = k < 10;
+        const col = bottom ? k : 19 - k;
+        return [w / 2 + (col - 4.5) * PITCH, h / 2 + (bottom ? 3.81 : -3.81)];
+      },
+    };
+  }
   if (/PinHeader_2x/.test(fp)) return twoRows("konnektor", PITCH, 5.6, 8.5, "header");
   if (/Pin(Header|Socket)_1x/.test(fp)) return row("konnektor", 2.8, 8.5);
   if (/Oscillator_DIP|Arduino/.test(fp)) {
@@ -255,7 +272,7 @@ function placePassive(p: Passive, x: number, y: number, vertical: boolean, chip?
   const h = vertical ? s.w : s.h;
   return {
     ref: p.ref, part: p.part, card: p.card, block: p.block, role: p.role, kind: s.kind, x, y, w, h, height: s.height, vertical, chip,
-    ...(s.kind === "led" ? { led: ledRengi(p.role) } : {}),
+    ...(s.kind === "led" || s.kind === "cubuk" ? { led: ledRengi(p.role) } : {}),
     pins: pins.map((q, i) => {
       const [px, py] = s.pin(q.num, i, pins.length);
       return { num: q.num, name: q.name, net: p.pins[String(q.num)] ?? -1, x: x + (vertical ? py : px), y: y + (vertical ? px : py) };

@@ -106,7 +106,7 @@ Adres LED'lerindeki sayaç 0xFFFE'den 0x0000'a sarar: CPU tüm adres alanında N
 ## Malzeme ve bağlantılar
 
 <!-- otomatik: başla (npm run cpu16 -- kit ile üretilir, elle değiştirme) -->
-#### Malzeme (67 entegre, 71 pasif eleman)
+#### Malzeme (67 entegre, 79 pasif eleman)
 
 | Parça | Adet | Referanslar | Açıklama | Besleme |
 |---|---|---|---|---|
@@ -127,7 +127,8 @@ Adres LED'lerindeki sayaç 0xFFFE'den 0x0000'a sarar: CPU tüm adres alanında N
 | Pasif | Adet | Referanslar | Açıklama |
 |---|---|---|---|
 | C_100N | 67 | C2 C3 C4 C5 C6 C7 C8 C9 C10 C11 C12 C13 C14 C50 C51 C52 C53 C54 C55 C56 C57 C58 C59 C60 C61 C62 C63 C64 C65 C66 C67 C69 C118 C128 C148 C149 C150 C151 C152 C153 C154 C155 C156 C157 C158 C159 C160 C161 C162 C165 C166 C167 C168 C169 C171 C172 C173 C174 C176 C180 C181 C182 C183 C184 C188 C189 C192 | 100 nF seramik kondansatör (dekuplaj) |
-| LED | 2 | D1 D2 | 3 mm LED |
+| LED | 6 | D1 D2 D38 D39 D40 D41 | 3 mm LED |
+| R_1K | 4 | R38 R39 R40 R41 | 1 kΩ direnç |
 | R_330 | 2 | R1 R2 | 330 Ω direnç (LED akımı) |
 
 Yapıştırıcı lojik çiplerinin kapıları bloklara dağılmıştır; bu deneyde kullanılan kapılar:
@@ -174,7 +175,7 @@ Yapıştırıcı lojik çiplerinin kapıları bloklara dağılmıştır; bu dene
 - **U191** (74HC20, bu deneyde takılır): 1. kapı (komut); 2. kapı (CW16)
 - **U192** (74HC20, Deney 5'de takıldı): 1. kapı (CW19). Diğerleri: 2. kapı → Deney 5
 
-#### Bağlantılar (274 net)
+#### Bağlantılar (278 net)
 
 Her satır bir nettir: sütundaki pinlerin hepsi birbirine bağlanır. `U12-3 D0` = U12'nin 3. bacağı (D0).
 Pasif elemanlarda `R5.2` = R5'in 2. ucu. Besleme pinleri ve dekuplaj kondansatörleri tabloda yoktur
@@ -234,11 +235,11 @@ elle sür (DIP anahtar + 10 kΩ çekme direnci); ◀ = alıcısı sonraki deneyl
 | `~MK2_0` | U149-6 ~Y, U170-9 3A |  |
 | `~MK31_0` | U156-6 ~Y, U173-12 4A |  |
 | `~RESET` | U9-1 ~MR, U11-1 ~1CLR, U11-13 ~2CLR, U12-1 ~1CLR, U12-10 ~2PRE | arka panel 7 · önceki: Deney 1, 5, 6 |
-| `~SRC_ALU` | U13-13 ~Y2 | önceki: Deney 5 |
-| `~SRC_FLAGS` | U13-9 ~Y6 | önceki: Deney 5 |
-| `~SRC_IMM` | U13-10 ~Y5, U65-1 ~OE1, U66-1 ~OE1 |  |
-| `~SRC_MEM` | U13-11 ~Y4 | önceki: Deney 6 |
-| `~SRC_PC` | U13-12 ~Y3 | önceki: Deney 6 |
+| `~SRC_ALU` | U13-13 ~Y2 | önceki: Deney 4, 5 |
+| `~SRC_FLAGS` | U13-9 ~Y6 | önceki: Deney 4, 5 |
+| `~SRC_IMM` | U13-10 ~Y5, U65-1 ~OE1, U66-1 ~OE1 | önceki: Deney 4 |
+| `~SRC_MEM` | U13-11 ~Y4 | önceki: Deney 4, 6 |
+| `~SRC_PC` | U13-12 ~Y3 | önceki: Deney 4, 6 |
 | `~SRC_REG` | U13-14 ~Y1 | önceki: Deney 4 |
 | `~STEP_CLR` | U9-9 ~PE, U130-6 2Y |  |
 | `~WAKE` | U117-13 4B, U145-8 4Y |  |
@@ -418,6 +419,10 @@ elle sür (DIP anahtar + 10 kΩ çekme direnci); ◀ = alıcısı sonraki deneyl
 | `KOP13` | U179-1 1A, U191-6 1Y |  |
 | `LED_FAULT` | D2.1, R2.2 |  |
 | `LED_HALTED` | D1.1, R1.2 |  |
+| `LED_STEP0` | D38.1, R38.2 |  |
+| `LED_STEP1` | D39.1, R39.2 |  |
+| `LED_STEP2` | D40.1, R40.2 |  |
+| `LED_STEP3` | D41.1, R41.2 |  |
 | `MK0` | U2-2 D0, U132-8 3Y |  |
 | `MK1` | U2-3 D1, U170-6 2Y |  |
 | `MK2` | U2-4 D2, U170-8 3Y |  |
@@ -454,10 +459,10 @@ elle sür (DIP anahtar + 10 kΩ çekme direnci); ◀ = alıcısı sonraki deneyl
 | (adsız) | U118-10 3B, U127-11 4Y |  |
 | `RUN` | U12-12 2D, U118-8 3Y |  |
 | `RUN_R` | U9-7 CEP, U12-9 2Q, U118-2 1B, U118-5 2B, U130-2 1B, U130-5 2B | önceki: Deney 6 |
-| `STEP0` | U9-14 Q0, U10-1 A0, U68-1 A0, U147-11 S0, U148-11 S0, U149-11 S0, U150-11 S0, U151-11 S0, U152-11 S0, U153-11 S0, U154-11 S0, U155-11 S0, U156-11 S0 |  |
-| `STEP1` | U9-13 Q1, U10-2 A1, U68-2 A1, U147-10 S1, U148-10 S1, U149-10 S1, U150-10 S1, U151-10 S1, U152-10 S1, U153-10 S1, U154-10 S1, U155-10 S1, U156-10 S1 |  |
-| `STEP2` | U9-12 Q2, U10-3 A2, U68-3 A2, U147-9 S2, U148-9 S2, U149-9 S2, U150-9 S2, U151-9 S2, U152-9 S2, U153-9 S2, U154-9 S2, U155-9 S2, U156-9 S2 |  |
-| `STEP3` | U9-11 Q3, U10-4 ~E1, U68-6 E3, U147-7 ~E, U148-7 ~E, U149-7 ~E, U150-7 ~E, U151-7 ~E, U152-7 ~E, U153-7 ~E, U154-7 ~E, U155-7 ~E, U156-7 ~E |  |
+| `STEP0` | R38.1, U9-14 Q0, U10-1 A0, U68-1 A0, U147-11 S0, U148-11 S0, U149-11 S0, U150-11 S0, U151-11 S0, U152-11 S0, U153-11 S0, U154-11 S0, U155-11 S0, U156-11 S0 |  |
+| `STEP1` | R39.1, U9-13 Q1, U10-2 A1, U68-2 A1, U147-10 S1, U148-10 S1, U149-10 S1, U150-10 S1, U151-10 S1, U152-10 S1, U153-10 S1, U154-10 S1, U155-10 S1, U156-10 S1 |  |
+| `STEP2` | R40.1, U9-12 Q2, U10-3 A2, U68-3 A2, U147-9 S2, U148-9 S2, U149-9 S2, U150-9 S2, U151-9 S2, U152-9 S2, U153-9 S2, U154-9 S2, U155-9 S2, U156-9 S2 |  |
+| `STEP3` | R41.1, U9-11 Q3, U10-4 ~E1, U68-6 E3, U147-7 ~E, U148-7 ~E, U149-7 ~E, U150-7 ~E, U151-7 ~E, U152-7 ~E, U153-7 ~E, U154-7 ~E, U155-7 ~E, U156-7 ~E |  |
 | `WAKE` | U117-3 1Y, U117-5 2B, U127-13 4B, U145-9 4A |  |
 
 **Boşta kalan çıkışlar (bağlanmaz):** U4-12 Q7, U5-7 ~Y7, U5-9 ~Y6, U5-10 ~Y5, U5-11 ~Y4, U5-12 ~Y3, U5-13 ~Y2, U9-15 TC, U11-6 ~1Q, U12-8 ~2Q, U13-7 ~Y7, U13-15 ~Y0, U49-6 ~Y, U50-6 ~Y, U51-6 ~Y, U52-6 ~Y, U53-6 ~Y, U54-6 ~Y, U55-6 ~Y, U56-6 ~Y, U57-6 ~Y, U58-6 ~Y, U59-6 ~Y, U60-6 ~Y, U61-6 ~Y, U62-6 ~Y, U63-6 ~Y, U64-6 ~Y, U68-7 ~Y7, U68-9 ~Y6, U68-10 ~Y5, U68-11 ~Y4, U68-12 ~Y3, U68-13 ~Y2, U147-5 Y, U148-5 Y, U149-5 Y, U150-6 ~Y, U151-6 ~Y, U152-6 ~Y, U153-6 ~Y, U154-6 ~Y, U155-6 ~Y, U156-5 Y

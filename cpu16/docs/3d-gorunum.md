@@ -2,7 +2,7 @@
 
 Silikon3D'de üçüncü bölüm: **CPU16 kartı 3D** (`#kart`). Bütün bilgisayar tek sahnede: CPU kartı,
 saat ve reset kartı, bellek kartı, önbellek kartı, G/Ç kartı, video kartı ve kendin yap bellek kartı,
-arka panelleriyle birlikte. Bugünkü anakartta 444 entegre, 495 pasif eleman, ~5 000 kapı. Hepsi kapı seviyesinde bir
+arka panelleriyle birlikte. Bugünkü anakartta 444 entegre, 593 pasif eleman, ~5 000 kapı. Hepsi kapı seviyesinde bir
 Web Worker'da saat saat çalışır. Ekranda bilgisayar → kart → çip → kapı → transistör diye
 inilir ve her seviyede sinyaller canlıdır. Kartlar elle yazılmış bir listeden gelmez: görünüm
 `board.chips` ve `board.passives` içinde ne varsa onu yerleştirir. Yeni bir kart takılınca (ör.
@@ -14,7 +14,7 @@ inilir ve her seviyede sinyaller canlıdır. Kartlar elle yazılmış bir listed
 |---|---|---|
 | Bilgisayar | 3D sahne (açılış) | Kartlar sıralar hâlinde. Her sıranın altında arka panel şeridi var, şeritteki bakır yollar canlı. Sıralar soldaki kabloyla birbirine bağlı. Arkada VGA monitörü, ekranında programın görüntüsü. |
 | Kart | 3D sahne | Entegreler işlev bloklarına göre (ALU, Register dosyası, VRAM, Piksel yolu…) yerleşir. Çok çipli bloklar kareye yakın ızgara olur. Dekuplaj kondansatörleri çiplerinin yanında durur, kenar konnektörü kartın alt kenarında. Öteki pasifler bloklarının altında sıralanır. |
-| Pasifler | 3D sahne | Direnç, kondansatör, elektrolitik, LED, direnç dizisi, konnektör, osilatör, buton, anahtar, pot ve modül. Biçimlerini KiCad ayak izi belirler. LED'ler sürüldükleri net 1 olunca yanar. Pasiflerin pinleri de tellere katılır. |
+| Pasifler | 3D sahne | Direnç, kondansatör, elektrolitik, LED, direnç dizisi, konnektör, osilatör, buton, anahtar, pot, modül ve CPU kartının 10 segmentli çubuk göstergeleri. Biçimlerini KiCad ayak izi belirler. LED'ler sürüldükleri net 1 olunca yanar; aktif düşük LED'ler (VCC → direnç → LED → sinyal, ör. `~ROE0`) net 0 olunca. Çubuk göstergenin her segmenti dizinin öbür ucundaki sinyal 1 iken yanar: bir bayt soldan sağa bit 0 … 7. Pasiflerin pinleri de tellere katılır. |
 | Teller | Araç çubuğu: **Teller** | Pinden pine atlama telleri. Renkleri canlı: mavi 0, kırmızı 1, mor Z, sarı X. Kipler aşağıda. |
 | Çip | Çipe tıkla | Kamera çip ile tellerinin öbür uçlarını birlikte görecek şekilde uçar. Çipin üstünde **kalıbı** (die) açılır. Yan panelde **Bağlantılar**: pin no + ad → net → öbür uçlar (çip.pin). Alt panelde **Çipin içi**: kapı seviyesi şema ya da bellek dizisi. |
 | Kapı | Kalıpta ya da şemada bir kapıya tıkla | O kapının CMOS transistör şeması. İletimdeki transistörler yeşil. |

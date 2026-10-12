@@ -54,6 +54,24 @@ U1..U199 (`CARD_REF_BASE`).
 Ayrıca: veriyolu çekme dirençleri (2 × 10 kΩ SIP-9), her entegreye 100 nF, kart girişine 100 µF,
 HALTED ve FAULT LED'leri, 2 × 32 arka panel konnektörü.
 
+**Hata ayıklama LED'leri ve çubuk göstergeler** (James Sharman'ın ve Ben Eater'ın breadboard
+bilgisayarlarındaki gibi; entegre yok, hepsi pasif):
+
+| Gösterge | Adet | Sinyal | Renk |
+|---|---:|---|---|
+| Register okuma / yazma (D3–D18) | 16 | `~ROE0`–`~ROE7`, `~WSEL0`–`~WSEL7` (aktif düşük) | okuma yeşil, yazma turuncu |
+| Veriyolu sürücüsü (D19–D24) | 6 | `~SRC_REG`, `~SRC_ALU`, `~SRC_PC`, `~SRC_MEM`, `~SRC_IMM`, `~SRC_FLAGS` (aktif düşük) | beyaz |
+| Bellek okuma / yazma (D25, D26) | 2 | `MEMRD`, `MEMW` | yeşil, turuncu |
+| Yüklemeler (D27–D32) | 6 | TA (`CW17`), TB (`CW18`), MAR (`CW21`), IR (`CW23`), PC yükleme (`~PC_LOAD`), PC artırma | turuncu |
+| Bayraklar (D33–D37) | 5 | `NFLAG`, `ZFLAG`, `CFLAG`, `VFLAG`, `IFLAG` | mavi |
+| Mikro adım (D38–D41) | 4 | `STEP0`–`STEP3` | sarı |
+| Çubuk göstergeler (DS1–DS10) | 10 | `BUS0`–`15`, `PC1`–`15`, `A0`–`15` (MAR), `IR0`–`15`, `RES0`–`15` (ALU sonucu) | sarı |
+
+Her LED'in yanında 1 kΩ (R3–R41), her çubuk göstergenin önünde 8 × 1 kΩ yalıtılmış direnç dizisi
+(DIP-16, RN3–RN12): LED ve segment başına ≈ 3 mA. Aktif düşük sinyallerde LED VCC'den sinyale
+bağlıdır (VCC → 1 kΩ → LED → sinyal): çıkış 0 olunca yanar. Çubuk göstergede 1. segment bit 0'dır.
+Ayrıntı ve renk kuralları: [kit/led-ve-direnc.md](../kit/led-ve-direnc.md).
+
 **Test bellek kartı: 7 entegre.** 64 KB düz RAM (2 × 62256: çift ve tek baytlar) ve 0xFF00'da UART
 çıkış mandalı (74HC574 + 2 × 74HC688 adres karşılaştırıcı). Emülatördeki `SimpleBus` ile birebir aynı
 davranır; asıl anakart (bank'lı 1 MB bellek, ROM, G/Ç, video) Faz 6'da bunun yerini alır.
