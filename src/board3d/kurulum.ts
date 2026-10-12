@@ -30,7 +30,8 @@ function kaynakKarti(kaynak: KurulumKaynagi): { board: Board; layout: BoardLayou
     case "anakart":
       return { board: kartModeli("cpu16").board, layout: kartYerlesimi("cpu16") };
     case "hesap":
-      return { board: kartModeli("hesap").board, layout: kartYerlesimi("hesap") };
+      // pinden pine tel listesi (belgedekiyle aynı): PCB yerleşimiyle; breadboard telleri ayrı (bbKurulum)
+      return { board: kartModeli("hesap").board, layout: kartYerlesimi("hesap", "pcb") };
     case "bilgisayar":
     case "programlayici": {
       const board = kaynak === "bilgisayar" ? buildComputerBoard().board : buildProgrammerBoard().board;

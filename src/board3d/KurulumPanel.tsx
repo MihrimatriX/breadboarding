@@ -6,7 +6,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { cardTitle } from "../../cpu16/board/layout";
 import type { CipYeri, KurulumPlani, Tel, Uc } from "../../cpu16/kurulum/plan";
+import { aktifKart } from "./aktif";
+import { BbKurulumPanel } from "./BbKurulumPanel";
 import { gorunenKartlar, sahnedeVar, seciliTel, useKurulum } from "./kurulum";
+import { useKart } from "./store";
 import "./kurulum.css";
 
 const sayi = (n: number) => n.toLocaleString("tr-TR");
@@ -180,7 +183,13 @@ function SifirlaDugmesi({ bos }: { bos: boolean }) {
   );
 }
 
+/** Kurulum paneli: hesap makinesi breadboard görünümündeyse breadboard telleri, değilse pinden pine teller */
 export function KurulumPanel() {
+  const gorunum = useKart((s) => s.gorunum);
+  return aktifKart() === "hesap" && gorunum === "breadboard" ? <BbKurulumPanel /> : <PinKurulumPanel />;
+}
+
+function PinKurulumPanel() {
   const s = useKurulum();
   const tel = useKurulum(seciliTel);
   const { plan, yapilan } = s;
