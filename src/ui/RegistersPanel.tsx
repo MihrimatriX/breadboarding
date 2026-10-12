@@ -14,8 +14,9 @@ const PINS: { name: string; label: string; toggle?: boolean; activeLow?: boolean
   { name: "nmi", label: "NMI", toggle: true, activeLow: true },
 ];
 
-export function RegistersPanel() {
-  const snap = useApp((s) => s.snapshot);
+/** visible: sekme ya da bölüm gizliyken her karede yeniden çizilmesin */
+export function RegistersPanel({ visible = true }: { visible?: boolean }) {
+  const snap = useApp((s) => (visible ? s.snapshot : null));
   if (!snap) return null;
   const t = snap.trace;
   const read = (a: number) => (a < 256 ? snap.zeroPage[a] : a < 512 ? snap.stackPage[a - 256] : 0);
