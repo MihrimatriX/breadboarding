@@ -5,6 +5,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { gateCmos } from "../../cpu16/board/inside";
+import { cardTitle } from "../../cpu16/board/layout";
 import { PASSIVES } from "../../cpu16/board/passives";
 import type { Gate } from "../../cpu16/chips/logic";
 import { breakCodes, makeCodes, textToScancodes } from "../../cpu16/emu/devices/keyboard";
@@ -13,12 +14,13 @@ import { AppHeader, Group, Meter, PanelToggle, Splitter, Tabs, heightShare, useL
 import { Simge } from "../ui/simgeler";
 import { HataKutusu, Yukleniyor } from "../ui/Yukleniyor";
 import { useYaziTipleri } from "../ui/yaziTipleri";
-import { aktifKart, aktifKartiSec, type HesapGorunumu, type KartTuru } from "./aktif";
+import { aktifKart, aktifKartiSec, gorunumHazir, type Gorunum, type KartTuru } from "./aktif";
 import { BoardScene } from "./BoardScene";
 import { installHesapApi, useHesap } from "./hesap";
 import { HesapMeters, HesapPanel } from "./HesapPanel";
 import { KurulumPanel } from "./KurulumPanel";
 import { useKurulum } from "./kurulum";
+import { bbPano, bbSeciliTel, telKimligi, useBbKurulum } from "./bbKurulum";
 import { CmosDiagram } from "./CmosDiagram";
 import { InsideDiagram } from "./InsideDiagram";
 import { LEVEL_NAME, hex4, levelOf } from "./levels";
@@ -78,10 +80,32 @@ function Meters() {
   );
 }
 
+/** Bilgisayarın görünümleri (seçim tarayıcıda saklanır) */
+const CPU_GORUNUMLERI: { g: Gorunum; label: string; title: string }[] = [
+  { g: "pcb", label: "PCB", title: "Anakart ve kartlar: yeşil PCB'ler, pinden pine teller" },
+  { g: "breadboard", label: "Breadboard", title: "Her kart kendi breadboard panosunda (7 pano, 129 board), aralarında 64 damarlı şerit kablo: delik delik kurulum" },
+];
+
+/** Görünüm seçimi (PCB / breadboard): iki kartta da aynı düğme grubu */
+function GorunumGrubu({ secenekler }: { secenekler: { g: Gorunum; label: string; title: string }[] }) {
+  const gorunum = useKart((s) => s.gorunum);
+  return (
+    <Group label="Görünüm">
+      <span className="tb-label">Görünüm</span>
+      <span className="seg" role="group" aria-label="Görünüm">
+        {secenekler.map((x) => (
+          <button key={x.g} className={gorunum === x.g ? "on" : ""} aria-pressed={gorunum === x.g} onClick={() => useKart.getState().setGorunum(x.g)} title={x.title}>{x.label}</button>
+        ))}
+      </span>
+    </Group>
+  );
+}
+
 function Toolbar({ lay, setLay }: { lay: LayoutPrefs; setLay: (p: Partial<LayoutPrefs>) => void }) {
   const s = useKart();
   return (
     <div className="toolbar">
+      <GorunumGrubu secenekler={CPU_GORUNUMLERI} />
       <Group label="Adım adım">
         <button onClick={() => s.step("cycle")} disabled={!s.ready} title="Bir saat çevrimi · kısayol: ."><Simge ad="yarim" />1 saat</button>
         <button onClick={() => s.step("instr")} disabled={!s.ready} title="Bir komut · kısayol: N"><Simge ad="adim" />1 komut</button>
@@ -143,7 +167,7 @@ const KAMERA_YERLERI: { blok: string | null; label: string; title: string }[] = 
 ];
 
 /** Hesap makinesinin görünümleri */
-const GORUNUMLER: { g: HesapGorunumu; label: string; title: string }[] = [
+const GORUNUMLER: { g: Gorunum; label: string; title: string }[] = [
   { g: "breadboard", label: "Breadboard", title: "60 breadboard, atlama telleri: gerçek kurulum (delik delik)" },
   { g: "pcb", label: "PCB", title: "Tek uzun yeşil kart, pinden pine teller" },
 ];
@@ -151,17 +175,9 @@ const GORUNUMLER: { g: HesapGorunumu; label: string; title: string }[] = [
 /** Hesap makinesinin araç çubuğu: saat ve program yok (devre birleşimsel) */
 function HesapToolbar({ lay, setLay }: { lay: LayoutPrefs; setLay: (p: Partial<LayoutPrefs>) => void }) {
   const odak = useKart((s) => s.odak?.blok);
-  const gorunum = useKart((s) => s.gorunum);
   return (
     <div className="toolbar">
-      <Group label="Görünüm">
-        <span className="tb-label">Görünüm</span>
-        <span className="seg" role="group" aria-label="Görünüm">
-          {GORUNUMLER.map((x) => (
-            <button key={x.g} className={gorunum === x.g ? "on" : ""} aria-pressed={gorunum === x.g} onClick={() => useKart.getState().setGorunum(x.g)} title={x.title}>{x.label}</button>
-          ))}
-        </span>
-      </Group>
+      <GorunumGrubu secenekler={GORUNUMLER} />
       <Group label="Kamera">
         <span className="tb-label">Kamera</span>
         <span className="seg" role="group" aria-label="Kamera">
@@ -374,7 +390,8 @@ function PartPanel() {
     );
   }
   const lay = boardLayoutData();
-  const cardTitle = lay.cards.find((c) => c.name === place.card)?.title ?? place.card;
+  // breadboard'da kart çerçevesi yok: bilgisayarda kartın adı (panosu)
+  const kartAdi = lay.cards.find((c) => c.name === place.card)?.title ?? (aktifKart() === "cpu16" ? cardTitle(place.card) : place.card);
   const title = ci ? ci.def.title : PASSIVES[place.part]?.title ?? place.part;
   return (
     <section>
@@ -387,7 +404,7 @@ function PartPanel() {
         {place.role}
         <br />
         <span className="muted">
-          {place.block || "Diğer"} · {cardTitle}
+          {place.block || "Diğer"} · {kartAdi}
           {ci ? ` · ${ci.def.pkg}${transistors ? ` · ${transistors} transistör` : " · davranışsal bellek modeli"}` : ""}
         </span>
       </p>
@@ -781,10 +798,15 @@ function MakineGorunumu() {
   const yazi = useYaziTipleri();
   const ready = useKart((s) => s.ready);
   const error = useKart((s) => s.error);
+  // breadboard görünümünün verisi ayrı parça: seçili görünüm breadboard'sa sahne veri gelince kurulur
+  const gorunumYukleniyor = useKart((s) => s.gorunumYukleniyor);
+  useKart((s) => s.gorunum);
+  const sahneHazir = !gorunumYukleniyor && gorunumHazir();
   const [lay, setLay] = useLayout("kart", { side: true, bottom: true, bottomH: heightShare(0.32, 220, 360), sideTab: "inceleme" });
   const sideTab = yanSekme("cpu16", lay.sideTab);
   const { board } = boardModel();
   useEffect(() => {
+    if (!gorunumHazir()) void useKart.getState().bbVerisiniYukle();
     startBoardWorker();
     installKartApi();
     // bölümden çıkınca simülasyon durur (worker ve kart durumu korunur)
@@ -820,12 +842,14 @@ function MakineGorunumu() {
       toolbar={<Toolbar lay={lay} setLay={setLay} />}
       stage={
         <>
-          {yazi && <BoardScene />}
+          {yazi && sahneHazir && <BoardScene />}
           <VgaPanel />
           {error ? (
             <HataKutusu baslik="Simülasyon başlatılamadı">{error}</HataKutusu>
           ) : !ready ? (
             <Yukleniyor alt="kartlar kapı seviyesinde kuruluyor, örnek program EEPROM'a yazılıyor">Bilgisayar kuruluyor…</Yukleniyor>
+          ) : gorunumYukleniyor ? (
+            <Yukleniyor alt="7 pano, 129 board, atlama telleri">Breadboard panoları yükleniyor…</Yukleniyor>
           ) : (
             !yazi && <Yukleniyor>3D sahne hazırlanıyor…</Yukleniyor>
           )}
@@ -886,6 +910,21 @@ function installKartApi() {
     kurulum: () => {
       const k = useKurulum.getState();
       return { kart: k.kart, acik: k.acik, secili: k.secili, takilan: k.yapilan.size, toplam: k.plan?.teller.length ?? 0 };
+    },
+    /** görünüm: "pcb" (varsayılan) ya da "breadboard"; verilmezse yalnız okur */
+    gorunum: (g?: Gorunum) => {
+      if (g) st().setGorunum(g);
+      return st().gorunum;
+    },
+    /** breadboard kurulum modu: pano (verilirse seçilir), odaktaki tel (delikten deliğe), takılan / toplam */
+    bbKurulum: (pano?: string, asama?: number | null) => {
+      const k = useBbKurulum.getState();
+      if (pano) k.panoSec(pano);
+      if (asama !== undefined) useBbKurulum.getState().asamaSec(asama);
+      const s = useBbKurulum.getState();
+      const t = bbSeciliTel(s);
+      const p = bbPano(s.pano);
+      return { acik: s.acik, pano: s.pano, asama: s.asama, secili: t ? `${telKimligi(t.no)} ${p.tarif(t)}` : null, takilan: s.yapilan.size, toplam: p.plan.teller.length };
     },
     kapilar: (ref: string) => {
       const ci = boardModel().board.instance(ref);
