@@ -1,6 +1,8 @@
 # Deney 9: Bekleme durumları ve önbellek
 
 > **Video:** "Önbellek: aynı kod neden daha hızlı çalışır?" · **Önce:** Deney 8 (bellek kartı) · **Kart:** önbellek kartının kalanı (`onbellek`): etiket ve veri belleği, sayaçlar
+>
+> **Breadboard panosu** (bilgisayarın kalıcı breadboard yolu, [docs/breadboard.md](../docs/breadboard.md)): `onbellek-breadboard.pdf` (Önbellek kartı), 3. aşama.
 
 Bu deneyin sonunda 2 KB'lık doğrudan eşlemeli önbellek çalışır. LED'lerdeki kayan ışık bir turu
 önbellek açık, bir turu kapalı atar: bit 7 yanarken ışık gözle görülür biçimde daha hızlı kayar.

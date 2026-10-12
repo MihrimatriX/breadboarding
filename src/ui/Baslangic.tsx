@@ -99,10 +99,11 @@ export function Baslangic({ mode }: { mode: Mode }) {
       </ul>
       <div className="bs-ipuclari" aria-label="İpuçları">
         <span><Simge ad="fare" /> <kbd>Sürükle</kbd> döndür · <kbd>Sağ tık</kbd> kaydır · <kbd>Tekerlek</kbd> yakınlaş</span>
-        <span><Simge ad="klavye" /> Kısayollar sağ üstte; <kbd>?</kbd> bu paneli açar</span>
+        <span><Simge ad="ayarlar" /> <kbd>T</kbd> tema · <kbd>Y</kbd> yazı boyutu · <kbd>F</kbd> odak modu (paneller gizli)</span>
+        <span><Simge ad="klavye" /> Bütün kısayollar sağ üstte; <kbd>?</kbd> bu paneli açar</span>
       </div>
       <div className="bs-alt">
-        <span className="hint-text">Yan ve alt paneller araç çubuğunun sağındaki düğmelerle gizlenir, alt panel kenarından sürüklenerek büyür.</span>
+        <span className="hint-text">Paneller araç çubuğunun sağındaki düğmelerle gizlenir, kenarlarından sürüklenerek büyür; boyutları hatırlanır.</span>
         <button className="primary" onClick={baslangiciKapat}>Başla</button>
       </div>
     </div>

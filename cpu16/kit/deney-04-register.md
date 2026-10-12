@@ -1,6 +1,8 @@
 # Deney 4: Register dosyası ve veriyolu
 
 > **Video:** "Sekiz register, tek veriyolu: üç durumlu çıkışlar" · **Önce:** Deney 1 · **Kart:** CPU kartı, "Register dosyası" bloğu (23 entegre)
+>
+> **Breadboard panosu** (bilgisayarın kalıcı breadboard yolu, [docs/breadboard.md](../docs/breadboard.md)): `cpu-breadboard.pdf` (CPU kartı), 2. aşama (önce 1. aşama: taban, besleme, uyarlayıcı).
 
 ## Ne öğreneceksin
 

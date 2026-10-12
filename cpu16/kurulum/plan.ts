@@ -385,7 +385,7 @@ function zincir<T extends { x: number; y: number }>(start: T, rest: T[]): T[] {
 }
 
 /** Tahmini akım (mA, 5 V, 1 MHz CPU saati; bellekler seçiliyken, en kötü durum). Kaba hesap: uretim.md "Besleme". */
-function akim(deger: string): { kalem: string; mA: number } | null {
+export function akim(deger: string): { kalem: string; mA: number } | null {
   if (/^74AC/.test(deger)) return { kalem: "74AC çipleri (piksel saatinde)", mA: 4 };
   if (/^74HC/.test(deger)) return { kalem: "74HC çipleri (1 MHz'de dinamik akım)", mA: 1 };
   if (deger === "62256") return { kalem: "62256 SRAM (seçiliyken)", mA: 30 };

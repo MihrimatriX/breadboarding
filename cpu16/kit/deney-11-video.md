@@ -1,6 +1,8 @@
 # Deney 11: Video kartı: ekranda Merhaba
 
 > **Video:** "74HC'lerle VGA kartı: ekranda ilk yazı" · **Önce:** Deney 3 (karakter ROM'u programlanır), 8–10 · **Kart:** video kartı (`video`)
+>
+> **Breadboard panosu** (bilgisayarın kalıcı breadboard yolu, [docs/breadboard.md](../docs/breadboard.md)): `video-breadboard.pdf` (Video kartı), 2–4. aşamalar (önce 1. aşama: taban, besleme, uyarlayıcı).
 
 Bu deneyin sonunda bilgisayar bir VGA monitöre 80 × 30 metin çizer: mavi zeminde sarı
 "Merhaba, CPU16!", altında 16 rengin çubuğu ve her karede bir artan bir sayaç. Kartın kendi

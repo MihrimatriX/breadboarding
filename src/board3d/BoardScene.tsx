@@ -28,6 +28,7 @@ import { boardLayoutData, boardModel, findPart, liveNets, netEnds, useKart } fro
 import { KurulumSahne } from "./KurulumSahne";
 import { AtlamaTelleri, BbKurulumSahne, BreadboardTabani, breadboardGenelBakis, breadboardSahnede } from "./Breadboard3D";
 import { TextQuads, type TextItem } from "./TextQuads";
+import { useSahneRengi } from "../ui/ayarlar";
 import { allWires, busRouter, netWires, partWires, wireGeometry, type Endpoint, type WireEdge } from "./wires";
 
 /** 1 dünya birimi = 10 mm */
@@ -557,9 +558,10 @@ function Monitor() {
 /**
  * Genel bakış. Bilgisayar: bütün kartlar ve arkadaki monitör, hafif eğik. Hesap makinesi: uzun tek
  * kart önden (göstergelerin olduğu alt kenardan) eğik bakılarak; göstergeler ve anahtarlar okunur.
+ * Breadboard görünümünde (iki kartta da) bütün panolar önden eğik.
  */
 function overview(width: number, height: number, tur: KartTuru) {
-  if (tur === "hesap" && breadboardSahnede()) return breadboardGenelBakis(width, height);
+  if (breadboardSahnede()) return tur === "cpu16" ? breadboardGenelBakis(width, height, 0.13, 1.18) : breadboardGenelBakis(width, height);
   if (tur === "hesap") {
     // uzun ve dar kart: 30° eğik, yukarıdan; bütün boyu dikey görüş açısına sığar, yakın kenardaki
     // göstergeler en büyük görünür
@@ -667,14 +669,16 @@ function SelectedDie() {
 export function BoardScene() {
   const lay = boardLayoutData();
   const tur = aktifKart();
-  // hesap makinesinin görünümü değişince sahne baştan kurulur (yerleşim başka)
+  // görünüm (PCB / breadboard) değişince sahne baştan kurulur (yerleşim başka)
   const gorunum = useKart((s) => s.gorunum);
   const bb = breadboardSahnede();
   // aynı nesne kalmalı: her yeniden çizimde yeni bir hedef OrbitControls'un hedefini genel bakışa sıfırlardı
   const o = useMemo(() => overview(lay.width, lay.height, tur), [lay, tur]);
+  // zemin temaya uyar (kartın, breadboard'un ve çiplerin kendi renkleri değişmez)
+  const zemin = useSahneRengi();
   return (
     <Canvas
-      key={tur === "hesap" ? `${tur}-${gorunum}` : tur}
+      key={`${tur}-${gorunum}`}
       camera={{ position: o.cam.toArray(), fov: 40, near: 0.2, far: 800 }}
       dpr={[1, 2]}
       onPointerMissed={() => {
@@ -683,7 +687,7 @@ export function BoardScene() {
         else s.selectChip(null);
       }}
     >
-      <color attach="background" args={["#07090c"]} />
+      <color attach="background" args={[zemin]} />
       <hemisphereLight args={["#ffffff", "#1a2028", 1.1]} />
       <directionalLight position={[20, 40, 15]} intensity={1.3} />
       {bb ? <BreadboardTabani /> : <Cards />}
