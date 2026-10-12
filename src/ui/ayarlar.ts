@@ -1,12 +1,12 @@
-// Görünüm ayarları: tema (sistem / koyu / açık), yazı boyutu (normal / büyük) ve odak modu (yan ve alt
-// paneller gizli, sahne tam). Tercihler tarayıcıda saklanır; tema seçilmemişse işletim sisteminin
+// Görünüm ayarları: tema (sistem / koyu / açık), yazı boyutu (normal / büyük), odak modu (yan ve alt
+// paneller gizli, sahne tam) ve arayüz dili (Türkçe / İngilizce; metinler ceviri.ts ile). Tercihler tarayıcıda saklanır; tema seçilmemişse işletim sisteminin
 // tercihi izlenir (sistem değişince sayfa da değişir). Ayarlar <html> öğesine data-tema, data-boyut ve
-// data-odak olarak yazılır; styles.css belirteçleri bunlara göre değişir. index.html'deki küçük betik
+// data-odak olarak, dil lang olarak yazılır; styles.css belirteçleri bunlara göre değişir. index.html'deki küçük betik
 // aynı anahtarları ilk boyamadan önce okur ki sayfa açılırken yanlış temada parlamasın. İşletim
 // sisteminin "hareketi azalt" tercihi de buradan okunur (azHareket: 3D kamera uçuşları).
 //
 // Kısayollar (yazı alanlarında ve klavyeyi karta ileten ekranlarda değil): T tema, Y yazı boyutu,
-// F odak modu.
+// F odak modu, L dil.
 
 import { useEffect } from "react";
 import { create } from "zustand";
@@ -14,8 +14,9 @@ import { create } from "zustand";
 export type TemaSecimi = "sistem" | "koyu" | "acik";
 export type Tema = "koyu" | "acik";
 export type YaziBoyutu = "normal" | "buyuk";
+export type Dil = "tr" | "en";
 
-const ANAHTAR = { tema: "silikon3d.tema", boyut: "silikon3d.boyut", odak: "silikon3d.odak" } as const;
+const ANAHTAR = { tema: "silikon3d.tema", boyut: "silikon3d.boyut", odak: "silikon3d.odak", dil: "silikon3d.dil" } as const;
 
 function oku(anahtar: string): string | null {
   try {
@@ -47,17 +48,33 @@ function ilkSecim(): TemaSecimi {
   return t === "koyu" || t === "acik" ? t : "sistem";
 }
 
+/**
+ * İlk açılışta dil: kaydedilmiş seçim varsa o. Yoksa tarayıcının dil listesine (navigator.languages)
+ * göre karar verilir.
+ */
+export function ilkDil(kayitli: string | null, tarayici: readonly string[]): Dil {
+  if (kayitli === "tr" || kayitli === "en") return kayitli;
+  // TODO(human): kayıtlı seçim yokken varsayılan dil
+  void tarayici;
+  return "tr";
+}
+
+const tarayiciDilleri = (): readonly string[] =>
+  typeof navigator !== "undefined" && typeof window !== "undefined" ? (navigator.languages ?? [navigator.language]) : [];
+
 interface Ayarlar {
   secim: TemaSecimi;
   /** seçim "sistem" ise işletim sisteminin teması */
   tema: Tema;
   boyut: YaziBoyutu;
   odak: boolean;
+  dil: Dil;
   temaSec(t: TemaSecimi): void;
   /** koyu ↔ açık (sistem seçiliyse görünenin tersi) */
   temaDegistir(): void;
   boyutSec(b: YaziBoyutu): void;
   odakSec(on: boolean): void;
+  dilSec(d: Dil): void;
 }
 
 export const useAyar = create<Ayarlar>((set, get) => {
@@ -67,6 +84,7 @@ export const useAyar = create<Ayarlar>((set, get) => {
     tema: secim === "sistem" ? sistemTemasi() : secim,
     boyut: oku(ANAHTAR.boyut) === "buyuk" ? "buyuk" : "normal",
     odak: oku(ANAHTAR.odak) === "1",
+    dil: ilkDil(oku(ANAHTAR.dil), tarayiciDilleri()),
     temaSec(t) {
       yaz(ANAHTAR.tema, t === "sistem" ? null : t);
       set({ secim: t, tema: t === "sistem" ? sistemTemasi() : t });
@@ -82,12 +100,17 @@ export const useAyar = create<Ayarlar>((set, get) => {
       yaz(ANAHTAR.odak, on ? "1" : "0");
       set({ odak: on });
     },
+    dilSec(d) {
+      yaz(ANAHTAR.dil, d);
+      set({ dil: d });
+    },
   };
 });
 
 /** <html> öğesindeki işaretler: CSS bunlara bakar */
-function uygula(a: Pick<Ayarlar, "tema" | "boyut" | "odak">): void {
+function uygula(a: Pick<Ayarlar, "tema" | "boyut" | "odak" | "dil">): void {
   const kok = document.documentElement;
+  kok.lang = a.dil;
   kok.dataset.tema = a.tema;
   kok.dataset.boyut = a.boyut;
   kok.dataset.odak = a.odak ? "1" : "0";
@@ -104,7 +127,7 @@ export function kisayolAlani(e: KeyboardEvent): boolean {
 }
 
 /**
- * Ayarları sayfaya bağlar: <html> işaretleri, sistem teması değişikliği ve T / Y / F kısayolları.
+ * Ayarları sayfaya bağlar: <html> işaretleri, sistem teması değişikliği ve T / Y / F / L kısayolları.
  * Root bir kez çağırır.
  */
 export function useAyarlariUygula(): void {
@@ -113,7 +136,7 @@ export function useAyarlariUygula(): void {
     // yazı boyutunu ve renkleri ilk çizimde okusun
     uygula(useAyar.getState());
     return useAyar.subscribe((s, once) => {
-      if (s.tema !== once.tema || s.boyut !== once.boyut || s.odak !== once.odak) uygula(s);
+      if (s.tema !== once.tema || s.boyut !== once.boyut || s.odak !== once.odak || s.dil !== once.dil) uygula(s);
     });
   }, []);
   useEffect(() => {
@@ -133,6 +156,7 @@ export function useAyarlariUygula(): void {
       if (k === "t") a.temaDegistir();
       else if (k === "y") a.boyutSec(a.boyut === "normal" ? "buyuk" : "normal");
       else if (k === "f") a.odakSec(!a.odak);
+      else if (k === "l") a.dilSec(a.dil === "tr" ? "en" : "tr");
       else return;
       e.preventDefault();
     };
