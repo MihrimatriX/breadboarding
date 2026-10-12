@@ -18,7 +18,8 @@ function NodeLink({ node }: { node: number }) {
   );
 }
 
-export function ProbePanel() {
+/** Ölçülen sinyal: seçili düğümün adı ve seviyesi büyük, ayrıntılar ve transistörleri altında. onAnalizor: analizöre eklenince alt paneli aç. */
+export function ProbePanel({ onAnalizor }: { onAnalizor?: () => void }) {
   const node = useApp((s) => s.selectedNode);
   const chip = useApp((s) => s.chip);
   const index = useApp((s) => s.index);
@@ -29,9 +30,7 @@ export function ProbePanel() {
   if (node === null)
     return (
       <Section title="Ölçülen sinyal">
-        <p className="muted empty">
-          Die üzerinde bir metal tele, poliye ya da difüzyona tıkla. Seçilen düğüm beyaz yanıp söner; transistörlerine buradan gezinebilirsin.
-        </p>
+        <p className="muted empty">Ölçmek için die üzerinde bir tele, poliye ya da difüzyona tıkla (ya da yukarıdan adıyla bul); ayrıntıları burada açılır.</p>
       </Section>
     );
   const names = index.namesByNode.get(node) ?? [];
@@ -40,29 +39,33 @@ export function ProbePanel() {
   const pullup = chip.pullups.includes(node);
   return (
     <Section title="Ölçülen sinyal" actions={<button className="link" onClick={() => useApp.getState().select(null)} title="Kısayol: Esc">kapat</button>}>
-      <div className="probe">
-        <div className="probe-head">
-          <span className="big">{names[0] ?? "isimsiz düğüm"}</span>
-          <span className={`level ${high ? "on" : ""}`}>{high ? "1 · YÜKSEK" : "0 · ALÇAK"}</span>
-        </div>
-        <dl className="kv">
-          <dt>Düğüm</dt>
-          <dd>#{node}</dd>
-          {names.length > 1 && (
-            <>
-              <dt>Diğer adlar</dt>
-              <dd>{names.slice(1).join(", ")}</dd>
-            </>
-          )}
-          <dt>Poligon</dt>
-          <dd>{index.segmentCount.get(node) ?? 0}{pullup ? " · pull-up yüklü" : ""}</dd>
-        </dl>
-        <div className="row wrap">
-          <button onClick={() => { useApp.getState().toggleWatch(node); sim.syncWatch(); }}>
-            {watching ? "Analizörden çıkar" : "Analizöre ekle"}
-          </button>
-          <button onClick={() => useApp.getState().select(node, true)}>Kamerayı götür</button>
-        </div>
+      <div className="olcum-bas">
+        <span className="big">{names[0] ?? "isimsiz düğüm"}</span>
+        <span className={`level ${high ? "on" : ""}`}>{high ? "1 · yüksek" : "0 · alçak"}</span>
+      </div>
+      <dl className="kv">
+        <dt>Düğüm</dt>
+        <dd className="mono">#{node}</dd>
+        {names.length > 1 && (
+          <>
+            <dt>Diğer adlar</dt>
+            <dd className="mono">{names.slice(1).join(", ")}</dd>
+          </>
+        )}
+        <dt>Poligon</dt>
+        <dd>{index.segmentCount.get(node) ?? 0}{pullup ? " · pull-up yüklü" : ""}</dd>
+      </dl>
+      <div className="row wrap">
+        <button
+          onClick={() => {
+            useApp.getState().toggleWatch(node);
+            sim.syncWatch();
+            if (!watching) onAnalizor?.();
+          }}
+        >
+          {watching ? "Analizörden çıkar" : "Analizöre ekle"}
+        </button>
+        <button onClick={() => useApp.getState().select(node, true)}>Kamerayı götür</button>
       </div>
       <h3>Kapısını sürdüğü transistörler <span className="count">{gates.length}</span></h3>
       <ul className="tlist">

@@ -20,6 +20,22 @@ inilir ve her seviyede sinyaller canlıdır. Kartlar elle yazılmış bir listed
 | Kapı | Kalıpta ya da şemada bir kapıya tıkla | O kapının CMOS transistör şeması. İletimdeki transistörler yeşil. |
 | Net | Bir pine, bir uca ya da bir net adına tıkla | Netin bütün uçları kalın bir telle, öteki her şeyin üstünde birleşir. Yan panelde netin uçları listelenir. |
 
+### Görünüm: PCB ve breadboard
+
+Araç çubuğundaki **Görünüm: PCB | Breadboard** aynı bilgisayarın iki fiziksel yapısını gösterir
+(varsayılan PCB; seçim tarayıcıda hatırlanır). Devre, simülasyon, çip seçimi, VGA ekranı ve program
+düzenleyicisi ikisinde de aynıdır; değişen yalnız yerleşimdir.
+
+- **PCB**: yukarıdaki kartlar, arka panel şeritleri, tel kipleri.
+- **Breadboard**: yedi pano masada (kart başına bir taban plakası, 129 BB830), aradaki koridorda
+  64 damarlı şerit kablo ve IDC soketleri. Her parça bacaklarıyla deliklerine oturur; 6 793 atlama
+  teli kurulumdaki yollarıyla (düz, dik açılı) ve yalıtımının renginde (renk kodu) çizilir; seçili
+  çipin ya da netin telleri, **hepsi** kipinde bütün teller ve şerit kablonun damarları canlı seviyenin
+  renginde. Breadboard verisi ayrı bir parçadır: yalnız bu görünüm ilk açılınca yüklenir.
+- **Kurulum** (breadboard görünümünde): pano ve aşama seçilir, teller numara sırasıyla gezilir;
+  sıradaki tel 3D'de vurgulanır ve tarifi yazılır (`CPU · BB07 c14 → BB08 h3, 42 mm, sarı`).
+  İşaretlenenler pano başına hatırlanır. Ayrıntı: [breadboard.md](breadboard.md).
+
 ### Teller
 
 - **yok**: tel çizilmez.
@@ -107,6 +123,8 @@ Tarayıcı konsolunda `kart`:
 | `kart.yukle(kaynak?, "asm" \| "c")` | kaynağı (verilmezse düzenleyicidekini) derle, EEPROM'a yaz, çalıştır. Hataları döndürür |
 | `kart.teller("yok" \| "secili" \| "hepsi")`, `kart.besleme(true)` | tel kipi, GND/VCC telleri |
 | `kart.isin(true)` | ışın modu |
+| `kart.gorunum("breadboard" \| "pcb")` | görünüm (verilmezse şimdiki) |
+| `kart.bbKurulum("cpu", 3)` | breadboard kurulum modu: pano ve aşama seçer; sıradaki teli ve sayıları döndürür |
 | `kart.tus("dir\n")`, `kart.uartGonder("merhaba")` | PS/2 klavye ve UART girişi |
 | `kart.secCip("U72")`, `kart.secKapi(112)`, `kart.secNet("BUS0")` | seçim |
 | `kart.cipler()`, `kart.pasifler()`, `kart.kartlar()`, `kart.baglantilar("U72")`, `kart.kapilar("U11")` | listeler |
@@ -142,6 +160,9 @@ Saat seçicisinden 1 Hz ile 1 kHz arası sabit hızlar da seçilebilir.
   - saf yardımcılar: `wires.ts`, `screen.ts`, `screen-source.ts`, `beam.ts`, `serial-in.ts`,
     `program.ts`, `memview.ts`.
 - `src/board3d/ornekler/`: düzenleyicinin kendi örnekleri (`merhaba-vga.c`).
+- Breadboard görünümü: `src/board3d/aktif.ts` (görünüm seçimi, panolar), `Breadboard3D.tsx`
+  (board'lar, teller, şerit kablo), `bbKurulum.ts` ve `BbKurulumPanel.tsx` (kurulum modu); plan
+  `cpu16/breadboard/` ([breadboard.md](breadboard.md)). Testler: `cpu16/tests/breadboard-3d.test.ts`.
 - Testler: `cpu16/tests/view.test.ts`. Kapsadığı yerler:
   - bütün bilgisayarın yerleşimi ve pin-net eşleşmesi;
   - tel geometrisi, ağaçlar ve arka panel yolları;
@@ -162,6 +183,8 @@ Saat seçicisinden 1 Hz ile 1 kHz arası sabit hızlar da seçilebilir.
   yazdığı her baytı gösterir; G/Ç kartının gerçek TX hattındaki çerçevelerin hepsi bu hızda
   çıkmayabilir.
 - Yazılım GL ile (sanal makine, GPU'suz) sahne birkaç kare/s çizilir; GPU'lu tarayıcıda akıcıdır.
+  Breadboard genel bakışı PCB'nin ≈ 1,5 katı sürer (≈ 173 çizim çağrısı, 525 bin üçgen; PCB ≈ 106,
+  233 bin).
 - Transistör şeması mantıksal yerleşimdir, gerçek çip maskesi değildir.
 - Önceki 153 entegrelik CPU + test belleği görünümü yerini bütün bilgisayara bıraktı (CPU16
   tezgâhı bölümü durur).

@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { chipInside, type InsideGate } from "../../cpu16/board/inside";
 import type { Gate } from "../../cpu16/chips/logic";
-import { LEVEL_COLOR, levelOf } from "./levels";
+import { LEVEL_VAR, levelOf } from "./levels";
 import { boardModel, liveNets, useKart } from "./store";
 
 const BUBBLE = 3;
@@ -58,7 +58,7 @@ export function InsideDiagram({ refName }: { refName: string }) {
             key={i}
             points={w.points.join(" ")}
             fill="none"
-            stroke={LEVEL_COLOR[lv]}
+            style={{ stroke: LEVEL_VAR[lv] }}
             strokeWidth={selectedNet === w.net ? 2.6 : 1.3}
             onClick={() => useKart.getState().selectNet(w.net)}
             className="wire"
@@ -81,8 +81,8 @@ export function InsideDiagram({ refName }: { refName: string }) {
             onClick={() => g.kind !== "BEHAV" && useKart.getState().selectGate(g.gate)}
           >
             <title>{`${g.kind} · çıkış ${g.outputs.map((o) => `${name(o)}=${"01ZX"[levelOf(v, o)]}`).join(", ")}`}</title>
-            <path d={s.d} fill={out === 1 ? "rgba(255,42,85,.22)" : "#0d1319"} stroke={sel ? "#fff" : "#8fa0b2"} strokeWidth={sel ? 1.8 : 1.1} />
-            {s.bubble && <circle cx={g.x + g.w - BUBBLE} cy={g.y + g.h / 2} r={BUBBLE} fill="#0d1319" stroke={sel ? "#fff" : "#8fa0b2"} strokeWidth={1.1} />}
+            <path d={s.d} className={`sema-govde${out === 1 ? " on" : ""}${sel ? " sel" : ""}`} strokeWidth={sel ? 1.8 : 1.1} />
+            {s.bubble && <circle cx={g.x + g.w - BUBBLE} cy={g.y + g.h / 2} r={BUBBLE} className={`sema-govde${sel ? " sel" : ""}`} strokeWidth={1.1} />}
             {s.label && <text x={g.x + g.w / 2} y={g.y + g.h / 2 + 3} textAnchor="middle" className="glabel">{s.label}</text>}
           </g>
         );
@@ -92,7 +92,7 @@ export function InsideDiagram({ refName }: { refName: string }) {
         const left = p.side === "left";
         return (
           <g key={p.name} className="ipin" onClick={() => useKart.getState().selectNet(p.net)}>
-            <rect x={p.x - 4} y={p.y - 4} width={8} height={8} fill={LEVEL_COLOR[lv]} />
+            <rect x={p.x - 4} y={p.y - 4} width={8} height={8} style={{ fill: LEVEL_VAR[lv] }} />
             <text x={left ? p.x - 8 : p.x + 8} y={p.y + 4} textAnchor={left ? "end" : "start"} className={selectedNet === p.net ? "sel" : ""}>
               {p.name}
             </text>

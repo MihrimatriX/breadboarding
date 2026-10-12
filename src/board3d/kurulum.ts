@@ -28,7 +28,8 @@ const planlar = new Map<string, KurulumPlani>();
 function kaynakKarti(kaynak: KurulumKaynagi): { board: Board; layout: BoardLayout } {
   switch (kaynak) {
     case "anakart":
-      return { board: kartModeli("cpu16").board, layout: kartYerlesimi("cpu16") };
+      // pinden pine tel listesi PCB yerleşimiyle (breadboard telleri ayrı: bbKurulum)
+      return { board: kartModeli("cpu16").board, layout: kartYerlesimi("cpu16", "pcb") };
     case "hesap":
       // pinden pine tel listesi (belgedekiyle aynı): PCB yerleşimiyle; breadboard telleri ayrı (bbKurulum)
       return { board: kartModeli("hesap").board, layout: kartYerlesimi("hesap", "pcb") };

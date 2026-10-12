@@ -1,6 +1,8 @@
 # Deney 1: Saat ve reset kartı
 
 > **Video:** "Bilgisayarın kalbi: saat, reset ve tek adım" · **Önce:** yok · **Kart:** saat kartı (`clk`, 9 entegre)
+>
+> **Breadboard panosu** (bilgisayarın kalıcı breadboard yolu, [docs/breadboard.md](../docs/breadboard.md)): `clk-breadboard.pdf` (Saat ve reset kartı), 2–3. aşamalar (önce 1. aşama: taban, besleme, uyarlayıcı).
 
 Pasif elemanları (renk kodu, LED'in kutbu, 100 nF dekuplaj, elektrolitiğin şeridi) ilk kez takıyorsan
 önce [LED, direnç ve kondansatör](led-ve-direnc.md) rehberine bak: bu kartta hepsi var.

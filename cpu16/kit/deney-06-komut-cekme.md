@@ -1,6 +1,8 @@
 # Deney 6: Program sayacı ve komut çekme
 
 > **Video:** "Program sayacı yürüyor: komut çekme döngüsü" · **Önce:** Deney 4, 5 · **Kart:** CPU kartı, "Program sayacı", "MAR ve IR", "Bellek arayüzü" blokları
+>
+> **Breadboard panosu** (bilgisayarın kalıcı breadboard yolu, [docs/breadboard.md](../docs/breadboard.md)): `cpu-breadboard.pdf` (CPU kartı), 4. aşama.
 
 ## Ne öğreneceksin
 

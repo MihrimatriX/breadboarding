@@ -11,3 +11,6 @@ cpu16/kurulum/cikti/
 
 # hesap8 breadboard kurulum belgesi (npm run hesap8 -- breadboard-belge): üretilen HTML/PDF
 hesap8/breadboard/cikti/
+
+# cpu16 breadboard kurulum belgeleri (npm run cpu16 -- breadboard-belge): üretilen HTML/PDF
+cpu16/breadboard/cikti/

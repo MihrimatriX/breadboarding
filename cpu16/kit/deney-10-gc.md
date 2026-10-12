@@ -1,6 +1,8 @@
 # Deney 10: G/Ç kartı: UART, zamanlayıcı, kesmeler, klavye
 
 > **Video:** "Bilgisayar dünyayla konuşuyor: seri port, saat ve kesmeler" · **Önce:** Deney 8–9 (bellek ve önbellek kartları) · **Kart:** G/Ç kartı (`gc`)
+>
+> **Breadboard panosu** (bilgisayarın kalıcı breadboard yolu, [docs/breadboard.md](../docs/breadboard.md)): `gc-breadboard.pdf` (G/Ç kartı), 2–5. aşamalar (önce 1. aşama: taban, besleme, uyarlayıcı).
 
 Bu deneyin sonunda bilgisayar ilk kez dışarıyla konuşur: bilgisayarındaki terminale yazı yollar,
 yazdıklarını geri yankılar, saniyede bir zamanlayıcı kesmesiyle nokta koyar ve PS/2 klavyenin
