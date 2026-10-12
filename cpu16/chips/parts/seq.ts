@@ -266,7 +266,7 @@ export const HC541: ChipDef = {
     for (let i = 0; i < 8; i++) out[`Y${i}`] = en ? p[`A${i}`] : "Z";
     return out;
   }),
-  usage: "İç veriyolu sürücüleri (PC, ALU, sabit birimi → veriyolu), adres tamponu",
+  usage: "İç veriyolu sürücüleri (register'lar, PC, ALU, sabit birimi → veriyolu), adres tamponu",
 };
 
 export const SEQ_CHIPS = [HC74, HC161, HC165, HC175, HC573, HC574, HC595];

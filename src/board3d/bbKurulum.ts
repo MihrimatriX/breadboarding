@@ -6,7 +6,7 @@
 // panonun takılan tellerini kendi renginde, takılmayanları soluk çizer.
 
 import { create } from "zustand";
-import { BX_ADIM, BY_ADIM, DUGUM_BOARD, satirRayi, yerelDugum } from "../../cpu16/board/breadboard/geometri";
+import { DUGUM_BOARD, satirRayi, yerelDugum } from "../../cpu16/board/breadboard/geometri";
 import { noktaBoardu, ucEtiketi, type BbPlanTemel, type BbTel } from "../../cpu16/board/breadboard/plan";
 import { KART_SIRASI } from "../../cpu16/breadboard/panolar";
 import type { BbPlani } from "../../hesap8/breadboard/plan";
@@ -26,8 +26,8 @@ export function telTarifi(p: BbPlani, t: BbTel): string {
 export function ucunKomsulari(p: Pick<BbPlanTemel, "yerlesim">, X: number, Y: number): string {
   const no = noktaBoardu(p.yerlesim, X, Y);
   const b = p.yerlesim.boards[no];
-  const r = Y - b.by * BY_ADIM;
-  const c = X - b.bx * BX_ADIM;
+  const r = Y - b.y0;
+  const c = X - b.x0;
   const ray = satirRayi(r);
   if (ray) return `${ray.endsWith("+") ? "+5 V" : "GND"} rayı (${ray.startsWith("ust") ? "üst" : "alt"})`;
   const d = no * DUGUM_BOARD + yerelDugum(r, c);
@@ -35,9 +35,9 @@ export function ucunKomsulari(p: Pick<BbPlanTemel, "yerlesim">, X: number, Y: nu
   for (const q of p.yerlesim.parcalar) {
     if (q.board !== no) continue;
     for (const k of q.bacaklar) {
-      const kb = k.Y - b.by * BY_ADIM;
+      const kb = k.Y - b.y0;
       if (satirRayi(kb)) continue;
-      if (no * DUGUM_BOARD + yerelDugum(kb, k.X - b.bx * BX_ADIM) === d) pinler.push(`${q.ref}.${k.pin}`);
+      if (no * DUGUM_BOARD + yerelDugum(kb, k.X - b.x0) === d) pinler.push(`${q.ref}.${k.pin}`);
     }
   }
   return pinler.length ? [...new Set(pinler)].join(", ") : "boş şerit (yalnız teller)";

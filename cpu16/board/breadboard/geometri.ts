@@ -71,16 +71,71 @@ export interface BbKonum {
   /** sıra numarası (0'dan), adı BB01, BB02 … */
   no: number;
   ad: string;
-  /** ızgaradaki sütun ve satırı (0 = sol / arka) */
+  /** board dizisindeki sütun ve satırı (0 = sol / arka) */
   bx: number;
   by: number;
+  /** board'un küresel ızgaradaki başlangıcı: yerel (0, 0) noktası (modüller arası boşluklar dahil) */
+  x0: number;
+  y0: number;
 }
 
 export const boardAdi = (no: number): string => `BB${String(no + 1).padStart(2, "0")}`;
 
 /** Board'un yerel (r, c) deliğinin küresel ızgara noktası */
-export const kureselX = (bx: number, c: number): number => bx * BX_ADIM + c;
-export const kureselY = (by: number, r: number): number => by * BY_ADIM + r;
+export const kureselX = (b: Pick<BbKonum, "x0">, c: number): number => b.x0 + c;
+export const kureselY = (b: Pick<BbKonum, "y0">, r: number): number => b.y0 + r;
+
+/**
+ * Modüller arası boşluk (adım): panoda iki bölge (modül) yan yana ya da arka arkaya geldiğinde
+ * aralarında bu kadar boş taban plakası kalır (8 adım ≈ 20 mm). Her modül ayrı bir board adası olur
+ * (James Sharman'ın ve Ben Eater'ın bilgisayarlarındaki gibi); boşluğu yalnız teller geçer.
+ */
+export const BOSLUK = 8;
+
+/**
+ * Board dizisinin ızgaradaki yerleri. `kod(bx, by)` board'un bölgesi: aynı sıradaki iki komşu board
+ * farklı bölgedeyse aralarına, iki sıra arasında bölgesi değişen bir sütun varsa iki sıranın arasına
+ * `bosluk` adım konur. Boşluksuz (`bosluk` = 0) dizide board'lar eskisi gibi bitişiktir.
+ */
+export function kafesKonumu(nx: number, ny: number, kod: (bx: number, by: number) => string, bosluk = BOSLUK): (bx: number, by: number) => { x0: number; y0: number } {
+  const y0: number[] = [];
+  let y = 0;
+  for (let by = 0; by < ny; by++) {
+    if (by > 0) {
+      y += BY_ADIM;
+      if (bosluk && Array.from({ length: nx }, (_, bx) => kod(bx, by) !== kod(bx, by - 1)).some(Boolean)) y += bosluk;
+    }
+    y0.push(y);
+  }
+  const x0: number[][] = [];
+  for (let by = 0; by < ny; by++) {
+    const sira: number[] = [];
+    let x = 0;
+    for (let bx = 0; bx < nx; bx++) {
+      if (bx > 0) {
+        x += BX_ADIM;
+        if (bosluk && kod(bx, by) !== kod(bx - 1, by)) x += bosluk;
+      }
+      sira.push(x);
+    }
+    x0.push(sira);
+  }
+  return (bx, by) => ({ x0: x0[by][bx], y0: y0[by] });
+}
+
+/**
+ * Izgara noktasının board'u: noktanın bulunduğu ya da (boşlukta, kenarda) en yakın arkadaki / soldaki
+ * board. Board'un satır aralığı -3 … 18 (öndeki board'a kadar olan iki ara satır dahil).
+ */
+export function noktaninBoardu<B extends BbKonum>(boards: readonly B[], X: number, Y: number): B {
+  let sira = boards.filter((b) => b.bx === 0);
+  let by = sira[0].by;
+  for (const b of sira) if (b.y0 - 3 <= Y && b.by > by) by = b.by;
+  sira = boards.filter((b) => b.by === by);
+  let en = sira.find((b) => b.bx === 0)!;
+  for (const b of sira) if (b.x0 <= X && b.bx > en.bx) en = b;
+  return en;
+}
 
 /** Izgara noktası → mm (taban plakasının sol üst köşesi 0, 0; board'ların dışında `kenar` mm pay) */
 export const PAY = 12;

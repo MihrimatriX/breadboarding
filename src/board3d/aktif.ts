@@ -262,7 +262,7 @@ export function bbSahnesi(tur: KartTuru = aktif): BbSahnesi {
 }
 
 /** Board'un dikdörtgeni sahnenin yerleşiminde (mm) */
-export function panodakiBoard(p: Pick<BbPanosu, "x" | "y">, bx: number, by: number): { x: number; y: number; w: number; h: number } {
-  const d = boardDikdortgeni(bx, by);
+export function panodakiBoard(p: Pick<BbPanosu, "x" | "y">, b: { x0: number; y0: number }): { x: number; y: number; w: number; h: number } {
+  const d = boardDikdortgeni(b);
   return { ...d, x: d.x + p.x, y: d.y + p.y };
 }

@@ -94,7 +94,7 @@ Her işlemin bit bit tanımı: `cpu16/docs/isa-ayrintilari.md`.
 ## Malzeme ve bağlantılar
 
 <!-- otomatik: başla (npm run cpu16 -- kit ile üretilir, elle değiştirme) -->
-#### Malzeme (85 entegre, 85 pasif eleman)
+#### Malzeme (85 entegre, 103 pasif eleman)
 
 | Parça | Adet | Referanslar | Açıklama | Besleme |
 |---|---|---|---|---|
@@ -121,6 +121,10 @@ Her işlemin bit bit tanımı: `cpu16/docs/isa-ayrintilari.md`.
 | Pasif | Adet | Referanslar | Açıklama |
 |---|---|---|---|
 | C_100N | 85 | C36 C37 C38 C39 C68 C70 C71 C72 C73 C74 C75 C76 C77 C78 C79 C80 C81 C82 C83 C84 C85 C86 C87 C88 C89 C90 C91 C92 C93 C94 C95 C96 C97 C98 C99 C100 C101 C102 C103 C104 C105 C106 C107 C108 C109 C110 C111 C112 C117 C119 C120 C121 C122 C123 C124 C125 C126 C129 C130 C136 C137 C138 C139 C140 C141 C142 C143 C144 C145 C146 C163 C164 C170 C175 C177 C178 C179 C185 C186 C187 C190 C191 C193 C194 C195 | 100 nF seramik kondansatör (dekuplaj) |
+| DISP_BAR_10 | 2 | DS9 DS10 | 10 segmentli LED çubuk gösterge (DIP-20, ör. Kingbright DC-10YWA, Broadcom HDSP-4840) |
+| LED | 7 | D27 D28 D33 D34 D35 D36 D37 | 3 mm LED |
+| R_1K | 7 | R27 R28 R33 R34 R35 R36 R37 | 1 kΩ direnç |
+| RN_1K_ISO_8 | 2 | RN11 RN12 | 8 × 1 kΩ yalıtılmış direnç dizisi (DIP-16, ör. 4116R-1-102) |
 
 Yapıştırıcı lojik çiplerinin kapıları bloklara dağılmıştır; bu deneyde kullanılan kapılar:
 
@@ -161,7 +165,7 @@ Yapıştırıcı lojik çiplerinin kapıları bloklara dağılmıştır; bu dene
 - **U193** (74HC20, bu deneyde takılır): 1. kapı (ALU kontrol biti 9); 2. kapı (ALU kontrol biti 10)
 - **U194** (74HC20, bu deneyde takılır): 1. kapı (ALU kontrol biti 13); 2. kapı (ALU kontrol biti 18)
 
-#### Bağlantılar (266 net)
+#### Bağlantılar (289 net)
 
 Her satır bir nettir: sütundaki pinlerin hepsi birbirine bağlanır. `U12-3 D0` = U12'nin 3. bacağı (D0).
 Pasif elemanlarda `R5.2` = R5'in 2. ucu. Besleme pinleri ve dekuplaj kondansatörleri tabloda yoktur
@@ -194,8 +198,8 @@ elle sür (DIP anahtar + 10 kΩ çekme direnci); ◀ = alıcısı sonraki deneyl
 | `~CFLAG` | U107-6 ~1Q, U169-4 2A, U176-8 3A, U176-11 4A |  |
 | `~IR8` | U169-9 3A, U178-8 4Y |  |
 | `~RESET` | U106-1 ~1CLR, U106-13 ~2CLR, U107-1 ~1CLR, U107-13 ~2CLR, U108-1 ~1CLR | arka panel 7 · önceki: Deney 1 |
-| `~SRC_ALU` | U103-1 ~OE1, U104-1 ~OE1 | ▶ elle sür (Deney 7) |
-| `~SRC_FLAGS` | U109-1 ~OE1, U110-1 ~OE1 | ▶ elle sür (Deney 7) |
+| `~SRC_ALU` | U103-1 ~OE1, U104-1 ~OE1 | önceki: Deney 4 |
+| `~SRC_FLAGS` | U109-1 ~OE1, U110-1 ~OE1 | önceki: Deney 4 |
 | `~Z_HI` | U102-19 ~EQ, U135-3 1B |  |
 | `~Z_LO` | U101-19 ~EQ, U135-2 1A |  |
 | `~ZFLAG` | U106-8 ~2Q, U125-5 2B, U125-9 3A |  |
@@ -235,6 +239,22 @@ elle sür (DIP anahtar + 10 kΩ çekme direnci); ◀ = alıcısı sonraki deneyl
 | `AOP2` | U67-9 3Y, U69-3 A2, U70-3 A2, U71-3 A2 |  |
 | `AOP3` | U67-12 4Y, U69-4 ~E1, U70-6 E3, U71-4 ~E1 |  |
 | `AOP4` | U69-5 ~E2, U70-4 ~E1, U71-6 E3, U163-11 4Y, U178-1 1A |  |
+| `BAR_RES0` | DS9.1, RN11.16 |  |
+| `BAR_RES1` | DS9.2, RN11.15 |  |
+| `BAR_RES2` | DS9.3, RN11.14 |  |
+| `BAR_RES3` | DS9.4, RN11.13 |  |
+| `BAR_RES4` | DS9.5, RN11.12 |  |
+| `BAR_RES5` | DS9.6, RN11.11 |  |
+| `BAR_RES6` | DS9.7, RN11.10 |  |
+| `BAR_RES7` | DS9.8, RN11.9 |  |
+| `BAR_RES8` | DS10.1, RN12.16 |  |
+| `BAR_RES9` | DS10.2, RN12.15 |  |
+| `BAR_RES10` | DS10.3, RN12.14 |  |
+| `BAR_RES11` | DS10.4, RN12.13 |  |
+| `BAR_RES12` | DS10.5, RN12.12 |  |
+| `BAR_RES13` | DS10.6, RN12.11 |  |
+| `BAR_RES14` | DS10.7, RN12.10 |  |
+| `BAR_RES15` | DS10.8, RN12.9 |  |
 | `BUS0` | U35-2 D0, U37-2 D0, U103-18 Y0, U105-13 4I1, U109-18 Y0 | çekme direnci RN1 (Deney 4) · önceki: Deney 4 |
 | `BUS1` | U35-3 D1, U37-3 D1, U103-17 Y1, U105-10 3I1, U109-17 Y1 | çekme direnci RN1 (Deney 4) · önceki: Deney 4 |
 | `BUS2` | U35-4 D2, U37-4 D2, U103-16 Y2, U105-6 2I1, U109-16 Y2 | çekme direnci RN1 (Deney 4) · önceki: Deney 4 |
@@ -254,7 +274,7 @@ elle sür (DIP anahtar + 10 kΩ çekme direnci); ◀ = alıcısı sonraki deneyl
 | `C_ADD` | U75-9 COUT, U100-6 1I0 |  |
 | `C_ALU` | U100-7 1Y, U116-3 1I1 |  |
 | `C_NEW` | U105-11 3I0, U116-4 1Y |  |
-| `CFLAG` | U107-5 1Q, U109-3 A1, U111-3 I1, U116-2 1I0, U125-4 2A |  |
+| `CFLAG` | R35.1, U107-5 1Q, U109-3 A1, U111-3 I1, U116-2 1I0, U125-4 2A |  |
 | `CLK_I` | U108-3 1CLK, U124-11 4Y |  |
 | `CLK_NZ` | U106-3 1CLK, U106-11 2CLK, U107-3 1CLK, U107-11 2CLK, U124-8 3Y |  |
 | `CLK_TA` | U35-11 CP, U36-11 CP, U118-11 4Y |  |
@@ -271,8 +291,8 @@ elle sür (DIP anahtar + 10 kΩ çekme direnci); ◀ = alıcısı sonraki deneyl
 | `CW9` | U67-14 4I0 | ▶ elle sür (Deney 7) |
 | `CW10` | U163-12 4A | ▶ elle sür (Deney 7) |
 | `CW11` | U67-1 S, U178-13 6A | ▶ elle sür (Deney 7) |
-| `CW17` | U118-13 4B | ▶ elle sür (Deney 7) |
-| `CW18` | U119-2 1B | ▶ elle sür (Deney 7) |
+| `CW17` | R27.1, U118-13 4B |  |
+| `CW18` | R28.1, U119-2 1B |  |
 | `CW24` | U128-4 2A | ▶ elle sür (Deney 7) |
 | `CW25` | U105-1 S, U125-1 1A, U128-5 2B, U128-13 4B | ▶ elle sür (Deney 7) |
 | `CW26` | U128-9 3A, U129-1 1A | ▶ elle sür (Deney 7) |
@@ -283,7 +303,7 @@ elle sür (DIP anahtar + 10 kΩ çekme direnci); ◀ = alıcısı sonraki deneyl
 | `DV` | U105-12 4Y, U107-12 2D |  |
 | `DZ` | U105-7 2Y, U106-12 2D |  |
 | `I_LD` | U124-13 4B, U128-11 4Y |  |
-| `IFLAG` | U108-5 1Q, U109-6 A4 |  |
+| `IFLAG` | R37.1, U108-5 1Q, U109-6 A4 |  |
 | `IR0` | U67-3 1I1 | ▶ elle sür (Deney 6) |
 | `IR1` | U67-6 2I1 | ▶ elle sür (Deney 6) |
 | `IR2` | U67-10 3I1 | ▶ elle sür (Deney 6) |
@@ -292,6 +312,13 @@ elle sür (DIP anahtar + 10 kΩ çekme direnci); ◀ = alıcısı sonraki deneyl
 | `IR10` | U111-10 S1 | ▶ elle sür (Deney 6) · önceki: Deney 4 |
 | `IR11` | U111-9 S2 | ▶ elle sür (Deney 6) · önceki: Deney 4 |
 | `IR12` | U67-13 4I1 | ▶ elle sür (Deney 6) |
+| `LED_CFLAG` | D35.1, R35.2 |  |
+| `LED_IFLAG` | D37.1, R37.2 |  |
+| `LED_NFLAG` | D33.1, R33.2 |  |
+| `LED_TA_L` | D27.1, R27.2 |  |
+| `LED_TB_L` | D28.1, R28.2 |  |
+| `LED_VFLAG` | D36.1, R36.2 |  |
+| `LED_ZFLAG` | D34.1, R34.2 |  |
 | `LOGIC0` | U76-5 Y, U92-5 1I1 |  |
 | `LOGIC1` | U77-5 Y, U92-11 2I1 |  |
 | `LOGIC2` | U78-5 Y, U93-5 1I1 |  |
@@ -333,24 +360,24 @@ elle sür (DIP anahtar + 10 kΩ çekme direnci); ◀ = alıcısı sonraki deneyl
 | (adsız) | U144-8 3Y, U145-11 5A |  |
 | (adsız) | U111-15 I4, U125-6 2Y |  |
 | (adsız) | U111-13 I6, U125-8 3Y |  |
-| `NFLAG` | U106-5 1Q, U109-5 A3, U111-2 I2, U144-9 3A |  |
+| `NFLAG` | R33.1, U106-5 1Q, U109-5 A3, U111-2 I2, U144-9 3A |  |
 | `NZ_LD` | U124-10 3B, U128-6 2Y |  |
-| `RES0` | U92-7 1Y, U101-2 P0, U103-2 A0 |  |
-| `RES1` | U92-9 2Y, U101-4 P1, U103-3 A1 |  |
-| `RES2` | U93-7 1Y, U101-6 P2, U103-4 A2 |  |
-| `RES3` | U93-9 2Y, U101-8 P3, U103-5 A3 |  |
-| `RES4` | U94-7 1Y, U101-11 P4, U103-6 A4 |  |
-| `RES5` | U94-9 2Y, U101-13 P5, U103-7 A5 |  |
-| `RES6` | U95-7 1Y, U101-15 P6, U103-8 A6 |  |
-| `RES7` | U95-9 2Y, U101-17 P7, U103-9 A7 |  |
-| `RES8` | U96-7 1Y, U102-2 P0, U104-2 A0 |  |
-| `RES9` | U96-9 2Y, U102-4 P1, U104-3 A1 |  |
-| `RES10` | U97-7 1Y, U102-6 P2, U104-4 A2 |  |
-| `RES11` | U97-9 2Y, U102-8 P3, U104-5 A3 |  |
-| `RES12` | U98-7 1Y, U102-11 P4, U104-6 A4 |  |
-| `RES13` | U98-9 2Y, U102-13 P5, U104-7 A5 |  |
-| `RES14` | U99-7 1Y, U102-15 P6, U104-8 A6 |  |
-| `RES15` | U99-9 2Y, U102-17 P7, U104-9 A7, U105-2 1I0 |  |
+| `RES0` | RN11.1, U92-7 1Y, U101-2 P0, U103-2 A0 |  |
+| `RES1` | RN11.2, U92-9 2Y, U101-4 P1, U103-3 A1 |  |
+| `RES2` | RN11.3, U93-7 1Y, U101-6 P2, U103-4 A2 |  |
+| `RES3` | RN11.4, U93-9 2Y, U101-8 P3, U103-5 A3 |  |
+| `RES4` | RN11.5, U94-7 1Y, U101-11 P4, U103-6 A4 |  |
+| `RES5` | RN11.6, U94-9 2Y, U101-13 P5, U103-7 A5 |  |
+| `RES6` | RN11.7, U95-7 1Y, U101-15 P6, U103-8 A6 |  |
+| `RES7` | RN11.8, U95-9 2Y, U101-17 P7, U103-9 A7 |  |
+| `RES8` | RN12.1, U96-7 1Y, U102-2 P0, U104-2 A0 |  |
+| `RES9` | RN12.2, U96-9 2Y, U102-4 P1, U104-3 A1 |  |
+| `RES10` | RN12.3, U97-7 1Y, U102-6 P2, U104-4 A2 |  |
+| `RES11` | RN12.4, U97-9 2Y, U102-8 P3, U104-5 A3 |  |
+| `RES12` | RN12.5, U98-7 1Y, U102-11 P4, U104-6 A4 |  |
+| `RES13` | RN12.6, U98-9 2Y, U102-13 P5, U104-7 A5 |  |
+| `RES14` | RN12.7, U99-7 1Y, U102-15 P6, U104-8 A6 |  |
+| `RES15` | RN12.8, U99-9 2Y, U102-17 P7, U104-9 A7, U105-2 1I0 |  |
 | `SINH` | U99-13 2I3, U128-3 1Y |  |
 | `SUM0` | U72-4 S1, U92-6 1I0 |  |
 | `SUM1` | U72-1 S2, U92-10 2I0 |  |
@@ -403,7 +430,7 @@ elle sür (DIP anahtar + 10 kΩ çekme direnci); ◀ = alıcısı sonraki deneyl
 | `V_ADD` | U100-10 2I0, U124-3 1Y |  |
 | `V_ALU` | U100-9 2Y, U116-6 2I1 |  |
 | `V_NEW` | U105-14 4I0, U116-7 2Y |  |
-| `VFLAG` | U107-9 2Q, U109-2 A0, U111-1 I3, U116-5 2I0, U144-10 3B |  |
+| `VFLAG` | R36.1, U107-9 2Q, U109-2 A0, U111-1 I3, U116-5 2I0, U144-10 3B |  |
 | `X0` | U72-5 A1, U136-3 1Y |  |
 | `X1` | U72-3 A2, U136-6 2Y |  |
 | `X2` | U72-14 A3, U136-8 3Y |  |
@@ -437,11 +464,11 @@ elle sür (DIP anahtar + 10 kΩ çekme direnci); ◀ = alıcısı sonraki deneyl
 | `Y14` | U75-15 B3, U143-8 3Y |  |
 | `Y15` | U75-11 B4, U143-11 4Y, U144-4 2A |  |
 | `Z_ALU` | U105-5 2I0, U135-1 1Y |  |
-| `ZFLAG` | U106-9 2Q, U109-4 A2, U111-4 I0 |  |
+| `ZFLAG` | R34.1, U106-9 2Q, U109-4 A2, U111-4 I0 |  |
 
 **Boşta kalan çıkışlar (bağlanmaz):** U71-7 ~Y7, U71-9 ~Y6, U71-10 ~Y5, U71-11 ~Y4, U71-12 ~Y3, U71-15 ~Y0, U76-6 ~Y, U77-6 ~Y, U78-6 ~Y, U79-6 ~Y, U80-6 ~Y, U81-6 ~Y, U82-6 ~Y, U83-6 ~Y, U84-6 ~Y, U85-6 ~Y, U86-6 ~Y, U87-6 ~Y, U88-6 ~Y, U89-6 ~Y, U90-6 ~Y, U91-6 ~Y, U106-6 ~1Q, U107-8 ~2Q, U108-6 ~1Q, U108-8 ~2Q, U108-9 2Q, U111-6 ~Y, U116-9 3Y, U116-12 4Y
 
-**Elle sürülecek girişler (23):** `~SRC_ALU`, `~SRC_FLAGS`, `CLKR`, `CW6`, `CW7`, `CW8`, `CW9`, `CW10`, `CW11`, `CW17`, `CW18`, `CW24`, `CW25`, `CW26`, `CW27`, `IR0`, `IR1`, `IR2`, `IR8`, `IR9`, `IR10`, `IR11`, `IR12`
+**Elle sürülecek girişler (19):** `CLKR`, `CW6`, `CW7`, `CW8`, `CW9`, `CW10`, `CW11`, `CW24`, `CW25`, `CW26`, `CW27`, `IR0`, `IR1`, `IR2`, `IR8`, `IR9`, `IR10`, `IR11`, `IR12`
 
 **İzlenebilecek çıkışlar (1):** `COND`
 <!-- otomatik: bitti -->

@@ -5,7 +5,7 @@
 // onu ayrı bir parça olarak yalnız breadboard görünümünde yükler). Ortak motor: cpu16/board/breadboard/.
 
 import type { Board } from "../board/board.ts";
-import { BY_ADIM, mmX, mmY } from "../board/breadboard/geometri.ts";
+import { mmX, mmY } from "../board/breadboard/geometri.ts";
 import { panoParcalari, plakaBoyu } from "../board/breadboard/gorunum.ts";
 import {
   bbOlcu as olcu, cipYerleri, netlistParmakIzi, sirala, telKodla, telleriCoz, telRenkleri, ucEtiketi, type BbOlcu, type BbPlanTemel, type BbVeri,
@@ -204,6 +204,3 @@ export function cpuTelTarifi(p: KartBbPlani, t: BbTel, renkAdi: string): string 
   const n = t.yol.length;
   return `${p.tanim.kisa} · ${ucEtiketi(p.yerlesim, t.yol[0], t.yol[1])} → ${ucEtiketi(p.yerlesim, t.yol[n - 2], t.yol[n - 1])}, ${Math.round(t.uzunluk)} mm, ${renkAdi}`;
 }
-
-/** Board satırının mm cinsinden yüksekliği (belgelerde) */
-export const BOARD_SATIRI_MM = BY_ADIM * 2.54;

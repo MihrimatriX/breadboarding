@@ -22,7 +22,7 @@
 // şeritlerde pahalı), iki telin aynı çizgide üst üste binmesi (çok pahalı).
 
 import type { Board } from "../board.ts";
-import { ADIM, BX_ADIM, BY_ADIM, DUGUM_BOARD, dugumDelikleri, kureselX, kureselY, yerelDugum } from "./geometri.ts";
+import { ADIM, BX_ADIM, DUGUM_BOARD, dugumDelikleri, kureselX, kureselY, yerelDugum } from "./geometri.ts";
 import type { TelRengi } from "./renk.ts";
 import { pinNeti, type BbBoard, type BbParca, type BbYerlesim } from "./yerlesim.ts";
 
@@ -77,8 +77,8 @@ export function bacakNeti(board: Board, p: Pick<BbParca, "ref" | "ek">, pin: num
 }
 
 /** Izgara sınırları: board'ların dışında 3 adım pay (teller taban plakasının kenarından da geçebilir) */
-export function izgaraSiniri(y: Pick<BbYerlesim, "nx" | "ny">): { x0: number; y0: number; x1: number; y1: number } {
-  return { x0: -3, y0: -4, x1: y.nx * BX_ADIM + 2, y1: (y.ny - 1) * BY_ADIM + 21 };
+export function izgaraSiniri(y: Pick<BbYerlesim, "boards">): { x0: number; y0: number; x1: number; y1: number } {
+  return { x0: -3, y0: -4, x1: Math.max(...y.boards.map((b) => b.x0)) + BX_ADIM + 2, y1: Math.max(...y.boards.map((b) => b.y0)) + 21 };
 }
 
 /** Bir telin uzunluğu (mm) */
@@ -184,7 +184,7 @@ export function yonlendir(board: Board, y: BbYerlesim, renkSec: RenkSecici, o: Y
     for (let d = 0; d < DUGUM_BOARD; d++) {
       const g = b.no * DUGUM_BOARD + d;
       for (const [r, c] of dugumDelikleri(d)) {
-        const h = hucre(kureselX(b.bx, c), kureselY(b.by, r));
+        const h = hucre(kureselX(b, c), kureselY(b, r));
         delikDugum[h] = g;
         dugumHucreleri[g].push(h);
       }
@@ -270,7 +270,7 @@ export function yonlendir(board: Board, y: BbYerlesim, renkSec: RenkSecici, o: Y
       let enP = -Infinity;
       for (const h of dugumHucreleri[g]) {
         if (!delikKullanilabilir(h) || ayrilmis[h]) continue;
-        const r = ((hY(h) % BY_ADIM) + BY_ADIM) % BY_ADIM;
+        const r = hY(h) - y.boards[Math.floor(g / DUGUM_BOARD)].y0;
         const p = r <= 8 ? -r : r; // üst şeritte a, altta j önce
         if (p > enP) { enP = p; en = h; }
       }
@@ -485,14 +485,17 @@ export function yonlendir(board: Board, y: BbYerlesim, renkSec: RenkSecici, o: Y
       return (X < x0 ? x0 - X : X > x1 ? X - x1 : 0) + (Y < y0 ? y0 - Y : Y > y1 ? Y - y1 : 0);
     };
   };
+  /** her ızgara satırından netin en yakın ray satırına uzaklık (board sıraları arasında boşluk olabilir) */
+  const rayUzakligi = new Map<number, Int32Array>();
+  for (const net of [VCC, GND]) {
+    const raylar = [...new Set(y.boards.map((b) => b.y0))].flatMap((y0) => (net === VCC ? [y0, y0 + 17] : [y0 + 1, y0 + 16]));
+    const u = new Int32Array(H);
+    for (let i = 0; i < H; i++) u[i] = Math.min(...raylar.map((r) => Math.abs(i + sinir.y0 - r)));
+    rayUzakligi.set(net, u);
+  }
   const rayYSezgisel = (net: number) => {
-    const satirlar = net === VCC ? [0, 17] : [1, 16];
-    return (h: number) => {
-      const yy = ((hY(h) % BY_ADIM) + BY_ADIM) % BY_ADIM;
-      let m = Infinity;
-      for (const r of satirlar) m = Math.min(m, Math.abs(yy - r), Math.abs(yy - r - BY_ADIM), Math.abs(yy - r + BY_ADIM));
-      return m;
-    };
+    const u = rayUzakligi.get(net)!;
+    return (h: number) => u[Math.floor(h / W)];
   };
   const genislet = (p: Pencere, m: number): Pencere => ({ x0: p.x0 - m, y0: p.y0 - m, x1: p.x1 + m, y1: p.y1 + m });
 
@@ -514,7 +517,7 @@ export function yonlendir(board: Board, y: BbYerlesim, renkSec: RenkSecici, o: Y
     if (yolG) return yolG;
     const tanim = (g: number) => {
       const b = y.boards[Math.floor(g / DUGUM_BOARD)];
-      const hs = dugumHucreleri[g].map((h) => `${hX(h) - b.bx * BX_ADIM},${hY(h) - b.by * BY_ADIM}:${delikDurum[h]}${ortu[h] ? "o" : ""}${engel[h] ? "e" : ""}${ayrilmis[h] ? "a" : ""}`);
+      const hs = dugumHucreleri[g].map((h) => `${hX(h) - b.x0},${hY(h) - b.y0}:${delikDurum[h]}${ortu[h] ? "o" : ""}${engel[h] ? "e" : ""}${ayrilmis[h] ? "a" : ""}`);
       return `${b.ad}#${g % DUGUM_BOARD}[${hs.join(" ")}]`;
     };
     throw new Error(`yol bulunamadı: ${netAdi(net)}; kaynak ${kaynaklar.slice(0, 6).map(tanim).join(" ")} hedef ${hedefler.slice(0, 6).map(tanim).join(" ")}`);
@@ -522,27 +525,38 @@ export function yonlendir(board: Board, y: BbYerlesim, renkSec: RenkSecici, o: Y
 
   // ------------------------------------------------ 1. ray köprüleri
   const konumBoard = new Map(y.boards.map((b) => [`${b.bx},${b.by}`, b]));
-  const kopru = (b: BbBoard, koseler: [number, number][], net: number) => sabitTel(koseler.map(([r, c]) => [kureselX(b.bx, c), kureselY(b.by, r)]), net);
+  /** board'un yerel (satır, sütun) noktası → ızgara */
+  const P = (b: BbBoard, r: number, c: number): [number, number] => [kureselX(b, c), kureselY(b, r)];
+  const kopru = (b: BbBoard, koseler: [number, number][], net: number) => sabitTel(koseler.map(([r, c]) => P(b, r, c)), net);
   for (const b of y.boards) {
     // board içi: dış + raylar (63. sütun boyunca), iç − raylar (62. sütun boyunca)
     kopru(b, [[0, 61], [0, 63], [17, 63], [17, 61]], VCC);
     kopru(b, [[1, 61], [1, 62], [16, 62], [16, 61]], GND);
   }
   for (const b of y.boards) {
-    if (!konumBoard.get(`${b.bx},${b.by + 1}`)) continue;
-    // arkadaki board'un alt ray çifti → öndekinin üst ray çifti (sol uçta, düz)
-    kopru(b, [[17, 4], [BY_ADIM + 0, 4]], VCC);
-    kopru(b, [[16, 3], [BY_ADIM + 1, 3]], GND);
+    const a = konumBoard.get(`${b.bx},${b.by + 1}`);
+    if (!a) continue;
+    // arkadaki board'un alt ray çifti → öndekinin üst ray çifti (sol uçta). Board'lar aynı sütundaysa
+    // düz; modüller arası boşluk yüzünden kaymışsa aradaki boşlukta bir dirsekle (iki köprü kesişmez)
+    if (a.x0 === b.x0) {
+      sabitTel([P(b, 17, 4), P(a, 0, 4)], VCC);
+      sabitTel([P(b, 16, 3), P(a, 1, 3)], GND);
+    } else {
+      const [rV, rG] = a.x0 > b.x0 ? [19, 20] : [20, 19];
+      sabitTel([P(b, 17, 4), P(b, rV, 4), [a.x0 + 4, b.y0 + rV], P(a, 0, 4)], VCC);
+      sabitTel([P(b, 16, 3), P(b, rG, 3), [a.x0 + 3, b.y0 + rG], P(a, 1, 3)], GND);
+    }
   }
   for (const b of y.boards) {
-    if (!konumBoard.get(`${b.bx + 1},${b.by}`)) continue;
+    const n = konumBoard.get(`${b.bx + 1},${b.by}`);
+    if (!n) continue;
     if (b.by === 0) {
-      kopru(b, [[0, 60], [-1, 60], [-1, BX_ADIM + 4], [0, BX_ADIM + 4]], VCC);
-      kopru(b, [[1, 59], [-2, 59], [-2, BX_ADIM + 5], [1, BX_ADIM + 5]], GND);
+      sabitTel([P(b, 0, 60), P(b, -1, 60), P(n, -1, 4), P(n, 0, 4)], VCC);
+      sabitTel([P(b, 1, 59), P(b, -2, 59), P(n, -2, 5), P(n, 1, 5)], GND);
     }
     if (b.by === y.ny - 1) {
-      kopru(b, [[17, 60], [18, 60], [18, BX_ADIM + 4], [17, BX_ADIM + 4]], VCC);
-      kopru(b, [[16, 59], [19, 59], [19, BX_ADIM + 5], [16, BX_ADIM + 5]], GND);
+      sabitTel([P(b, 17, 60), P(b, 18, 60), P(n, 18, 4), P(n, 17, 4)], VCC);
+      sabitTel([P(b, 16, 59), P(b, 19, 59), P(n, 19, 5), P(n, 16, 5)], GND);
     }
   }
   log(`ray köprüleri: ${kayitlar.length}`);

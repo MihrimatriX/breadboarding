@@ -323,7 +323,7 @@ Kapı seviyesi bellek kartındaki 28C256 aynı modeli aynı saatle kullanır.
 ## Çip listesi (blok başına, tahmini)
 
 Aşağıdaki tablo tasarımın başındaki tahmindir. Bütün kartlar artık kapı seviyesinde kurulu ve
-KiCad'de; kesin sayılar: CPU 194, saat 10, bellek 34, önbellek 46, G/Ç 65, video 73, kendin yap
+KiCad'de; kesin sayılar: CPU 210, saat 10, bellek 34, önbellek 46, G/Ç 65, video 73, kendin yap
 bellek 22 entegre
 (blok → çip eşlemesi ve tahminden farkları: [anakart-kartlari.md](anakart-kartlari.md),
 [anakart-gc-video.md](anakart-gc-video.md); güncel liste `npm run cpu16 -- board`). En büyük fark

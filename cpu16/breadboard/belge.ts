@@ -10,13 +10,14 @@
 import type { Board } from "../board/board.ts";
 import { BOLUM_STIL, boardGruplari, bolumlerHtml, grupEtiketleri, HARITA, haritaBolgeleri, haritaBoyu, haritaX, haritaY, katalogu } from "../board/breadboard/bolum-belge.ts";
 import { boardaDegiyor, boardCizimi, type CizimSecenekleri } from "../board/breadboard/cizim.ts";
+import { ADIM, BOSLUK } from "../board/breadboard/geometri.ts";
 import { plakaBoyu } from "../board/breadboard/gorunum.ts";
 import { DAGILIM_SINIRLARI, noktaBoardu, ucEtiketi, type BbOlcu, type BbTel } from "../board/breadboard/plan.ts";
 import type { BbParca } from "../board/breadboard/yerlesim.ts";
 import { BACKPLANE, ledRengi, PASSIVES } from "../board/passives.ts";
 import { esc, htmlBelge, kutu } from "../kurulum/stil.ts";
 import { beslemeButcesi, KOPRU_OHM, type BeslemeButcesi } from "./besleme.ts";
-import { KART_SIRASI, MAKINE_SIRALARI } from "./panolar.ts";
+import { beslemeSiralari, KART_SIRASI, MAKINE_SIRALARI } from "./panolar.ts";
 import { EN_UZUN_TEL, KORIDOR, kartOlcu, PANO_ARASI, type KartBbPlani, type MakineBbPlani } from "./plan.ts";
 import { CPU_BB_RENKLERI, cpuRenkTanimi } from "./renk.ts";
 import { mimariBolumu } from "../mimari/belge.ts";
@@ -231,11 +232,12 @@ ${bolumlerHtml(p.kart, y, k, "Bölümler: her bölgenin görevi ve çip gruplar�
 
 function besleme(p: KartBbPlani, b: BeslemeButcesi, board: Board): string {
   const y = p.yerlesim;
-  const ub = p.tanim.uyarlayici;
-  const girisler = y.parcalar.filter((q) => q.part === "CONN_5V").sort((a, c) => y.boards[a.board].bx - y.boards[c.board].bx);
+  const siralar = beslemeSiralari(p.tanim);
+  const girisi = (by: number) => siralar.reduce((e, g) => (Math.abs(by - g) < Math.abs(by - e) ? g : e));
+  const girisler = y.parcalar.filter((q) => q.part === "CONN_5V").sort((a, c) => siralar.indexOf(y.boards[a.board].by) - siralar.indexOf(y.boards[c.board].by) || y.boards[a.board].bx - y.boards[c.board].bx);
   const satir = girisler.map((g) => {
     const gb = y.boards[g.board];
-    const sutun = y.boards.filter((x) => x.bx === gb.bx).sort((a, c) => Math.abs(a.by - ub.by) - Math.abs(c.by - ub.by));
+    const sutun = y.boards.filter((x) => x.bx === gb.bx && girisi(x.by) === gb.by).sort((a, c) => Math.abs(a.by - gb.by) - Math.abs(c.by - gb.by));
     const tampon = y.parcalar.find((q) => q.board === g.board && q.part === "C_100U");
     const nesne = new Map<string, string>(board.chips.map((c) => [c.ref, c.def.part] as const));
     const cipler = y.parcalar.filter((q) => q.cipMi && sutun.some((x) => x.no === q.board)).map((q) => nesne.get(q.ref) ?? q.part);
@@ -243,7 +245,7 @@ function besleme(p: KartBbPlani, b: BeslemeButcesi, board: Board): string {
   }).join("");
   return `<section class="bolum akar">
 <h2>3. Besleme</h2>
-<p>Tek bir 5 V kaynak (bütün makine için en az 2 A, dizin belgesine bak) bir dağıtım bloğuna (klemens ya da bara) bağlanır; her besleme girişine oradan <b>ayrı</b> bir kablo çifti gider (yıldız bağlantı, 0,5 mm² ya da 20 AWG). Böylece akım board'lar arası ray köprülerinden değil kendi kablosundan gelir. Girişler uyarlayıcının board sırasında, her board sütununa bir tane; sütunun öbür board'ları arka-ön ray köprüleriyle beslenir.</p>
+<p>Tek bir 5 V kaynak (bütün makine için en az 2 A, dizin belgesine bak) bir dağıtım bloğuna (klemens ya da bara) bağlanır; her besleme girişine oradan <b>ayrı</b> bir kablo çifti gider (yıldız bağlantı, 0,5 mm² ya da 20 AWG). Böylece akım board'lar arası ray köprülerinden değil kendi kablosundan gelir. Girişler uyarlayıcının board sırasında, her board sütununa bir tane${siralar.length > 1 ? `; pano uzun olduğu için ${siralar.slice(1).map((r) => `${r + 1}.`).join(", ")} board sırasında da birer giriş var (her board en yakın girişten beslenir)` : ""}; sütunun öbür board'ları arka-ön ray köprüleriyle beslenir.</p>
 <table class="tablo"><thead><tr><th style="width:14mm">Giriş</th><th style="width:42mm">+ / − delik</th><th style="width:18mm">100 µF</th><th>Beslediği board'lar</th><th class="sag" style="width:14mm">Çip</th></tr></thead><tbody>${satir}</tbody></table>
 <p>Akım (parçaların veri sayfası değerleriyle, PCB kurulum belgelerindeki bütçeyle aynı tablo): <b>≈ ${sayi(b.toplamMa)} mA</b>; en yüklü giriş ≈ ${sayi(b.enCokGirisMa)} mA. Ray + köprü başına ≈ ${sayi(KOPRU_OHM * 1000)} mΩ ile girişten en uzak board'da + ve − raylarında toplam ≈ ${sayi(b.dusumMv)} mV düşüm (74HC için 4,5–5,5 V aralığında rahat). Her çipin 100 nF'ı kendi yanında, her girişin 100 µF'ı girişin yanında.</p>
 <div class="not">İlk açılışta (çipler takılı değilken) her board'un dört rayında ölç: + raylar 4,9–5,1 V, − raylar 0 V; uyarlayıcının 3, 4 ve 63. pinleri 5 V, 1, 2, 62 ve 64. pinleri 0 V. Şerit kabloyu ancak her pano kendi testlerini geçince tak.</div>
@@ -368,7 +370,7 @@ function malzeme(board: Board, p: KartBbPlani, o: BbOlcu, b: BeslemeButcesi): st
 <h3>Breadboard, taban, uyarlayıcı, besleme</h3>
 <table class="tablo"><thead><tr><th>Ne</th><th class="sag" style="width:20mm">Adet</th></tr></thead><tbody>
 <tr><td><b>Tam boy breadboard, 830 delik</b> (BB830 türü: 63 sütun, a–e / f–j, üstte ve altta ikişer ray, <b>raylar kesintisiz</b>; arkası yapışkanlı)</td><td class="sag">${o.board}</td></tr>
-<tr><td>Taban plakası ≈ ${sayi(Math.ceil(plaka.w / 10) * 10)} × ${sayi(Math.ceil(plaka.h / 10) * 10)} mm (10 mm kontrplak ya da MDF): board'lar ${y.nx} × ${y.ny}, yan yana bitişik; kenarlarda tellerin dolandığı ≈ 10 mm pay</td><td class="sag">1</td></tr>
+<tr><td>Taban plakası ≈ ${sayi(Math.ceil(plaka.w / 10) * 10)} × ${sayi(Math.ceil(plaka.h / 10) * 10)} mm (10 mm kontrplak ya da MDF): board'lar ${y.nx} × ${y.ny}; bir modülün board'ları bitişik, modüller arasında ≈ ${sayi(BOSLUK * ADIM, 0)} mm boşluk (her modül ayrı bir ada); kenarlarda tellerin dolandığı ≈ 10 mm pay</td><td class="sag">1</td></tr>
 <tr><td>Şerit kablo uyarlayıcısı 2 × 32 (T-cobbler benzeri: üstte 2 × 32 erkek IDC başlık, altta kanalın iki yanına 64 bacak)</td><td class="sag">1</td></tr>
 <tr><td>2 × 32 dişi IDC soketi (2,54 mm), makinenin 64 damarlı şerit kablosu üstünde (kablo ve soketler: dizin belgesi)</td><td class="sag">1</td></tr>
 <tr><td>Besleme girişi: 2 pinli başlık ya da 5,08 mm klemens (+ ve − rayına), kaynağın dağıtım bloğundan ayrı kablo çiftiyle</td><td class="sag">${ek.filter((q) => q.part === "CONN_5V").length}</td></tr>

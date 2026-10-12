@@ -6,7 +6,7 @@
 // karşılaştırır: dogrulama.ts).
 
 import type { Board } from "../board.ts";
-import { BX_ADIM, BY_ADIM, delikEtiketi } from "./geometri.ts";
+import { delikEtiketi, noktaninBoardu } from "./geometri.ts";
 import { tablodanRenk, type RenkTanimi, type TelRengi } from "./renk.ts";
 import { yolUzunlugu, UC_PAYI, type BbTel, type RenkSecici, bacakNeti } from "./yonlendirme.ts";
 import { pinNeti, type Asama, type BbYerlesim } from "./yerlesim.ts";
@@ -111,10 +111,8 @@ export function cipYerleri(kayitlar: readonly string[]): Map<string, [string, nu
 // ---------------------------------------------------------------- sıralama
 
 /** Izgara noktasının board numarası (board'ların dışındaysa en yakın board) */
-export function noktaBoardu(y: Pick<BbYerlesim, "nx" | "ny">, X: number, Y: number): number {
-  const bx = Math.min(y.nx - 1, Math.max(0, Math.floor(X / BX_ADIM)));
-  const by = Math.min(y.ny - 1, Math.max(0, Math.floor((Y + 3) / BY_ADIM)));
-  return by * y.nx + bx;
+export function noktaBoardu(y: Pick<BbYerlesim, "boards">, X: number, Y: number): number {
+  return noktaninBoardu(y.boards, X, Y).no;
 }
 
 /**
@@ -320,7 +318,7 @@ export function telYollari3B(teller: readonly Pick<BbTel, "yol">[], enCok = 3): 
 /** Izgara noktasının etiketi: "BB07 c14", "BB07 üst+14" */
 export function ucEtiketi(y: BbYerlesim, X: number, Y: number): string {
   const b = y.boards[noktaBoardu(y, X, Y)];
-  return `${b.ad} ${delikEtiketi(Y - b.by * BY_ADIM, X - b.bx * BX_ADIM)}`;
+  return `${b.ad} ${delikEtiketi(Y - b.y0, X - b.x0)}`;
 }
 
 /** Renk tablosundaki tanım (tabloda yoksa adı ve rengi) */
