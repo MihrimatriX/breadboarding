@@ -1361,6 +1361,92 @@ p .lv, b.lv { display: inline; padding: 1px 5px; }
   .modes a .modes-ad { font-size: var(--fs-sm); }
   .bs-alt { flex-direction: column; align-items: stretch; }
 }
+/* ============================================================ bölüm etiketleri (3D kart görünümü) */
+/* Sahnedeki bölge / blok çerçeveleri ve plakaları 3D'de (Bolumler3D); burada kenar etiketleri, çip
+   gruplarına çizgiler, ipucu ve yan paneldeki bölüm açıklaması. Bölümün rengi --renk (sahnedeki
+   çerçeveninki): yalnız şerit, nokta ve çizgide; yazılar temanın yazı renginde. */
+.bolum-katmani { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; }
+.bolum-cizgiler { position: absolute; inset: 0; width: 100%; height: 100%; }
+.bolum-cizgiler path, .bolum-cizgiler polygon { fill: none; stroke-linejoin: round; stroke-linecap: round; }
+.bolum-cizgiler .hale { stroke: rgba(10, 13, 17, 0.72); }
+.bolum-cizgiler .cizgi { stroke: var(--renk); }
+.bolum-cizgiler .parca { stroke: var(--renk); fill: color-mix(in srgb, var(--renk) 18%, transparent); }
+.bolum-cizgiler .dugum { fill: var(--renk); stroke: rgba(10, 13, 17, 0.72); stroke-width: 1.5; }
+.kenar-etiketi {
+  position: absolute;
+  height: 1.875rem;
+  max-width: 13.5rem;
+  padding: 0 var(--sp-3) 0 calc(var(--sp-3) + 3px);
+  display: block;
+  pointer-events: auto;
+  background: var(--overlay);
+  color: var(--text);
+  border: 0;
+  border-radius: var(--r-sm);
+  box-shadow: inset 4px 0 0 var(--renk), var(--shadow-pop);
+  font: 600 var(--fs-cap)/1.875rem var(--sans);
+  letter-spacing: 0.02em;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  backdrop-filter: blur(4px);
+}
+/* soldaki sütunda kutunun sağ kenarı çizginin başı: şerit sağda */
+.kenar-etiketi.sol { transform: translateX(-100%); padding: 0 calc(var(--sp-3) + 3px) 0 var(--sp-3); box-shadow: inset -4px 0 0 var(--renk), var(--shadow-pop); text-align: right; }
+.kenar-etiketi:hover:not(:disabled) { background: var(--surface-2); border: 0; }
+.kenar-etiketi:active:not(:disabled) { transform: none; }
+.kenar-etiketi.sol:active:not(:disabled) { transform: translateX(-100%); }
+.kenar-etiketi.secili { background: var(--surface-2); box-shadow: inset 4px 0 0 var(--renk), 0 0 0 2px var(--renk), var(--shadow-pop); }
+.kenar-etiketi.sol.secili { box-shadow: inset -4px 0 0 var(--renk), 0 0 0 2px var(--renk), var(--shadow-pop); }
+.kenar-etiketi:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* ipucu: plakanın ya da kenar etiketinin üstünde; çipin ipucunda grubunun satırı */
+.bolum-ipucu { max-width: 24rem; }
+.bolum-ipucu .bi-ust { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--sp-2); }
+.tooltip .bi-ust b, .tooltip .tt-bolum b { font: 600 var(--fs-cap)/1.4 var(--sans); letter-spacing: 0.02em; color: var(--text); }
+.bolum-ipucu p { margin-top: var(--sp-1); color: var(--text); }
+.bolum-ipucu .bi-alt { margin-top: var(--sp-2); font-size: var(--fs-cap); color: var(--text-faint); }
+.tooltip .tt-bolum { margin-top: var(--sp-2); padding-left: var(--sp-2); border-left: 3px solid var(--renk); color: var(--text-muted); font-size: var(--fs-cap); line-height: 1.45; }
+
+/* 3D kart sayfalarında araç çubuğu kalabalık (Etiketler): 1440 px'de de tek satır kalsın diye öbekler
+   arası biraz daralır, kısalan etiketler biraz daha geniş ekranda kısalır */
+@media (max-width: 1680px) {
+  .app.kart .toolbar .tb-group + .tb-group:not(.tb-end) { margin-left: var(--sp-4); padding-left: var(--sp-4); }
+}
+@media (max-width: 1500px) {
+  .app.kart .tb-label.kisalir { display: none; }
+  .app.kart .toolbar .tb-group + .tb-group:not(.tb-end) { margin-left: var(--sp-3); padding-left: var(--sp-3); }
+}
+/* bilgisayarın araç çubuğu daha dar ekranda: Etiketler "⋯" menüsünde */
+.etiket-menude { display: none; }
+@media (max-width: 1420px) {
+  .app.kart:not(.hesap) .etiket-grubu { display: none; }
+  .app.kart:not(.hesap) .etiket-menude { display: flex; }
+}
+
+/* yan panel: seçili bölüm */
+.bolum-ad { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.bolum-ad h2 { font: 600 var(--fs-xl)/1.25 var(--sans); letter-spacing: -0.01em; }
+.bolum-tur { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-sm); color: var(--text-faint); }
+.bolum-tur i, .bolum-etiketi i, .bolum-altlar i { flex: none; width: 10px; height: 10px; border-radius: 3px; background: var(--renk); }
+.bolum-zincir { font-size: var(--fs-sm); line-height: 1.6; color: var(--text-faint); }
+.bolum-zincir [aria-current] { color: var(--text-muted); }
+.etiket.bolum-etiketi { gap: var(--sp-2); color: var(--text); font: 600 var(--fs-cap)/1 var(--sans); letter-spacing: 0.02em; }
+button.etiket.bolum-etiketi { border: 0; box-shadow: none; }
+button.etiket.bolum-etiketi:hover:not(:disabled) { background: var(--surface-3); }
+.bolum-blok { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+.bolum-nasil { line-height: 1.6; color: var(--text); max-width: var(--icerik-en); }
+.bolum-asamalar, .bolum-altlar { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
+.bolum-asamalar li { color: var(--text-muted); }
+.bolum-asamalar b { color: var(--text); font-weight: 600; }
+.bolum-altlar li { display: flex; align-items: baseline; gap: var(--sp-2); min-width: 0; }
+.bolum-altlar li i { align-self: center; }
+.bolum-altlar .hint-text { margin-left: auto; white-space: nowrap; }
+.bolum-sinyaller { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-2); }
+.bolum-sinyaller code { padding: 1px 6px; border-radius: var(--r-sm); background: var(--surface-inset); color: var(--net); font-size: var(--fs-sm); }
+.bolum-parcalar span { font-family: var(--sans); color: var(--text-muted); }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
   .yk-halka { animation: don 2.4s linear infinite !important; }

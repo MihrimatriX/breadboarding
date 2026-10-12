@@ -24,6 +24,8 @@ import { HesapMeters, HesapPanel } from "./HesapPanel";
 import { KurulumPanel } from "./KurulumPanel";
 import { useKurulum } from "./kurulum";
 import { bbPano, bbSeciliTel, telKimligi, useBbKurulum } from "./bbKurulum";
+import { useBolum } from "./bolum";
+import { BolumEtiketi, BolumIpucuSatiri, BolumPanel, EtiketGrubu, EtiketMenuSecimi } from "./BolumPanel";
 import { CmosDiagram } from "./CmosDiagram";
 import { InsideDiagram } from "./InsideDiagram";
 import { LEVEL_NAME, hex4, levelOf } from "./levels";
@@ -53,15 +55,19 @@ const SHORTCUTS: Shortcut[] = [
   { keys: "Boşluk", what: "Çalıştır / duraklat" },
   { keys: ".", what: "1 saat çevrimi" },
   { keys: "N", what: "1 komut" },
-  { keys: "Esc", what: "Seçimi kaldır (kapı → net → çip)" },
+  { keys: "Esc", what: "Seçimi kaldır (kapı → net → çip → bölüm)" },
+  { keys: "E", what: "Etiketler: kapalı → bölümler → ayrıntılı" },
   { keys: "Ctrl+Enter", what: "Düzenleyicide: derleyip EEPROM'a yazar ve çalıştırır" },
   { keys: "Tıkla", what: "Entegreyi seç: teller, bağlantılar, içi" },
+  { keys: "Etikete tıkla", what: "Bölümü seç: görevi, nasıl çalıştığı, çipleri" },
   ...FARE,
 ];
 
 const HESAP_KISAYOLLARI: Shortcut[] = [
-  { keys: "Esc", what: "Seçimi kaldır (kapı → net → çip)" },
+  { keys: "Esc", what: "Seçimi kaldır (kapı → net → çip → bölüm)" },
+  { keys: "E", what: "Etiketler: kapalı → bölümler → ayrıntılı" },
   { keys: "Tıkla", what: "Entegreyi seç: teller, bağlantılar, içi" },
+  { keys: "Etikete tıkla", what: "Bölümü seç: görevi, nasıl çalıştığı, çipleri" },
   { keys: "Anahtara tıkla", what: "3D'de DIP anahtarın beyaz düğmesi: biti değiştirir (ON = 1)" },
   { keys: "Basılı tut", what: "3D'de sarı LAMBA TESTİ butonu: bütün segmentler yanar" },
   ...FARE,
@@ -126,10 +132,12 @@ function Toolbar({ lay, setLay }: { lay: LayoutPrefs; setLay: (p: Partial<Layout
         </label>
       </Group>
       <TellerGrubu />
+      <EtiketGrubu />
       <Group label="Diğer">
         <TasmaMenusu title="Diğer: saat çevrimi, besleme telleri">
           <button onClick={() => s.step("cycle")} disabled={!s.ready} title="Bir saat çevrimi · kısayol: ."><Simge ad="yarim" />1 saat çevrimi</button>
           <BeslemeSecimi />
+          <EtiketMenuSecimi />
         </TasmaMenusu>
       </Group>
       <PanelGrubu lay={lay} setLay={setLay} />
@@ -200,6 +208,7 @@ function HesapToolbar({ lay, setLay }: { lay: LayoutPrefs; setLay: (p: Partial<L
         </span>
       </Group>
       <TellerGrubu />
+      <EtiketGrubu />
       <Group label="Diğer">
         <TasmaMenusu title="Diğer: besleme telleri">
           <BeslemeSecimi />
@@ -420,6 +429,7 @@ function PartPanel() {
       <p className="parca-baslik">{title}</p>
       {place.role && <p className="parca-gorev">{place.role}</p>}
       <div className="etiketler">
+        <BolumEtiketi refName={place.ref} />
         <span className="etiket">{place.block || "Diğer"}</span>
         <span className="etiket">{kartAdi}</span>
         {ci && <span className="etiket">{ci.def.pkg}</span>}
@@ -641,11 +651,13 @@ const SIDE_TABS: Record<KartTuru, SideTab[]> = { cpu16: ["inceleme", "cpu", "kur
 function Inspector() {
   const chip = useKart((s) => s.chip);
   const net = useKart((s) => s.net);
+  const bolum = useBolum((s) => s.secili);
   return (
     <div className="inspector">
       {chip && <PartPanel />}
+      {!chip && bolum && <BolumPanel key={bolum} />}
       {net !== null && <NetPanel />}
-      {!chip && net === null && <PartPanel />}
+      {!chip && !bolum && net === null && <PartPanel />}
     </div>
   );
 }
@@ -653,10 +665,11 @@ function Inspector() {
 function SidePanel({ tab, onTab }: { tab: SideTab; onTab: (t: SideTab) => void }) {
   const chip = useKart((s) => s.chip);
   const net = useKart((s) => s.net);
-  // bir parça ya da net seçilince ayrıntıları öne gelir
+  const bolum = useBolum((s) => s.secili);
+  // bir parça, net ya da bölüm seçilince ayrıntıları öne gelir
   useEffect(() => {
-    if (chip || net !== null) onTab("inceleme");
-  }, [chip, net]); // onTab her çizimde yeni; yalnız seçim değişince çalışsın
+    if (chip || net !== null || bolum) onTab("inceleme");
+  }, [chip, net, bolum]); // onTab her çizimde yeni; yalnız seçim değişince çalışsın
   // Yeni yan panel sekmeleri (ör. "Kurulum") bu listeye ve SIDE_TABS'a eklenir.
   const tumu: Record<SideTab, TabDef<SideTab>> = {
     hesap: { id: "hesap", label: "Hesap", title: "Göstergeler, anahtarlar, işlem ve blokların şu an hesapladığı" },
@@ -694,16 +707,18 @@ function Tooltip() {
     <div className="tooltip" style={{ transform: `translate(${hover.x + 14}px, ${hover.y + 14}px)` }}>
       <b>{hover.ref}</b> {c ? c.part : p!.part} {c ? <span>{c.role}</span> : <PassiveTooltip p={p!} />}
       {hover.ek && <div className="tt-ek">{hover.ek}</div>}
+      <BolumIpucuSatiri refName={hover.ref} />
     </div>
   );
 }
 
-/** Esc: seçimi geri al (kapı → net → çip) */
+/** Esc: seçimi geri al (kapı → net → çip → bölüm) */
 function secimiGeriAl() {
   const s = useKart.getState();
   if (s.gate !== null) s.selectGate(null);
   else if (s.net !== null) s.selectNet(null);
-  else s.selectChip(null);
+  else if (s.chip !== null || !useBolum.getState().secili) s.selectChip(null);
+  else useBolum.getState().sec(null);
 }
 
 /**
