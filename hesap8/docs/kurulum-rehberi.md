@@ -6,7 +6,7 @@ adları) kurar, yalnız fiziksel yol farklıdır:
 
 | Yol | Belge | Üretimi |
 |---|---|---|
-| **Breadboard** (tam devre, 60 board) | `hesap8-breadboard-kurulum.pdf`: board haritası, board board yerleşim çizimleri, delikten deliğe tel listesi T0001–T2784, kesim listesi, malzeme | `npm run hesap8 -- breadboard-belge -o <dizin>` |
+| **Breadboard** (tam devre, 60 board) | `hesap8-breadboard-kurulum.pdf`: board haritası (bölge çerçeveleri) ve bölümler (her bölgenin ve çip grubunun görevi), board board yerleşim çizimleri (üstlerinde çip grupları), delikten deliğe tel listesi T0001–T2784, kesim listesi, malzeme | `npm run hesap8 -- breadboard-belge -o <dizin>` |
 | **PCB** (soketli kart) | `hesap-kurulum.pdf`: yerleşim haritası, pinden pine tel listesi (bip testi listesi), her çipin pin kartı; şema `hesap-sema.pdf` | `npm run cpu16 -- kurulum hesap -o <dizin>` |
 
 Tasarımın açıklaması: [tasarim.md](tasarim.md). Uygulamada (Silikon3D → 8 bit hesap 3D) varsayılan
