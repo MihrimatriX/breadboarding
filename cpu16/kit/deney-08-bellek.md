@@ -1,6 +1,8 @@
 # Deney 8: Bellek kartı ve ilk program
 
 > **Video:** "İlk program: bilgisayar kendi belleğini sınıyor" · **Önce:** Deney 3 (programlayıcı), 7 (CPU tamam) · **Kart:** bellek kartı (`bellek`), önbellek kartının bekleme blokları, test kartının FF00 çıkış mandalı
+>
+> **Breadboard panosu** (bilgisayarın kalıcı breadboard yolu, [docs/breadboard.md](../docs/breadboard.md)): `bellek-breadboard.pdf` (Bellek kartı), 2–3. aşamalar (önce 1. aşama: taban, besleme, uyarlayıcı); `onbellek-breadboard.pdf` (Önbellek kartı), 2. aşama (önce 1. aşama: taban, besleme, uyarlayıcı).
 
 Bu deneyin sonunda CPU ilk kez gerçek bir programı EEPROM'dan çalıştırır: 128 KB RAM'in 8 bankının
 hepsine desen yazar, geri okur ve sonucu 8 LED'de gösterir. LED'ler bank bank sayar, bellek

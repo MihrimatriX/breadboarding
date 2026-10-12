@@ -57,13 +57,12 @@ breadboard'u gösterir (PCB'ye geçilebilir); Kurulum modu teli 3D'de vurgulayı
 | `model.ts` | Altın model: göstergelerde ne görünmeli |
 | `sim.ts` | Kapı seviyesi simülasyon: anahtarları ayarla, göstergeleri oku |
 | `arac.ts` | komut satırı: `ozet`, `hesapla`, `dogrula [--hepsi]`, `breadboard [--uret]`, `breadboard-belge` |
-| `breadboard/geometri.ts`, `renk.ts` | BB830 geometrisi (delikler, şeritler, raylar, 2,54 mm ızgara); tel renk kodu |
-| `breadboard/yerlesim.ts` | Breadboard yerleşimi: board ızgarası, çiplerin board ve sütunu (tavlama), pasifler, raylar |
-| `breadboard/yonlendirme.ts` | Tel yönlendirme: dik açılı, düz, çip gövdesi ve tel ucu üstünden geçmeyen yollar (A*, sökme ve yeniden döşeme) |
+| `breadboard/renk.ts` | Tel renk kodu: her rengin hesap makinesindeki sinyal grubu |
+| `breadboard/yerlesim.ts` | Breadboard yerleşimi: board ızgarası, hangi blok hangi board'da, pasifler, raylar |
 | `breadboard/plan.ts`, `veri.ts` | Kurulum planı (aşamalar, tel sırası, renk, kesim boyu); üretilmiş yerleşim ve teller |
-| `breadboard/dogrulama.ts` | Fiziksel modelden birleşim-bul: açık / kısa devre, delik çakışması, gövde üstünden tel |
 | `breadboard/gorunum.ts` | Breadboard planından 3D yerleşim (Silikon3D, `src/board3d/Breadboard3D.tsx`) |
 | `breadboard/belge.ts` | Yazdırılabilir breadboard kurulum belgesi (board haritası, çizimler, tel ve kesim listesi, malzeme) |
+| `cpu16/board/breadboard/` | Ortak breadboard motoru (CPU16'nın breadboard panolarıyla ortak): BB830 geometrisi, çipleri board'lara dağıtan tavlama, tel yönlendirme (dik açılı, düz, çip gövdesinin üstünden geçmeyen yollar; A*, sökme ve yeniden döşeme), fiziksel modelden birleşim-bul doğrulaması, board çizimleri. `breadboard/geometri.ts`, `yonlendirme.ts`, `dogrulama.ts` eski içe aktarmalar için yeniden dışa aktarır |
 | `docs/tasarim.md` | Bloklar, hız, besleme, malzeme |
 | `docs/kurulum-rehberi.md` | Fiziksel kurulum: aşamalar, testler, sorun giderme |
 | `tests/` | 74HC4511, yapı, uç durumlar, lamba testi, KiCad netlist'i, breadboard bağlantısı ve 3D görünümü |

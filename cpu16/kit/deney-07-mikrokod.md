@@ -1,6 +1,8 @@
 # Deney 7: Mikrokod ve kontrol birimi
 
 > **Video:** "Mikrokod: CPU'nun içindeki küçük program" · **Önce:** Deney 4–6 · **Kart:** CPU kartının kalanı: "Kontrol", "Kontrol birimi", "Sabit birimi" ve yapıştırıcı lojik
+>
+> **Breadboard panosu** (bilgisayarın kalıcı breadboard yolu, [docs/breadboard.md](../docs/breadboard.md)): `cpu-breadboard.pdf` (CPU kartı), 5. aşama.
 
 Bu deneyin sonunda CPU kartı tamamdır: elle sürdüğün bütün `CW` anahtarlarını çıkarırsın, artık
 onları mikrokod sürer. Kartta ROM yok: mikrokod tablosu 74HC kod çözücüleri, seçicileri ve

@@ -1,9 +1,10 @@
 // Breadboard tel yönlendirmesi. Her net, pinlerinin oturduğu 5 delikli şeritler (ve raylar) ile
 // bu şeritlerin boş deliklerine takılan atlama telleriyle kurulur. Teller düz yatar, yalnız yatay
 // ve dikey gider (90° kıvrım), çip ve parça gövdelerinin üstünden geçmez; aynı deliğe iki uç ya da
-// bir uç ve bir pin girmez; hiçbir tel başka bir telin ucunun üstünden geçmez ve hiçbir telin ucu
-// başka bir telin altında kalmaz. Bu son iki kural telleri sırasından bağımsız kılar: tel listesi
-// hangi sırayla takılırsa takılsın her uç deliğine erişilebilir.
+// bir uç ve bir pin girmez. Bir telin başka bir telin ucunun üstünden geçmesi pahalıdır (M.telUcu):
+// çoğu panoda hiç olmaz, tel listesi hangi sırayla takılırsa takılsın her uç deliğine erişilebilir;
+// yalnız çok sıkışık yerlerde (geniş çiplerin yanı) olur, o zaman ucu altta kalan tel önce takılır
+// (plan.ts onceAltakiler; doğrulama oncekiUcUstu).
 //
 // Yöntem:
 // 1. Ray köprüleri (sabit yollar): her board'un üst ve alt ray çiftleri, arka-ön komşu board'lar, en
