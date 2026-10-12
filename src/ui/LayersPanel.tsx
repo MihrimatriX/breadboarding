@@ -26,12 +26,12 @@ export function LayersPanel() {
         <div className="layers">
           <label>
             <input type="checkbox" checked={showT} onChange={(e) => st.setShowTransistors(e.target.checked)} />
-            <span className="sw" style={{ background: "#4dff6a" }} />
+            <span className="sw" style={{ background: "var(--ok)" }} />
             Transistörler
           </label>
           <label>
             <input type="checkbox" checked={bloom} onChange={(e) => st.setBloom(e.target.checked)} />
-            <span className="sw" style={{ background: "#ff2a55" }} />
+            <span className="sw" style={{ background: "var(--accent)" }} />
             Parlama
           </label>
         </div>
