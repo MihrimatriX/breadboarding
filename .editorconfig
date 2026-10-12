@@ -1,0 +1,29 @@
+# https://editorconfig.org — depodaki dosyaların bugünkü biçimi
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# C (cc16 örnekleri, libc16) ve Python (programlayıcı aracı yaz.py): 4 boşluk
+[*.{c,h,py}]
+indent_size = 4
+
+# as16 assembly: etiket sütunu 8 karakter, komutlar boşlukla hizalanır (sekme yok)
+[*.s]
+indent_size = 8
+
+# Makefile kullanılırsa sekme şart
+[Makefile]
+indent_style = tab
+
+# Üretilen dosyalar: elle düzenlenmez, araç nasıl yazdıysa öyle kalır
+# (cpu16/kicad: npm run cpu16 -- board kicad; chip.json: npm run import:6502; fixtures: test kayıtları)
+[{cpu16/kicad/**,public/chips/**,tests/fixtures/**}]
+insert_final_newline = unset
+trim_trailing_whitespace = unset
+indent_size = unset
