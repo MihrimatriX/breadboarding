@@ -73,6 +73,15 @@ export const CARD_REF_BASE: Record<string, [base: number, span: number]> = {
   hesap: [0, 1000],
 };
 
+/**
+ * Aralığı dolan kartın taşma dilimi: kartın aralığından sonraki elemanları buradan (taban + 1)
+ * numaralanır, öbür kartların numaraları değişmez. CPU kartının 200. entegresi U901, 200.
+ * kondansatörü C901 (register içeriği tamponları ve onların kondansatörleri).
+ */
+export const CARD_REF_TASMA: Record<string, number> = {
+  cpu: 900,
+};
+
 /** Yapıştırıcı (glue) kapı türleri: hangi çipten, birimde hangi pinler */
 const GLUE = {
   and: { part: "74HC08", units: 4, pins: (u: number) => [`${u}A`, `${u}B`, `${u}Y`] },
@@ -128,6 +137,8 @@ export class Board {
   flexibleGlue = false;
   /** defer() ile ertelenen yerleştirmeler: normal yapıştırıcı çiplerinden sonra, esnek kapılardan önce */
   private readonly deferred: { card: string; block: string; fn: () => void }[] = [];
+  /** sonaErtele() ile ertelenenler: bütün kartlardan ve esnek kapılardan sonra */
+  private readonly sona: { card: string; block: string; fn: () => void }[] = [];
   private finished = false;
 
   constructor() {
@@ -155,8 +166,10 @@ export class Board {
       if (!this.extraBases.has(this.card)) this.extraBases.set(this.card, 400 + 100 * this.extraBases.size);
       base = this.extraBases.get(this.card)!;
     }
-    if (n >= span) throw new Error(`${this.card} kartında ${span - 1}'den fazla aynı türden eleman var: CARD_REF_BASE'i genişlet`);
-    return base + n;
+    if (n < span) return base + n;
+    const tasma = CARD_REF_TASMA[this.card];
+    if (tasma !== undefined && n - span + 1 < 100) return tasma + n - span + 1;
+    throw new Error(`${this.card} kartında ${span - 1}'den fazla aynı türden eleman var: CARD_REF_BASE'i genişlet`);
   }
 
   has(name: string): boolean {
@@ -212,6 +225,29 @@ export class Board {
     return inst;
   }
 
+  /**
+   * Yerleştirilmiş bir çipin bacağını başka bir nete taşır (sonaErtele() içinde: çipin referansı ve
+   * kartın öbür netlerinin numarası değişmeden bağlantısı değişir). Çipin kapılarında eski net, giriş
+   * bacağında yalnız girişlerde, çıkış bacağında yalnız çıkışlarda değişir; çipin aynı yöndeki başka
+   * bir bacağı da o netteyse ayırt edilemez, hata verir.
+   */
+  bacakTasi(ci: ChipInstance, pin: string, net: Net): void {
+    const p = ci.def.pins.find((x) => x.name === pin);
+    if (!p) throw new Error(`${ci.ref} (${ci.def.part}): taşınacak bacak yok: ${pin}`);
+    if (p.dir !== "in" && p.dir !== "out" && p.dir !== "tri") throw new Error(`${ci.ref}.${pin}: yalnız giriş ve çıkış bacakları taşınır (${p.dir})`);
+    const eski = ci.nets[pin];
+    const giris = p.dir === "in";
+    const ayni = ci.def.pins.filter((x) => x.name !== pin && ci.nets[x.name] === eski && (x.dir === "in") === giris);
+    if (ayni.length) throw new Error(`${ci.ref}.${pin}: ${ayni.map((x) => x.name).join(", ")} de aynı nette, ayırt edilemez`);
+    const yeni = this.resolve(net);
+    for (let g = ci.gates[0]; g < ci.gates[1]; g++) {
+      const k = this.c.gates[g];
+      const dizi = giris ? k.inputs : k.outputs;
+      for (let i = 0; i < dizi.length; i++) if (dizi[i] === eski) dizi[i] = yeni;
+    }
+    ci.nets[pin] = yeni;
+  }
+
   /** Pasif eleman (direnç dizisi, kondansatör, LED, konnektör): simülasyona etkisi yok, BOM ve şema için */
   passive(part: string, pins: Record<string, Net>, role: string): Passive {
     const prefix = refPrefix(part);
@@ -250,11 +286,46 @@ export class Board {
     for (const net of ids) this.pulls.push({ net, level: 1 });
   }
 
-  /** Durum LED'i: sinyal → 330 Ω → LED → GND */
-  led(signal: Net, name: string): void {
+  /**
+   * Durum LED'i: sinyal → 330 Ω → LED → GND, sinyal 1 iken yanar. Seçenekler (CPU kartının hata
+   * ayıklama LED'leri): `aktifDusuk` VCC → direnç → LED → sinyal, sinyal 0 iken yanar (74HC çıkışı
+   * akımı çeker; ~ROE0 gibi aktif düşük sinyaller); `direnc` seri direncin parçası (ör. "R_1K",
+   * ≈ 3 mA); `gorev` LED'in görevinin sonuna eklenir (renk görevden seçilir: LED_RENK_KURALLARI).
+   */
+  led(signal: Net, name: string, o: { aktifDusuk?: boolean; direnc?: string; gorev?: string } = {}): void {
     const mid = this.n(`LED_${name}`);
-    this.passive("R_330", { "1": signal, "2": mid }, `${name} LED direnci`);
-    this.passive("LED", { "1": mid, "2": "GND" }, `${name} LED'i`);
+    const r = o.direnc ?? "R_330";
+    const ek = o.gorev ? `: ${o.gorev}` : "";
+    if (o.aktifDusuk) {
+      this.passive(r, { "1": "VCC", "2": mid }, `${name} LED direnci`);
+      this.passive("LED", { "1": mid, "2": signal }, `${name} LED'i${ek}`);
+      return;
+    }
+    this.passive(r, { "1": signal, "2": mid }, `${name} LED direnci`);
+    this.passive("LED", { "1": mid, "2": "GND" }, `${name} LED'i${ek}`);
+  }
+
+  /**
+   * Çubuk gösterge (10 segmentli LED çubuk, DIP-20) ve 8 × 1 kΩ yalıtılmış direnç dizisi (DIP-16):
+   * k. sinyal → dizinin k. direnci → k. segmentin anodu; katotlar GND'de, sinyal 1 iken segment yanar.
+   * En çok 8 sinyal (bir bayt, 1. segment bit 0); null verilen segment ve 9., 10. segmentler boş.
+   * Segment anotlarının netleri `ad` + bit numarası (`ilk`ten başlar: BAR_BUS8 … BAR_BUS15);
+   * `gorev`: ör. "iç veriyolu BUS0–7".
+   */
+  cubuk(sinyaller: (Net | null)[], ad: string, gorev: string, ilk = 0): void {
+    if (sinyaller.length > 8) throw new Error(`${gorev}: çubuk göstergede en çok 8 sinyal`);
+    const dizi: Record<string, Net> = {};
+    const gosterge: Record<string, Net> = {};
+    sinyaller.forEach((s, i) => {
+      if (s === null) return;
+      const anot = `${ad}${ilk + i}`;
+      dizi[String(i + 1)] = s;
+      dizi[String(16 - i)] = anot;
+      gosterge[String(i + 1)] = anot;
+      gosterge[String(20 - i)] = "GND";
+    });
+    this.passive("RN_1K_ISO_8", dizi, `${gorev}: segment dirençleri`);
+    this.passive("DISP_BAR_10", gosterge, `${gorev}: çubuk gösterge`);
   }
 
   // ---- yapıştırıcı kapılar: kart bitince gerçek çiplere paketlenir
@@ -351,13 +422,23 @@ export class Board {
     this.deferred.push({ card: this.card, block: this.block, fn });
   }
 
+  /**
+   * Bir eklemeyi en sona ertele: finish() onu bütün kartlar kurulduktan ve esnek kapılar da
+   * paketlendikten sonra çalıştırır. Oluşturduğu netler en sona numaralanır: öbür kartların adsız
+   * netlerinin adı (n1234) ve çiplerin referansları değişmez (ör. CPU kartının hata ayıklama
+   * LED'leri ve çubuk göstergeleri; breadboard verisinin netlist parmak izi de korunur).
+   */
+  sonaErtele(fn: () => void): void {
+    this.sona.push({ card: this.card, block: this.block, fn });
+  }
+
   /** Yapıştırıcı kapıları çiplere yerleştir; kullanılmayan birimlerin girişlerini GND'ye bağla. */
   finish(o: { backplane?: boolean } = {}): void {
     if (this.finished) return;
     const savedCard = this.card;
     for (const card of new Set(this.glue.filter((x) => x.flex).map((x) => x.card))) this.fillSpareUnits(card);
     // 1. normal kapılar (son çipin boş birimleri aynı türden esnek kapılarla dolar), 2. ertelenen
-    // yerleştirmeler, 3. kalan esnek kapılar
+    // yerleştirmeler, 3. kalan esnek kapılar, 4. en sona ertelenenler
     const flexLeft = new Set(this.glue.filter((x) => x.flex));
     const pack = (flex: boolean) => {
       this.block = "Yapıştırıcı lojik";
@@ -384,6 +465,11 @@ export class Board {
       d.fn();
     }
     pack(true);
+    for (const d of this.sona) {
+      this.card = d.card;
+      this.block = d.block;
+      d.fn();
+    }
     // her kart: arka panel konnektörü (istenirse), giriş kondansatörü, her entegreye 100 nF
     for (const card of [...new Set(this.chips.map((c) => c.card))]) {
       this.card = card;

@@ -60,7 +60,7 @@ söyler. Bir komut birkaç döngüde yürür: getir (PC → MAR, bellek → IR),
 Yedi kart aynı 64 hatlı arka panele takılır ([anakart-kartlari.md](anakart-kartlari.md),
 [anakart-gc-video.md](anakart-gc-video.md)). Diyagramın ortasındaki bant arka paneldir: her şerit bir
 hat grubu, her kartın kolu kullandığı şeride iner. Kart çerçevelerinin içinde kartın blokları var.
-Başlıktaki sayı kartın bütün entegrelerini ("194 entegre") ve bunların kaçının kapı çipi
+Başlıktaki sayı kartın bütün entegrelerini ("210 entegre") ve bunların kaçının kapı çipi
 (yapıştırıcı lojik) olduğunu gösterir. CPU kartının içi ayrıntılı olarak yukarıdaki diyagramda;
 uygulamada "ayrıntı ›" ya da çift tıklama oraya geçer.
 

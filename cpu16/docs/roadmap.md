@@ -53,7 +53,7 @@ Faz 0 Spec ─▶ Faz 1 Emülatör+as16 ─▶ Faz 2 Mikromimari ─▶ Faz 3 74
 - Çıktı: her kart için `.kicad_sch`, netlist → simülatör içe aktarıcı.
 - Bitti ölçütü: şemadan üretilen **kapı seviyesi** bilgisayar Faz 1 test programlarını emülatörle lockstep çalıştırır. (Şema değişirse simülasyon da kendiliğinden değişir.)
 - Video: kart başına bir bölüm.
-- Sonuç: şema = kod (`board/*.ts`): CPU kartı, saat kartı, test bellek kartı; aynı tanımdan kapı seviyesi simülasyon, KiCad 7 şemaları (`kicad/<kart>/`), BOM ve ERC. Kapı seviyesi bilgisayar 5 programı her saat döngüsünde mikrokod modeliyle aynı çalıştırır. CPU kartında ROM yok: mikrokod ve ALU kod çözme tablosu `board/kontrol.ts`'nin ürettiği 74HC kapı devresidir (194 entegre; LogicSim ile 8192 + 128 adreste tabloyla birebir). Ayrıntı: `docs/kartlar.md`, `docs/mikromimari.md`.
+- Sonuç: şema = kod (`board/*.ts`): CPU kartı, saat kartı, test bellek kartı; aynı tanımdan kapı seviyesi simülasyon, KiCad 7 şemaları (`kicad/<kart>/`), BOM ve ERC. Kapı seviyesi bilgisayar 5 programı her saat döngüsünde mikrokod modeliyle aynı çalıştırır. CPU kartında ROM yok: mikrokod ve ALU kod çözme tablosu `board/kontrol.ts`'nin ürettiği 74HC kapı devresidir (194 entegre, register içeriği göstergeleriyle 210; LogicSim ile 8192 + 128 adreste tabloyla birebir). Ayrıntı: `docs/kartlar.md`, `docs/mikromimari.md`.
 
 ### Faz 5 — 3D görünüm (Silikon3D ile birlikte) ✅ 2026-10-11
 - Çıktı: kart → çip → kapı → transistör yakınlaştırma; tıklanan çipin içi açılır; canlı sinyaller.

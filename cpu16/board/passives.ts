@@ -43,7 +43,7 @@ export const PASSIVES: Record<string, SymbolOnly> = {
     title: "3 mm LED",
     pins: [pas(1, "A"), pas(2, "K")],
     footprint: "LED_THT:LED_D3.0mm",
-    usage: "Durum göstergeleri (HALTED, FAULT)",
+    usage: "Durum göstergeleri (HALTED, FAULT, CLK) ve CPU kartının hata ayıklama LED'leri; rengi görevinden (LED_RENK_KURALLARI)",
   },
   R_10K: {
     part: "R_10K",
@@ -57,7 +57,7 @@ export const PASSIVES: Record<string, SymbolOnly> = {
     title: "1 kΩ direnç",
     pins: [pas(1, "1"), pas(2, "2")],
     footprint: "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal",
-    usage: "Yavaş osilatörün en düşük direnci (potla seri)",
+    usage: "Yavaş osilatörün en düşük direnci (potla seri); CPU kartının gösterge LED'lerinin seri direnci (≈ 3 mA)",
   },
   C_10U: {
     part: "C_10U",
@@ -198,10 +198,26 @@ export const PASSIVES: Record<string, SymbolOnly> = {
     footprint: "Package_DIP:DIP-16_W7.62mm",
     usage: "7 segment göstergenin segment akımı (≈ 5 mA, 74HC4511 başına en çok ≈ 35 mA): k. direnç k. ve (17 − k). pinler arasında",
   },
+  // ---- CPU kartının değer göstergeleri (hata ayıklama: James Sharman'ın ve Ben Eater'ın breadboard
+  // bilgisayarlarındaki gibi): bir baytın sekiz biti bir çubuk göstergede, her segmente 1 kΩ
+  RN_1K_ISO_8: {
+    part: "RN_1K_ISO_8",
+    title: "8 × 1 kΩ yalıtılmış direnç dizisi (DIP-16, ör. 4116R-1-102)",
+    pins: Array.from({ length: 16 }, (_, i) => pas(i + 1, i < 8 ? `R${i + 1}A` : `R${16 - i}B`)),
+    footprint: "Package_DIP:DIP-16_W7.62mm",
+    usage: "Çubuk göstergenin segment akımı (≈ 3 mA; 74HC çıkışı sekiz segmenti birden rahat sürer): k. direnç k. ve (17 − k). pinler arasında",
+  },
+  DISP_BAR_10: {
+    part: "DISP_BAR_10",
+    title: "10 segmentli LED çubuk gösterge (DIP-20, ör. Kingbright DC-10YWA, Broadcom HDSP-4840)",
+    pins: Array.from({ length: 20 }, (_, i) => pas(i + 1, i < 10 ? `A${i + 1}` : `K${20 - i}`)),
+    footprint: "Display:HDSP-4830",
+    usage: "CPU kartında bir baytın değeri: k. segmentin anodu k. pin, katodu (21 − k). pin (1–10 anotlar, 20–11 katotlar); 1–8. segmentler bit 0–7, 9 ve 10 boş. Katotlar GND'ye, anotlar 1 kΩ dizi üzerinden sinyale",
+  },
 };
 
-// ---- LED renkleri. Kütüphanede tek bir "LED" parçası var; rengi görevinden seçilir. 3D görünüm,
-// bilgi paneli ve rehberler (kit/led-ve-direnc.md) aynı tabloyu kullanır.
+// ---- LED renkleri. Kütüphanede tek bir "LED" parçası var; rengi görevinden seçilir (çubuk
+// göstergeninki de). 3D görünüm, bilgi paneli ve rehberler (kit/led-ve-direnc.md) aynı tabloyu kullanır.
 
 export type LedRenk = "kirmizi" | "turuncu" | "sari" | "yesil" | "mavi" | "beyaz";
 
@@ -233,6 +249,10 @@ export const LED_RENKLERI: Record<LedRenk, LedRenkBilgi> = {
  * (breadboard bilgisayarlarında saat LED'i geleneksel olarak mavidir; ayrıca aynı 330 Ω ile daha
  * az akım çekerek ileri gerilimin akıma etkisini gösterir), besleme / hazır yeşil, veri ve adres
  * hatları sarı. Kalan her şey kırmızı (en yaygın, en ucuz).
+ *
+ * CPU kartının hata ayıklama LED'leri gruplarına göre: okuma yeşil, yazma ve yükleme amber,
+ * veriyolunu süren kaynak beyaz, bayraklar mavi, mikro adım ve değerler (çubuk göstergeler) sarı.
+ * Kırmızı yalnız hataya kalır: bir bakışta "bir şey ters gitti" desin.
  */
 export const LED_RENK_KURALLARI: { desen: RegExp; renk: LedRenk; neden: string }[] = [
   { desen: /FAULT|HATA/i, renk: "kirmizi", neden: "hata: en çok dikkat çeken renk" },
@@ -240,6 +260,12 @@ export const LED_RENK_KURALLARI: { desen: RegExp; renk: LedRenk; neden: string }
   { desen: /\bCLK\b|SAAT/i, renk: "mavi", neden: "saat: durmadan yanıp söner, öteki durum LED'lerinden ayrı dursun" },
   { desen: /VCC|BESLEME|GÜÇ|HAZIR|\bOK\b/i, renk: "yesil", neden: "besleme / her şey yolunda" },
   { desen: /ISLEM_/, renk: "yesil", neden: "hesap makinesinde seçili işlem: dört LED'den yalnız biri yanar" },
+  { desen: /okuma/i, renk: "yesil", neden: "okuma: bellekten ya da register'dan veriyoluna bir değer çıkıyor" },
+  { desen: /yazma|yükleme|artırma/i, renk: "turuncu", neden: "yazma ve yükleme: bu saat kenarında bir register ya da bellek değişecek (amber: dikkat)" },
+  { desen: /veriyolu sürücüsü/i, renk: "beyaz", neden: "veriyolunu süren kaynak: okuma ve yazma renklerinden ayrı; altısından en çok biri yanar" },
+  { desen: /bayrağı/i, renk: "mavi", neden: "bayraklar: ALU'nun durum bitleri, değer göstergelerinden ayrı dursun" },
+  { desen: /mikro adım/i, renk: "sari", neden: "mikro adım: dört bitlik bir sayı, değer göstergeleri gibi" },
+  { desen: /çubuk gösterge/i, renk: "sari", neden: "değer göstergesi: veri ve adres izleme gibi" },
   { desen: /\b(?:A|D|DE|DO|AD|BUS)\d+\b|VERİ|ADRES/i, renk: "sari", neden: "veri ve adres hatlarını izleme" },
 ];
 

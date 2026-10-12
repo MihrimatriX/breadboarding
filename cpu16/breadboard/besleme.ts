@@ -2,7 +2,7 @@
 // bütçeyle aynı tablo), board sütunu başına bir 5 V girişi; girişten en uzak board'da raylardaki düşüm.
 
 import { partValue, type Board } from "../board/board.ts";
-import { akim } from "../kurulum/plan.ts";
+import { akim, ledSeriOhm } from "../kurulum/plan.ts";
 import type { KartBbPlani } from "./plan.ts";
 
 /** Board başına akım ve en uzak board'daki tahmini gerilim düşümü */
@@ -25,7 +25,8 @@ export function beslemeButcesi(board: Board, p: KartBbPlani): BeslemeButcesi {
   const nesne = new Map<string, string>([...board.chips.map((c) => [c.ref, partValue(c)] as const), ...board.passives.map((q) => [q.ref, q.part] as const)]);
   const boardMa = y.boards.map(() => 0);
   for (const q of y.parcalar) {
-    const a = akim(q.ek ? q.part : (nesne.get(q.ref) ?? q.part));
+    const deger = q.ek ? q.part : (nesne.get(q.ref) ?? q.part);
+    const a = akim(deger, deger === "LED" && !q.ek ? ledSeriOhm(board, q.ref) : undefined);
     if (a && !q.ek) boardMa[q.board] += a.mA;
   }
   const gy = p.tanim.uyarlayici.by;

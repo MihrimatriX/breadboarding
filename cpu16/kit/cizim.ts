@@ -414,12 +414,15 @@ export interface LedDevreCizim {
   ohm: number;
   led: string;
   renk: LedRenk;
-  /** sinyal seviyesi: 1 yanar, 0 söner, başka: bilinmiyor */
+  /** sinyal seviyesi: 1 yanar, 0 söner, başka: bilinmiyor (aktif düşükte tersi) */
   seviye?: number;
+  /** VCC → direnç → LED → sinyal: çıkış 0 olunca akım çeker ve LED yanar */
+  aktifDusuk?: boolean;
 }
 
-/** Sinyal → direnç → LED → GND, düğüm gerilimleri, akım ve okunuşu */
+/** Sinyal → direnç → LED → GND (ya da aktif düşükte VCC → direnç → LED → sinyal), düğüm gerilimleri, akım ve okunuşu */
 export function ledDevreCizimi(d: LedDevreCizim, pal: Palet): Parca {
+  if (d.aktifDusuk) return ledDevreDusukCizimi(d, pal);
   const c = cizer(pal);
   const info = LED_RENKLERI[d.renk];
   const yanik = d.seviye === 1;
@@ -448,6 +451,42 @@ export function ledDevreCizimi(d: LedDevreCizim, pal: Palet): Parca {
   g += olcu(104, 156, `V_R = ${sayi(VCC - info.vf, 1)} V`) + olcu(206, 236, `Vf ≈ ${sayi(info.vf, 1)} V`);
   g += c.yazi(180, vy + 46, `I = (5 V − ${sayi(info.vf, 1)} V) / ${ohmMetni(d.ohm)} ≈ ${akimMetni(I)}`, { boy: 13.5, kalin: 700, hiza: "middle" });
   const durum = yanik ? `${d.sinyal} = 1: akım akar, LED yanar` : d.seviye === 0 ? `${d.sinyal} = 0: iki uç da 0 V, akım yok, LED sönük` : `${d.sinyal} 1 olunca yanar`;
+  g += c.yazi(180, vy + 64, durum, { boy: 11.5, hiza: "middle", renk: yanik ? pal.akim : pal.soluk, kalin: 600 });
+  return { w: 360, h: vy + 72, g };
+}
+
+/** Aktif düşük LED: VCC → direnç → LED → çıkış; çıkış 0 olunca akımı çeker */
+function ledDevreDusukCizimi(d: LedDevreCizim, pal: Palet): Parca {
+  const c = cizer(pal);
+  const info = LED_RENKLERI[d.renk];
+  const yanik = d.seviye === 0;
+  const I = ledAkimi(VCC, info.vf, d.ohm);
+  const y = 66;
+  let g = "";
+  g += c.besleme(40, y, "5 V") + c.cizgi(40, y, 104, y, pal.yuksek, 2);
+  g += c.direncSema(130, y, false, 52, 16);
+  g += c.yazi(130, y - 16, d.direnc, { boy: 11.5, kalin: 600, hiza: "middle", mono: true }) + c.yazi(130, y + 26, ohmMetni(d.ohm), { boy: 11.5, hiza: "middle" });
+  // anot düğümü: yanarken ≈ Vf, sönükken 5 V (direnç akım taşımaz)
+  g += c.cizgi(156, y, 208, y, yanik || d.seviye === 1 ? pal.yuksek : pal.cizgi, 2) + c.nokta(182, y);
+  g += c.yazi(182, y - 8, yanik ? `≈ ${sayi(info.vf, 1)} V` : d.seviye === 1 ? "5 V" : "", { boy: 11, hiza: "middle", renk: pal.soluk });
+  if (yanik) g += c.daire(222, y, 26, { fill: info.isik, opacity: 0.22 }) + c.daire(222, y, 15, { fill: info.isik, opacity: 0.3 });
+  g += c.diyot(208, y, false, yanik ? info.isik : null, 26) + c.isinlar(222, y - 18, yanik ? info.isik : pal.soluk);
+  g += c.yazi(222, y - 38, `${d.led} (${info.ad})`, { boy: 11.5, kalin: 600, hiza: "middle" });
+  // katot: sinyal hattı ve onu süren çıkış (üçgen sola bakar, ucu hattta)
+  const tel = c.seviyeRengi(d.seviye);
+  g += c.cizgi(234, y, 312, y, tel, 2) + c.nokta(270, y, tel);
+  g += c.yazi(270, y + 22, `${d.sinyal} = ${d.seviye === 0 || d.seviye === 1 ? d.seviye : "?"}`, { boy: 11, hiza: "middle", renk: tel, mono: true, kalin: 600 });
+  g += c.yazi(270, y - 8, d.seviye === 0 ? "0 V" : d.seviye === 1 ? "5 V" : "", { boy: 11, hiza: "middle", renk: pal.soluk });
+  g += `<polygon points="${n(342)},${n(y - 15)} ${n(342)},${n(y + 15)} ${n(312)},${n(y)}" fill="none" stroke="${pal.cizgi}" stroke-width="1.8" stroke-linejoin="round"/>`;
+  g += c.yazi(327, y - 24, d.surucu, { boy: 11.5, kalin: 600, hiza: "middle", mono: true });
+  if (yanik) g += c.ok(52, y - 30, 96, y - 30, pal.akim, 1.8, 7) + c.yazi(74, y - 36, `I ≈ ${akimMetni(I)}`, { boy: 11, renk: pal.akim, kalin: 700, hiza: "middle" });
+  // gerilim ölçüleri
+  const vy = y + 44;
+  const olcu = (a: number, b: number, s: string) =>
+    c.cizgi(a, vy - 4, a, vy + 4, pal.soluk, 1) + c.cizgi(b, vy - 4, b, vy + 4, pal.soluk, 1) + c.cizgi(a, vy, b, vy, pal.soluk, 1) + c.yazi((a + b) / 2, vy + 16, s, { boy: 11, hiza: "middle", renk: pal.soluk });
+  g += olcu(104, 156, `V_R = ${sayi(VCC - info.vf, 1)} V`) + olcu(206, 236, `Vf ≈ ${sayi(info.vf, 1)} V`);
+  g += c.yazi(180, vy + 46, `I = (5 V − ${sayi(info.vf, 1)} V) / ${ohmMetni(d.ohm)} ≈ ${akimMetni(I)}`, { boy: 13.5, kalin: 700, hiza: "middle" });
+  const durum = yanik ? `${d.sinyal} = 0: çıkış akımı çeker, LED yanar` : d.seviye === 1 ? `${d.sinyal} = 1: iki uç da 5 V, akım yok, LED sönük` : `aktif düşük: ${d.sinyal} 0 olunca yanar`;
   g += c.yazi(180, vy + 64, durum, { boy: 11.5, hiza: "middle", renk: yanik ? pal.akim : pal.soluk, kalin: 600 });
   return { w: 360, h: vy + 72, g };
 }
@@ -652,7 +691,7 @@ export function renkKoduTablosu(pal: Palet): Parca {
 export function ledRenkTablosu(pal: Palet, kartta: Partial<Record<LedRenk, string>>, ohm = 330): Parca {
   const c = cizer(pal);
   const satir = 26;
-  const kol = [0, 144, 222, 304, 382, 520];
+  const kol = [0, 144, 222, 304, 382, 640];
   let g = "";
   ["renk", "Vf", "dalga boyu", `I (${ohmMetni(ohm)})`, "bu bilgisayarda"].forEach((b, i) => (g += c.yazi(kol[i] + (i ? 4 : 30), 16, b, { boy: 11.5, kalin: 700, renk: pal.soluk })));
   g += c.cizgi(0, 24, kol[5], 24, pal.ince, 1);
