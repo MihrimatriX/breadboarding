@@ -17,7 +17,7 @@ import type { BbParca } from "../board/breadboard/yerlesim.ts";
 import { BACKPLANE, ledRengi, PASSIVES } from "../board/passives.ts";
 import { esc, htmlBelge, kutu } from "../kurulum/stil.ts";
 import { beslemeButcesi, KOPRU_OHM, type BeslemeButcesi } from "./besleme.ts";
-import { KART_SIRASI, MAKINE_SIRALARI } from "./panolar.ts";
+import { beslemeSiralari, KART_SIRASI, MAKINE_SIRALARI } from "./panolar.ts";
 import { EN_UZUN_TEL, KORIDOR, kartOlcu, PANO_ARASI, type KartBbPlani, type MakineBbPlani } from "./plan.ts";
 import { CPU_BB_RENKLERI, cpuRenkTanimi } from "./renk.ts";
 import { mimariBolumu } from "../mimari/belge.ts";
@@ -232,11 +232,12 @@ ${bolumlerHtml(p.kart, y, k, "Bölümler: her bölgenin görevi ve çip gruplar�
 
 function besleme(p: KartBbPlani, b: BeslemeButcesi, board: Board): string {
   const y = p.yerlesim;
-  const ub = p.tanim.uyarlayici;
-  const girisler = y.parcalar.filter((q) => q.part === "CONN_5V").sort((a, c) => y.boards[a.board].bx - y.boards[c.board].bx);
+  const siralar = beslemeSiralari(p.tanim);
+  const girisi = (by: number) => siralar.reduce((e, g) => (Math.abs(by - g) < Math.abs(by - e) ? g : e));
+  const girisler = y.parcalar.filter((q) => q.part === "CONN_5V").sort((a, c) => siralar.indexOf(y.boards[a.board].by) - siralar.indexOf(y.boards[c.board].by) || y.boards[a.board].bx - y.boards[c.board].bx);
   const satir = girisler.map((g) => {
     const gb = y.boards[g.board];
-    const sutun = y.boards.filter((x) => x.bx === gb.bx).sort((a, c) => Math.abs(a.by - ub.by) - Math.abs(c.by - ub.by));
+    const sutun = y.boards.filter((x) => x.bx === gb.bx && girisi(x.by) === gb.by).sort((a, c) => Math.abs(a.by - gb.by) - Math.abs(c.by - gb.by));
     const tampon = y.parcalar.find((q) => q.board === g.board && q.part === "C_100U");
     const nesne = new Map<string, string>(board.chips.map((c) => [c.ref, c.def.part] as const));
     const cipler = y.parcalar.filter((q) => q.cipMi && sutun.some((x) => x.no === q.board)).map((q) => nesne.get(q.ref) ?? q.part);
@@ -244,7 +245,7 @@ function besleme(p: KartBbPlani, b: BeslemeButcesi, board: Board): string {
   }).join("");
   return `<section class="bolum akar">
 <h2>3. Besleme</h2>
-<p>Tek bir 5 V kaynak (bütün makine için en az 2 A, dizin belgesine bak) bir dağıtım bloğuna (klemens ya da bara) bağlanır; her besleme girişine oradan <b>ayrı</b> bir kablo çifti gider (yıldız bağlantı, 0,5 mm² ya da 20 AWG). Böylece akım board'lar arası ray köprülerinden değil kendi kablosundan gelir. Girişler uyarlayıcının board sırasında, her board sütununa bir tane; sütunun öbür board'ları arka-ön ray köprüleriyle beslenir.</p>
+<p>Tek bir 5 V kaynak (bütün makine için en az 2 A, dizin belgesine bak) bir dağıtım bloğuna (klemens ya da bara) bağlanır; her besleme girişine oradan <b>ayrı</b> bir kablo çifti gider (yıldız bağlantı, 0,5 mm² ya da 20 AWG). Böylece akım board'lar arası ray köprülerinden değil kendi kablosundan gelir. Girişler uyarlayıcının board sırasında, her board sütununa bir tane${siralar.length > 1 ? `; pano uzun olduğu için ${siralar.slice(1).map((r) => `${r + 1}.`).join(", ")} board sırasında da birer giriş var (her board en yakın girişten beslenir)` : ""}; sütunun öbür board'ları arka-ön ray köprüleriyle beslenir.</p>
 <table class="tablo"><thead><tr><th style="width:14mm">Giriş</th><th style="width:42mm">+ / − delik</th><th style="width:18mm">100 µF</th><th>Beslediği board'lar</th><th class="sag" style="width:14mm">Çip</th></tr></thead><tbody>${satir}</tbody></table>
 <p>Akım (parçaların veri sayfası değerleriyle, PCB kurulum belgelerindeki bütçeyle aynı tablo): <b>≈ ${sayi(b.toplamMa)} mA</b>; en yüklü giriş ≈ ${sayi(b.enCokGirisMa)} mA. Ray + köprü başına ≈ ${sayi(KOPRU_OHM * 1000)} mΩ ile girişten en uzak board'da + ve − raylarında toplam ≈ ${sayi(b.dusumMv)} mV düşüm (74HC için 4,5–5,5 V aralığında rahat). Her çipin 100 nF'ı kendi yanında, her girişin 100 µF'ı girişin yanında.</p>
 <div class="not">İlk açılışta (çipler takılı değilken) her board'un dört rayında ölç: + raylar 4,9–5,1 V, − raylar 0 V; uyarlayıcının 3, 4 ve 63. pinleri 5 V, 1, 2, 62 ve 64. pinleri 0 V. Şerit kabloyu ancak her pano kendi testlerini geçince tak.</div>

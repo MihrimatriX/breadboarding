@@ -255,3 +255,20 @@ export function boardunGruplari(kart: string, no: number, y: ModulYerlesimi, k: 
   const kalan = [...say].filter(([g]) => !duzen.includes(g)).sort((a, b) => b[1].cip - a[1].cip || b[1].pasif - a[1].pasif || a[1].sol - b[1].sol);
   return [...duzen, ...kalan.map(([g]) => g)];
 }
+
+/**
+ * Board'daki bir grubun etiketi. Modüler panoda grubun çipleri başka board'daysa ve bu board'da yalnız
+ * göstergeleri (LED'ler, çubuk göstergeler) varsa "… GÖSTERGELERİ": R0'ın önündeki board "R0 GÖSTERGELERİ".
+ */
+export function boardGrupEtiketi(no: number, y: ModulYerlesimi, k: BolumKatalogu, g: string): string {
+  const et = k.bolumler.get(g)!.etiket;
+  if (!y.boards[no]?.gruplar) return et;
+  let burada = false;
+  let baska = false;
+  for (const q of y.parcalar) {
+    if (!q.cipMi || k.grubu.get(q.ref) !== g) continue;
+    if (q.board === no) burada = true;
+    else baska = true;
+  }
+  return !burada && baska ? `${et} GÖSTERGELERİ` : et;
+}

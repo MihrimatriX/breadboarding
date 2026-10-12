@@ -18,11 +18,11 @@
 // Kenar etiketleri (yakından, çip gruplarına): ekranın iki yanında birer sütun; kutular hedeflerinin
 // yüksekliğine göre sıralanır ve üst üste binmeden yerleşir (kenarYerlesimi).
 
-import { ADIM, BY_ADIM } from "../../cpu16/board/breadboard/geometri";
+import { ADIM, BY_ADIM, mmX, mmY } from "../../cpu16/board/breadboard/geometri";
 import { boardDikdortgeni } from "../../cpu16/board/breadboard/gorunum";
 import type { BlockPlace, CardPlace } from "../../cpu16/board/layout";
 import { bolumKimligi, type BolumKatalogu } from "../../cpu16/board/bolum-bilgi";
-import { BOLUM_RENKLERI, boardunGruplari, boya, hucreSiniri, kutularinSiniri, panoBolgeleri, tamDikdortgenler, type Hucre } from "../../cpu16/board/bolum-cizim";
+import { BOLUM_RENKLERI, boardGrupEtiketi, boardunGruplari, boya, hucreSiniri, kutularinSiniri, panoBolgeleri, tamDikdortgenler, type Hucre } from "../../cpu16/board/bolum-cizim";
 
 export { boya, hucreSiniri, tamDikdortgenler, type Hucre };
 /** Breadboard'daki çerçeve renkleri (krem board üstünde; kurulum belgelerinin pano haritasında da aynı) */
@@ -135,7 +135,7 @@ export interface BbPanoGirdisi {
   plan: {
     yerlesim: {
       boards: readonly { bx: number; by: number; x0: number; y0: number; rol: string; gruplar?: readonly string[] }[];
-      parcalar: readonly { ref: string; board: number; cipMi?: boolean; sutun?: number }[];
+      parcalar: readonly { ref: string; board: number; part?: string; cipMi?: boolean; sutun?: number; bacaklar?: readonly { X: number; Y: number }[] }[];
     };
   };
 }
@@ -151,6 +151,9 @@ export interface YaziBoylari {
 
 /** Board başına en çok bu kadar modül plakası (fazla gruplar yakında kenar etiketlerinde) */
 export const MODUL_EN_COK = 3;
+
+/** Hata ayıklama göstergeleri (LED'ler, dirençleri, çubuk göstergeler, dizileri): modül plakaları bunları örtmez */
+const gostergeMi = (part?: string) => !!part && (part === "LED" || part === "DISP_BAR_10" || part === "RN_1K_ISO_8" || part.startsWith("R_"));
 
 const kutuBirlesimi = (k: Kutu[]): Kutu => {
   const x0 = Math.min(...k.map((a) => a.x));
@@ -254,17 +257,41 @@ export function bbSahneBolumleri(panolar: readonly BbPanoGirdisi[], k: BolumKata
         if (!ids.length) return;
         const renk = renkler.get(bolumKimligi.bolge(p.kart, b.rol)) ?? BOLUM_RENKLERI[0];
         const d = boardDikdortgeni(b);
-        const x = p.x + d.x;
-        const y = p.y + d.y;
+        const tam: Kutu = { x: p.x + d.x, y: p.y + d.y, w: b0.w, h: b0.h };
         const ara = 0.3;
-        const boy = (b0.h * 0.8) / ids.length - ara * yazi.modul!;
-        const m = ids.map((id) => plakaSigdir(k.bolumler.get(id)!.etiket, b0.w * 0.86, boy, olc, yazi.modul!));
-        const h = Math.min(...m.map((q) => q.h));
-        const esit = m.map((q) => plakaBoyla(q, h, olc));
+        const etiketler = ids.map((id) => boardGrupEtiketi(no, p.plan.yerlesim, k, id));
+        /** plakalar bir dikdörtgende alt alta, aynı yazı boyunda */
+        const diz = (a: Kutu) => {
+          const boy = (a.h * 0.8) / ids.length - ara * yazi.modul!;
+          const m = etiketler.map((e) => plakaSigdir(e, a.w * 0.86, boy, olc, yazi.modul!));
+          const h = Math.min(...m.map((q) => q.h));
+          return { a, h, esit: m.map((q) => plakaBoyla(q, h, olc)) };
+        };
+        // modüler panoda göstergeli board'da plakalar göstergelerin solunda, sağında, üstünde ya da altında:
+        // yazının en büyük olduğu şeritte (LED'ler ve çubuklar örtülmesin)
+        let sec = diz(tam);
+        const gosterge = b.gruplar ? p.plan.yerlesim.parcalar.filter((q) => q.board === no && gostergeMi(q.part) && q.bacaklar?.length) : [];
+        if (gosterge.length) {
+          const X = gosterge.flatMap((q) => q.bacaklar!.map((t) => t.X));
+          const Y = gosterge.flatMap((q) => q.bacaklar!.map((t) => t.Y));
+          const gx0 = p.x + mmX(Math.min(...X) - 1);
+          const gx1 = p.x + mmX(Math.max(...X) + 1);
+          const gy0 = p.y + mmY(Math.min(...Y) - 1);
+          const gy1 = p.y + mmY(Math.max(...Y) + 1);
+          const seritler: Kutu[] = [
+            { x: tam.x, y: tam.y, w: gx0 - tam.x, h: tam.h },
+            { x: gx1, y: tam.y, w: tam.x + tam.w - gx1, h: tam.h },
+            { x: tam.x, y: tam.y, w: tam.w, h: gy0 - tam.y },
+            { x: tam.x, y: gy1, w: tam.w, h: tam.y + tam.h - gy1 },
+          ].filter((a) => a.w > 0 && a.h > 0);
+          const adaylar = seritler.map(diz);
+          sec = adaylar.reduce((e, c) => (c.h > e.h + 1e-6 || (Math.abs(c.h - e.h) <= 1e-6 && c.a.w * c.a.h > e.a.w * e.a.h) ? c : e));
+        }
+        const { a, h, esit } = sec;
         const toplam = esit.reduce((t, q) => t + q.d, 0) + ara * h * (esit.length - 1);
-        let yy = y + b0.h / 2 - toplam / 2;
+        let yy = a.y + a.h / 2 - toplam / 2;
         esit.forEach((q, i) => {
-          modulPlakalari.push({ ...q, id: ids[i], tur: "modul", renk, x: x + b0.w / 2, y: yy + q.d / 2 });
+          modulPlakalari.push({ ...q, id: ids[i], tur: "modul", renk, x: a.x + a.w / 2, y: yy + q.d / 2 });
           yy += q.d + ara * h;
         });
       });

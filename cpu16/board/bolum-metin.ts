@@ -57,7 +57,7 @@ const CPU: KartMetinleri = {
       "REGISTER DOSYASI",
       "Register dosyası",
       "Sekiz 16 bitlik genel register (r0–r7; r6 = SP, r7 = LR): her biri kendi board'unda, değeri hemen önündeki board'un çubuk göstergelerinde.",
-      "Panonun en arkasındaki ada. Arka sırada R0–R3, onların önünde göstergeleri; sonra R4–R7 ve göstergeleri. Her register iki 74HC574 (solda düşük, sağda yüksek bayt); göstergeli board'da iki çubuk gösterge (bit 0 sağda), yeşil okuma (~ROE) ve amber yazma (~WSEL) LED'leri. Register'ı seçen çözücüler sağdaki veriyolu kontrolü adasında (Deney 4).",
+      "Panonun en arkasındaki ada. Arka sırada R0–R3, onların önünde göstergeleri; sonra R4–R7 ve göstergeleri. Her register'ın board'unda dört çip: değeri tutan iki 74HC574 (solda düşük, sağda yüksek bayt) ve onu veriyoluna çıkaran iki 74HC541; göstergeli board'da iki çubuk gösterge (bit 0 sağda), yeşil okuma (~ROE) ve amber yazma (~WSEL) LED'leri. Register'ı seçen çözücüler sağdaki veriyolu kontrolü adasında (Deney 4).",
     ),
     "Veriyolu kontrolü": m(
       "VERİYOLU KONTROLÜ",
