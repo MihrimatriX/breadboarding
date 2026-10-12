@@ -10,7 +10,7 @@ import type { Gate } from "../../cpu16/chips/logic";
 import { breakCodes, makeCodes, textToScancodes } from "../../cpu16/emu/devices/keyboard";
 import { disassemble } from "../../cpu16/emu/disasm";
 import { AppHeader, Group, Meter, PanelToggle, Splitter, Tabs, heightShare, useLayout, type LayoutPrefs, type Shortcut, type TabDef } from "../ui/Shell";
-import { aktifKart, aktifKartiSec, type KartTuru } from "./aktif";
+import { aktifKart, aktifKartiSec, type HesapGorunumu, type KartTuru } from "./aktif";
 import { BoardScene } from "./BoardScene";
 import { installHesapApi, useHesap } from "./hesap";
 import { HesapMeters, HesapPanel } from "./HesapPanel";
@@ -138,11 +138,26 @@ const KAMERA_YERLERI: { blok: string | null; label: string; title: string }[] = 
   { blok: "Gösterge", label: "Göstergeler", title: "15 hane: sürücüler, direnç dizileri ve göstergeler" },
 ];
 
+/** Hesap makinesinin görünümleri */
+const GORUNUMLER: { g: HesapGorunumu; label: string; title: string }[] = [
+  { g: "breadboard", label: "Breadboard", title: "60 breadboard, atlama telleri: gerçek kurulum (delik delik)" },
+  { g: "pcb", label: "PCB", title: "Tek uzun yeşil kart, pinden pine teller" },
+];
+
 /** Hesap makinesinin araç çubuğu: saat ve program yok (devre birleşimsel) */
 function HesapToolbar({ lay, setLay }: { lay: LayoutPrefs; setLay: (p: Partial<LayoutPrefs>) => void }) {
   const odak = useKart((s) => s.odak?.blok);
+  const gorunum = useKart((s) => s.gorunum);
   return (
     <div className="toolbar">
+      <Group label="Görünüm">
+        <span className="tb-label">Görünüm</span>
+        <span className="seg" role="group" aria-label="Görünüm">
+          {GORUNUMLER.map((x) => (
+            <button key={x.g} className={gorunum === x.g ? "on" : ""} aria-pressed={gorunum === x.g} onClick={() => useKart.getState().setGorunum(x.g)} title={x.title}>{x.label}</button>
+          ))}
+        </span>
+      </Group>
       <Group label="Kamera">
         <span className="tb-label">Kamera</span>
         <span className="seg" role="group" aria-label="Kamera">
