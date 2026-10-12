@@ -1,4 +1,8 @@
-/* strings.c — string işlemleri: string.h, ctype.h, sprintf ve elle yazılmış yardımcılar. */
+/* strings.c — string işlemleri: string.h, ctype.h, sprintf ve elle yazılmış yardımcılar.
+ * char cc16'da işaretsizdir (0..255); string'ler sıfırla biten bayt dizileridir.
+ *   npm run cpu16 -- cc cpu16/programs/c/strings.c --run
+ * Beklenen çıktı: word = "cpu16", ters / büyük harf, strcmp, strchr, strstr, atoi, printf biçimleri
+ * ve snprintf'in kırpması ("uzun bi" istenen 14). */
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>

@@ -43,12 +43,31 @@ setin içinde: transistör → kapı → 74HC çip → CPU → BIOS → derleyic
 Önce `selam.c` ile dene: `printf`, renkler ve `fib(18) = 2584` bütün zinciri daha kısa bir
 programla sınar.
 
+## Sonra: diğer C örnekleri
+
+Aynı listede kolaydan zengine on C örneği daha var: `sayilar.c` (16 bitlik taşma, onluk / hex /
+ikilik), `uzun.c` (32 bitlik `long` ve her işlemin kaç döngü sürdüğü), `kalbur.c` (65535'e kadar
+asallar), `siralama.c`, `liste.c` (`malloc`), `hesap.c` (klavyeden satır okuyan hesap makinesi),
+`sabit.c` (`float` olmadan sinüs), `ekran.c` (VRAM'e doğrudan), `kesme.c` (vsync kesmesine C
+fonksiyonu) ve `hayat.c` (Hayat Oyunu). Hepsi karta bu deneydeki gibi yüklenir. Rehberli tur ve
+CPU16'da C yazarken bilinmesi gerekenler (bellek haritası, G/Ç adresleri, çarpma / bölmenin
+maliyeti): [`cpu16/docs/c-ornekleri.md`](../docs/c-ornekleri.md).
+
+Örneklerin yazdığı süreler 4 MHz içindir. Kart 1 MHz'te çalışırken (`uretim.md`, bölüm 2) her şey
+gerçek zamanda 4 kat uzun sürer; BIOS tıkı da CPU saatinden türediği için tık sayıları aynı kalır.
+Video kartının saati ise ayrıdır, vsync hep 60 Hz: `kesme.c`'nin "kanca / tık" oranı 0.60 yerine
+2.40 çıkar, `ekran.c`'nin 300 karelik animasyonu yine 5 saniye sürer. Hesap sonuçları (sayılar,
+asallar, `e`'nin basamakları) değişmez.
+
 ## Simülatörde
 
 - Web IDE → CPU16 → Anakart + BIOS → **yilan.c** → "Derle ve RAM'e yükle", ekrana tıkla, W A S D.
   Kaynak düzenlenebilir: değiştir, Ctrl+Enter ile yeniden derle.
 - `npm run cpu16 -- cc cpu16/bios/ornekler/selam.c --hedef bios --run`: anakart modelinde çalıştırır.
-- Testler: `cpu16/tests/cc-bios.test.ts` yılanı otomatik pilotla oynatır (yem, skor, uzunluk, çarpma).
+- `npm run cpu16 -- machine cpu16/bios/ornekler/yilan.c`: derler, yükler ve makineyi terminalde gerçek
+  zamanlı çalıştırır (tuşlar UART'tan gider; çıkış: Ctrl-]).
+- Testler: `cpu16/tests/cc-bios.test.ts` yılanı otomatik pilotla oynatır (yem, skor, uzunluk, çarpma);
+  `cpu16/tests/c-ornekleri.test.ts` diğer C örneklerinin çıktısını denetler.
 
 ## Sorun giderme
 
