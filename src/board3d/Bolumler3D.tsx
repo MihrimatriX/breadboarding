@@ -27,6 +27,7 @@ import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { create } from "zustand";
 import { bolumleri, type BolumTuru } from "../../cpu16/board/bolum-bilgi";
 import type { BoardLayout } from "../../cpu16/board/layout";
+import { ucusAdimi } from "../ui/ayarlar";
 import { aktifKart } from "./aktif";
 import { useBbKurulum } from "./bbKurulum";
 import { bolumRengi, bolumu, katalog, plakaYazisi, sahneBolumleri, useBolum, type EtiketKipi } from "./bolum";
@@ -460,7 +461,7 @@ function BolumUcusu({ s }: { s: SahneBolumleri }) {
   useFrame((_, dt) => {
     const a = anim.current;
     if (!a || !controls) return;
-    a.t = Math.min(1, a.t + dt * 1.4);
+    a.t = ucusAdimi(a.t, dt, 1.4);
     const k = 1 - Math.pow(1 - a.t, 3);
     controls.target.lerpVectors(a.t0, a.target, k);
     camera.position.lerpVectors(a.c0, a.cam, k);
