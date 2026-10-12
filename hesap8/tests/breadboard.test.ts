@@ -8,7 +8,7 @@ import { buildHesapBoard } from "../kart.ts";
 import { beklenen, ornekDurumlar } from "../model.ts";
 import { HesapSim } from "../sim.ts";
 import { bbDogrula } from "../breadboard/dogrulama.ts";
-import { BX_ADIM, BY_ADIM, rayDeligiVar } from "../breadboard/geometri.ts";
+import { noktaninBoardu, rayDeligiVar } from "../breadboard/geometri.ts";
 import { bbOlcu, bbPlani, netlistParmakIzi, noktaBoardu, telYollari3B, ucEtiketi, yolCoz, yolKodla, type BbPlani } from "../breadboard/plan.ts";
 import { telRengi } from "../breadboard/renk.ts";
 import { BB_VERI } from "../breadboard/veri.ts";
@@ -20,9 +20,8 @@ beforeAll(() => {
 });
 
 const yerel = (X: number, Y: number) => {
-  const bx = Math.floor(X / BX_ADIM);
-  const by = Math.floor((Y + 3) / BY_ADIM);
-  return { bx, by, r: Y - by * BY_ADIM, c: X - bx * BX_ADIM };
+  const b = noktaninBoardu(plan.yerlesim.boards, X, Y);
+  return { bx: b.bx, by: b.by, r: Y - b.y0, c: X - b.x0 };
 };
 
 describe("saklanan breadboard verisi", () => {

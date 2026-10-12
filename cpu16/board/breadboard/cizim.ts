@@ -4,7 +4,7 @@
 // breadboard belgeleri (hesap8/breadboard/belge.ts, cpu16/breadboard/belge.ts) ortak kullanır.
 
 import { esc } from "../../kurulum/stil.ts";
-import { ADIM, BX_ADIM, BY_ADIM, KENAR_ALT, KENAR_SAG, KENAR_SOL, KENAR_UST, satirHarfi, SUTUN } from "./geometri.ts";
+import { ADIM, KENAR_ALT, KENAR_SAG, KENAR_SOL, KENAR_UST, satirHarfi, SUTUN } from "./geometri.ts";
 import { noktaBoardu, type BbTel } from "./plan.ts";
 import type { BbBoard, BbParca, BbYerlesim } from "./yerlesim.ts";
 
@@ -76,7 +76,7 @@ function grupSeritleri(parcalar: BbParca[], b: BbBoard, grup: (ref: string) => G
   const araliklar = parcalar.filter((p) => p.tur !== "kondansator").flatMap((p) => {
     const g = grup(p.ref);
     if (!g) return [];
-    const cs = p.bacaklar.map((k) => k.X - b.bx * BX_ADIM);
+    const cs = p.bacaklar.map((k) => k.X - b.x0);
     return [{ g, x0: bx(Math.min(...cs)) - 1.1, x1: bx(Math.max(...cs)) + 1.1 }];
   }).sort((a, c) => a.x0 - c.x0);
   const seritler: { g: GrupEtiketi; x0: number; x1: number }[] = [];
@@ -105,11 +105,12 @@ function grupSeritleri(parcalar: BbParca[], b: BbBoard, grup: (ref: string) => G
 }
 
 /** Çipin ikinci satırı: kısa değer */
-const kisaDeger = (part: string) => part.replace(/^74HC/, "HC").replace(/^RN_470_ISO_8$/, "470 Ω × 8").replace(/^SW_DIP_(\d)$/, "DIP $1");
+const kisaDeger = (part: string) =>
+  part.replace(/^74HC/, "HC").replace(/^RN_470_ISO_8$/, "470 Ω × 8").replace(/^RN_1K_ISO_8$/, "1 kΩ × 8").replace(/^DISP_BAR_10$/, "LED çubuk").replace(/^SW_DIP_(\d)$/, "DIP $1");
 
 /** Parçanın çizimi (board içi mm) */
 export function parcaCizimi(p: BbParca, b: BbBoard, o: CizimSecenekleri = {}): string {
-  const L = p.bacaklar.map((k) => ({ pin: k.pin, r: k.Y - b.by * BY_ADIM, c: k.X - b.bx * BX_ADIM }));
+  const L = p.bacaklar.map((k) => ({ pin: k.pin, r: k.Y - b.y0, c: k.X - b.x0 }));
   const cs = L.map((k) => k.c);
   const rs = L.map((k) => k.r);
   const c0 = Math.min(...cs), c1 = Math.max(...cs), r0 = Math.min(...rs), r1 = Math.max(...rs);
@@ -123,8 +124,10 @@ export function parcaCizimi(p: BbParca, b: BbBoard, o: CizimSecenekleri = {}): s
     const x = bx(c0) - 1.1, w = bx(c1) - bx(c0) + 2.2, y = by(ru) + 0.9, h = by(ra) - by(ru) - 1.8;
     const renk = p.tur === "osilator" ? "#8e939b" : p.cipMi ? "#232323" : p.part.startsWith("SW_DIP") ? "#2459c8" : "#3c3f44";
     out.push(`<rect x="${f(x)}" y="${f(y)}" width="${f(w)}" height="${f(h)}" rx="0.5" fill="${renk}"/>`);
-    if (p.tur !== "osilator") out.push(`<path d="M ${f(x)} ${f(y + h / 2 - 1)} a 1 1 0 0 1 0 2" fill="#f4f0e6"/>`);
-    out.push(`<circle cx="${f(x + 1.3)}" cy="${f(y + h - 1.1)}" r="0.45" fill="#f4f0e6"/>`);
+    // çentik ve 1. pin noktası 1. pinin yanında (ters takılan çubuk göstergede sağ üstte)
+    const ters = L.find((k) => k.pin === 1)?.c === c1 && c1 !== c0;
+    if (p.tur !== "osilator") out.push(ters ? `<path d="M ${f(x + w)} ${f(y + h / 2 - 1)} a 1 1 0 0 0 0 2" fill="#f4f0e6"/>` : `<path d="M ${f(x)} ${f(y + h / 2 - 1)} a 1 1 0 0 1 0 2" fill="#f4f0e6"/>`);
+    out.push(ters ? `<circle cx="${f(x + w - 1.3)}" cy="${f(y + 1.1)}" r="0.45" fill="#f4f0e6"/>` : `<circle cx="${f(x + 1.3)}" cy="${f(y + h - 1.1)}" r="0.45" fill="#f4f0e6"/>`);
     out.push(yazi(x + w / 2, y + h * 0.36, ref, 2.1, "#fff", true));
     out.push(yazi(x + w / 2, y + h * 0.72, p.tur === "osilator" ? "osilatör" : kisaDeger(p.part), 1.5, "#d8d8d8"));
   } else if (p.tur === "uyarlayici") {
@@ -182,8 +185,8 @@ export function parcaCizimi(p: BbParca, b: BbBoard, o: CizimSecenekleri = {}): s
 /** Bir board'un çizimi: zemin, o board'daki teller (kırpılmış), parçalar */
 export function boardCizimi(y: BbYerlesim, b: BbBoard, teller: BbTel[], renkHex: (t: BbTel) => string, o: CizimSecenekleri = {}): string {
   const id = `b${b.no}`;
-  const ox = b.bx * BX_ADIM;
-  const oy = b.by * BY_ADIM;
+  const ox = b.x0;
+  const oy = b.y0;
   const tel = (t: BbTel, alt: boolean) => {
     const pts: string[] = [];
     for (let i = 0; i < t.yol.length; i += 2) pts.push(`${f(bx(t.yol[i] - ox))},${f(by(t.yol[i + 1] - oy))}`);
@@ -212,8 +215,8 @@ ${gruplar.svg}
 
 /** Telin board'a değip değmediği (köşelerden biri ya da bir parçası board'un üstünde) */
 export function boardaDegiyor(t: Pick<BbTel, "yol">, b: BbBoard): boolean {
-  const x0 = b.bx * BX_ADIM + KENAR_SOL, x1 = b.bx * BX_ADIM + KENAR_SAG;
-  const y0 = b.by * BY_ADIM + KENAR_UST, y1 = b.by * BY_ADIM + KENAR_ALT;
+  const x0 = b.x0 + KENAR_SOL, x1 = b.x0 + KENAR_SAG;
+  const y0 = b.y0 + KENAR_UST, y1 = b.y0 + KENAR_ALT;
   for (let i = 2; i < t.yol.length; i += 2) {
     const ax = Math.min(t.yol[i - 2], t.yol[i]), zx = Math.max(t.yol[i - 2], t.yol[i]);
     const ay = Math.min(t.yol[i - 1], t.yol[i + 1]), zy = Math.max(t.yol[i - 1], t.yol[i + 1]);

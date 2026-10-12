@@ -7,7 +7,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import type { Board } from "../board/board.ts";
 import { panolariDogrula } from "../board/breadboard/dogrulama.ts";
-import { rayDeligiVar } from "../board/breadboard/geometri.ts";
+import { noktaninBoardu, rayDeligiVar } from "../board/breadboard/geometri.ts";
 import { netlistParmakIzi, telYollari3B } from "../board/breadboard/plan.ts";
 import { kartMetinleri, refleriAc } from "../board/bolum-bilgi.ts";
 import { buildFullMachineBoard } from "../board/machine-board.ts";
@@ -31,8 +31,8 @@ beforeAll(() => {
 });
 
 const yerel = (p: KartBbPlani, X: number, Y: number) => {
-  const b = p.yerlesim.boards.find((q) => X >= q.bx * 65 && X < (q.bx + 1) * 65 && Y >= q.by * 22 - 3 && Y < (q.by + 1) * 22 - 3)!;
-  return { b, c: X - b.bx * 65, r: Y - b.by * 22 };
+  const b = noktaninBoardu(p.yerlesim.boards, X, Y);
+  return { b, c: X - b.x0, r: Y - b.y0 };
 };
 
 describe("bağlantı: fiziksel modelden kurulan netler = netlist", () => {

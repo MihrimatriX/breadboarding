@@ -50,20 +50,38 @@ const CPU: KartMetinleri = {
     "Register dosyası": m(
       "REGISTER DOSYASI",
       "Register dosyası",
-      "Sekiz 16 bitlik genel register'ı (r0–r7; r6 = SP, r7 = LR) ve iç veriyolunun çekme dirençlerini tutar.",
-      "Her register kendi board'unda: iki 74HC574, solda düşük, sağda yüksek bayt; üç durumlu çıkışları doğrudan iç veriyoluna bağlıdır. Panonun en arkasında: arka sırada R0–R3, önünde R4–R7. Sağ uçtaki iki board'da okuma ve yazma çözücüsü (iki 74HC138), saat kapıları ve register numarasını seçen üç 74HC151 (RSEL); RN1 ve RN2 sürülmeyen veriyolunu 0'a çeker (Deney 4).",
+      "Sekiz 16 bitlik genel register (r0–r7; r6 = SP, r7 = LR): her biri kendi board'unda, değeri hemen önündeki board'un çubuk göstergelerinde.",
+      "Panonun en arkasındaki ada. Arka sırada R0–R3, onların önünde göstergeleri; sonra R4–R7 ve göstergeleri. Her register iki 74HC574 (solda düşük, sağda yüksek bayt); göstergeli board'da iki çubuk gösterge (bit 0 sağda), yeşil okuma (~ROE) ve amber yazma (~WSEL) LED'leri. Register'ı seçen çözücüler sağdaki veriyolu kontrolü adasında (Deney 4).",
     ),
-    "ALU, geçici register'lar ve bayraklar": m(
-      "ALU VE BAYRAKLAR",
-      "ALU, geçici register'lar ve bayraklar",
-      "İki işlenen TA ve TB'de tutulur; ALU toplar, çıkarır, mantık ve kaydırma işlemlerini yapar. Sonucun N, Z, C, V bayrakları ve dallanma koşulu da buradadır.",
-      "Dört board sırası; her board'un etiketi işini söyler. Toplayıcı 4 × 74HC283, girişinde XOR ve VE kapıları; mantık birimi her bitte bir 74HC151 doğruluk tablosu (0–7 ve 8–15 ikişer board); sonuç 8 × 74HC153 ile seçilir, iki 74HC688 sıfırı algılar, iki 74HC541 veriyoluna verir. ALU kod çözücü (3 × 74HC138 ve kapılar) işlem kodunu AD0–AD23'e açar; bayraklar 74HC74'lerde, koşul birimi bir 74HC151 (Deney 5).",
+    "Veriyolu kontrolü": m(
+      "VERİYOLU KONTROLÜ",
+      "Veriyolu kontrolü",
+      "İç veriyoluna kimin yazacağını ve hangi register'ın okunup yazılacağını seçer; veriyolunun değerini gösterir.",
+      "Register adasının sağında dört board: okuma ve yazma çözücüleri (iki 74HC138) ve register saat kapıları; veriyolunun çubuk göstergeleri ve onu süren kaynağın beyaz LED'leri (REG, ALU, PC, MEM, IMM, FLAGS); register numarasını seçen üç 74HC151 ve RN1; BUS alanını çözen 74HC138 ve RN2 (sürülmeyen veriyolu 0). Hata ayıklarken ilk bakılacak yer: hangi LED yanıyorsa veriyolundaki değer ondan gelir (Deney 4).",
     ),
-    "Program sayacı, MAR, IR ve bellek arayüzü": m(
-      "PC, MAR, IR, BELLEK",
-      "Program sayacı, MAR, IR ve bellek arayüzü",
-      "Sıradaki komutun adresini (PC), bellek adresini (MAR) ve çalışan komutu (IR) tutar; iç veriyolunu arka paneldeki bayt şeritlerine bağlar.",
-      "Panonun ön kenarında: program sayacı (dört 74HC161; 2'şer sayar ya da veriyolundan yüklenir) ve onu veriyoluna çıkaran iki 74HC541, IR, MAR (çıkışları arka panelin A0–A15 hatları), şerit kablo uyarlayıcısı (J1), veriyolunu DE ve DO şeritlerine bağlayan üç 74HC245 ve bellek kapıları (Deney 6).",
+    "ALU ve geçici register'lar": m(
+      "ALU",
+      "ALU ve geçici register'lar",
+      "İki işlenen TA ve TB'de tutulur; ALU toplar, çıkarır, mantık ve kaydırma işlemlerini yapar ve sonucu veriyoluna verir.",
+      "Dört board sırası; her board'un etiketi işini söyler. Toplayıcı 4 × 74HC283, girişinde XOR ve VE kapıları; mantık birimi her bitte bir 74HC151 doğruluk tablosu (0–7 ve 8–15 ikişer board); sonuç 8 × 74HC153 ile seçilir, yanındaki board'un çubuk göstergeleri sonucu sürekli gösterir, iki 74HC541 veriyoluna verir. ALU kod çözücü (3 × 74HC138 ve kapılar) işlem kodunu AD0–AD23'e açar; TA ve TB'nin yükleme LED'leri amber (Deney 5).",
+    ),
+    "Bayraklar ve koşul": m(
+      "BAYRAKLAR",
+      "Bayraklar ve koşul",
+      "ALU sonucunun N, Z, C, V bayraklarını ve kesme iznini (I) tutar, dallanma koşulunu hesaplar.",
+      "ALU adasının sağında dört board: bayrak flip-flop'ları (üç 74HC74) ve beş mavi LED (N, Z, C, V, I), koşul seçicisi (74HC151), bayrak girişi ve kapıları, bayrakları veriyoluna çıkaran sürücü ve sonucun sıfır olduğunu bulan iki 74HC688 (Deney 5).",
+    ),
+    "Program sayacı": m(
+      "PROGRAM SAYACI",
+      "Program sayacı",
+      "Sıradaki komutun adresini tutar, her komutta 2 artar; dallanmada veriyolundan yüklenir.",
+      "Ön kenarda, solda dört board: dört 74HC161 (iki board), PC'yi veriyoluna çıkaran iki 74HC541 ve PC'nin çubuk göstergeleri (bit 0 hep 0); amber LED'ler yükleme (PC_L) ve artırma (PC_INC) adımlarında yanar (Deney 6).",
+    ),
+    "Bellek arayüzü ve MAR": m(
+      "BELLEK ARAYÜZÜ",
+      "Bellek arayüzü ve MAR",
+      "Bellek adresini (MAR) tutar ve iç veriyolunu arka paneldeki bayt şeritlerine bağlar; bellek okuma ve yazmayı gösterir.",
+      "Ön kenarda, şerit kablo uyarlayıcısının (J1) yanında: MAR (iki 74HC574; çıkışları arka panelin A0–A15 hatları) ve adresin çubuk göstergeleri, yeşil bellek okuma (MEMRD) ve amber yazma (MEMW) LED'leri, veriyolunu DE ve DO şeritlerine bağlayan üç 74HC245, bayt okuma sürücüsü ve bellek kapıları (Deney 6).",
     ),
     "Sabit birimi": m(
       "SABİT BİRİMİ",
@@ -74,8 +92,8 @@ const CPU: KartMetinleri = {
     "Kontrol birimi": m(
       "KONTROL BİRİMİ",
       "Kontrol birimi",
-      "Komutun her adımında hangi birimin ne yapacağını söyleyen 32 bitlik kontrol kelimesini üretir.",
-      "Girişler INT, op, f3, koşul ve mikro adımdır; altı 74HC138 bunları çözer, on board'luk kapı ağı ve on 74HC151 (adım seçicileri) her kontrol bitini kurar. Sonuç CLK'nin düşen kenarında dört 74HC574'e (kontrol register'ı) alınır; 74HC161 mikro adımı sayar (Deney 7).",
+      "Komutu (IR) tutar ve her adımında hangi birimin ne yapacağını söyleyen 32 bitlik kontrol kelimesini üretir.",
+      "Girişler INT, op, f3, koşul ve mikro adımdır; altı 74HC138 bunları çözer, on board'luk kapı ağı ve on 74HC151 (adım seçicileri) her kontrol bitini kurar. Sonuç CLK'nin düşen kenarında dört 74HC574'e (kontrol register'ı) alınır; 74HC161 mikro adımı sayar (dört sarı LED). Ön sırada IR (iki 74HC574) ve komutun çubuk göstergeleri; HALT ve FAULT LED'leri sağ arka board'da (Deney 7).",
     ),
   },
   bloklar: {

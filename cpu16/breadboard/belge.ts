@@ -10,6 +10,7 @@
 import type { Board } from "../board/board.ts";
 import { BOLUM_STIL, boardGruplari, bolumlerHtml, grupEtiketleri, HARITA, haritaBolgeleri, haritaBoyu, haritaX, haritaY, katalogu } from "../board/breadboard/bolum-belge.ts";
 import { boardaDegiyor, boardCizimi, type CizimSecenekleri } from "../board/breadboard/cizim.ts";
+import { ADIM, BOSLUK } from "../board/breadboard/geometri.ts";
 import { plakaBoyu } from "../board/breadboard/gorunum.ts";
 import { DAGILIM_SINIRLARI, noktaBoardu, ucEtiketi, type BbOlcu, type BbTel } from "../board/breadboard/plan.ts";
 import type { BbParca } from "../board/breadboard/yerlesim.ts";
@@ -368,7 +369,7 @@ function malzeme(board: Board, p: KartBbPlani, o: BbOlcu, b: BeslemeButcesi): st
 <h3>Breadboard, taban, uyarlayıcı, besleme</h3>
 <table class="tablo"><thead><tr><th>Ne</th><th class="sag" style="width:20mm">Adet</th></tr></thead><tbody>
 <tr><td><b>Tam boy breadboard, 830 delik</b> (BB830 türü: 63 sütun, a–e / f–j, üstte ve altta ikişer ray, <b>raylar kesintisiz</b>; arkası yapışkanlı)</td><td class="sag">${o.board}</td></tr>
-<tr><td>Taban plakası ≈ ${sayi(Math.ceil(plaka.w / 10) * 10)} × ${sayi(Math.ceil(plaka.h / 10) * 10)} mm (10 mm kontrplak ya da MDF): board'lar ${y.nx} × ${y.ny}, yan yana bitişik; kenarlarda tellerin dolandığı ≈ 10 mm pay</td><td class="sag">1</td></tr>
+<tr><td>Taban plakası ≈ ${sayi(Math.ceil(plaka.w / 10) * 10)} × ${sayi(Math.ceil(plaka.h / 10) * 10)} mm (10 mm kontrplak ya da MDF): board'lar ${y.nx} × ${y.ny}; bir modülün board'ları bitişik, modüller arasında ≈ ${sayi(BOSLUK * ADIM, 0)} mm boşluk (her modül ayrı bir ada); kenarlarda tellerin dolandığı ≈ 10 mm pay</td><td class="sag">1</td></tr>
 <tr><td>Şerit kablo uyarlayıcısı 2 × 32 (T-cobbler benzeri: üstte 2 × 32 erkek IDC başlık, altta kanalın iki yanına 64 bacak)</td><td class="sag">1</td></tr>
 <tr><td>2 × 32 dişi IDC soketi (2,54 mm), makinenin 64 damarlı şerit kablosu üstünde (kablo ve soketler: dizin belgesi)</td><td class="sag">1</td></tr>
 <tr><td>Besleme girişi: 2 pinli başlık ya da 5,08 mm klemens (+ ve − rayına), kaynağın dağıtım bloğundan ayrı kablo çiftiyle</td><td class="sag">${ek.filter((q) => q.part === "CONN_5V").length}</td></tr>
