@@ -13,6 +13,7 @@ konsol API'si: [cpu16/docs/3d-gorunum.md](../cpu16/docs/3d-gorunum.md).
 | CPU16 kartı 3D | `#kart` | `board3d/BoardView.tsx` | `board3d/` |
 | 8 bit hesap 3D | `#hesap` | `board3d/BoardView.tsx` (hesap modu) | `board3d/hesap.ts`, `HesapPanel.tsx` |
 | Mimari | `#mimari` | `mimari/MimariView.tsx` | `mimari/` |
+| Belgeler | `#belgeler/<yol>#<çapa>` | `belgeler/BelgelerView.tsx` | `belgeler/`: `md.ts` (GFM alt kümesi ayrıştırıcı), `katalog.ts` (gruplar, adresler, arama); testi `tests/belgeler.test.ts` |
 
 Her bölüm kendi kod parçasında, ilk açılınca yüklenir (`bolumler.ts`, `Root.tsx`'te `React.lazy`).
 Bölüm geçişi `ui/ModeSwitch.tsx`; ortak iskelet `ui/Shell.tsx`; renk ve boyut belirteçleri
