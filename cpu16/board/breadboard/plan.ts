@@ -119,8 +119,8 @@ export function noktaBoardu(y: Pick<BbYerlesim, "nx" | "ny">, X: number, Y: numb
 
 /**
  * Kurulum sırası: aşama; ray köprüleri, besleme telleri, sinyaller; board; soldan sağa. Yönlendirici
- * hiçbir teli başka bir telin ucunun üstünden geçirmediği için her sıra kurulabilir; bu sıra eli
- * board board, soldan sağa gezdirir. Uçlar da sıralanır: önce numarası küçük board, aynıysa soldaki.
+ * bir teli başka bir telin ucunun üstünden ancak çok sıkışık yerlerde geçirir (o zaman ucu altta kalan
+ * önce takılır: onceAltakiler); öteki her sıra kurulabilir; bu sıra eli board board, soldan sağa gezdirir. Uçlar da sıralanır: önce numarası küçük board, aynıysa soldaki.
  * `renkler`: renklerin sırası (aynı yerdeki teller bu sırayla).
  */
 export function sirala(y: BbYerlesim, teller: Omit<BbTel, "no">[], renkler: readonly RenkTanimi[]): BbTel[] {
@@ -144,7 +144,63 @@ export function sirala(y: BbYerlesim, teller: Omit<BbTel, "no">[], renkler: read
     for (let i = 0; i < p.a.length; i++) if (p.a[i] !== q.a[i]) return p.a[i] - q.a[i];
     return 0;
   });
-  return k.map(({ t }, i) => ({ no: i + 1, ...t }));
+  return onceAltakiler(k.map(({ t }) => t)).map((t, i) => ({ no: i + 1, ...t }));
+}
+
+/** Telin uçları dışında üstünden geçtiği ızgara noktaları */
+function araNoktalar(yol: readonly number[], fn: (X: number, Y: number) => void): void {
+  const n = yol.length;
+  for (let j = 2; j < n; j += 2) {
+    let x = yol[j - 2];
+    let y = yol[j - 1];
+    const dx = Math.sign(yol[j] - x);
+    const dy = Math.sign(yol[j + 1] - y);
+    while (x !== yol[j] || y !== yol[j + 1]) {
+      x += dx;
+      y += dy;
+      if (j === n - 2 && x === yol[j] && y === yol[j + 1]) break;
+      fn(x, y);
+    }
+  }
+}
+
+/**
+ * Sıkışık yerlerde yönlendirici bir teli, daha önce döşenmiş bir telin ucunun üstünden geçirebilir (çok
+ * yoğun panolarda; hesap makinesinde hiç olmaz): o zaman ucu altta kalan tel önce takılmalıdır. Sıra bu
+ * kurala göre düzeltilir (kararlı topolojik sıra: kısıt yoksa sıra aynen kalır).
+ */
+export function onceAltakiler<T extends Pick<BbTel, "yol">>(teller: T[]): T[] {
+  const uc = new Map<string, number>();
+  teller.forEach((t, i) => {
+    uc.set(`${t.yol[0]},${t.yol[1]}`, i);
+    uc.set(`${t.yol[t.yol.length - 2]},${t.yol[t.yol.length - 1]}`, i);
+  });
+  const sonra: number[][] = teller.map(() => []);
+  const giren = new Int32Array(teller.length);
+  let kisit = 0;
+  teller.forEach((t, j) => {
+    araNoktalar(t.yol, (X, Y) => {
+      const i = uc.get(`${X},${Y}`);
+      if (i === undefined || i === j) return;
+      sonra[i].push(j);
+      giren[j]++;
+      if (i > j) kisit++;
+    });
+  });
+  if (!kisit) return teller;
+  // Kahn: hazır olanlardan sırası en küçük olan önce
+  const hazir: number[] = [];
+  for (let i = 0; i < teller.length; i++) if (!giren[i]) hazir.push(i);
+  const out: T[] = [];
+  while (hazir.length) {
+    let m = 0;
+    for (let q = 1; q < hazir.length; q++) if (hazir[q] < hazir[m]) m = q;
+    const i = hazir.splice(m, 1)[0];
+    out.push(teller[i]);
+    for (const j of sonra[i]) if (--giren[j] === 0) hazir.push(j);
+  }
+  if (out.length !== teller.length) throw new Error("teller birbirinin ucunun üstünden geçiyor (döngü)");
+  return out;
 }
 
 // ---------------------------------------------------------------- renkler

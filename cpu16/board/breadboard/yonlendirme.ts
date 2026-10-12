@@ -57,6 +57,12 @@ export interface YonlendirmeSecenekleri {
   /** söküp yeniden döşeme turu */
   tur?: number;
   log?: (s: string) => void;
+  /**
+   * En uzun tel (mm, delikten deliğe). Daha uzun teller yolları üstündeki boş bir şeritte (pinsiz, tel
+   * ucusuz, iki deliği yalnız bu telin altında) ikiye bölünür: tel şeridin bir deliğinde biter, devamı
+   * komşu deliğinden başlar ("ara şerit"). Verilmezse bölünmez.
+   */
+  enUzun?: number;
 }
 
 /** Netin tel rengi: adından ve uçlarının bulunduğu bloklardan (projenin renk kodu) */
@@ -671,6 +677,128 @@ export function yonlendir(board: Board, y: BbYerlesim, renkSec: RenkSecici, o: Y
     log(`tur ${tur}: ${binen} binen kenar, ${sirali.length} tel yeniden, ${degisen} değişti`);
   }
 
+  // ------------------------------------------------ 4. uzun teller: ara şeritte bölme
+  let bolunen = 0;
+  if (o.enUzun) {
+    const sinirAdim = Math.floor(o.enUzun / ADIM);
+    /** şeritteki tel uçları (ara şerit yalnız boş şeritten) */
+    const ucSay = new Int32Array(dugumSayisi);
+    for (const k of kayitlar) if (k.canli) { ucSay[k.u1]++; ucSay[k.u2]++; }
+    const yeni: Kayit[] = [];
+    for (const k0 of kayitlar) {
+      let k = k0;
+      yeni.push(k);
+      if (!k.canli || k.ray || k.hucreler.length - 1 <= sinirAdim) continue;
+      for (;;) {
+        const hs = k.hucreler;
+        const n = hs.length;
+        if (n - 1 <= sinirAdim) break;
+        // bölünebilecek yerler: i ve i + 1 aynı boş şeridin iki deliği, ikisi de yalnız bu telin altında
+        const parca = Math.ceil((n - 1) / sinirAdim);
+        const hedef = (n - 1) / parca;
+        let en = -1;
+        let enFark = Infinity;
+        for (let i = 1; i + 2 < n && i <= sinirAdim; i++) {
+          const a = hs[i];
+          const b = hs[i + 1];
+          const g = delikDugum[a];
+          if (g < 0 || g !== delikDugum[b] || dugumNet[g] !== -1 || rayNeti[g] >= 0 || ucSay[g] > 0) continue;
+          if (ortu[a] !== 1 || ortu[b] !== 1 || delikDurum[a] || delikDurum[b] || engel[a] || engel[b]) continue;
+          const fark = Math.abs(i - hedef);
+          if (fark < enFark) { enFark = fark; en = i; }
+        }
+        if (en < 0) break;
+        const a = hs[en];
+        const b = hs[en + 1];
+        const g = delikDugum[a];
+        // yeni uçlar: örtü kalkar, delik tel ucu olur, şerit netin olur
+        ortu[a]--; ortu[b]--;
+        delikDurum[a] = 2; delikDurum[b] = 2;
+        kenarDegis(a, b, -1);
+        dugumNet[g] = k.net;
+        ucSay[g] += 2;
+        const ikinci: Kayit = { hucreler: hs.slice(en + 1), net: k.net, asama: k.asama, ray: false, u1: g, u2: k.u2, canli: true };
+        k.hucreler = hs.slice(0, en + 1);
+        k.u2 = g;
+        yeni.push(ikinci);
+        bolunen++;
+        k = ikinci;
+      }
+    }
+    kayitlar.length = 0;
+    kayitlar.push(...yeni);
+    netTelleri.clear();
+    kayitlar.forEach((k, i) => {
+      if (!netTelleri.has(k.net)) netTelleri.set(k.net, []);
+      netTelleri.get(k.net)!.push(i);
+    });
+    log(`ara şeritte bölünen: ${bolunen}`);
+
+    // hâlâ uzun olanlar: tel sökülür, netin iki parçası arasına boş bir şerit (aktarma şeridi) konur;
+    // parçalardan şeride ve şeritten öteki parçaya iki ayrı tel (gerekirse şerit şerit sürer)
+    const bos: number[] = [];
+    for (let g = 0; g < dugumSayisi; g++) if (dugumNet[g] === -1 && rayNeti[g] < 0 && ucSay[g] === 0) bos.push(g);
+    const merkez = (g: number) => dugumHucreleri[g][2] ?? dugumHucreleri[g][0];
+    const uzak = (a: number, b: number) => Math.abs(hX(a) - hX(b)) + Math.abs(hY(a) - hY(b));
+    let aktarma = 0;
+    const kuyruk = kayitlar.map((_, i) => i).filter((i) => !kayitlar[i].ray && kayitlar[i].hucreler.length - 1 > sinirAdim);
+    const deneme = new Map<number, number>();
+    while (kuyruk.length) {
+      const ti = kuyruk.shift()!;
+      const k = kayitlar[ti];
+      if (!k.canli || k.hucreler.length - 1 <= sinirAdim) continue;
+      const kez = deneme.get(ti) ?? 0;
+      if (kez >= 6) continue;
+      const eski = k.hucreler;
+      const a = eski[0];
+      const z = eski[eski.length - 1];
+      const D = uzak(a, z);
+      const t = Math.min(D / 2, 0.7 * sinirAdim);
+      const adaylar = bos
+        .filter((g) => dugumNet[g] === -1 && ucSay[g] === 0 && bosSay[g] >= 2)
+        .map((g) => {
+          const da = uzak(merkez(g), a);
+          const db = uzak(merkez(g), z);
+          return { g, p: Math.abs(da - t) + 2 * Math.abs(da + db - D) };
+        })
+        .sort((x, y) => x.p - y.p)
+        .slice(0, 10);
+      sil(k);
+      const A = [...bilesen(ti, k.u1)].filter((g) => dugumAsama[g] <= k.asama);
+      const B = [...bilesen(ti, k.u2)].filter((g) => dugumAsama[g] <= k.asama);
+      let tamamlandi = false;
+      for (const { g } of adaylar) {
+        const y1 = yolBul(k.net, A, [g], false);
+        if (!y1 || y1.length - 1 > sinirAdim) continue;
+        // ilk tel bu telin yerine; şerit netin olur
+        k.hucreler = y1;
+        k.u1 = delikDugum[y1[0]];
+        k.u2 = g;
+        isle(k);
+        const y2 = yolBul(k.net, [g], B, false);
+        if (!y2) {
+          sil(k);
+          continue;
+        }
+        dugumNet[g] = k.net;
+        ucSay[g] += 2;
+        const ti2 = telEkle(y2, k.net, k.asama, false);
+        deneme.set(ti2, kez + 1);
+        if (y2.length - 1 > sinirAdim) kuyruk.push(ti2);
+        aktarma++;
+        tamamlandi = true;
+        break;
+      }
+      if (!tamamlandi) {
+        k.hucreler = eski;
+        k.u1 = delikDugum[a];
+        k.u2 = delikDugum[z];
+        isle(k, true);
+      }
+    }
+    log(`aktarma şeridi: ${aktarma}`);
+  }
+
   // ------------------------------------------------ sonuç
   let binme = 0;
   let kesisme = 0;
@@ -694,7 +822,7 @@ export function yonlendir(board: Board, y: BbYerlesim, renkSec: RenkSecici, o: Y
     if (!renkler.has(n)) renkler.set(n, renkSec(netAdi(n), [...(netBloklari.get(n) ?? [])]));
     return renkler.get(n)!;
   };
-  const teller = kayitlar.map((k) => {
+  const teller = kayitlar.filter((k) => k.canli).map((k) => {
     const hs = k.hucreler;
     const yol: number[] = [hX(hs[0]), hY(hs[0])];
     for (let i = 1; i < hs.length - 1; i++) if (hs[i] - hs[i - 1] !== hs[i + 1] - hs[i]) yol.push(hX(hs[i]), hY(hs[i]));
