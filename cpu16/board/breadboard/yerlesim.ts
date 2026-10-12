@@ -56,6 +56,8 @@ export interface BbBoard extends BbKonum {
   rol: string;
   /** en çok parçası hangi aşamada takılıyorsa */
   asama: number;
+  /** modüler yerleşimde board'un çip grupları (pano tanımının `duzen`inden; 3D ve belgelerde etiketi) */
+  gruplar?: string[];
 }
 
 export interface BbYerlesim {

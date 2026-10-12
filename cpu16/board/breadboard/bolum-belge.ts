@@ -7,14 +7,14 @@
 import { esc } from "../../kurulum/stil.ts";
 import type { Board } from "../board.ts";
 import { bolumKatalogu, bolumKimligi, bolumleri, type Bolum, type BolumKatalogu } from "../bolum-bilgi.ts";
-import { grupBolgeleri, hucreSiniri, panoBolgeleri, type BolgeBoardu, type PanoBolgesi } from "../bolum-cizim.ts";
+import { boardunGruplari, grupBolgeleri, hucreSiniri, panoBolgeleri, type BolgeBoardu, type PanoBolgesi } from "../bolum-cizim.ts";
 import { PASSIVES } from "../passives.ts";
 import type { GrupEtiketi } from "./cizim.ts";
 
 /** Belgenin istediği yerleşim: board'lar (ad, rol, ızgara) ve parçalar (board, çip mi) */
 export interface BelgeYerlesimi {
-  boards: readonly (BolgeBoardu & { no: number; ad: string })[];
-  parcalar: readonly { ref: string; board: number; part: string; cipMi: boolean; tur: string }[];
+  boards: readonly (BolgeBoardu & { no: number; ad: string; gruplar?: readonly string[] })[];
+  parcalar: readonly { ref: string; board: number; part: string; cipMi: boolean; tur: string; sutun?: number }[];
 }
 
 const KATALOGLAR = new WeakMap<Board, BolumKatalogu>();
@@ -94,14 +94,12 @@ export function haritaBolgeleri(kart: string, boards: readonly BolgeBoardu[], k:
   return { bolgeler, svg: s.join("") };
 }
 
-/** Board'daki çip gruplarının etiketleri, en çok `satir` satıra sığdığı kadar; kalanlar "+N" */
-export function boardGruplari(no: number, y: BelgeYerlesimi, k: BolumKatalogu, en: number, boy: number, satir = 2): string[] {
-  const ids: string[] = [];
-  for (const q of [...y.parcalar].filter((p) => p.board === no).sort((a, b) => (a.cipMi === b.cipMi ? 0 : a.cipMi ? -1 : 1))) {
-    const g = k.grubu.get(q.ref);
-    if (g && !ids.includes(g)) ids.push(g);
-  }
-  const et = ids.map((g) => k.bolumler.get(g)!.etiket);
+/**
+ * Board'daki çip gruplarının etiketleri (3D'deki board plakalarıyla aynı sırada: boardunGruplari), en
+ * çok `satir` satıra sığdığı kadar; kalanlar "+N"
+ */
+export function boardGruplari(kart: string, no: number, y: BelgeYerlesimi, k: BolumKatalogu, en: number, boy: number, satir = 2): string[] {
+  const et = boardunGruplari(kart, no, y, k).map((g) => k.bolumler.get(g)!.etiket);
   const sigar = (t: string) => NORMAL_EN * boy * t.length <= en;
   const out: string[] = [""];
   for (let i = 0; i < et.length; i++) {

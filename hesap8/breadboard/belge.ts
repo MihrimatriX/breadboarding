@@ -123,7 +123,7 @@ function harita(plan: BbPlani): string {
     s.push(`<rect x="${x}" y="${yy}" width="${W}" height="${H}" rx="1" fill="${ASAMA_RENGI[b.asama - 1]}" stroke="#777" stroke-width="0.25"/>`);
     s.push(`<text x="${x + 1.5}" y="${yy + 4}" font-size="3.2" font-weight="700" fill="#333">${b.ad}</text>`);
     const rol = b.rol.replace(/^Gösterge: /, "Gösterge ").replace(/^Onluğa çevirme: /, "Onluk ").replace(/^Sürücüler: /, "Sürücü ");
-    const gruplar = boardGruplari(b.no, y, k, W - 3, 2.2);
+    const gruplar = boardGruplari("hesap", b.no, y, k, W - 3, 2.2);
     (gruplar.length ? gruplar : [rol.length > 34 ? `${rol.slice(0, 33)}…` : rol]).forEach((t, i) => s.push(`<text x="${x + 1.5}" y="${yy + 7.7 + 2.9 * i}" font-size="2.2" fill="#333">${esc(t)}</text>`));
     const cipler = y.parcalar.filter((p) => p.board === b.no && p.cipMi).length;
     const diger = y.parcalar.filter((p) => p.board === b.no && !p.cipMi && p.tur !== "kondansator").length;

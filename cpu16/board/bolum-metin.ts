@@ -51,25 +51,31 @@ const CPU: KartMetinleri = {
       "REGISTER DOSYASI",
       "Register dosyası",
       "Sekiz 16 bitlik genel register'ı (r0–r7; r6 = SP, r7 = LR) ve iç veriyolunun çekme dirençlerini tutar.",
-      "Her register iki 74HC574'tür (düşük ve yüksek bayt); üç durumlu çıkışları doğrudan iç veriyoluna bağlıdır. Hangi register'ın okunup yazılacağını üç 74HC151 (RSEL) ve iki 74HC138 seçer. RN1 ve RN2 sürülmeyen veriyolunu 0'a çeker (Deney 4).",
+      "Her register kendi board'unda: iki 74HC574, solda düşük, sağda yüksek bayt; üç durumlu çıkışları doğrudan iç veriyoluna bağlıdır. Panonun en arkasında: arka sırada R0–R3, önünde R4–R7. Sağ uçtaki iki board'da okuma ve yazma çözücüsü (iki 74HC138), saat kapıları ve register numarasını seçen üç 74HC151 (RSEL); RN1 ve RN2 sürülmeyen veriyolunu 0'a çeker (Deney 4).",
     ),
     "ALU, geçici register'lar ve bayraklar": m(
       "ALU VE BAYRAKLAR",
       "ALU, geçici register'lar ve bayraklar",
       "İki işlenen TA ve TB'de tutulur; ALU toplar, çıkarır, mantık ve kaydırma işlemlerini yapar. Sonucun N, Z, C, V bayrakları ve dallanma koşulu da buradadır.",
-      "Toplayıcı 4 × 74HC283, mantık birimi her bitte bir 74HC151 doğruluk tablosudur; sonuç 8 × 74HC153 ile seçilir. ALU kod çözücü (3 × 74HC138 ve kapılar) işlem kodunu 24 kontrol bitine (AD0–AD23) açar. Bayraklar 74HC74'lerde; koşul birimi bir 74HC151 ile dallanma koşulunu seçer (Deney 5).",
+      "Dört board sırası; her board'un etiketi işini söyler. Toplayıcı 4 × 74HC283, girişinde XOR ve VE kapıları; mantık birimi her bitte bir 74HC151 doğruluk tablosu (0–7 ve 8–15 ikişer board); sonuç 8 × 74HC153 ile seçilir, iki 74HC688 sıfırı algılar, iki 74HC541 veriyoluna verir. ALU kod çözücü (3 × 74HC138 ve kapılar) işlem kodunu AD0–AD23'e açar; bayraklar 74HC74'lerde, koşul birimi bir 74HC151 (Deney 5).",
     ),
     "Program sayacı, MAR, IR ve bellek arayüzü": m(
       "PC, MAR, IR, BELLEK",
       "Program sayacı, MAR, IR ve bellek arayüzü",
       "Sıradaki komutun adresini (PC), bellek adresini (MAR) ve çalışan komutu (IR) tutar; iç veriyolunu arka paneldeki bayt şeritlerine bağlar.",
-      "PC dört 74HC161'dir: 2'şer sayar ya da veriyolundan yüklenir. MAR'ın çıkışları arka panelin A0–A15 hatlarını sürer. Üç 74HC245 veriyolunu DE (çift bayt) ve DO (tek bayt) şeritlerine bağlar; şerit kablo uyarlayıcısı (J1) bu bölgededir (Deney 6).",
+      "Panonun ön kenarında: program sayacı (dört 74HC161; 2'şer sayar ya da veriyolundan yüklenir) ve onu veriyoluna çıkaran iki 74HC541, IR, MAR (çıkışları arka panelin A0–A15 hatları), şerit kablo uyarlayıcısı (J1), veriyolunu DE ve DO şeritlerine bağlayan üç 74HC245 ve bellek kapıları (Deney 6).",
     ),
-    "Kontrol birimi ve sabit birimi": m(
+    "Sabit birimi": m(
+      "SABİT BİRİMİ",
+      "Sabit birimi",
+      "Komuttaki sabiti (imm, ofset) 16 bitlik değere açar ve veriyoluna verir.",
+      "On altı 74HC151, her bitte bir tane: soldaki iki board 0–7. bitler, sağdaki iki board 8–15. bitler. IMM alanı (CW12–14) sekiz biçimden birini seçer; işaret genişletme seçicinin girişlerinde IR'nin işaret biti tekrarlanarak yapılır. Ortadaki board'un iki 74HC541'i sonucu veriyoluna sürer (Deney 7).",
+    ),
+    "Kontrol birimi": m(
       "KONTROL BİRİMİ",
-      "Kontrol birimi ve sabit birimi",
-      "Komutun her adımında hangi birimin ne yapacağını söyleyen 32 bitlik kontrol kelimesini üretir; komuttaki sabitleri veriyoluna hazırlar.",
-      "Girişler INT, op, f3, koşul ve mikro adımdır; altı 74HC138 bunları çözer, kapı ağı ve on 74HC151 her kontrol bitini kurar. Sonuç CLK'nin düşen kenarında dört 74HC574'e (kontrol register'ı) alınır. Sabit birimi her bitte bir 74HC151 ile IR'deki sabiti sekiz biçimden birine açar (Deney 7).",
+      "Kontrol birimi",
+      "Komutun her adımında hangi birimin ne yapacağını söyleyen 32 bitlik kontrol kelimesini üretir.",
+      "Girişler INT, op, f3, koşul ve mikro adımdır; altı 74HC138 bunları çözer, on board'luk kapı ağı ve on 74HC151 (adım seçicileri) her kontrol bitini kurar. Sonuç CLK'nin düşen kenarında dört 74HC574'e (kontrol register'ı) alınır; 74HC161 mikro adımı sayar (Deney 7).",
     ),
   },
   bloklar: {

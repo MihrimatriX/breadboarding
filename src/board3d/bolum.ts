@@ -121,10 +121,10 @@ export const plakaOlcer: Olcer = (s) => {
   return olcmeTuvali.measureText(s).width / 64;
 };
 
-/** Plakaların en büyük yazısı (mm): genel bakışta okunacak kadar */
+/** Plakaların en büyük yazısı (mm): genel bakışta okunacak kadar; board'ların modül plakaları yakından */
 const YAZI_BOYLARI = {
-  cpu16: { breadboard: { bolge: 42, kart: 52 }, pcb: { bolge: 16, kart: 0 } },
-  hesap: { breadboard: { bolge: 22, kart: 32 }, pcb: { bolge: 14, kart: 0 } },
+  cpu16: { breadboard: { bolge: 42, kart: 52, modul: 12 }, pcb: { bolge: 16, kart: 0 } },
+  hesap: { breadboard: { bolge: 22, kart: 32, modul: 12 }, pcb: { bolge: 14, kart: 0 } },
 } as const;
 
 const sahneler = new Map<string, SahneBolumleri>();

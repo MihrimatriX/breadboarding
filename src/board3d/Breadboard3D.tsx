@@ -1,5 +1,5 @@
 // Breadboard görünümü 3D'de: hesap makinesi (hesap8/breadboard: tek pano, 60 board) ya da CPU16
-// bilgisayarı (cpu16/breadboard: her kart kendi panosunda, 7 pano, 129 board; panolar arası 64 damarlı
+// bilgisayarı (cpu16/breadboard: her kart kendi panosunda, 7 pano, 134 board; panolar arası 64 damarlı
 // şerit kablo). Her panonun taban plakası, board'ları (krem gövde; delik deseni, kırmızı / mavi ray
 // çizgileri, sütun numaraları ve satır harfleri tek bir dokudan), board adları ve atlama telleri.
 // Teller gerçek atlama telleri gibi: renkli yalıtım düz yatar, uçlarda deliğe iner, deliğin ağzında

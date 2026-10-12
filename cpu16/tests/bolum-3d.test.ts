@@ -4,6 +4,7 @@
 
 import { beforeAll, describe, expect, it } from "vitest";
 import { bolumleri } from "../board/bolum-bilgi.ts";
+import { boardDikdortgeni } from "../board/breadboard/gorunum.ts";
 import { bbSahnesi, cpuBbYukle, kartModeli } from "../../src/board3d/aktif.ts";
 import { katalog, sahneBolumleri, useBolum } from "../../src/board3d/bolum.ts";
 import {
@@ -114,6 +115,36 @@ describe("sahnenin bölümleri", () => {
       for (const c of board.chips) expect(s.parcaCercevesi.has(c.ref), c.ref).toBe(true);
     });
   }
+
+  it("modül plakaları: breadboard'da her board'un ortasında, board'un içinde; çakışmaz; CPU kartında R0–R7", () => {
+    for (const tur of ["cpu16", "hesap"] as const) {
+      const s = sahneBolumleri(tur, "breadboard");
+      const k = katalog(tur);
+      const panolar = bbSahnesi(tur).panolar;
+      const boardKutulari = panolar.flatMap((p) => p.plan.yerlesim.boards.map((b) => {
+        const d = boardDikdortgeni(b.bx, b.by);
+        return { kart: p.kart, ad: b.ad, k: { x: p.x + d.x, y: p.y + d.y, w: d.w, h: d.h } };
+      }));
+      expect(s.modulPlakalari.length, tur).toBeGreaterThanOrEqual(boardKutulari.length);
+      for (const m of s.modulPlakalari) {
+        expect(m.tur).toBe("modul");
+        expect(k.bolumler.get(m.id)?.tur, m.id).toBe("grup");
+        expect(m.h, `${m.id} yazısı`).toBeGreaterThan(5);
+        expect(boardKutulari.some((b) => icinde(plakaKutusu(m), b.k)), `${m.id} bir board'un içinde`).toBe(true);
+      }
+      // her board'un en az bir plakası var
+      for (const b of boardKutulari) expect(s.modulPlakalari.some((m) => icinde(plakaKutusu(m), b.k)), `${b.kart} ${b.ad}`).toBe(true);
+      const p = s.modulPlakalari.map(plakaKutusu);
+      for (let a = 0; a < p.length; a++) for (let b = a + 1; b < p.length; b++) expect(cakisir(p[a], p[b]), `${s.modulPlakalari[a].id} × ${s.modulPlakalari[b].id}`).toBe(false);
+    }
+    const cpu = sahneBolumleri("cpu16", "breadboard").modulPlakalari;
+    for (let r = 0; r < 8; r++) {
+      const m = cpu.filter((x) => x.id === `grup:cpu:r${r}`);
+      expect(m.length, `r${r}`).toBe(1);
+      expect(m[0].satirlar.join(" "), `r${r}`).toMatch(new RegExp(`^R${r}`));
+    }
+    expect(sahneBolumleri("cpu16", "pcb").modulPlakalari).toEqual([]);
+  });
 
   it("kart plakaları: bilgisayarda her pano için bir tane, panonun dışında", () => {
     const s = sahneBolumleri("cpu16", "breadboard");

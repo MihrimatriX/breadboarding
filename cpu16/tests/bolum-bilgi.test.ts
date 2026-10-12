@@ -99,12 +99,12 @@ describe("bölüm kataloğu", () => {
     expect(bolumleri(k, "bolge").length).toBe(roller.size);
   });
 
-  it("sayılar: CPU16 7 kart, 61 blok, 25 bölge; hesap 14 blok, 19 bölge", () => {
+  it("sayılar: CPU16 7 kart, 61 blok, 26 bölge; hesap 14 blok, 19 bölge", () => {
     const [, c] = katalog.cpu16;
     const [, h] = katalog.hesap;
     expect(bolumleri(c, "kart").length).toBe(7);
     expect(bolumleri(c, "blok").length).toBe(61);
-    expect(bolumleri(c, "bolge").length).toBe(25);
+    expect(bolumleri(c, "bolge").length).toBe(26);
     expect(bolumleri(h, "blok").length).toBe(14);
     expect(bolumleri(h, "bolge").length).toBe(19);
     expect(bolumleri(c, "grup").length).toBeGreaterThan(150);
