@@ -31,7 +31,10 @@ npm run hesap8 -- hesapla 12 - 200      # A [ 12]  B [200]  sonuç [-  188]  kal
 npm run hesap8 -- dogrula               # 3 024 durum (uç değerler + 2 000 örnek), birkaç saniye
 npm run hesap8 -- dogrula --hepsi       # 262 144 durumun hepsi (iş parçacıklarına bölünür, 4 çekirdekte ≈ 75 s)
 npm run cpu16 -- board kicad            # KiCad dosyalarını yeniden üret (cpu16/kicad/hesap/)
-npm run cpu16 -- kurulum hesap -o out   # kurulum belgesi (HTML + PDF) ve şema PDF'i
+npm run cpu16 -- kurulum hesap -o out   # PCB kurulum belgesi (HTML + PDF) ve şema PDF'i
+npm run hesap8 -- breadboard            # 60 board, 2 784 tel; bağlantı netlistle birebir aynı mı
+npm run hesap8 -- breadboard --uret     # yerleşimi ve telleri yeniden üret (breadboard/veri.ts)
+npm run hesap8 -- breadboard-belge -o out   # breadboard kurulum belgesi (HTML + PDF)
 npx vitest run hesap8                   # testler
 ```
 
@@ -40,17 +43,30 @@ altın modelle karşılaştırılır ("altın modelle aynı"). Docker'da: `docke
 
 ## Dosyalar
 
+Fiziksel kurulum iki yoldan: **breadboard** (60 tam boy breadboard, 5 × 12; her tel delikten deliğe,
+düz, dik açılı, renk kodlu ve kesim boyuyla; 2.784 atlama teli) ya da **PCB**. Breadboard yerleşimi ve
+telleri `breadboard/`'dadır; bağlantısı yalnız fiziksel modelden (şeritler, raylar, teller)
+birleşim-bul ile kurulup netlistle karşılaştırılır. Silikon3D → 8 bit hesap 3D varsayılan olarak
+breadboard'u gösterir (PCB'ye geçilebilir); Kurulum modu teli 3D'de vurgulayıp delikten deliğe yazar.
+
 | Dosya | İçerik |
 |---|---|
-| `kart.ts` | devrenin tanımı (bloklar, çipler, netler), KiCad sayfaları |
-| `bcd.ts` | ikiliden onluğa çevirme ağı ("3 ekle ve kaydır") |
-| `havuz.ts` | bir bloğun kapılarını kendi çiplerine paketleme |
-| `model.ts` | altın model: göstergelerde ne görünmeli |
-| `sim.ts` | kapı seviyesi simülasyon: anahtarları ayarla, göstergeleri oku |
-| `arac.ts` | komut satırı: `ozet`, `hesapla`, `dogrula [--hepsi]` |
-| `docs/tasarim.md` | kullanım, bloklar, hız, besleme, malzeme |
-| `docs/kurulum-rehberi.md` | fiziksel kurulum: aşamalar, testler, sorun giderme |
-| `tests/` | 74HC4511, yapı ve ERC, uç durumlar, sıfıra bölme, lamba testi, 3 024 durum, KiCad şeması |
+| `kart.ts` | Devrenin tanımı (bloklar, çipler, netler), KiCad sayfaları |
+| `bcd.ts` | İkiliden onluğa çevirme ağı ("3 ekle ve kaydır") |
+| `havuz.ts` | Bir bloğun kapılarını kendi çiplerine paketleme |
+| `model.ts` | Altın model: göstergelerde ne görünmeli |
+| `sim.ts` | Kapı seviyesi simülasyon: anahtarları ayarla, göstergeleri oku |
+| `arac.ts` | komut satırı: `ozet`, `hesapla`, `dogrula [--hepsi]`, `breadboard [--uret]`, `breadboard-belge` |
+| `breadboard/geometri.ts`, `renk.ts` | BB830 geometrisi (delikler, şeritler, raylar, 2,54 mm ızgara); tel renk kodu |
+| `breadboard/yerlesim.ts` | Breadboard yerleşimi: board ızgarası, çiplerin board ve sütunu (tavlama), pasifler, raylar |
+| `breadboard/yonlendirme.ts` | Tel yönlendirme: dik açılı, düz, çip gövdesi ve tel ucu üstünden geçmeyen yollar (A*, sökme ve yeniden döşeme) |
+| `breadboard/plan.ts`, `veri.ts` | Kurulum planı (aşamalar, tel sırası, renk, kesim boyu); üretilmiş yerleşim ve teller |
+| `breadboard/dogrulama.ts` | Fiziksel modelden birleşim-bul: açık / kısa devre, delik çakışması, gövde üstünden tel |
+| `breadboard/gorunum.ts` | Breadboard planından 3D yerleşim (Silikon3D, `src/board3d/Breadboard3D.tsx`) |
+| `breadboard/belge.ts` | Yazdırılabilir breadboard kurulum belgesi (board haritası, çizimler, tel ve kesim listesi, malzeme) |
+| `docs/tasarim.md` | Bloklar, hız, besleme, malzeme |
+| `docs/kurulum-rehberi.md` | Fiziksel kurulum: aşamalar, testler, sorun giderme |
+| `tests/` | 74HC4511, yapı, uç durumlar, lamba testi, KiCad netlist'i, breadboard bağlantısı ve 3D görünümü |
 
 Kullanılan çipler CPU16'nın parça kütüphanesinden gelir (`cpu16/chips/`; 74HC4511 bu proje için
 eklendi), 7 segment gösterge ve öteki pasifler `cpu16/board/passives.ts`'te. Devre değişince `npm run cpu16 -- board kicad` ile KiCad dosyalarını

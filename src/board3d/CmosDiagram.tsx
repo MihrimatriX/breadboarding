@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { GateProbe, nodeLabel } from "../../cpu16/board/inside";
 import { GND_NODE, VCC_NODE } from "../../cpu16/chips/cmos";
 import type { Gate } from "../../cpu16/chips/logic";
-import { LEVEL_COLOR, LEVEL_NAME } from "./levels";
+import { LEVEL_NAME, LEVEL_VAR } from "./levels";
 import { boardModel, liveNets, useKart } from "./store";
 
 export function CmosDiagram({ gate }: { gate: number }) {
@@ -36,7 +36,7 @@ export function CmosDiagram({ gate }: { gate: number }) {
 
   return (
     <div className="cmos">
-      <p className="muted small">
+      <p className="muted small cmos-ozet">
         {g.kind} kapısı · {cm.transistors.length} transistör ({cm.transistors.filter((t) => t.pmos).length} PMOS, {cm.transistors.filter((t) => !t.pmos).length} NMOS) · şu an {onCount} tanesi iletimde.
         {" "}Girişler: {cm.inputNodes.map((n, i) => <b key={i} className={`lv l${level(n)}`}>{nodeLabel(cm, n) || "?"}={LEVEL_NAME[level(n)]} </b>)}
         Çıkış: {cm.outputNodes.map((n, i) => <b key={i} className={`lv l${level(n)}`}>{nodeLabel(cm, n) || "?"}={LEVEL_NAME[level(n)]} </b>)}
@@ -44,7 +44,7 @@ export function CmosDiagram({ gate }: { gate: number }) {
       <svg className="cmos-svg" viewBox={`0 0 ${cm.width} ${cm.height}`} width={cm.width} height={cm.height} role="img" aria-label={`${g.kind} kapısının transistör şeması`}>
         {cm.nodes.map((n, i) => (
           <g key={i}>
-            <line x1={n.x1} x2={n.x2} y1={n.y} y2={n.y} stroke={n.rail === "VCC" ? "#ff6b6b" : n.rail === "GND" ? "#5b7da8" : LEVEL_COLOR[level(n.node)]} strokeWidth={n.rail ? 3 : 2} />
+            <line x1={n.x1} x2={n.x2} y1={n.y} y2={n.y} style={{ stroke: n.rail === "VCC" ? "var(--sema-vcc)" : n.rail === "GND" ? "var(--sema-gnd)" : LEVEL_VAR[level(n.node)] }} strokeWidth={n.rail ? 3 : 2} />
             {n.label && <text x={n.x2 + 4} y={n.y + 4} className="nlabel">{n.label}</text>}
           </g>
         ))}
@@ -54,17 +54,18 @@ export function CmosDiagram({ gate }: { gate: number }) {
           const top = mid - 9;
           const bot = mid + 9;
           const gl = level(t.gate);
-          const ch = on ? "#4dff6a" : "#465260";
+          const ch = { stroke: on ? "var(--sema-acik)" : "var(--sema-kapali)" };
+          const gc = { stroke: LEVEL_VAR[gl] };
           const gx = t.pmos ? t.x - 13 : t.x - 8;
           return (
             <g key={t.index} className="fet">
               <title>{`${t.pmos ? "PMOS" : "NMOS"} t${t.index}: kapı ${nodeLabel(cm, t.gate) || "iç düğüm"} = ${LEVEL_NAME[gl]} → ${on ? "iletimde" : "kesimde"}`}</title>
-              <line x1={t.x} x2={t.x} y1={t.y1} y2={top} stroke={ch} strokeWidth={1.6} />
-              <line x1={t.x} x2={t.x} y1={bot} y2={t.y2} stroke={ch} strokeWidth={1.6} />
-              <line x1={t.x} x2={t.x} y1={top} y2={bot} stroke={ch} strokeWidth={on ? 4 : 2} strokeDasharray={on ? undefined : "3 3"} />
-              <line x1={t.x - 5} x2={t.x - 5} y1={top} y2={bot} stroke={LEVEL_COLOR[gl]} strokeWidth={2} />
-              {t.pmos && <circle cx={t.x - 9} cy={mid} r={3} fill="none" stroke={LEVEL_COLOR[gl]} strokeWidth={1.4} />}
-              <line x1={gx - 8} x2={gx} y1={mid} y2={mid} stroke={LEVEL_COLOR[gl]} strokeWidth={1.6} />
+              <line x1={t.x} x2={t.x} y1={t.y1} y2={top} style={ch} strokeWidth={1.6} />
+              <line x1={t.x} x2={t.x} y1={bot} y2={t.y2} style={ch} strokeWidth={1.6} />
+              <line x1={t.x} x2={t.x} y1={top} y2={bot} style={ch} strokeWidth={on ? 4 : 2} strokeDasharray={on ? undefined : "3 3"} />
+              <line x1={t.x - 5} x2={t.x - 5} y1={top} y2={bot} style={gc} strokeWidth={2} />
+              {t.pmos && <circle cx={t.x - 9} cy={mid} r={3} fill="none" style={gc} strokeWidth={1.4} />}
+              <line x1={gx - 8} x2={gx} y1={mid} y2={mid} style={gc} strokeWidth={1.6} />
               <text x={gx - 10} y={mid + 4} textAnchor="end" className="glabel">{nodeLabel(cm, t.gate)}</text>
             </g>
           );

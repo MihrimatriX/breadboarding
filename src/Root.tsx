@@ -5,6 +5,7 @@ import { Baslangic } from "./ui/Baslangic";
 import { BolumSiniri, BolumYukleniyor } from "./ui/Yukleniyor";
 import { useApp } from "./state/store";
 import { sim } from "./sim/SimClient";
+import { useAyarlariUygula } from "./ui/ayarlar";
 
 // her bölüm kendi parçasında: #hesap açılınca 6502 die'ın kodu ve çip verisi inmez, tersi de öyle
 const App = lazy(() => yukle6502().then((m) => ({ default: m.App })));
@@ -26,6 +27,8 @@ function Bolum({ mode, aktif, children }: { mode: Mode; aktif: boolean; children
  * bölümü aynı görünümü kullanır (BoardView), aynı anda yalnız biri açıktır.
  */
 export function Root() {
+  // tema, yazı boyutu ve odak modu: <html> işaretleri ve T / Y / F kısayolları
+  useAyarlariUygula();
   const [mode, setMode] = useState<Mode>(modeFromHash);
   const [dieAcildi, setDieAcildi] = useState(mode === "6502");
   if (mode === "6502" && !dieAcildi) setDieAcildi(true);

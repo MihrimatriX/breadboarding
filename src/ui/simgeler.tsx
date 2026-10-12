@@ -33,6 +33,23 @@ const YOLLAR = {
   ),
   ok: <path d="M4.5 10h11M11 5.5l4.5 4.5-4.5 4.5" />,
   imlec: <path d="M5 3.5l10 6-4.5 1.2L8.5 15z" />,
+  gunes: (
+    <>
+      <circle cx="10" cy="10" r="3.2" />
+      <path d="M10 2.5v1.8M10 15.7v1.8M2.5 10h1.8M15.7 10h1.8M4.7 4.7l1.3 1.3M14 14l1.3 1.3M4.7 15.3 6 14M14 6l1.3-1.3" />
+    </>
+  ),
+  ay: <path d="M15.5 12.2A6.5 6.5 0 0 1 7.8 4.5a6.5 6.5 0 1 0 7.7 7.7z" />,
+  ayarlar: (
+    <>
+      <path d="M3.5 6h7M14.5 6h2M3.5 14h2M9.5 14h7" />
+      <circle cx="12.5" cy="6" r="2" />
+      <circle cx="7.5" cy="14" r="2" />
+    </>
+  ),
+  genislet: <path d="M3.5 7.5v-4h4M16.5 7.5v-4h-4M3.5 12.5v4h4M16.5 12.5v4h-4" />,
+  daralt: <path d="M7.5 3.5v4h-4M12.5 3.5v4h4M7.5 16.5v-4h-4M12.5 16.5v-4h4" />,
+  daha: <path d="M5 10h.01M10 10h.01M15 10h.01" strokeWidth="2.6" />,
 } satisfies Record<string, ReactNode>;
 
 export type SimgeAdi = keyof typeof YOLLAR;

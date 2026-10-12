@@ -24,8 +24,9 @@ export function MemoryPanel({ visible = true }: { visible?: boolean }) {
         </div>
       }
     >
-      <div className="mem">
-        {Array.from(data, (v, i) => (
+      <div className="mem" aria-label={`Bellek $${h4(base)}–$${h4(base + 255)}`}>
+        {Array.from(data, (v, i) => [
+          i % 16 === 0 && <span key={`a${i}`} className="mem-adr" aria-hidden="true">{h2(i)}</span>,
           <button
             key={i}
             className={`${base + i === ab ? "ab" : ""} ${sel === base + i ? "sel" : ""} ${page === 1 && i === snap.trace.sp ? "sp" : ""}`}
@@ -33,8 +34,8 @@ export function MemoryPanel({ visible = true }: { visible?: boolean }) {
             onClick={() => { setSel(base + i); setVal(h2(v)); }}
           >
             {h2(v)}
-          </button>
-        ))}
+          </button>,
+        ])}
       </div>
       <p className="legend">
         <span><i className="sw ab" /> adres yolundaki bayt</span>
@@ -44,7 +45,7 @@ export function MemoryPanel({ visible = true }: { visible?: boolean }) {
       {sel !== null && (
         <form className="row" onSubmit={(e) => { e.preventDefault(); const v = parseInt(val, 16); if (!Number.isNaN(v)) sim.poke(sel, v); }}>
           <span className="mono muted">${h4(sel)} =</span>
-          <input id="pokeval" value={val} onChange={(e) => setVal(e.target.value)} maxLength={2} style={{ width: "6ch", flex: "none" }} aria-label="Yeni değer (hex)" />
+          <input id="pokeval" className="mono" value={val} onChange={(e) => setVal(e.target.value)} maxLength={2} style={{ width: "6ch", flex: "none" }} aria-label="Yeni değer (hex)" />
           <button type="submit">Yaz</button>
         </form>
       )}

@@ -15,6 +15,7 @@
     "typecheck": "tsc -b --noEmit",
     "check": "npm run typecheck && npm test",
     "import:6502": "node scripts/import-visual6502.mjs",
+    "kontrast": "node scripts/kontrast.mjs",
     "cpu16": "node --experimental-strip-types --no-warnings cpu16/tools/cli.ts",
     "hesap8": "node --experimental-strip-types --no-warnings hesap8/arac.ts",
     "docker:build": "docker compose build web",

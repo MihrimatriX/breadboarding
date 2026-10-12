@@ -9,7 +9,7 @@ import type { BoardLayout } from "../../cpu16/board/layout";
 import type { GateState } from "../../cpu16/board/computer";
 import { LIB } from "../../cpu16/cc/lib-vite";
 import { TerminalText } from "../cpu16/serial";
-import { aktifKart, kartDegisince, kartModeli, kartParcasi, kartUclari, kartYerlesimi, type KartTuru, type Parca } from "./aktif";
+import { aktifHesapGorunumu, aktifKart, gorunumDegisince, hesapGorunumuSec, kartDegisince, kartModeli, kartParcasi, kartUclari, kartYerlesimi, type HesapGorunumu, type KartTuru, type Parca } from "./aktif";
 import { compileProgram, detectLanguage, type Lang, type ProgramError } from "./program";
 import type { FromWorker, MemWindow, ToWorker } from "./protocol";
 import type { ScreenFrame } from "./screen";
@@ -124,6 +124,8 @@ interface KartState {
   wires: WireMode;
   /** GND / VCC tellerini de çiz */
   power: boolean;
+  /** hesap makinesinin görünümü: breadboard (atlama telleri) ya da PCB */
+  gorunum: HesapGorunumu;
   bottom: BottomTab;
   // ekran
   screenText: string;
@@ -152,6 +154,7 @@ interface KartState {
   focusBlock(blok: string | null): void;
   setWires(m: WireMode): void;
   setPower(on: boolean): void;
+  setGorunum(g: HesapGorunumu): void;
   setBottom(t: BottomTab): void;
   setSource(src: string): void;
   setLangMode(m: LangMode): void;
@@ -191,6 +194,7 @@ export const useKart = create<KartState>((set, get) => ({
   odak: null,
   wires: "secili",
   power: false,
+  gorunum: aktifHesapGorunumu(),
   bottom: "program",
   screenText: "",
   screenInfo: "",
@@ -245,6 +249,9 @@ export const useKart = create<KartState>((set, get) => ({
   },
   setPower(on) {
     set({ power: on });
+  },
+  setGorunum(g) {
+    hesapGorunumuSec(g);
   },
   setBottom(t) {
     set({ bottom: t });
@@ -355,6 +362,12 @@ function onWorker(m: FromWorker) {
 
 /** Her kart türünde alt panelin son sekmesi (hesap makinesinde program yok) */
 const sonAltSekme = new Map<KartTuru, BottomTab>([["cpu16", "program"], ["hesap", "ic"]]);
+
+// hesap makinesinin görünümü değişince: parçalar aynı (seçimler kalır), yerleşim ve sahne yenilenir
+gorunumDegisince((g) => {
+  liveNets.version++;
+  useKart.setState((s) => ({ gorunum: g, hover: null, odak: null, tick: s.tick + 1 }));
+});
 
 kartDegisince((tur, onceki) => {
   // referanslar karta özgü: seçimler kalkar; canlı değerler yeni kartın son değerleri olur
