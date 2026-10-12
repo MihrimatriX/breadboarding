@@ -15,7 +15,8 @@ gerekmiyor: önce "Önce dene" bölümünü yap, sonra amacına uyan yolu seç.
 ## Önce dene
 
 1. [README](../README.md#hızlı-başlangıç): `npm run dev` ya da `docker compose up -d`, sonra tarayıcıda
-   dört bölümü sırayla aç: 6502 die, CPU16 tezgâhı, CPU16 kartı 3D, 8 bit hesap 3D.
+   beş bölümü sırayla aç: 6502 die, CPU16 tezgâhı, CPU16 kartı 3D, 8 bit hesap 3D, Mimari. Kartlarda
+   kaybolursan Mimari bölümündeki blok diyagramlarına dön: hangi kutu ne iş yapar, hangi yolla bağlı.
 2. Komut satırında ilk CPU16 programı: `npm run cpu16 -- run cpu16/programs/hello.s`. Kaynağı
    ([hello.s](../cpu16/programs/hello.s)) aç: yirmi satırlık, yorumlu bir program.
 3. CPU16 tezgâhında "Anakart + BIOS" kipinde örnek listesinden `yilan.c`'yi seç, derleyip çalıştır,
@@ -28,6 +29,7 @@ Tasarımdan başlayıp kapılara, oradan kartlara ve yazılıma iner. Her belge 
 | # | Belge | Ne öğrenirsin |
 |---|---|---|
 | 1 | [cpu16/README.md](../cpu16/README.md) | CPU16'ya genel bakış, komutlar, belge tablosu |
+| 1b | [mimari.md](../cpu16/docs/mimari.md) | blok diyagramları: CPU kartı ve bütün bilgisayar kutu kutu, yollar ve görevleri (uygulamada: Mimari bölümü) |
 | 2 | [roadmap.md](../cpu16/docs/roadmap.md) | fazlar, şu anki aşama ve projenin beş kuralı (altın model, "bitti" = test, spec değişikliği = PR). Kaybolursan önce buraya dön. |
 | 3 | [spec.md](../cpu16/docs/spec.md) | vizyon, donanım blokları, bellek haritası, komut formatları, opcode haritası, ABI. Dondurulmuş belge; içindeki ilk deney listesi plandır, güncel sıra [kit/README.md](../cpu16/kit/README.md)'de. |
 | 4 | [isa-ayrintilari.md](../cpu16/docs/isa-ayrintilari.md) | her komutun bit bit davranışı; referans emülatör (`cpu16/emu/cpu.ts`) bunu uygular |
@@ -84,7 +86,8 @@ görünür. Breadboard'da ilk dört aşaması ≈ 22 entegre ve 6–7 breadboard
 
 1. [hesap8/README.md](../hesap8/README.md): dosyalar ve komutlar.
 2. [tasarim.md](../hesap8/docs/tasarim.md): kullanım, bloklar (toplama, çarpma, bölme, onluğa çevirme,
-   göstergeler), hız, besleme, malzeme.
+   göstergeler), hız, besleme, malzeme. Blok diyagramı başta; etkileşimli hali uygulamanın Mimari
+   bölümünde.
 3. [kurulum-rehberi.md](../hesap8/docs/kurulum-rehberi.md): aşama aşama fiziksel kurulum ve testler.
 
 ## Yol D: Koda katkı
@@ -108,6 +111,7 @@ görünür. Breadboard'da ilk dört aşaması ≈ 22 entegre ve 6–7 breadboard
 | C'de neler yok, `int` kaç bit, argümanlar hangi register'da? | [cc16.md](../cpu16/docs/cc16.md) |
 | Hangi çipin kaç kapısı ve transistörü var? | [parcalar.md](../cpu16/docs/parcalar.md), `npm run cpu16 -- chips` |
 | Hangi kartta kaç entegre var? | [kartlar.md](../cpu16/docs/kartlar.md), `npm run cpu16 -- board` |
+| Hangi blok ne iş yapar, hangi yolla bağlı? | [mimari.md](../cpu16/docs/mimari.md), uygulamada Mimari bölümü, `npm run cpu16 -- mimari` |
 | Hangi bacak nereye, tel hangi renk? | [kurulum.md](../cpu16/docs/kurulum.md), `npm run cpu16 -- kurulum <kart>` |
 | Breadboard'da hangi delikten hangi deliğe? | [breadboard.md](../cpu16/docs/breadboard.md), `npm run cpu16 -- breadboard-belge <kart>` |
 | Gerçek kart kaç MHz'te çalışır? | [uretim.md](../cpu16/docs/uretim.md), `npm run cpu16 -- zamanlama` |
