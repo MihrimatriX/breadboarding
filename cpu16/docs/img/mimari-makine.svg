@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" class="mm-svg" viewBox="0 0 1900 1296" width="1900" height="1296">
-  <!-- ÜRETİLİR, elle değiştirme: npm run cpu16 -- mimari makine (cpu16/mimari/) -->
+  <!-- ÜRETİLİR, elle değiştirme: npm run cpu16 mimari makine (cpu16/mimari/) -->
   <title>CPU16 bilgisayarı: mimari</title>
   <desc>Bütün bilgisayar: yedi kart aynı arka panele takılır. CPU adresi ve bellek denetimini sürer; bellek kartı adresi bank register'larıyla fiziksel adrese çevirir ve G/Ç alanını çözer; önbellek ıskalamada CPU'yu bekletir; G/Ç ve video kartları FFxx alanındaki register'larla konuşur. Kartların içindeki ayrıntı (CPU için) ayrı diyagramda.</desc>
   <style>

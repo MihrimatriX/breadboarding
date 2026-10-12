@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" class="mm-svg" viewBox="0 0 1800 1100" width="1800" height="1100">
-  <!-- ÜRETİLİR, elle değiştirme: npm run cpu16 -- mimari hesap (cpu16/mimari/) -->
+  <!-- ÜRETİLİR, elle değiştirme: npm run cpu16 mimari hesap (cpu16/mimari/) -->
   <title>8 bit hesap makinesi: mimari</title>
   <desc>İki 8 bitlik sayı anahtarlarla girilir; dört işlem birimi ikisini de sürekli hesaplar, işlem anahtarı sonuç seçicide birini seçer. Sonuç ikiliden onluğa çevrilip 7 segment göstergelere gider. Devre tamamen birleşimsel: anahtar çevrilince sonuç ≈ 1–2 µs sonra göstergededir.</desc>
   <style>

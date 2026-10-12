@@ -7,9 +7,9 @@ Yeni bir klasör, komut ya da kural eklenince bu dosyayı da güncelle; kısa ka
 
 ## Depo ne
 
-- **Silikon3D** (`src/`): Vite + React 18 + react-three-fiber + zustand web uygulaması. Beş bölüm:
+- **Silikon3D** (`src/`): Vite + React 18 + react-three-fiber + zustand web uygulaması. Altı bölüm:
   6502 die (`#6502`), CPU16 tezgâhı (`#cpu16`), CPU16 kartı 3D (`#kart`), 8 bit hesap 3D (`#hesap`),
-  Mimari (`#mimari`).
+  Mimari (`#mimari`), Belgeler (`#belgeler`: depodaki markdown belgeleri uygulamanın içinde).
 - **CPU16** (`cpu16/`): yaygın 74HC entegrelerinden kurulan kendi 16 bit bilgisayarımız, baştan sona kod
   olarak: komut seti, emülatör, mikrokod, kapı seviyesi kartlar, KiCad, C derleyicisi, BIOS, deney seti,
   PCB ve breadboard kurulum belgeleri.
@@ -22,7 +22,7 @@ Yeni bir klasör, komut ya da kural eklenince bu dosyayı da güncelle; kısa ka
 
 | Klasör | İçerik |
 |---|---|
-| `src/` | Silikon3D: `board3d/` kartların 3D'si, `cpu16/` tezgâh ve Web IDE, `mimari/` blok diyagramları, `chip/ sim/ render/` 6502 die, `ui/ state/` kabuk ve depo |
+| `src/` | Silikon3D: `board3d/` kartların 3D'si, `cpu16/` tezgâh ve Web IDE, `mimari/` blok diyagramları, `belgeler/` uygulama içi belgeler, `chip/ sim/ render/` 6502 die, `ui/ state/` kabuk ve depo |
 | `cpu16/emu/` | **altın model**: referans emülatör (`cpu.ts`) ve bütün bilgisayar (`machine.ts`) |
 | `cpu16/micro/`, `chips/`, `board/` | mikrokod; 74HC parça kütüphanesi; kartlar kod olarak (şema = kod), ERC, zamanlama |
 | `cpu16/breadboard/`, `board/breadboard/` | CPU16 panoları ve üretilmiş verileri (`veri/`); ortak breadboard motoru |
@@ -41,7 +41,7 @@ Daha uzun harita: [README, Proje yapısı](README.md#proje-yapısı), [cpu16/REA
 ```bash
 npm ci && npm run dev                          # http://localhost:5173
 npx tsc -b                                     # tip denetimi (kullanılmayan değişken de hata)
-npx vitest run                                 # bütün testler: 690 test, ≈ 4 dakika
+npx vitest run                                 # bütün testler: 717 test, ≈ 4 dakika
 npx vitest run cpu16/tests/emu.test.ts -t "ad" # tek dosya, adı eşleşen testler
 npm run build                                  # üretim derlemesi (CI de koşar)
 npm run kontrast                               # tema renk karşıtlığı (arayüz rengi değişince)

@@ -1,0 +1,280 @@
+/*
+ * Belgeler bölümü: solda gruplu belge listesi ve arama, ortada okuma sütunu (en fazla 75ch), geniş ekranda
+ * sağda "Bu sayfada". Yalnız styles.css'in belirteçleri (aralık, yazı ölçeği, renk); iki temada da
+ * karşıtlığı denetlenmiş çiftler: yazılar --surface-1 / --surface-2 / --surface-inset üstünde, bağlantı
+ * --link, seçili satır --accent-soft. Okuma zemini koyu temada --surface-1, açık temada kâğıt beyazı
+ * --surface-2.
+ *
+ *   ≥ 1280 px  liste | metin | bu sayfada (yapışkan sütun)
+ *   901–1279   liste | metin, "Bu sayfada" metnin üstünde kapalı kutu
+ *   ≤ 900 px   tek sütun: liste araç çubuğundaki düğmeyle açılır, sayfa bütün olarak kayar
+ */
+
+/* ============================================================ araç çubuğu */
+.bl-konum { flex: 1 1 0; min-width: 0; }
+.bl-yol { display: flex; align-items: baseline; gap: var(--sp-2); min-width: 0; white-space: nowrap; overflow: hidden; }
+.bl-yol-grup { flex: none; color: var(--text-faint); }
+.bl-yol-grup::after { content: "›"; margin-left: var(--sp-2); }
+.bl-yol b { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; color: var(--text); }
+.bl-liste-dugme { display: none; flex: none; }
+.bl-dugme {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: var(--ctl-h);
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-md);
+  font: 500 var(--fs-base)/1 var(--body);
+  color: var(--text-muted);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color var(--t-fast), color var(--t-fast);
+}
+.bl-dugme:hover { background: var(--surface-2); color: var(--text); }
+
+/* ============================================================ belge listesi */
+.bl-alan { background: var(--surface-1); }
+.bl-liste {
+  flex: none;
+  width: 18.5rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--surface-1);
+  border-right: 1px solid var(--border);
+}
+.bl-ara { flex: none; display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-4) var(--sp-4) var(--sp-2); }
+.bl-ara input { width: 100%; }
+.bl-ara-durum { font-size: var(--fs-cap); line-height: 1.4; color: var(--text-faint); }
+.bl-ara-durum:empty { display: none; }
+.bl-gruplar {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  padding: var(--sp-3) var(--sp-3) var(--sp-8);
+  scrollbar-gutter: stable;
+}
+.bl-grup h2 { padding: 0 var(--sp-3) var(--sp-2); font: 600 var(--fs-cap)/1.3 var(--sans); color: var(--text-faint); }
+.bl-grup ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.bl-grup a {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  font: 400 var(--fs-base)/1.4 var(--body);
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: background-color var(--t-fast), color var(--t-fast);
+}
+.bl-grup a:hover { background: var(--surface-2); color: var(--text); }
+.bl-grup a[aria-current="page"] { background: var(--accent-soft); color: var(--text); font-weight: 600; box-shadow: inset 3px 0 0 var(--accent); }
+.bl-grup a:focus-visible { outline-offset: -2px; }
+.bl-ad { flex: 1 1 auto; min-width: 0; }
+.bl-sayi { flex: none; font-size: var(--fs-cap); font-weight: 400; color: var(--text-faint); }
+.bl-ornek {
+  flex: 1 1 100%;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  font-size: var(--fs-cap);
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--text-faint);
+}
+.bl-grup a[aria-current="page"] :is(.bl-sayi, .bl-ornek) { color: var(--text-muted); }
+
+/* ============================================================ okuma alanı */
+.bl-ana {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--surface-1);
+  scrollbar-gutter: stable;
+}
+:root[data-tema="acik"] .bl-ana { background: var(--surface-2); }
+.bl-izgara {
+  display: grid;
+  grid-template-columns: minmax(0, 75ch);
+  grid-template-areas: "bas" "toc" "metin";
+  justify-content: center;
+  column-gap: var(--sp-8);
+  padding: var(--sp-7) var(--gutter) var(--sp-9);
+}
+.bl-bas { grid-area: bas; min-width: 0; }
+.bl-metin { grid-area: metin; position: relative; min-width: 0; min-height: 50vh; }
+
+/* bu sayfada: dar ve orta ekranda başlıkla metnin arasında kapalı kutu */
+.bl-toc { grid-area: toc; min-width: 0; margin-bottom: var(--sp-6); }
+.bl-toc details { border: 1px solid var(--border); border-radius: var(--r-md); }
+.bl-toc summary {
+  padding: var(--sp-3) var(--sp-4);
+  font: 600 var(--fs-sm)/1.3 var(--sans);
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: var(--r-md);
+}
+.bl-toc summary:hover { color: var(--text); }
+.bl-toc details[open] summary { border-bottom: 1px solid var(--border); border-radius: var(--r-md) var(--r-md) 0 0; }
+.bl-toc ol { list-style: none; margin: 0; padding: var(--sp-2); max-height: 50vh; overflow-y: auto; }
+.bl-toc li a {
+  display: block;
+  padding: var(--sp-1) var(--sp-3);
+  border-left: 2px solid transparent;
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color var(--t-fast), border-color var(--t-fast);
+}
+.bl-toc li.alt a { padding-left: var(--sp-6); font-size: var(--fs-cap); }
+.bl-toc li a:hover { color: var(--text); border-left-color: var(--border-strong); }
+.bl-toc li a[aria-current] { color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
+.bl-toc li a:focus-visible { outline-offset: -2px; }
+
+/* geniş ekran: "Bu sayfada" sağda, hep açık, metinle birlikte kaymaz */
+@media (min-width: 1280px) {
+  .bl-izgara { grid-template-columns: minmax(0, 75ch) minmax(12rem, 16rem); grid-template-areas: "bas toc" "metin toc"; grid-template-rows: auto 1fr; }
+  .bl-toc {
+    margin-bottom: 0;
+    position: sticky;
+    top: var(--sp-7);
+    align-self: start;
+    max-height: calc(100vh - var(--appbar-h) - var(--toolbar-h) - var(--sp-9));
+    overflow-y: auto;
+  }
+  .bl-toc details { border: 0; }
+  .bl-toc summary { list-style: none; padding: 0 0 var(--sp-2) var(--sp-3); color: var(--text-faint); pointer-events: none; }
+  .bl-toc summary::-webkit-details-marker { display: none; }
+  .bl-toc details[open] summary { border-bottom: 0; }
+  .bl-toc ol { max-height: none; overflow: visible; padding: 0; border-left: 1px solid var(--border); }
+  .bl-toc li a { margin-left: -1px; }
+}
+
+/* okuma sırası: belgenin sonunda önceki / sonraki */
+.bl-komsu { display: flex; gap: var(--sp-4); margin-top: var(--sp-9); padding-top: var(--sp-6); border-top: 1px solid var(--border); }
+.bl-komsu a {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-4) var(--sp-5);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  text-decoration: none;
+  transition: border-color var(--t-fast), background-color var(--t-fast);
+}
+.bl-komsu a:hover { border-color: var(--border-hover); }
+.bl-komsu a.sonraki { text-align: right; margin-left: auto; }
+.bl-komsu span { font-size: var(--fs-sm); color: var(--text-muted); }
+.bl-komsu b { font-size: var(--fs-md); font-weight: 600; color: var(--link); }
+.bl-komsu a:only-child { max-width: 50%; }
+
+/* odak modu (F): yalnız metin */
+.belgeler[data-odak] :is(.bl-liste, .bl-toc, .bl-liste-dugme) { display: none; }
+.belgeler[data-odak] .bl-izgara { grid-template-columns: minmax(0, 75ch); grid-template-areas: "bas" "metin"; }
+
+/* ============================================================ markdown metni */
+:where(.md) :where(p, ul, ol, pre, blockquote, table, hr, details, h1, h2, h3, h4, h5, h6) { margin: 0; }
+.md { font-size: var(--fs-base); line-height: 1.7; color: var(--text); overflow-wrap: break-word; }
+.md > * + *,
+.md :is(li, blockquote, details) > * + * { margin-top: var(--sp-4); }
+.md > :first-child { margin-top: 0; }
+
+.md :is(h1, h2, h3, h4, h5, h6) { display: block; color: var(--text); scroll-margin-top: var(--sp-5); }
+.md h1 { margin-bottom: var(--sp-5); font: 700 var(--fs-2xl)/1.25 var(--display); letter-spacing: -0.01em; }
+.md h2 { margin-top: var(--sp-8); padding-bottom: var(--sp-2); border-bottom: 1px solid var(--border); font: 600 var(--fs-xl)/1.3 var(--display); }
+.md h3 { margin-top: var(--sp-7); font: 600 var(--fs-lg)/1.35 var(--body); }
+.md h4 { margin-top: var(--sp-6); font: 600 var(--fs-md)/1.4 var(--body); }
+.md :is(h5, h6) { margin-top: var(--sp-5); font: 600 var(--fs-base)/1.4 var(--body); color: var(--text-muted); }
+.md :is(h1, h2, h3, h4, h5, h6) code { font-size: 0.85em; }
+
+.md a { color: var(--link); text-decoration: underline; text-decoration-color: var(--accent-line); text-underline-offset: 3px; }
+.md a:hover { color: var(--link-hover); text-decoration-color: currentColor; }
+.md a.md-dis:not(:has(img))::after { content: "↗"; margin-left: 1px; font-size: 0.8em; text-decoration: none; display: inline-block; }
+.md strong { font-weight: 600; }
+
+.md :is(ul, ol) { padding-left: var(--sp-6); }
+.md li + li { margin-top: var(--sp-1); }
+.md li > :is(ul, ol) { margin-top: var(--sp-1); }
+.md li::marker { color: var(--text-faint); }
+
+.md code {
+  padding: 0.1em 0.35em;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface-inset);
+  font-size: 0.875em;
+}
+.md pre {
+  position: relative;
+  overflow-x: auto;
+  padding: var(--sp-4) var(--sp-5);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-inset);
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  tab-size: 8;
+}
+.md pre[data-dil] { padding-top: var(--sp-6); }
+.md pre[data-dil]::before {
+  content: attr(data-dil);
+  position: absolute;
+  top: var(--sp-1);
+  left: var(--sp-5);
+  font: 500 var(--fs-cap)/1.5 var(--sans);
+  color: var(--text-faint);
+}
+.md pre code { padding: 0; border: 0; background: none; font-size: inherit; white-space: pre; }
+
+.md blockquote { padding: var(--sp-1) 0 var(--sp-1) var(--sp-4); border-left: 3px solid var(--accent-line); color: var(--text-muted); }
+.md blockquote :is(strong, code) { color: var(--text); }
+
+.md-tablo { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--r-md); }
+.md table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); line-height: 1.5; }
+.md :is(th, td) { padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+.md th { background: var(--surface-inset); font-weight: 600; color: var(--text); white-space: nowrap; }
+.md tbody tr:last-child td { border-bottom: 0; }
+.md :is(th, td) + :is(th, td) { border-left: 1px solid var(--border); }
+.md td code { white-space: normal; }
+
+.md hr { margin-block: var(--sp-7); border: 0; border-top: 1px solid var(--border); }
+.md img { max-width: 100%; height: auto; vertical-align: middle; border-radius: var(--r-md); }
+.md a.md-gorsel { display: inline-block; border-radius: var(--r-md); }
+.md .md-gorsel-yok { color: var(--text-faint); }
+
+.md details { padding: var(--sp-3) var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-md); }
+.md details > summary { font-weight: 600; cursor: pointer; }
+.md details[open] > summary { margin-bottom: var(--sp-3); }
+
+.md-tablo:focus-visible, .md pre:focus-visible { outline-offset: 2px; }
+
+/* ============================================================ dar ekranlar */
+@media (max-width: 1100px) {
+  .bl-liste { width: 16rem; }
+}
+@media (max-width: 900px) {
+  .bl-liste-dugme { display: inline-flex; }
+  .bl-yol-grup, .bl-kisalir { display: none; }
+  .bl-liste { display: none; width: 100%; border-right: 0; border-bottom: 1px solid var(--border); }
+  .belgeler[data-liste="acik"]:not([data-odak]) .bl-liste { display: flex; }
+  .bl-gruplar { overflow: visible; padding-bottom: var(--sp-5); }
+  .bl-ana { overflow: visible; }
+  .bl-izgara { padding: var(--sp-5) var(--sp-4) var(--sp-8); }
+  .md h1 { font-size: var(--fs-xl); }
+  .md h2 { font-size: var(--fs-lg); }
+  .md h3 { font-size: var(--fs-md); }
+  .md pre { padding-inline: var(--sp-4); }
+  .md pre[data-dil]::before { left: var(--sp-4); }
+  .bl-komsu { flex-direction: column; }
+  .bl-komsu a:only-child { max-width: none; }
+}

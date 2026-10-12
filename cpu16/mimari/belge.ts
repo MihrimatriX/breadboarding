@@ -10,11 +10,14 @@ import { svgMetni } from "./agac.ts";
 import { diyagramKur, type DiyagramKimligi } from "./index.ts";
 import { temaPaleti } from "./palet.ts";
 
-/** Diyagramın tek başına açılan SVG'si: stil gömülü, renkler düz */
+/**
+ * Diyagramın tek başına açılan SVG'si: stil gömülü, renkler düz. Baştaki yorumda "--" yok: XML yorumunda
+ * yasak, varsa tarayıcı dosyayı <img> olarak açamaz (komut npm'in "--"suz biçimiyle yazılır).
+ */
 export function mimariSvg(id: DiyagramKimligi, tema: "acik" | "koyu" = "acik"): string {
   const k = diyagramKur(id);
   const svg = svgMetni(k.sahne, temaPaleti(tema), { baslik: `${k.kayit.ad}: mimari`, aciklama: k.diyagram.aciklama });
-  return svg.replace(/^(<svg[^>]*>)\n/, `$1\n  <!-- ÜRETİLİR, elle değiştirme: npm run cpu16 -- mimari ${id} (cpu16/mimari/) -->\n`);
+  return svg.replace(/^(<svg[^>]*>)\n/, `$1\n  <!-- ÜRETİLİR, elle değiştirme: npm run cpu16 mimari ${id} (cpu16/mimari/) -->\n`);
 }
 
 /** Sayfa: A4 yatayın yazı alanı ≈ 275 × 186 mm; başlık ve alt yazıdan kalan yükseklik diyagramın */
