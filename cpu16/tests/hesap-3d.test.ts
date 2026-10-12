@@ -196,6 +196,20 @@ describe("hesap makinesi: anahtarlar, göstergeler, bloklar", () => {
     for (const x of blokDegerleri(hesapSim()!, 1)) expect(bloklar.has(x.blok), x.blok).toBe(true);
   });
 
+  it("anahtarlar değişmeyince (seçili işleme yeniden tıklamak) devre ve sahne yeniden yayınlanmaz", () => {
+    useHesap.getState().ayarla(9, 9, 0);
+    const { surum, gorunum } = useHesap.getState();
+    const surumSahne = liveNets.version;
+    useHesap.getState().islemSec(0);
+    useHesap.getState().ayarla(9 + 256, 9, 0);
+    expect(useHesap.getState().surum).toBe(surum);
+    expect(useHesap.getState().gorunum).toBe(gorunum);
+    expect(liveNets.version).toBe(surumSahne);
+    useHesap.getState().islemSec(1);
+    expect(useHesap.getState().surum).toBe(surum + 1);
+    expect(useHesap.getState().gorunum).toEqual(beklenen(9, 9, 1));
+  });
+
   it("ikili: 4'lü öbekler", () => {
     expect(ikili(5535, 16)).toBe("0001 0101 1001 1111");
     expect(ikili(262, 9)).toBe("1 0000 0110");

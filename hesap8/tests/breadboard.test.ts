@@ -6,7 +6,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { buildHesapBoard } from "../kart.ts";
 import { beklenen, ornekDurumlar } from "../model.ts";
-import { HesapSim } from "../sim.ts";
+import { HesapSim, simSirasi } from "../sim.ts";
 import { bbDogrula } from "../breadboard/dogrulama.ts";
 import { noktaninBoardu, rayDeligiVar } from "../breadboard/geometri.ts";
 import { bbOlcu, bbPlani, netlistParmakIzi, noktaBoardu, telYollari3B, ucEtiketi, yolCoz, yolKodla, type BbPlani } from "../breadboard/plan.ts";
@@ -175,9 +175,7 @@ describe("teller", () => {
 describe("devre: aynı netlist altın modelle aynı hesaplıyor", () => {
   it("örnek durumlar (breadboard bağlantısı netlistle birebir aynı olduğundan bu netlistin davranışı)", () => {
     const sim = new HesapSim(plan.kart);
-    let i = 0;
-    for (const [a, b, op] of ornekDurumlar()) {
-      if (i++ % 7) continue;
+    for (const [a, b, op] of simSirasi([...ornekDurumlar()].filter((_, i) => i % 7 === 0))) {
       sim.ayarla(a, b, op);
       const o = sim.oku();
       const e = beklenen(a, b, op);

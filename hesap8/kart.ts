@@ -16,7 +16,7 @@
 //   Göstergeler    her hane bir 74HC4511 + 8 × 470 Ω dizi + ortak katot gösterge; baştaki
 //                  sıfırlar söner
 
-import { Board, erc, type ChipInstance } from "../cpu16/board/board.ts";
+import { Board, type ChipInstance } from "../cpu16/board/board.ts";
 import { onlugaCevir, type BcdAgi } from "./bcd.ts";
 import { Havuz } from "./havuz.ts";
 
@@ -321,11 +321,6 @@ function gosterge(b: Board, ad: GrupAdi, baslik: string, ag: BcdAgi, ltN: Net, s
     haneler.push({ ref: disp.ref, surucu: u.ref, dizi: dizi.ref, seg, bcd: bits });
   }
   return { ad, baslik, haneler, isaret };
-}
-
-/** Kural denetimi: dış girişler anahtarlar (çekme dirençli) */
-export function hesapErc(k: HesapKarti): string[] {
-  return erc(k.board);
 }
 
 /** KiCad şemasının sayfaları (tek sayfaya sığmaz): her sayfa bir ya da iki blok */
