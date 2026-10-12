@@ -41,7 +41,7 @@ describe("kurulum belgelerinde bölümler", () => {
         n += b.length;
       }
     }
-    expect(n).toBe(44);
+    expect(n).toBe(45);
   });
 
   it("her çip grubu bir bölgede; Bölümler her bölgeyi ve grubu anlatır", () => {

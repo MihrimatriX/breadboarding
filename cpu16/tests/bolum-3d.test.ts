@@ -123,17 +123,17 @@ describe("sahnenin bölümleri", () => {
       const panolar = bbSahnesi(tur).panolar;
       const boardKutulari = panolar.flatMap((p) => p.plan.yerlesim.boards.map((b) => {
         const d = boardDikdortgeni(b.bx, b.by);
-        return { kart: p.kart, ad: b.ad, k: { x: p.x + d.x, y: p.y + d.y, w: d.w, h: d.h } };
+        return { kart: p.kart, ad: b.ad, dolu: p.plan.yerlesim.parcalar.some((q) => q.board === b.no), k: { x: p.x + d.x, y: p.y + d.y, w: d.w, h: d.h } };
       }));
-      expect(s.modulPlakalari.length, tur).toBeGreaterThanOrEqual(boardKutulari.length);
+      expect(s.modulPlakalari.length, tur).toBeGreaterThanOrEqual(boardKutulari.filter((b) => b.dolu).length);
       for (const m of s.modulPlakalari) {
         expect(m.tur).toBe("modul");
         expect(k.bolumler.get(m.id)?.tur, m.id).toBe("grup");
         expect(m.h, `${m.id} yazısı`).toBeGreaterThan(5);
         expect(boardKutulari.some((b) => icinde(plakaKutusu(m), b.k)), `${m.id} bir board'un içinde`).toBe(true);
       }
-      // her board'un en az bir plakası var
-      for (const b of boardKutulari) expect(s.modulPlakalari.some((m) => icinde(plakaKutusu(m), b.k)), `${b.kart} ${b.ad}`).toBe(true);
+      // parçası olan her board'un en az bir plakası var (hesap makinesinin panosunda boş board'lar da var)
+      for (const b of boardKutulari.filter((x) => x.dolu)) expect(s.modulPlakalari.some((m) => icinde(plakaKutusu(m), b.k)), `${b.kart} ${b.ad}`).toBe(true);
       const p = s.modulPlakalari.map(plakaKutusu);
       for (let a = 0; a < p.length; a++) for (let b = a + 1; b < p.length; b++) expect(cakisir(p[a], p[b]), `${s.modulPlakalari[a].id} × ${s.modulPlakalari[b].id}`).toBe(false);
     }
