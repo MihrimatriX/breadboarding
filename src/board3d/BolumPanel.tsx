@@ -6,7 +6,7 @@ import { useMemo, useState, type CSSProperties } from "react";
 import { bolumSinyalleri, bolumZinciri, type Bolum, type BolumTuru } from "../../cpu16/board/bolum-bilgi";
 import { Group } from "../ui/Shell";
 import { bolumRengi, bolumu, ETIKET_KIPLERI, katalog, useBolum, type EtiketKipi } from "./bolum";
-import { boardModel, findPart, useKart } from "./store";
+import { boardModel, useKart } from "./store";
 
 /**
  * Araç çubuğu: Etiketler kapalı / bölümler / ayrıntılı (kısayol E). Saat hızı gibi açılır liste: araç
@@ -77,11 +77,18 @@ export function BolumPanel() {
   const b = bolumu(id);
   const { board } = boardModel();
   const sinyaller = useMemo(() => (b ? bolumSinyalleri(board, b.refs, 16) : []), [board, b]);
-  const parcalar = useMemo(() => (b ? b.refs.map((ref) => {
-    const p = findPart(ref);
-    const yer = p?.chip ?? p?.passive;
-    return { ref, part: yer?.part ?? "", rol: yer?.role ?? "", cip: !!p?.chip };
-  }) : []), [b]);
+  // parça adı ve görevi devreden (sahnedeki yerleşimden değil): bilgisayarın breadboard verisi daha
+  // yüklenmemişken de (Mimari'den "3D'de göster") panel açılabilsin
+  const parcalar = useMemo(() => {
+    if (!b) return [];
+    const cipler = new Map(board.chips.map((c) => [c.ref, c]));
+    const pasifler = new Map(board.passives.map((p) => [p.ref, p]));
+    return b.refs.map((ref) => {
+      const c = cipler.get(ref);
+      const p = pasifler.get(ref);
+      return { ref, part: c?.def.part ?? p?.part ?? "", rol: c?.role ?? p?.role ?? "", cip: !!c };
+    });
+  }, [board, b]);
   if (!b) return null;
   const k = katalog();
   // bölge ile tek bloğu aynı adı taşıyabilir ("Register dosyası"): zincirde bir kez

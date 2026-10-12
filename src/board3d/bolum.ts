@@ -13,7 +13,7 @@ import { useMemo } from "react";
 import { Color } from "three";
 import { create } from "zustand";
 import { bolumKatalogu, type Bolum, type BolumKatalogu } from "../../cpu16/board/bolum-bilgi";
-import { aktifGorunum, aktifKart, bbSahnesi, gorunumDegisince, kartDegisince, kartModeli, kartYerlesimi, type Gorunum, type KartTuru } from "./aktif";
+import { aktifGorunum, aktifKart, bbSahnesi, gorunumDegisince, gorunumHazir, kartDegisince, kartModeli, kartYerlesimi, type Gorunum, type KartTuru } from "./aktif";
 import { bbSahneBolumleri, pcbSahneBolumleri, type Olcer, type SahneBolumleri } from "./bolumSahne";
 import { useKart } from "./store";
 
@@ -155,15 +155,18 @@ export interface Vurgu {
 export function useBolumVurgusu(): Vurgu | null {
   const secili = useBolum((s) => s.secili);
   const gorunum = useKart((s) => s.gorunum);
+  const yukleniyor = useKart((s) => s.gorunumYukleniyor);
   return useMemo(() => {
     const b = bolumu(secili);
     if (!b) return null;
     return { refs: new Set(b.refs), renk: bolumRengi(b.id, aktifKart(), gorunum) };
-  }, [secili, gorunum]);
+  }, [secili, gorunum, yukleniyor]);
 }
 
 /** Bölümün sahnedeki rengi: çerçevesininki; grup ya da blokta ilk parçasının çerçevesininki; kartta vurgu mavisi */
 export function bolumRengi(id: string, tur: KartTuru = aktifKart(), g: Gorunum = aktifGorunum(tur)): string {
+  // bilgisayarın breadboard verisi daha yüklenmediyse (görünüm yeni seçildi) çerçeveler yok: vurgu mavisi
+  if (!gorunumHazir(tur, g)) return VARSAYILAN_RENK.acik;
   const s = sahneBolumleri(tur, g);
   const c = s.cerceveler.find((x) => x.id === id);
   if (c) return c.renk;
@@ -172,8 +175,11 @@ export function bolumRengi(id: string, tur: KartTuru = aktifKart(), g: Gorunum =
     const n = s.parcaCercevesi.get(r);
     if (n !== undefined) return s.cerceveler[n].renk;
   }
-  return s.koyuZemin ? "#8fb4ff" : "#2d6bd2";
+  return s.koyuZemin ? VARSAYILAN_RENK.koyu : VARSAYILAN_RENK.acik;
 }
+
+/** Çerçevesi olmayan bölümün rengi (kart, ya da sahne kurulmadan) */
+const VARSAYILAN_RENK = { koyu: "#8fb4ff", acik: "#2d6bd2" } as const;
 
 const GOVDE = new Color("#141619");
 const tmp = new Color();
