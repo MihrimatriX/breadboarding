@@ -4,6 +4,7 @@
 
 import { beforeAll, describe, expect, it } from "vitest";
 import { bolumleri } from "../board/bolum-bilgi.ts";
+import { mmX, mmY } from "../board/breadboard/geometri.ts";
 import { boardDikdortgeni } from "../board/breadboard/gorunum.ts";
 import { bbSahnesi, cpuBbYukle, kartModeli } from "../../src/board3d/aktif.ts";
 import { katalog, sahneBolumleri, useBolum } from "../../src/board3d/bolum.ts";
@@ -116,7 +117,7 @@ describe("sahnenin bölümleri", () => {
     });
   }
 
-  it("modül plakaları: breadboard'da her board'un ortasında, board'un içinde; çakışmaz; CPU kartında R0–R7", () => {
+  it("modül plakaları: breadboard'da her board'un içinde; çakışmaz; CPU kartında R0–R7 ve göstergeleri", () => {
     for (const tur of ["cpu16", "hesap"] as const) {
       const s = sahneBolumleri(tur, "breadboard");
       const k = katalog(tur);
@@ -138,11 +139,24 @@ describe("sahnenin bölümleri", () => {
       for (let a = 0; a < p.length; a++) for (let b = a + 1; b < p.length; b++) expect(cakisir(p[a], p[b]), `${s.modulPlakalari[a].id} × ${s.modulPlakalari[b].id}`).toBe(false);
     }
     const cpu = sahneBolumleri("cpu16", "breadboard").modulPlakalari;
+    // her register'ın iki plakası: kendi board'unda "R0", önündeki göstergeli board'da "R0 GÖSTERGELERİ"
     for (let r = 0; r < 8; r++) {
-      const m = cpu.filter((x) => x.id === `grup:cpu:r${r}`);
-      expect(m.length, `r${r}`).toBe(1);
-      expect(m[0].satirlar.join(" "), `r${r}`).toMatch(new RegExp(`^R${r}`));
+      const m = cpu.filter((x) => x.id === `grup:cpu:r${r}`).map((x) => x.satirlar.join(" "));
+      expect(m.length, `r${r}`).toBe(2);
+      expect(m.filter((x) => new RegExp(`^R${r}`).test(x) && !x.includes("GÖSTERGELERİ")).length, `r${r}: ${m.join(" | ")}`).toBe(1);
+      expect(m.filter((x) => new RegExp(`^R${r}.*GÖSTERGELERİ$`).test(x)).length, `r${r}: ${m.join(" | ")}`).toBe(1);
     }
+    // plakalar LED'lerin ve çubuk göstergelerin üstüne gelmez
+    const pano = bbSahnesi("cpu16").panolar.find((p) => p.kart === "cpu")!;
+    const gostergeler = pano.plan.yerlesim.parcalar.filter((q) => q.part === "LED" || q.part === "DISP_BAR_10").map((q) => {
+      const X = q.bacaklar.map((b) => b.X);
+      const Y = q.bacaklar.map((b) => b.Y);
+      const x = pano.x + mmX(Math.min(...X));
+      const y = pano.y + mmY(Math.min(...Y));
+      return { ref: q.ref, k: { x, y, w: pano.x + mmX(Math.max(...X)) - x, h: pano.y + mmY(Math.max(...Y)) - y } };
+    });
+    expect(gostergeler.length).toBe(67);
+    for (const m of cpu) for (const g of gostergeler) expect(cakisir(plakaKutusu(m), g.k), `${m.id} × ${g.ref}`).toBe(false);
     expect(sahneBolumleri("cpu16", "pcb").modulPlakalari).toEqual([]);
   });
 

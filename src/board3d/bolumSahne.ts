@@ -152,8 +152,8 @@ export interface YaziBoylari {
 /** Board başına en çok bu kadar modül plakası (fazla gruplar yakında kenar etiketlerinde) */
 export const MODUL_EN_COK = 3;
 
-/** Hata ayıklama göstergeleri (LED'ler, dirençleri, çubuk göstergeler, dizileri): modül plakaları bunları örtmez */
-const gostergeMi = (part?: string) => !!part && (part === "LED" || part === "DISP_BAR_10" || part === "RN_1K_ISO_8" || part.startsWith("R_"));
+/** Hata ayıklama göstergeleri (LED'ler ve çubuk göstergeler; dirençleri değil): modül plakaları bunları örtmez */
+const gostergeMi = (part?: string) => part === "LED" || part === "DISP_BAR_10";
 
 const kutuBirlesimi = (k: Kutu[]): Kutu => {
   const x0 = Math.min(...k.map((a) => a.x));
@@ -260,12 +260,28 @@ export function bbSahneBolumleri(panolar: readonly BbPanoGirdisi[], k: BolumKata
         const tam: Kutu = { x: p.x + d.x, y: p.y + d.y, w: b0.w, h: b0.h };
         const ara = 0.3;
         const etiketler = ids.map((id) => boardGrupEtiketi(no, p.plan.yerlesim, k, id));
-        /** plakalar bir dikdörtgende alt alta, aynı yazı boyunda */
-        const diz = (a: Kutu) => {
-          const boy = (a.h * 0.8) / ids.length - ara * yazi.modul!;
-          const m = etiketler.map((e) => plakaSigdir(e, a.w * 0.86, boy, olc, yazi.modul!));
-          const h = Math.min(...m.map((q) => q.h));
-          return { a, h, esit: m.map((q) => plakaBoyla(q, h, olc)) };
+        /** plakalar bir dikdörtgende alt alta (göstergelerin yanındaki alçak şeritte yazı büyük kalıyorsa yan yana), aynı yazı boyunda */
+        const diz = (a: Kutu, yanaIzin = false) => {
+          const n = ids.length;
+          const alt = etiketler.map((e) => plakaSigdir(e, a.w * 0.86, (a.h * 0.8) / n - ara * yazi.modul!, olc, yazi.modul!));
+          const yan = yanaIzin && n > 1 ? etiketler.map((e) => plakaSigdir(e, (a.w * 0.86) / n - ara * yazi.modul!, a.h * 0.8, olc, yazi.modul!)) : alt;
+          const hAlt = Math.min(...alt.map((q) => q.h));
+          const hYan = Math.min(...yan.map((q) => q.h));
+          const yanYana = hYan > hAlt + 1e-6;
+          const h = yanYana ? hYan : hAlt;
+          const esit = (yanYana ? yan : alt).map((q) => plakaBoyla(q, h, olc));
+          const yer: { x: number; y: number }[] = [];
+          if (yanYana) {
+            esit.forEach((_, i) => yer.push({ x: a.x + ((i + 0.5) * a.w) / n, y: a.y + a.h / 2 }));
+          } else {
+            const toplam = esit.reduce((t, q) => t + q.d, 0) + ara * h * (n - 1);
+            let yy = a.y + a.h / 2 - toplam / 2;
+            for (const q of esit) {
+              yer.push({ x: a.x + a.w / 2, y: yy + q.d / 2 });
+              yy += q.d + ara * h;
+            }
+          }
+          return { a, h, esit, yer };
         };
         // modüler panoda göstergeli board'da plakalar göstergelerin solunda, sağında, üstünde ya da altında:
         // yazının en büyük olduğu şeritte (LED'ler ve çubuklar örtülmesin)
@@ -284,16 +300,10 @@ export function bbSahneBolumleri(panolar: readonly BbPanoGirdisi[], k: BolumKata
             { x: tam.x, y: tam.y, w: tam.w, h: gy0 - tam.y },
             { x: tam.x, y: gy1, w: tam.w, h: tam.y + tam.h - gy1 },
           ].filter((a) => a.w > 0 && a.h > 0);
-          const adaylar = seritler.map(diz);
+          const adaylar = seritler.map((a) => diz(a, true));
           sec = adaylar.reduce((e, c) => (c.h > e.h + 1e-6 || (Math.abs(c.h - e.h) <= 1e-6 && c.a.w * c.a.h > e.a.w * e.a.h) ? c : e));
         }
-        const { a, h, esit } = sec;
-        const toplam = esit.reduce((t, q) => t + q.d, 0) + ara * h * (esit.length - 1);
-        let yy = a.y + a.h / 2 - toplam / 2;
-        esit.forEach((q, i) => {
-          modulPlakalari.push({ ...q, id: ids[i], tur: "modul", renk, x: a.x + a.w / 2, y: yy + q.d / 2 });
-          yy += q.d + ara * h;
-        });
+        sec.esit.forEach((q, i) => modulPlakalari.push({ ...q, id: ids[i], tur: "modul", renk, ...sec.yer[i] }));
       });
     }
   }
