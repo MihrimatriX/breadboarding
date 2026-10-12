@@ -1,4 +1,5 @@
 import { readdirSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { findVgaOutput, dacVolts, resistance } from "../../src/board3d/beam.ts";
 import { colWindow, memGeometry, rowWindow } from "../../src/board3d/memview.ts";
@@ -487,7 +488,7 @@ describe("3D görünüm: program düzenleyicisi", () => {
       const r = compileProgram(readFileSync(file, "utf8"), "asm", lib);
       expect(r.errors, f).toEqual([]);
       expect(r.flash!.length).toBe(FLASH_SIZE);
-      expect(Buffer.from(r.flash!).equals(Buffer.from(romImage(file.pathname))), f).toBe(true);
+      expect(Buffer.from(r.flash!).equals(Buffer.from(romImage(fileURLToPath(file)))), f).toBe(true);
     }
   });
 

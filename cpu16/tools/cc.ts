@@ -17,7 +17,7 @@ import { toIntelHex } from "../asm/hex.ts";
 import { buildBios } from "../bios/build.ts";
 import { buildProgram, demangle, formatErrors, type BuildResult } from "../cc/index.ts";
 import { Machine } from "../emu/machine.ts";
-import { diskReader, loadLib } from "../cc/node.ts";
+import { diskReader, loadLib, toPosixPath } from "../cc/node.ts";
 import { runProgram } from "../cc/run.ts";
 import { CODEPAGE } from "../video/font.ts";
 
@@ -44,8 +44,8 @@ export function ccMain(args: string[]): number {
     if (a === "-o") output = val();
     else if (a === "--run") run = true;
     else if (a === "--max") max = Number(val());
-    else if (a === "-I") includeDirs.push(val());
-    else if (a.startsWith("-I")) includeDirs.push(a.slice(2));
+    else if (a === "-I") includeDirs.push(toPosixPath(val()));
+    else if (a.startsWith("-I")) includeDirs.push(toPosixPath(a.slice(2)));
     else if (a === "-D" || a.startsWith("-D")) {
       const d = a === "-D" ? val() : a.slice(2);
       const eq = d.indexOf("=");
@@ -61,7 +61,7 @@ export function ccMain(args: string[]): number {
       target = t;
     }
     else if (a.startsWith("-")) throw new Error(`bilinmeyen seçenek: ${a}`);
-    else inputs.push(a);
+    else inputs.push(toPosixPath(a));
   }
   if (!inputs.length) {
     console.error("kullanım: npm run cpu16 -- cc dosya.c [diğer.c ...] [-o çıktı.hex|.bin|.s] [--run] [-I dizin] [-D AD=değer] [-O0] [--map]");
