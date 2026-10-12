@@ -39,12 +39,18 @@ const yapistirici = (ek: string): BolumMetni =>
 
 // ---------------------------------------------------------------- CPU kartı
 
+/**
+ * Register içeriği tamponlarının (74HC541) referans numarası: k. tampon (r0 düşük, r0 yüksek, r1
+ * düşük …) kartın 195. çipinden başlar; 199'dan sonrası taşma diliminde (U901…, CARD_REF_TASMA).
+ */
+const tampon = (k: number): number => (195 + k <= 199 ? 195 + k : 901 + k - 5);
+
 const CPU: KartMetinleri = {
   kart: m(
     "CPU KARTI",
     "CPU kartı",
     "Komutları getirir, çözer ve çalıştırır: 16 bitlik register'lar, ALU, program sayacı ve mikrokodlu kontrol birimi bu karttadır.",
-    "Tek bir 16 bitlik iç veriyolu (BUS0–15) vardır: her saat döngüsünde ona tek bir kaynak yazar, hedefler yükselen kenarda alır. Kontrol birimi 32 bitlik kontrol kelimesini (CW0–CW31) ROM'suz, 74HC138, 74HC151 ve kapılarla üretir. Bellek ve G/Ç'ye arka paneldeki adres hatları (A0–A15) ve iki bayt şeridiyle (DE, DO) bağlanır. 194 entegre; HALTED ve FAULT dışında hata ayıklama için 39 LED ve 10 çubuk gösterge (veriyolu, PC, adres, IR, ALU sonucu).",
+    "Tek bir 16 bitlik iç veriyolu (BUS0–15) vardır: her saat döngüsünde ona tek bir kaynak yazar, hedefler yükselen kenarda alır. Kontrol birimi 32 bitlik kontrol kelimesini (CW0–CW31) ROM'suz, 74HC138, 74HC151 ve kapılarla üretir. Bellek ve G/Ç'ye arka paneldeki adres hatları (A0–A15) ve iki bayt şeridiyle (DE, DO) bağlanır. 210 entegre; HALTED ve FAULT dışında hata ayıklama için 39 LED ve 26 çubuk gösterge (veriyolu, PC, adres, IR, ALU sonucu ve sekiz register'ın içeriği).",
   ),
   bolgeler: {
     "Register dosyası": m(
@@ -95,7 +101,7 @@ const CPU: KartMetinleri = {
       "REGISTER DOSYASI",
       "Register dosyası",
       "Sekiz 16 bitlik register (r0–r7) ve onları seçen çözücüler.",
-      "Her register iki 74HC574; D girişleri ve Q çıkışları aynı veriyolu hatlarındadır. Register numarası RSEL alanına göre üç 74HC151'den gelir; yazma çözücüsü saat darbesini, okuma çözücüsü çıkış iznini (~ROE0–7) verir. Her register'ın bir okuma (yeşil) ve bir yazma (amber) LED'i var; iç veriyolunun değeri iki çubuk göstergede, onu süren kaynak altı beyaz LED'de görünür.",
+      "Her register iki 74HC574; D girişleri veriyolundadır, çıkışları hep açıktır ve değeri iki çubuk göstergede görünür. Register'ı veriyoluna iki 74HC541 çıkarır. Register numarası RSEL alanına göre üç 74HC151'den gelir; yazma çözücüsü saat darbesini, okuma çözücüsü çıkış iznini (~ROE0–7) verir. Her register'ın bir okuma (yeşil) ve bir yazma (amber) LED'i var; iç veriyolunun değeri iki çubuk göstergede, onu süren kaynak altı beyaz LED'de görünür.",
     ),
     "Geçici register'lar": m(
       "TA VE TB",
@@ -192,15 +198,15 @@ const CPU: KartMetinleri = {
       "Üç 74HC151 register numarasının her bitini RSEL alanına (CW3–5) göre IR'deki alanlardan ya da sabitlerden seçer; çıkış 3 bitlik indekstir (RIDX0–2)."),
     g("register-cozuculeri", "U17 U18", "OKUMA VE YAZMA ÇÖZÜCÜ", "Register okuma ve yazma çözücüleri",
       "Seçilen register'a saat darbesini verir ya da onun çıkışını veriyoluna açar.",
-      "Yazma çözücüsü (U17) REG_W (CW16) ile açılır, çıkışları ~WSEL0–7 register saatlerinin kapılarına gider. Okuma çözücüsü (U18) BUS = REG iken açılır ve seçilen çiftin ~OE'sini (~ROE0–7) düşürür."),
+      "Yazma çözücüsü (U17) REG_W (CW16) ile açılır, çıkışları ~WSEL0–7 register saatlerinin kapılarına gider. Okuma çözücüsü (U18) BUS = REG iken açılır ve seçilen register'ın iki 74HC541 tamponunun ~OE1'ini (~ROE0–7) düşürür."),
     ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) =>
-      g(`r${i}`, `U${19 + 2 * i} U${20 + 2 * i} D${3 + 2 * i} D${4 + 2 * i} R${3 + 2 * i} R${4 + 2 * i}`, i === 6 ? "R6 (SP)" : i === 7 ? "R7 (LR)" : `R${i}`, i === 6 ? "Register r6 (SP)" : i === 7 ? "Register r7 (LR)" : `Register r${i}`,
+      g(`r${i}`, `U${19 + 2 * i} U${20 + 2 * i} U${tampon(2 * i)} U${tampon(2 * i + 1)} D${3 + 2 * i} D${4 + 2 * i} R${3 + 2 * i} R${4 + 2 * i} DS${11 + 2 * i} DS${12 + 2 * i} RN${13 + 2 * i} RN${14 + 2 * i}`, i === 6 ? "R6 (SP)" : i === 7 ? "R7 (LR)" : `R${i}`, i === 6 ? "Register r6 (SP)" : i === 7 ? "Register r7 (LR)" : `Register r${i}`,
         i === 6
           ? "16 bitlik register; gelenekle yığın işaretçisi (SP): PUSH, POP, RETI, SWI ve kesme girişi donanımda bu register'ı kullanır."
           : i === 7
             ? "16 bitlik register; bağlantı register'ı (LR): JAL dönüş adresini (PC + 2) buraya yazar, RET buradan döner."
             : "16 bitlik genel amaçlı register.",
-        `İki 74HC574: düşük bayt U${19 + 2 * i}, yüksek bayt U${20 + 2 * i}. D girişleri ve üç durumlu Q çıkışları aynı veriyolu hatlarına (BUS0–15) bağlıdır; saati CLK_R${i}, çıkış izni ~ROE${i}. Yeşil LED D${3 + 2 * i} register okunurken (~ROE${i} = 0), amber LED D${4 + 2 * i} yazılırken (~WSEL${i} = 0) yanar.`)),
+        `İki 74HC574: düşük bayt U${19 + 2 * i}, yüksek bayt U${20 + 2 * i}; D girişleri veriyolunda (BUS0–15), saati CLK_R${i}, çıkışları hep açık (R${i}Q0–15). Değeri iki çubuk göstergede sürekli görünür (DS${11 + 2 * i} bit 0–7, DS${12 + 2 * i} bit 8–15; RN${13 + 2 * i}, RN${14 + 2 * i}). İki 74HC541 (U${tampon(2 * i)}, U${tampon(2 * i + 1)}) onu ~ROE${i} = 0 iken veriyoluna çıkarır. Yeşil LED D${3 + 2 * i} register okunurken (~ROE${i} = 0), amber LED D${4 + 2 * i} yazılırken (~WSEL${i} = 0) yanar.`)),
     g("register-saatleri", "U133 U134", "REGISTER SAATLERİ", "Register saat kapıları",
       "Yazılacak register'a, yalnız o adımda, saat darbesi verir.",
       "İki 74HC02'nin sekiz VEYA-DEĞİL kapısı yazma çözücüsünün çıkışını kapılı ana saatle birleştirir: CLK_R0–CLK_R7. Kontrol sinyalleri saat yüksekken değişmediği için darbe parazitsizdir."),

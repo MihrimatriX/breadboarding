@@ -17,7 +17,7 @@ export function cpuDiyagrami(board: Board): Diyagram {
     {
       id: "reg", ad: "REGISTER DOSYASI (R0–R7)", rol: "register", x: 90, y: 116, w: 290, h: 216, bloklar: cpu("Register dosyası"),
       gorev: "8 × 16 bit; RSEL ve IR alanlarıyla seçilir",
-      aciklama: "Sekiz adet 16 bitlik genel amaçlı register (r6 yığın göstericisi SP, r7 dönüş adresi LR). Her register iki 74HC574'tür (düşük ve yüksek bayt); üç durumlu çıkışları doğrudan iç veri yoluna bağlıdır. Hangi register'ın okunup yazılacağını kontrol kelimesinin RSEL alanı ve komuttaki register alanları (rd, rs1, rs2) belirler: üç 74HC151 indeksi seçer, iki 74HC138 okuma ve yazma hattına çevirir.",
+      aciklama: "Sekiz adet 16 bitlik genel amaçlı register (r6 yığın göstericisi SP, r7 dönüş adresi LR). Her register iki 74HC574'tür (düşük ve yüksek bayt); çıkışları hep açıktır, değeri iki çubuk göstergede görünür, iç veri yoluna iki 74HC541 tamponla çıkar. Hangi register'ın okunup yazılacağını kontrol kelimesinin RSEL alanı ve komuttaki register alanları (rd, rs1, rs2) belirler: üç 74HC151 indeksi seçer, iki 74HC138 okuma ve yazma hattına çevirir.",
     },
     {
       id: "gecici", ad: "GEÇİCİ REGISTER'LAR", rol: "register", x: 430, y: 116, w: 220, h: 216, bloklar: cpu("Geçici register'lar"),

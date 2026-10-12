@@ -163,11 +163,12 @@
   </g>
   <g class="mm-kutu mm-k-register" data-kutu="reg">
     <rect class="mm-kutu-govde" x="90" y="116" width="290" height="216" rx="8"/>
-    <text class="mm-t mm-t-ad" x="235" y="191.8" text-anchor="middle">REGISTER DOSYASI (R0–R7)</text>
-    <text class="mm-t mm-t-parca" x="235" y="210.9" text-anchor="middle">74HC574 ×16, 74HC151 ×3, 74HC138 ×2</text>
-    <text class="mm-t mm-t-pasif" x="235" y="229.9" text-anchor="middle">LED ×22, çubuk gösterge ×2</text>
-    <text class="mm-t mm-t-kapi" x="235" y="248.2" text-anchor="middle">+ 8 kapı (yapıştırıcı lojikte)</text>
-    <text class="mm-t mm-t-gorev" x="235" y="266.9" text-anchor="middle">8 × 16 bit; RSEL ve IR alanlarıyla seçilir</text>
+    <text class="mm-t mm-t-ad" x="235" y="183.8" text-anchor="middle">REGISTER DOSYASI (R0–R7)</text>
+    <text class="mm-t mm-t-parca" x="235" y="202.9" text-anchor="middle">74HC541 ×16, 74HC574 ×16,</text>
+    <text class="mm-t mm-t-parca" x="235" y="218.9" text-anchor="middle">74HC151 ×3, 74HC138 ×2</text>
+    <text class="mm-t mm-t-pasif" x="235" y="237.9" text-anchor="middle">LED ×22, çubuk gösterge ×18</text>
+    <text class="mm-t mm-t-kapi" x="235" y="256.2" text-anchor="middle">+ 8 kapı (yapıştırıcı lojikte)</text>
+    <text class="mm-t mm-t-gorev" x="235" y="274.9" text-anchor="middle">8 × 16 bit; RSEL ve IR alanlarıyla seçilir</text>
   </g>
   <g class="mm-kutu mm-k-register" data-kutu="gecici">
     <rect class="mm-kutu-govde" x="430" y="116" width="220" height="216" rx="8"/>

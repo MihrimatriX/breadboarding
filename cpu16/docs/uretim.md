@@ -195,16 +195,17 @@ Kaba hesap (5 V):
 
 | Tüketici | Adet | Akım |
 |---|---|---|
-| 74HC çipleri (1 MHz'de dinamik akım) | ≈430 | ≈1 mA her biri → 0,4 A |
+| 74HC çipleri (1 MHz'de dinamik akım) | ≈446 | ≈1 mA her biri → 0,45 A |
 | Bellek, önbellek ve video SRAM / EEPROM (yalnız seçili olan akım çeker) | ≈12 | ≤30 mA → 0,2 A |
 | Durum LED'leri (330 Ω: HALTED, FAULT, CLK) | 3 | ≈9 mA → 0,03 A |
 | CPU kartının hata ayıklama LED'leri (1 kΩ) | 39 | ≈3 mA → 0,12 A |
-| CPU kartının çubuk göstergeleri (8 segment × 1 kΩ, bütün bitler 1 iken) | 10 | ≤24 mA → 0,24 A |
-| **Toplam** | | **≈1 A** |
+| CPU kartının çubuk göstergeleri (8 segment × 1 kΩ, bütün bitler 1 iken) | 26 | ≤24 mA → 0,62 A |
+| **Toplam** | | **≈1,4 A** |
 
 LED'ler en kötü durumla sayıldı: hepsi birden yanmaz (okuma ve yazma LED'lerinden birer tanesi,
 veriyolu sürücülerinden en çok biri yanar; değerlerin bitlerinin yarısı 0'dır). CPU kartının
-kurulum belgesindeki bütçe (`npm run cpu16 -- kurulum cpu`) LED'lerle ≈ 0,57 A'dir (LED'siz ≈ 0,21 A).
+kurulum belgesindeki bütçe (`npm run cpu16 -- kurulum cpu`) LED'lerle ≈ 0,97 A'dir (göstergeler ve
+hata ayıklama LED'leri olmadan ≈ 0,23 A); bunun ≈ 0,4 A'i register içeriğinin 16 göstergesidir.
 
 5 V 3 A'lik düzenli bir adaptör yeterli payı bırakır. Şemada her kartın girişinde 100 µF, her
 entegrenin yanında 100 nF var; breadboard'da da bunları atlama: dekuplajsız 74HC kartlar

@@ -101,9 +101,9 @@ VCC'ye bağlı girişler bir "tie-high" hücresinden beslenir (kapısı GND'de b
 Saat osilatörü (4 MHz kristal osilatör kutusu), 555 (adım saati), reset butonu RC'si, dekuplaj kondansatörleri, LED ve dirençler, VGA konnektörü ve renk direnç DAC'ı, PS/2 konnektörü, USB-UART modülü (CH340). Simülasyonda bunlar ideal sinyal kaynağı olarak modellenir; listesi Faz 9 BOM'unda.
 
 CPU kartının hata ayıklama göstergeleri de bu gruptadır: 39 adet 3 mm LED (her biri 1 kΩ ile),
-10 adet 10 segmentli LED çubuk gösterge (`DISP_BAR_10`, DIP-20; ör. Kingbright DC-10YWA, Broadcom
-HDSP-4840; 1–10. bacaklar segment anotları, 20–11. bacaklar katotları) ve önlerinde 10 adet 8 × 1 kΩ
-yalıtılmış direnç dizisi (`RN_1K_ISO_8`, DIP-16, ör. Bourns 4116R-1-102; k. direnç k. ve 17 − k.
+26 adet 10 segmentli LED çubuk gösterge (`DISP_BAR_10`, DIP-20; ör. Kingbright DC-10YWA, Broadcom
+HDSP-4840; 1–10. bacaklar segment anotları, 20–11. bacaklar katotları; 16'sı register'ların içeriği
+için) ve önlerinde 26 adet 8 × 1 kΩ yalıtılmış direnç dizisi (`RN_1K_ISO_8`, DIP-16, ör. Bourns 4116R-1-102; k. direnç k. ve 17 − k.
 bacak arasında). Simülasyon dirençlerin değerini bilmez: LED'in ve segmentin yanıp yanmadığı,
 direncin öbür ucundaki sinyalden okunur ([kartlar.md](kartlar.md)).
 

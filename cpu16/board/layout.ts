@@ -381,9 +381,12 @@ function layoutCard(board: Board, card: string, o: LayoutOptions): LocalCard {
       let px = 2;
       let rowH = 0;
       y += 1;
-      for (const p of pas) {
+      pas.forEach((p, k) => {
         const z = passiveSize(p);
-        if (px > 2 && px + z.w > stripW) {
+        // çubuk göstergenin direnç dizisi göstergesiyle aynı satırda kalır
+        const sonraki = pas[k + 1];
+        const ileri = sonraki && p.part === "RN_1K_ISO_8" && sonraki.part === "DISP_BAR_10" ? 3 + passiveSize(sonraki).w : 0;
+        if (px > 2 && px + z.w + ileri > stripW) {
           px = 2;
           y += rowH + 2.5;
           rowH = 0;
@@ -392,7 +395,7 @@ function layoutCard(board: Board, card: string, o: LayoutOptions): LocalCard {
         px += z.w + 3;
         rowH = Math.max(rowH, z.h);
         w = Math.max(w, px);
-      }
+      });
       y += rowH + 2;
     }
     return { name, w: w + 4, h: y + 2, chips, passives };

@@ -138,6 +138,8 @@ export function buildCpuCard(b: Board): CpuCard {
     });
     return b.place("74HC574", conn, role);
   };
+  // Register'ların çıkışları kartın sonunda (register içeriği göstergeleri) veriyolundan alınıp
+  // R{r}Q0..15'e taşınır; veriyolunu o zaman register başına iki 74HC541 sürer.
   const regs = range(8).map((r) => {
     const clk = b.nor(`~WSEL${r}`, nCLKR, `CLK_R${r}`, `r${r} saati`);
     return [
@@ -420,6 +422,32 @@ export function buildCpuCard(b: Board): CpuCard {
     b.block = "ALU";
     b.cubuk(RES.slice(0, 8), "BAR_RES", "ALU sonucu RES0–7");
     b.cubuk(RES.slice(8), "BAR_RES", "ALU sonucu RES8–15", 8);
+  });
+
+  // ---- register içeriği: her register'ın değeri sürekli iki çubuk göstergede. 74HC574'lerin
+  // çıkışları hep açık (~OE = GND) ve R{r}Q0..15'te; veriyolunu register başına iki 74HC541 sürer
+  // (~OE1 = ~ROE{r}). Okuma yolunda bir tampon gecikmesi daha var. Çipler kartın en sonuna eklenir
+  // (U195–U199, sonra taşma diliminden U901–U911): öbür çiplerin referansları değişmez.
+  b.sonaErtele(() => {
+    b.block = "Register dosyası";
+    regs.forEach((cift, r) => {
+      const q = range(16).map((i) => `R${r}Q${i}`);
+      cift.forEach((u, h) => {
+        b.bacakTasi(u, "~OE", "GND");
+        range(8).forEach((i) => b.bacakTasi(u, `Q${i}`, q[8 * h + i]));
+      });
+      const ad = r === 6 ? "r6 (SP)" : r === 7 ? "r7 (LR)" : `r${r}`;
+      [0, 1].forEach((h) => {
+        const conn: Record<string, number | string> = { "~OE1": `~ROE${r}`, "~OE2": "GND" };
+        range(8).forEach((i) => {
+          conn[`A${i}`] = q[8 * h + i];
+          conn[`Y${i}`] = BUS[8 * h + i];
+        });
+        b.place("74HC541", conn, `${ad} ${h ? "yüksek" : "düşük"} bayt → veriyolu`);
+      });
+      b.cubuk(q.slice(0, 8), `BAR_R${r}Q`, `${ad} içeriği R${r}Q0–7`);
+      b.cubuk(q.slice(8), `BAR_R${r}Q`, `${ad} içeriği R${r}Q8–15`, 8);
+    });
   });
 
   // kontrol biriminin kalan çipleri (adım seçicileri …) kartın yapıştırıcı çiplerinden sonra

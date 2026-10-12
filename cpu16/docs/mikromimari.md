@@ -152,9 +152,10 @@ birimlerine taşınır (NOT a = NAND(a, 1), AND(a, b) = AND3(a, b, 1) …): her 
 | Kapı (paketlenmeden önce) | 109 | 32 | 141 |
 
 CPU kartı: ROM'lu sürüm 146 entegre (7 × SST39SF010A, adım 0 için bir 74HC138 ve AOP4 için bir 74HC157
-dahil); kapı seviyesinde **194**. Kontrol birimi 19 MSI çip ve ≈ 38 yapıştırıcı lojik çipi tutar (kapıları
-kartın eski kapı çiplerinin boş birimlerini de doldurur). Kartın referans aralığı U1..U199
-(`CARD_REF_BASE`): kalan pay 4 çip.
+dahil); kapı seviyesinde **194**, register içeriği göstergelerinin 16 tamponuyla (74HC541) **210**.
+Kontrol birimi 19 MSI çip ve ≈ 38 yapıştırıcı lojik çipi tutar (kapıları kartın eski kapı çiplerinin
+boş birimlerini de doldurur). Kartın referans aralığı U1..U199 (`CARD_REF_BASE`) doldu; aralığı aşan
+çipler taşma diliminden numaralanır (U901…, `CARD_REF_TASMA`).
 
 Referanslar: çözücüler boşalan yuvalarda (U1, U3: komut; U5, U7: op 13 ve op 14 alt çözücüleri; U10:
 adım 0..7; U68: adım 8..15; U69–U71: ALU işlem çözücüleri); adım seçicileri (U147–U156) ve kapı çipleri

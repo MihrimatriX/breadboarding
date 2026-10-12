@@ -2,7 +2,7 @@
 
 Silikon3D'de üçüncü bölüm: **CPU16 kartı 3D** (`#kart`). Bütün bilgisayar tek sahnede: CPU kartı,
 saat ve reset kartı, bellek kartı, önbellek kartı, G/Ç kartı, video kartı ve kendin yap bellek kartı,
-arka panelleriyle birlikte. Bugünkü anakartta 444 entegre, 593 pasif eleman, ~5 000 kapı. Hepsi kapı seviyesinde bir
+arka panelleriyle birlikte. Bugünkü anakartta 460 entegre, 641 pasif eleman, ~5 000 kapı. Hepsi kapı seviyesinde bir
 Web Worker'da saat saat çalışır. Ekranda bilgisayar → kart → çip → kapı → transistör diye
 inilir ve her seviyede sinyaller canlıdır. Kartlar elle yazılmış bir listeden gelmez: görünüm
 `board.chips` ve `board.passives` içinde ne varsa onu yerleştirir. Yeni bir kart takılınca (ör.

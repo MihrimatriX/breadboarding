@@ -31,7 +31,7 @@ adresleri yer imi olarak kaydedebilirsin.
 |---|---|---|
 | **6502 die** | `#6502` | Gerçek MOS 6502 kalıbı (visual6502 verisi). Metal, polisilikon ve difüzyon üç boyutta ayrı katmanlar. 3.510 transistör ve 1.725 düğüm anahtar seviyesinde çalışıyor; 1 olan teller kırmızı yanıyor. Bir tele tıklayıp ölçebilir, mantık analizörüne ekleyebilir, kendi 6502 programını derleyip yükleyebilirsin. |
 | **CPU16 tezgâhı** | `#cpu16` | CPU16 için küçük bir geliştirme ortamı (Web IDE). Assembly ya da C yazıp derliyorsun, programı BIOS'lu anakartta (VGA ekran, PS/2 klavye, UART terminali) ya da düz 64 KB bellekte çalıştırıyorsun. Gerçek kart bağlıysa Web Serial ile programı karta da gönderiyorsun. |
-| **CPU16 kartı 3D** | `#kart` | Bütün bilgisayar tek sahnede: 7 kart, 444 entegre, 593 pasif eleman, ~5 000 kapı. Hepsi bir Web Worker'da kapı seviyesinde, saat saat çalışıyor. Bilgisayardan karta, karttan çipe, çipten kapıya, kapıdan transistöre iniyorsun; her seviyede sinyaller canlı. Kartların her bölgesi ve çip grubu etiketli (**Etiketler**, kısayol `E`); bir etikete tıklayınca görevi, nasıl çalıştığı ve çipleri yan panelde. Monitörde programın görüntüsü var, klavyeyle yazabiliyorsun. |
+| **CPU16 kartı 3D** | `#kart` | Bütün bilgisayar tek sahnede: 7 kart, 460 entegre, 641 pasif eleman, ~5 000 kapı. Hepsi bir Web Worker'da kapı seviyesinde, saat saat çalışıyor. Bilgisayardan karta, karttan çipe, çipten kapıya, kapıdan transistöre iniyorsun; her seviyede sinyaller canlı. Kartların her bölgesi ve çip grubu etiketli (**Etiketler**, kısayol `E`); bir etikete tıklayınca görevi, nasıl çalıştığı ve çipleri yan panelde. Monitörde programın görüntüsü var, klavyeyle yazabiliyorsun. |
 | **8 bit hesap 3D** | `#hesap` | Hesap makinesinin kartı: 216 entegre, 15 hane 7 segment gösterge. Anahtarları çeviriyorsun, sonuç kapı gecikmeleriyle göstergelere geliyor; her bloğun o an ne hesapladığı yan panelde. Bölgeler ve çip grupları etiketli, tıklanınca açıklamaları yan panelde. |
 | **Mimari** | `#mimari` | Blok diyagramları: CPU kartı, bütün bilgisayar (7 kart, arka panel, dış cihazlar) ve hesap makinesi. Her kutu bir işlev bloğu: görevi, içindeki entegreler ve sayıları (devreden sayılır). Çizgiler veri, adres ve kontrol yolları; kalınlık bit sayısı, ok yön. Bir kutunun üstüne gelince yolları öne çıkıyor; tıklayınca entegreleri, kapıları ve yolları yan panelde, "3D'de göster" ile 3D karttaki yeri. Ayrıntı: [mimari.md](cpu16/docs/mimari.md). |
 
@@ -64,9 +64,10 @@ katmanının açılabilmesi.
 
 - **İşlemci:** 8 register, sabit 16 bit komutlar, NZCV bayrakları, 64 KB adres alanı, `0xFF00`'da
   bellek eşlemeli G/Ç. Komutlar mikrokodla çalışır; mikrokod ROM'da değil, 74HC kapılarıyla kurulu
-  (CPU kartı 194 entegre). Bir komut ortalama 5 saat döngüsü sürer. CPU kartında hata ayıklama
+  (CPU kartı 210 entegre). Bir komut ortalama 5 saat döngüsü sürer. CPU kartında hata ayıklama
   için 39 LED (hangi register okunuyor, hangisi yazılıyor, veriyolunu kim sürüyor, bayraklar, mikro
-  adım) ve 10 çubuk gösterge (veriyolu, PC, adres, komut, ALU sonucu) var; 3D'de canlı yanıyorlar.
+  adım) ve 26 çubuk gösterge (veriyolu, PC, adres, komut, ALU sonucu ve sekiz register'ın içeriği)
+  var; 3D'de canlı yanıyorlar.
 - **Anakart:** bank'lı bellek (32 KB EEPROM + 128 KB RAM), 2 KB önbellek, UART, PS/2 klavye,
   zamanlayıcı, kesme denetleyicisi, VGA 80 × 30 metin kartı ve 16 baytlık bir "kendin yap bellek"
   eğitim kartı. Hepsi yaygın 7400 serisi çiplerle ve iki bellek çipiyle (62256, 28C256) kuruluyor.
