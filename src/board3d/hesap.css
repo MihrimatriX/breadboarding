@@ -9,8 +9,13 @@
   flex-direction: column;
   gap: var(--sp-7);
   min-width: 0;
+  /* LED ekranın kendi renkleri: iki temada aynı (gerçek göstergenin rengi) */
   --seg-on: #ff3b2b;
   --seg-off: rgba(255, 70, 50, 0.08);
+  --seg-isik: rgba(255, 59, 43, 0.7);
+  --seg-zemin: #0b0b0d;
+  --seg-yazi: #a3abb6;
+  --seg-led-sonuk: #3a1512;
 }
 
 /* ---------------------------------------------------------------- göstergeler */
@@ -20,19 +25,19 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--sp-4) var(--sp-5);
   padding: var(--sp-5);
-  background: #0b0b0d;
+  background: var(--seg-zemin);
   border-radius: var(--r-lg);
   box-shadow: inset 0 2px 12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(0, 0, 0, 0.25);
 }
-.hs-grup { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.hs-grup { display: flex; flex-direction: column; gap: 0.375rem; min-width: 0; }
 .hs-grup.hs-sonuc { grid-column: 1 / -1; }
 .hs-grup.hs-sonuc .hs-haneler { align-items: center; }
-.hs-etiket { font: 500 var(--fs-cap)/1.2 var(--sans); color: #a3abb6; }
-.hs-haneler { display: flex; gap: 4px; min-width: 0; }
+.hs-etiket { font: 500 var(--fs-cap)/1.2 var(--sans); color: var(--seg-yazi); }
+.hs-haneler { display: flex; gap: var(--sp-1); min-width: 0; }
 .hs-hane { width: 1.75rem; height: 2.625rem; flex: none; }
 .hs-sonuc .hs-hane { width: 2.375rem; height: 3.5rem; }
 .hs-hane polygon { fill: var(--seg-off); transition: fill 0.08s; }
-.hs-hane polygon.on { fill: var(--seg-on); filter: drop-shadow(0 0 2.5px rgba(255, 59, 43, 0.7)); }
+.hs-hane polygon.on { fill: var(--seg-on); filter: drop-shadow(0 0 2.5px var(--seg-isik)); }
 
 .hs-led {
   display: inline-flex;
@@ -41,11 +46,11 @@
   margin-left: auto;
   padding-left: var(--sp-3);
   font: 500 var(--fs-cap)/1 var(--sans);
-  color: #a3abb6;
+  color: var(--seg-yazi);
 }
-.hs-led i { width: 12px; height: 12px; border-radius: 50%; background: #3a1512; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); }
+.hs-led i { width: 12px; height: 12px; border-radius: 50%; background: var(--seg-led-sonuk); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); }
 .hs-led.on { color: var(--seg-on); }
-.hs-led.on i { background: var(--seg-on); box-shadow: 0 0 8px 2px rgba(255, 59, 43, 0.6); }
+.hs-led.on i { background: var(--seg-on); box-shadow: 0 0 8px 2px var(--seg-isik); }
 
 /* beklenen sonuç: büyük, okunur bir satır */
 .hs-model { display: flex; flex-direction: column; gap: var(--sp-1); }
@@ -85,13 +90,13 @@ input.hs-sayi-gir::-webkit-inner-spin-button, input.hs-sayi-gir::-webkit-outer-s
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: var(--sp-1);
   background: var(--surface-inset);
   border-color: transparent;
   color: var(--text-faint);
   box-shadow: none;
 }
-.hs-bitler button:nth-child(4) { margin-right: 6px; }
+.hs-bitler button:nth-child(4) { margin-right: 0.375rem; }
 .hs-bitler button small { font: 400 var(--fs-cap)/1 var(--mono); }
 .hs-bitler button b { font: 500 var(--fs-lg)/1 var(--mono); color: var(--text-muted); }
 .hs-bitler button:hover:not(:disabled) { background: var(--surface-3); border-color: var(--border-hover); }
@@ -134,7 +139,7 @@ input.hs-sayi-gir::-webkit-inner-spin-button, input.hs-sayi-gir::-webkit-outer-s
 .hs-blok-bas { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
 .hs-blok-bas .link { font: 600 var(--fs-base)/1.35 var(--body); }
 .hs-rozet {
-  padding: 4px 10px;
+  padding: var(--sp-1) 0.625rem;
   border-radius: var(--r-pill);
   font: 500 var(--fs-cap)/1 var(--sans);
   color: var(--accent);
