@@ -150,8 +150,6 @@
 }
 
 /* ============================================================ araç çubuğu */
-/* panel düğmeleri her genişlikte sağda (dar ekran kuralı ".tb-group + .tb-group" sol boşluğu ezmesin) */
-.app.mimari .toolbar .tb-group.tb-end { margin-left: auto; }
 .mm-zoom { gap: var(--sp-1); }
 .mm-yuzde { min-width: 3.25rem; text-align: center; font: 500 var(--fs-sm)/1 var(--sans); font-variant-numeric: tabular-nums; color: var(--text-muted); }
 .mm-sigdir { margin-left: var(--sp-2); padding: 0 var(--sp-3); }
@@ -212,7 +210,7 @@
 .mm-satir-ad b { font-size: var(--fs-sm); font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
 .mm-alt { font-size: var(--fs-cap); line-height: 1.4; color: var(--text-muted); }
 .mm-netler { font: 400 var(--fs-cap)/1.45 var(--mono); color: var(--text-muted); overflow-wrap: anywhere; }
-.mm-yon { flex: none; padding: 3px 8px; border-radius: var(--r-pill); background: var(--surface-inset); font-size: var(--fs-cap); line-height: 1.2; color: var(--text-muted); }
+.mm-yon { flex: none; padding: 0.1875rem var(--sp-2); border-radius: var(--r-pill); background: var(--surface-inset); font-size: var(--fs-cap); line-height: 1.2; color: var(--text-muted); }
 .mm-satir .mm-yon { margin-left: auto; }
 .mm-uc { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
 .mm-uc .mm-satir { flex: 1 1 auto; width: auto; min-width: 0; }
@@ -237,12 +235,14 @@
 .mm-ref { font-family: var(--mono); color: var(--text); }
 .mm-parca { font-family: var(--mono); color: var(--text-muted); }
 .mm-gorevi { min-width: 0; color: var(--text-muted); overflow-wrap: anywhere; }
-.mm-acilir > summary { cursor: pointer; padding: 2px 0; font-size: var(--fs-sm); color: var(--link); }
+.mm-acilir > summary { cursor: pointer; padding: 0.125rem 0; font-size: var(--fs-sm); color: var(--link); }
 .mm-acilir > summary:hover { color: var(--link-hover); }
 .mm-acilir[open] > summary { margin-bottom: var(--sp-2); }
 .mm-net-liste { font: 400 var(--fs-sm)/1.6 var(--mono); color: var(--text-muted); overflow-wrap: anywhere; }
 
 @media (max-width: 900px) {
-  .mm-bilgi { left: var(--sp-2); bottom: var(--sp-2); max-width: calc(100% - 2 * var(--sp-2)); padding: var(--sp-1) var(--sp-3); }
+  /* dar ekranda ipucu kesilmez, satır kırar */
+  .mm-bilgi { left: var(--sp-2); bottom: var(--sp-2); max-width: calc(100% - 2 * var(--sp-2)); padding: var(--sp-1) var(--sp-3); white-space: normal; border-radius: var(--r-lg); }
+  .mm-bilgi-ek, .mm-ipucu { overflow: visible; }
   .mm-sigdir .kisalir { display: none; }
 }
