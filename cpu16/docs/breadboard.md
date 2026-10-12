@@ -189,16 +189,19 @@ cikti/<kart>-breadboard.pdf|html      kartın panosu
 ```
 
 Kart belgesinin bölümleri: kapak (ölçüler, içindekiler); nasıl okunur (delik adları, raylar, renk
-kodu, parçalar, uyarlayıcı); panonun haritası (board'lar, görevleri, aşamaları) ve makinedeki yeri;
-besleme (girişler, 100 µF'lar, bütçe, ilk açılış ölçümü); aşamalar ve testler (her aşamanın board'ları,
-çipleri, tel aralığı, deney rehberi); board board yerleşim çizimleri (çipler, pasifler, teller kendi
-renginde, board dışına çıkan teller kenarda kesik; altında parça tablosu); numaralı tel listesi
+kodu, parçalar, uyarlayıcı); panonun haritası (board'lar, üstlerindeki çip grupları, aşamaları; her
+bölge 3D görünümdekiyle aynı renkte bir çerçeve ve etiketle) ve **Bölümler** (her bölgenin görevi ve
+nasıl çalıştığı, altında çip gruplarının görevi, parçaları ve board'ları; metinler
+`cpu16/board/bolum-bilgi.ts`) ve makinedeki yeri; besleme (girişler, 100 µF'lar, bütçe, ilk açılış
+ölçümü); aşamalar ve testler (her aşamanın board'ları, çipleri, tel aralığı, deney rehberi); board
+board yerleşim çizimleri (çipler, pasifler, teller kendi renginde, board dışına çıkan teller kenarda
+kesik; üstünde çip gruplarının etiketleri, altında parça tablosu); numaralı tel listesi
 (işaret kutusu, T0001 …, nereden → nereye delik delik, mm, kesim, renk, net; her aşamanın sonunda
 test satırı); kesim listesi (renk ve boy); malzeme listesi (breadboard, taban plakası, uyarlayıcı,
 IDC soketi, besleme girişleri, renk renk tel metrajı, entegreler, pasifler, aletler).
 
-Sayfa sayıları (bütün belgeler, 2026-10): saat 13, CPU 89, bellek 26, önbellek 27, G/Ç 35, video 39,
-kendin yap bellek 18, dizin 7.
+Sayfa sayıları (bütün belgeler, 2026-10): saat 14, CPU 92, bellek 27, önbellek 28, G/Ç 37, video 41,
+kendin yap bellek 19, dizin 7.
 
 Delik adları: `BB07 c14` = BB07'nin c satırı, 14. sütunu; raylar `BB07 üst+16`, `üst−`, `alt−`,
 `alt+`. BB01 panonun sol arka köşesi, satır satır soldan sağa.
@@ -245,7 +248,7 @@ Delik adları: `BB07 c14` = BB07'nin c satırı, 14. sütunu; raylar `BB07 üst+
 
 | Dosya | İçerik |
 |---|---|
-| `cpu16/board/breadboard/` | ortak motor (hesap makinesiyle ortak): BB830 geometrisi, parça kalıpları ve tavlama (`yerlesim.ts`), tel yönlendirme (`yonlendirme.ts`), plan ve kurulum sırası (`plan.ts`), doğrulama (`dogrulama.ts`), 3D yerleşim (`gorunum.ts`), board çizimleri (`cizim.ts`), tel renkleri (`renk.ts`) |
+| `cpu16/board/breadboard/` | ortak motor (hesap makinesiyle ortak): BB830 geometrisi, parça kalıpları ve tavlama (`yerlesim.ts`), tel yönlendirme (`yonlendirme.ts`), plan ve kurulum sırası (`plan.ts`), doğrulama (`dogrulama.ts`), 3D yerleşim (`gorunum.ts`), board çizimleri (`cizim.ts`), belgelerin bölüm işaretleri (`bolum-belge.ts`: harita çerçeveleri, Bölümler, çizimlerin grup etiketleri), tel renkleri (`renk.ts`) |
 | `cpu16/breadboard/panolar.ts` | panoların tanımı: board ızgarası, bölgeler, aşamalar ve testleri, makinedeki sıra |
 | `cpu16/breadboard/yerlesim.ts` | CPU16 kartlarının yerleşimi: uyarlayıcı, besleme girişleri, elle yerleşen parçalar, tavlama |
 | `cpu16/breadboard/plan.ts` | kartın ve bütün makinenin planı, panoların masadaki yeri, şerit kablo, doğrulama, 3D yerleşim |
@@ -253,3 +256,4 @@ Delik adları: `BB07 c14` = BB07'nin c satırı, 14. sütunu; raylar `BB07 üst+
 | `cpu16/breadboard/veri/` | üretilmiş yerleşim ve teller (kart başına), netlistin parmak iziyle |
 | `cpu16/breadboard/cli.ts`, `belge.ts`, `belge-cli.ts` | `breadboard` ve `breadboard-belge` komutları, belge üreteci |
 | `src/board3d/aktif.ts`, `Breadboard3D.tsx`, `bbKurulum.ts`, `BbKurulumPanel.tsx` | 3D görünüm seçimi, panolar ve şerit kablo, kurulum modu |
+| `cpu16/board/bolum-bilgi.ts`, `bolum-metin.ts`, `bolum-cizim.ts` | bölümler (kart → bölge → blok → çip grubu) ve metinleri; bölge çerçevelerinin geometrisi ve renkleri (3D ve belgeler ortak) |
