@@ -9,7 +9,9 @@
 //
 // Renkler: komşu iki çerçeve aynı renkte olmaz (açgözlü boyama). Kırmızı yok: arayüzde kırmızı yalnız
 // hata ve lojik 1. Breadboard renkleri krem board'da ve iki temanın sahne zemininde en az 3:1 (çizgi),
-// PCB renkleri koyu yeşil kartta en az 3:1 (cpu16/tests/bolum-3d.test.ts denetler).
+// PCB renkleri koyu yeşil kartta en az 3:1 (cpu16/tests/bolum-3d.test.ts denetler). Breadboard
+// bölgeleri, hücre sınırı ve boyama cpu16/board/bolum-cizim.ts'te: kurulum belgelerinin pano haritası
+// aynı bölgeyi aynı renkte çizer.
 //
 // Kenar etiketleri (yakından, çip gruplarına): ekranın iki yanında birer sütun; kutular hedeflerinin
 // yüksekliğine göre sıralanır ve üst üste binmeden yerleşir (kenarYerlesimi).
@@ -18,9 +20,11 @@ import { ADIM, BX_ADIM, BY_ADIM } from "../../cpu16/board/breadboard/geometri";
 import { boardDikdortgeni } from "../../cpu16/board/breadboard/gorunum";
 import type { BlockPlace, CardPlace } from "../../cpu16/board/layout";
 import { bolumKimligi, type BolumKatalogu } from "../../cpu16/board/bolum-bilgi";
+import { BOLUM_RENKLERI, boya, hucreSiniri, panoBolgeleri, tamDikdortgenler, type Hucre } from "../../cpu16/board/bolum-cizim";
 
-/** Breadboard'daki çerçeve renkleri (krem board üstünde) */
-export const BB_RENKLERI = ["#2d6bd2", "#0d7f73", "#5a7d12", "#a8640a", "#7a4fd0", "#0b78a3", "#86602a", "#5a6f87"] as const;
+export { boya, hucreSiniri, tamDikdortgenler, type Hucre };
+/** Breadboard'daki çerçeve renkleri (krem board üstünde; kurulum belgelerinin pano haritasında da aynı) */
+export const BB_RENKLERI = BOLUM_RENKLERI;
 /** PCB'deki çerçeve renkleri (koyu yeşil kart üstünde açık tonlar) */
 export const PCB_RENKLERI = ["#8fb4ff", "#5fd4c4", "#b5d96a", "#f0b45a", "#c4a6ff", "#6cc8f0", "#e0bf86", "#b8c6d6"] as const;
 /** Kart plakasının şeridi (kartın kendi rengi yok) */
@@ -70,82 +74,6 @@ export function plakaSigdir(metin: string, en: number, boy: number, olc: Olcer, 
   const sec = iki && yuk(iki) * 0.8 > h1 ? iki : tek;
   const h = Math.max(0, yuk(sec));
   return { satirlar: sec.satirlar, h, w: plakaEni(h, sec.gen), d: plakaBoyu(h, sec.satirlar.length) };
-}
-
-// ---------------------------------------------------------------- hücre birleşiminin sınırı
-
-export interface Hucre {
-  i: number;
-  j: number;
-}
-
-/**
- * Izgara hücrelerinin birleşiminin sınırı, içe doğru `ic` kadar kaydırılmış: [x0, y0, x1, y1, …]
- * parçaları (mm). Hücre (i, j): [x0 + i·dx, x0 + (i+1)·dx] × [y0 + j·dy, y0 + (j+1)·dy]. Dış köşelerde
- * kenar kısalır, iç köşelerde uzar: L biçimli bir bölge de kapalı tek bir çizgiyle sarılır.
- */
-export function hucreSiniri(hucreler: readonly Hucre[], x0: number, y0: number, dx: number, dy: number, ic: number): number[] {
-  const var_ = new Set(hucreler.map((h) => `${h.i},${h.j}`));
-  const v = (i: number, j: number) => var_.has(`${i},${j}`);
-  const out: number[] = [];
-  for (const { i, j } of hucreler) {
-    const xa = x0 + i * dx;
-    const xb = x0 + (i + 1) * dx;
-    const ya = y0 + j * dy;
-    const yb = y0 + (j + 1) * dy;
-    // yatay kenar (dj = -1 üst, +1 alt): uçları sol ve sağ komşuya göre
-    for (const dj of [-1, 1]) {
-      if (v(i, j + dj)) continue;
-      const sol = !v(i - 1, j) ? ic : v(i - 1, j + dj) ? -ic : 0;
-      const sag = !v(i + 1, j) ? -ic : v(i + 1, j + dj) ? ic : 0;
-      const y = dj < 0 ? ya + ic : yb - ic;
-      out.push(xa + sol, y, xb + sag, y);
-    }
-    // dikey kenar (di = -1 sol, +1 sağ): uçları üst ve alt komşuya göre
-    for (const di of [-1, 1]) {
-      if (v(i + di, j)) continue;
-      const ust = !v(i, j - 1) ? ic : v(i + di, j - 1) ? -ic : 0;
-      const alt = !v(i, j + 1) ? -ic : v(i + di, j + 1) ? ic : 0;
-      const x = di < 0 ? xa + ic : xb - ic;
-      out.push(x, ya + ust, x, yb + alt);
-    }
-  }
-  return out;
-}
-
-/** Hücrelerin içindeki bütün tam dikdörtgenler (hücre aralıkları, uçlar dahil) */
-export function tamDikdortgenler(hucreler: readonly Hucre[]): { i0: number; j0: number; i1: number; j1: number }[] {
-  const var_ = new Set(hucreler.map((h) => `${h.i},${h.j}`));
-  const is = hucreler.map((h) => h.i);
-  const js = hucreler.map((h) => h.j);
-  const [imin, imax, jmin, jmax] = [Math.min(...is), Math.max(...is), Math.min(...js), Math.max(...js)];
-  const out: { i0: number; j0: number; i1: number; j1: number }[] = [];
-  for (let i0 = imin; i0 <= imax; i0++) {
-    for (let j0 = jmin; j0 <= jmax; j0++) {
-      for (let i1 = i0; i1 <= imax && var_.has(`${i1},${j0}`); i1++) {
-        for (let j1 = j0; j1 <= jmax; j1++) {
-          let tam = true;
-          for (let i = i0; i <= i1 && tam; i++) tam = var_.has(`${i},${j1}`);
-          if (!tam) break;
-          out.push({ i0, j0, i1, j1 });
-        }
-      }
-    }
-  }
-  return out;
-}
-
-/** Komşuluk listesiyle açgözlü boyama: her öğe komşularının kullanmadığı ilk renk (sırayla dönerek) */
-export function boya(n: number, komsu: (a: number, b: number) => boolean, renkSayisi: number): number[] {
-  const renk: number[] = [];
-  for (let a = 0; a < n; a++) {
-    const dolu = new Set<number>();
-    for (let b = 0; b < a; b++) if (komsu(a, b)) dolu.add(renk[b]);
-    let r = a % renkSayisi;
-    for (let k = 0; k < renkSayisi && dolu.has(r); k++) r = (r + 1) % renkSayisi;
-    renk.push(r);
-  }
-  return renk;
 }
 
 // ---------------------------------------------------------------- sahnenin bölümleri
@@ -221,39 +149,24 @@ export function bbSahneBolumleri(panolar: readonly BbPanoGirdisi[], k: BolumKata
   const dy = BY_ADIM * ADIM;
   // board'lar arasındaki boşluk (dikeyde 1,27 mm) iki hücreye bölünür
   const bosluk = dy - b0.h;
-  const bolgeler: { id: string; kart: string; pano: number; hucreler: Hucre[]; x0: number; y0: number }[] = [];
+  const bolgeler: { id: string; kart: string; renk: string; hucreler: Hucre[]; x0: number; y0: number }[] = [];
   const parcaBolgesi = new Map<string, number>();
-  panolar.forEach((p, pi) => {
+  for (const p of panolar) {
     const sira = new Map<string, number>();
-    const boards = [...p.plan.yerlesim.boards].sort((a, b) => a.by - b.by || a.bx - b.bx);
-    for (const b of boards) {
-      const id = bolumKimligi.bolge(p.kart, b.rol);
-      if (!k.bolumler.has(id)) continue;
-      let n = sira.get(id);
-      if (n === undefined) {
-        n = bolgeler.length;
-        sira.set(id, n);
-        bolgeler.push({ id, kart: p.kart, pano: pi, hucreler: [], x0: p.x + b0.x, y0: p.y + b0.y - bosluk / 2 });
-      }
-      bolgeler[n].hucreler.push({ i: b.bx, j: b.by });
+    for (const b of panoBolgeleri(p.kart, p.plan.yerlesim.boards, k)) {
+      sira.set(b.id, bolgeler.length);
+      bolgeler.push({ ...b, kart: p.kart, x0: p.x + b0.x, y0: p.y + b0.y - bosluk / 2 });
     }
     for (const q of p.plan.yerlesim.parcalar) {
       const b = p.plan.yerlesim.boards[q.board];
       const n = b ? sira.get(bolumKimligi.bolge(p.kart, b.rol)) : undefined;
       if (n !== undefined) parcaBolgesi.set(q.ref, n);
     }
-  });
-  const komsu = (a: number, b: number) => {
-    const A = bolgeler[a];
-    const B = bolgeler[b];
-    if (A.pano !== B.pano) return false;
-    return A.hucreler.some((h) => B.hucreler.some((g) => Math.abs(h.i - g.i) + Math.abs(h.j - g.j) === 1));
-  };
-  const renkler = boya(bolgeler.length, komsu, BB_RENKLERI.length);
+  }
   const cerceveler: Cerceve[] = [];
   const plakalar: Plaka[] = [];
-  bolgeler.forEach((b, n) => {
-    const renk = BB_RENKLERI[renkler[n]];
+  bolgeler.forEach((b) => {
+    const renk = b.renk;
     const kenarlar = hucreSiniri(b.hucreler, b.x0, b.y0, dx, dy, BB_IC);
     const kutu = kutuBirlesimi(b.hucreler.map((h) => ({ x: b.x0 + h.i * dx, y: b.y0 + h.j * dy, w: dx, h: dy })));
     // dolgu: komşusu bölgede olan kenar içe kaymaz (board'lar arasında boşluk kalmasın)
