@@ -1,5 +1,5 @@
-// Uygulama iskeleti: üç bölümün (6502 die, CPU16 tezgâhı, CPU16 kartı 3D) ortak parçaları.
-//   AppHeader: üst çubuk (marka, bölüm geçişi, canlı ölçümler, kısayollar)
+// Uygulama iskeleti: dört bölümün (6502 die, CPU16 tezgâhı, CPU16 kartı 3D, 8 bit hesap 3D) ortak parçaları.
+//   AppHeader: üst çubuk (marka, bölüm geçişi, canlı ölçümler, kısayollar, Başlangıç paneli)
 //   Tabs: sekmeli paneller (yan ve alt paneller; yeni bir sekme diziye bir satır eklemekle gelir)
 //   Splitter: alt panelin yüksekliğini sürükleyerek ayarlama
 //   PanelToggle: yan / alt paneli açıp kapatan düğmeler
@@ -8,6 +8,8 @@
 
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { ModeSwitch, type Mode } from "./ModeSwitch";
+import { baslangiciAc } from "./Baslangic";
+import { Simge } from "./simgeler";
 
 // ---------------------------------------------------------------- düzen tercihleri
 
@@ -62,24 +64,30 @@ export interface Shortcut {
   what: string;
 }
 
-/** Üst çubuk: marka ve bölümün kısa açıklaması, bölüm geçişi, canlı ölçümler ve kısayol listesi. */
+/** Her bölümün kısayol listesinin sonunda */
+const ORTAK_KISAYOLLAR: Shortcut[] = [{ keys: "?", what: "Başlangıç: bölümler ve ipuçları" }];
+
+/** Üst çubuk: marka ve bölümün kısa açıklaması, bölüm geçişi, canlı ölçümler, kısayol listesi ve Başlangıç. */
 export function AppHeader({ mode, context, meters, shortcuts }: { mode: Mode; context?: ReactNode; meters?: ReactNode; shortcuts?: Shortcut[] }) {
+  const keys = [...(shortcuts ?? []), ...ORTAK_KISAYOLLAR];
   return (
     <header className="appbar">
       <div className="brand">
         <Logo />
         <div className="brand-text">
-          <h1>Silikon3D</h1>
+          <h1>
+            Silikon<em>3D</em>
+          </h1>
           {context && <span className="brand-sub">{context}</span>}
         </div>
       </div>
       <ModeSwitch mode={mode} />
       <div className="appbar-end">
-        {meters && <div className="meter">{meters}</div>}
-        {shortcuts && shortcuts.length > 0 && (
-          <Menu label={<><KeyIcon /> <span className="menu-label">Kısayollar</span></>} title="Klavye ve fare kısayolları" className="icon-btn" align="end">
+        {meters && <div className="meter" role="group" aria-label="Canlı ölçümler">{meters}</div>}
+        <div className="appbar-tools">
+          <Menu label={<><Simge ad="klavye" /> <span className="menu-label">Kısayollar</span></>} title="Klavye ve fare kısayolları" className="icon-btn" align="end">
             <dl className="keys">
-              {shortcuts.map((s) => (
+              {keys.map((s) => (
                 <div key={s.keys}>
                   <dt><kbd>{s.keys}</kbd></dt>
                   <dd>{s.what}</dd>
@@ -87,7 +95,10 @@ export function AppHeader({ mode, context, meters, shortcuts }: { mode: Mode; co
               ))}
             </dl>
           </Menu>
-        )}
+          <button className="icon-btn" onClick={baslangiciAc} aria-label="Başlangıç ve yardım" data-tip="Başlangıç: bölümler ve ipuçları (?)" data-tip-hiza="son">
+            <Simge ad="yardim" boyut={18} />
+          </button>
+        </div>
       </div>
     </header>
   );
@@ -105,26 +116,18 @@ export function Meter({ label, children, title }: { label: string; children: Rea
 
 function Logo() {
   return (
-    <svg className="logo" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
-      <rect x="5" y="5" width="14" height="14" rx="2.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
-      <rect x="9" y="9" width="6" height="6" rx="1" fill="var(--accent)" />
-      {[8, 12, 16].map((p) => (
-        <g key={p} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
-          <line x1={p} y1="1.8" x2={p} y2="4" />
-          <line x1={p} y1="20" x2={p} y2="22.2" />
-          <line x1="1.8" y1={p} x2="4" y2={p} />
-          <line x1="20" y1={p} x2="22.2" y2={p} />
+    <svg className="logo" viewBox="0 0 28 28" width="28" height="28" aria-hidden="true">
+      <rect x="0.5" y="0.5" width="27" height="27" rx="7" className="logo-zemin" />
+      <rect x="8" y="8" width="12" height="12" rx="2" fill="none" stroke="currentColor" strokeWidth="1.5" />
+      <rect x="11.25" y="11.25" width="5.5" height="5.5" rx="1" className="logo-cekirdek" />
+      {[11, 14, 17].map((p) => (
+        <g key={p} stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" opacity="0.75">
+          <line x1={p} y1="4.8" x2={p} y2="6.6" />
+          <line x1={p} y1="21.4" x2={p} y2="23.2" />
+          <line x1="4.8" y1={p} x2="6.6" y2={p} />
+          <line x1="21.4" y1={p} x2="23.2" y2={p} />
         </g>
       ))}
-    </svg>
-  );
-}
-
-function KeyIcon() {
-  return (
-    <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <rect x="2" y="5" width="16" height="10" rx="2" />
-      <path d="M5.5 8.5h1M9.5 8.5h1M13.5 8.5h1M6 11.5h8" strokeLinecap="round" />
     </svg>
   );
 }
@@ -144,7 +147,7 @@ export function Group({ children, label, className = "" }: { children: ReactNode
 export function PanelToggle({ which, open, onToggle }: { which: "side" | "bottom"; open: boolean; onToggle: () => void }) {
   const name = which === "side" ? "Yan panel" : "Alt panel";
   return (
-    <button className="icon-btn" aria-pressed={open} onClick={onToggle} title={`${name}: ${open ? "gizle" : "göster"}`} aria-label={name}>
+    <button className="icon-btn" aria-pressed={open} onClick={onToggle} data-tip={`${name}: ${open ? "gizle" : "göster"}`} data-tip-hiza="son" aria-label={name}>
       <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5">
         <rect x="2.5" y="3.5" width="15" height="13" rx="2" />
         {which === "side" ? (

@@ -1,0 +1,37 @@
+# Docker derleme bağlamına girmeyenler. Bağlam küçük kalır, gereksiz dosya değişince
+# "COPY . ." katmanı yeniden kurulmaz. Bağımlılıklar imajın içinde npm ci ile kurulur.
+
+# bağımlılıklar ve derleme çıktıları
+node_modules
+**/node_modules
+dist
+coverage
+.vite
+*.tsbuildinfo
+*.log
+
+# depo ve araç ayarları
+.git
+.github
+.claude
+.vscode
+.idea
+.DS_Store
+.env
+.env.*
+
+# Docker dosyalarının kendisi (docker/nginx/ web aşamasında gerekli, o kalır)
+Dockerfile
+.dockerignore
+docker-compose.yml
+compose.yaml
+
+# üretilen kurulum belgeleri (npm run cpu16 -- kurulum); derleme ve testler kullanmaz
+cpu16/kurulum/cikti
+
+# CLI'ın yerel çıktıları (bios.hex, yilan.hex, charrom.bin ...); depoda .hex/.bin dosyası yok
+**/*.hex
+**/*.bin
+
+# Not: cpu16/kicad/ bilerek bağlamda: testler (docker build --target test) KiCad dosyalarının
+# koddan yeniden üretilmiş halleriyle aynı olduğunu denetler.
