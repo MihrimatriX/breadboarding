@@ -58,6 +58,8 @@ export interface PassivePlace {
   height: number;
   /** dikey mi (pinler y yönünde dizili) */
   vertical: boolean;
+  /** 180° dönük mü (1. pin sağda; hesap makinesinin breadboard'unda ters takılan SIP'ler) */
+  ters?: boolean;
   /** yanına yerleştiği çip (dekuplaj kondansatörü) */
   chip?: string;
   /** kartın arka panele takılan kenar konnektörü */

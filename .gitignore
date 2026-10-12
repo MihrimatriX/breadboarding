@@ -8,3 +8,6 @@ coverage
 
 # cpu16 kurulum belgeleri (npm run cpu16 -- kurulum): üretilen HTML/PDF
 cpu16/kurulum/cikti/
+
+# hesap8 breadboard kurulum belgesi (npm run hesap8 -- breadboard-belge): üretilen HTML/PDF
+hesap8/breadboard/cikti/
