@@ -14,25 +14,35 @@ const PINS: { name: string; label: string; toggle?: boolean; activeLow?: boolean
   { name: "nmi", label: "NMI", toggle: true, activeLow: true },
 ];
 
-/** visible: sekme ya da bölüm gizliyken her karede yeniden çizilmesin */
+/**
+ * Yazmaçlar: en önemlisi (PC ve o anki komut) büyük, A X Y SP P ve yollar altında tek bir değer
+ * grubunda, pinler en altta. visible: sekme ya da bölüm gizliyken her karede yeniden çizilmesin.
+ */
 export function RegistersPanel({ visible = true }: { visible?: boolean }) {
   const snap = useApp((s) => (visible ? s.snapshot : null));
   if (!snap) return null;
   const t = snap.trace;
   const read = (a: number) => (a < 256 ? snap.zeroPage[a] : a < 512 ? snap.stackPage[a - 256] : 0);
-  const regs: [string, string][] = [
+  const regs: [string, string, boolean?][] = [
     ["A", "$" + h2(t.a)], ["X", "$" + h2(t.x)], ["Y", "$" + h2(t.y)],
-    ["SP", "$" + h2(t.sp)], ["PC", "$" + h4(t.pc)], ["P", flags(t.p)],
-    ["Adres yolu", "$" + h4(t.ab)], ["Veri yolu", "$" + h2(t.db)], ["Yön", t.rw ? "Okuma" : "Yazma"],
+    ["SP", "$" + h2(t.sp)], ["P (bayraklar)", flags(t.p)], ["Yön", t.rw ? "okuma" : "yazma", true],
+    ["Adres yolu", "$" + h4(t.ab)], ["Veri yolu", "$" + h2(t.db)],
   ];
   return (
     <Section title="Yazmaçlar" actions={<span className="hint-text">die'dan okunuyor</span>}>
-      <div className="regs">
-        {regs.map(([k, v]) => (
-          <div key={k}><b>{k}</b><span>{v}</span></div>
+      <div className="kahraman">
+        <span className="k-ad">PC</span>
+        <span className="k-deger">${h4(t.pc)}</span>
+        <span className="k-ek yazi">
+          {t.sync ? <>komut çekiliyor: <b>{disassemble(read, t.ab).text}</b></> : "komut yürütülüyor"}
+        </span>
+      </div>
+      <div className="degerler">
+        {regs.map(([k, v, yazi]) => (
+          <div key={k} className="deger"><span>{k}</span><b className={yazi ? "yazi" : undefined}>{v}</b></div>
         ))}
       </div>
-      <div className="pins" aria-label="Pinler">
+      <div className="pins tek-satir" aria-label="Pinler">
         {PINS.map((p) => {
           const high = snap.pins[p.name];
           return (
@@ -40,7 +50,7 @@ export function RegistersPanel({ visible = true }: { visible?: boolean }) {
               key={p.name}
               className={`pin ${high ? "on" : ""}${p.toggle ? " toggle" : ""}`}
               disabled={!p.toggle}
-              title={p.toggle ? "Tıkla: pini değiştir" : "Çip tarafından sürülüyor"}
+              title={`${p.label} = ${high ? 1 : 0} · ${p.toggle ? "tıkla: pini değiştir" : "çip tarafından sürülüyor"}`}
               onClick={() => sim.pin(p.name, !high)}
             >
               {p.activeLow ? <span className="overline">{p.label}</span> : p.label}
@@ -48,7 +58,7 @@ export function RegistersPanel({ visible = true }: { visible?: boolean }) {
           );
         })}
       </div>
-      <p className="dis">{t.sync ? `Komut çekiliyor  $${h4(t.ab)}  ${disassemble(read, t.ab).text}` : "Komut yürütülüyor"}</p>
+      <p className="hint-text">Pinler: 1 olanlar kırmızı; kesikli çerçeveli olanlara tıklayıp değiştirebilirsin.</p>
       {snap.oscillations > 0 && <p className="warn">Kararsız devre: {snap.oscillations} kez döngü sınırına ulaşıldı.</p>}
     </Section>
   );

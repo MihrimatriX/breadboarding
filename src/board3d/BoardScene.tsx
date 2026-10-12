@@ -28,6 +28,7 @@ import { boardLayoutData, boardModel, findPart, liveNets, netEnds, useKart } fro
 import { KurulumSahne } from "./KurulumSahne";
 import { AtlamaTelleri, BbKurulumSahne, BreadboardTabani, breadboardGenelBakis, breadboardSahnede } from "./Breadboard3D";
 import { TextQuads, type TextItem } from "./TextQuads";
+import { useSahneRengi } from "../ui/ayarlar";
 import { allWires, busRouter, netWires, partWires, wireGeometry, type Endpoint, type WireEdge } from "./wires";
 
 /** 1 dünya birimi = 10 mm */
@@ -673,6 +674,8 @@ export function BoardScene() {
   const bb = breadboardSahnede();
   // aynı nesne kalmalı: her yeniden çizimde yeni bir hedef OrbitControls'un hedefini genel bakışa sıfırlardı
   const o = useMemo(() => overview(lay.width, lay.height, tur), [lay, tur]);
+  // zemin temaya uyar (kartın, breadboard'un ve çiplerin kendi renkleri değişmez)
+  const zemin = useSahneRengi();
   return (
     <Canvas
       key={`${tur}-${gorunum}`}
@@ -684,7 +687,7 @@ export function BoardScene() {
         else s.selectChip(null);
       }}
     >
-      <color attach="background" args={["#07090c"]} />
+      <color attach="background" args={[zemin]} />
       <hemisphereLight args={["#ffffff", "#1a2028", 1.1]} />
       <directionalLight position={[20, 40, 15]} intensity={1.3} />
       {bb ? <BreadboardTabani /> : <Cards />}

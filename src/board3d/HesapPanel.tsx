@@ -90,15 +90,17 @@ function Model() {
   const formul = r.hata ? `${a} ÷ 0: tanımsız (HATA)` : `${a} ${islemSimgesi(op)} ${b} = ${r.deger}${r.kalan !== null ? `, kalan ${r.kalan}` : ""}`;
   return (
     <div className="hs-model">
-      <span className="hs-model-ad">Altın model</span>
+      <div className="hs-model-ust">
+        <span className="hs-model-ad">Beklenen (altın model)</span>
+        {lamba ? (
+          <span className="hs-durum bilgi">lamba testi: bütün segmentler yanıyor</span>
+        ) : ok ? (
+          <span className="hs-durum ok" title="Göstergelerde görünen, hesap8/model.ts'in beklediğiyle aynı">✓ göstergeler aynı</span>
+        ) : (
+          <span className="hs-durum fark" title={`beklenen: A "${e.a}", B "${e.b}", sonuç "${e.sonuc}", kalan "${e.kalan}"`}>✗ fark var</span>
+        )}
+      </div>
       <code className="hs-formul">{formul}</code>
-      {lamba ? (
-        <span className="hs-durum bilgi">lamba testi: bütün segmentler yanıyor</span>
-      ) : ok ? (
-        <span className="hs-durum ok" title="Göstergelerde görünen, hesap8/model.ts'in beklediğiyle aynı">✓ göstergeler aynı</span>
-      ) : (
-        <span className="hs-durum fark" title={`beklenen: A "${e.a}", B "${e.b}", sonuç "${e.sonuc}", kalan "${e.kalan}"`}>✗ fark var</span>
-      )}
     </div>
   );
 }
@@ -119,7 +121,7 @@ function Sayi({ grup, ad, deger }: { grup: GirisGrubu; ad: string; deger: number
     <div className="hs-sayi">
       <div className="hs-sayi-bas">
         <b className="hs-sayi-ad">{ad}</b>
-        <span className="hs-sayi-not">soldan sağa {ad}7 … {ad}0</span>
+        <span className="hs-sayi-not">anahtarlar soldan sağa {ad}7 … {ad}0</span>
         <input
           className="hs-sayi-gir"
           type="number"
@@ -191,7 +193,7 @@ function Girisler() {
         <div className="hs-islem-bas">
           <b>İşlem</b>
           <span className="hs-sayi-not">
-            OP1 OP0 = {(op >> 1) & 1}{op & 1}
+            OP1 OP0 = <code>{(op >> 1) & 1}{op & 1}</code>
           </span>
         </div>
         <div className="hs-islemler" role="group" aria-label="İşlem">
@@ -202,6 +204,7 @@ function Girisler() {
               aria-pressed={op === x.kod}
               onClick={() => useHesap.getState().islemSec(x.kod as IslemKodu)}
               title={`${x.ad}: OP1 OP0 = ${(x.kod >> 1) & 1}${x.kod & 1}`}
+              aria-label={x.ad}
             >
               {x.simge}
             </button>
@@ -258,7 +261,7 @@ export function HesapPanel() {
   const hata = useHesap((s) => s.hata);
   const git = (blok: string | null) => useKart.getState().focusBlock(blok);
   if (hata) return <p className="warn">{hata}</p>;
-  if (!hazir) return <p className="muted">Hesap makinesi kuruluyor…</p>;
+  if (!hazir) return <p className="muted">Hesap makinesi kuruluyor; birkaç saniye içinde göstergeler burada açılır.</p>;
   return (
     <div className="hs">
       <Section title="Göstergeler" actions={<button className="link" onClick={() => git("Gösterge")}>3D'de göster</button>}>
@@ -283,7 +286,7 @@ export function HesapMeters() {
   const kalan = gorunum?.kalan.trim();
   return (
     <>
-      <Meter label="Gösterge" title="İşlem ve göstergelerde görünen sonuç (devrenin kapı seviyesi simülasyonundan)">
+      <Meter label="Göstergede" title="İşlem ve göstergelerde görünen sonuç (devrenin kapı seviyesi simülasyonundan)">
         {lamba ? "lamba testi" : `${a} ${islemSimgesi(op)} ${b} = ${sonuc}${kalan ? ` k ${kalan}` : ""}`}
       </Meter>
       {!lamba && gorunum && (
