@@ -22,7 +22,7 @@ export function SignalSearch() {
   return (
     <Section title="Sinyal bul">
       <form className="row" onSubmit={(e) => { e.preventDefault(); go(); }}>
-        <input id="signal" className="mono" list="signals" value={q} onChange={(e) => setQ(e.target.value)} placeholder="ör. clk0, ab5, a3, alu2, 1234" aria-label="Sinyal adı ya da düğüm numarası" />
+        <input id="signal" className="mono" list="signals" value={q} onChange={(e) => setQ(e.target.value)} placeholder="ör. clk0, ab5, 1234" aria-label="Sinyal adı ya da düğüm numarası" />
         <button type="submit">Bul</button>
       </form>
       <datalist id="signals">
