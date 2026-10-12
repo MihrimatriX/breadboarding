@@ -11,6 +11,9 @@
 //
 // Her panonun içinde bloklar kurulum aşamalarına göre bölgelere ayrılır (deney sırası: önce
 // uyarlayıcının yanındaki bölgeler); mantık çipleri bölgelerinin board'larına tavlamayla dağıtılır.
+// CPU kartı modül modül kurulur (James Sharman ve Ben Eater'ın breadboard bilgisayarları gibi): her
+// board'un bir işi var (`duzen`: R0, R1 … R7 ayrı board'larda, toplayıcı, mantık birimi, sonuç seçici,
+// program sayacı, MAR, IR …) ve 3D'de, kurulum belgelerinde o işin adıyla etiketlidir.
 // Bu dosya yalnız tanımdır: yerleşim cpu16/breadboard/yerlesim.ts, teller ortak yönlendiricide.
 
 import type { Asama } from "../board/breadboard/yerlesim.ts";
@@ -45,6 +48,13 @@ export interface PanoTanimi {
   /** board başına en çok mantık çipi */
   yuva: number;
   asamalar: KartAsamasi[];
+  /**
+   * Modüler yerleşim (isteğe bağlı): her board'a hangi çip grupları (bolum-metin.ts'teki grup
+   * kimlikleri, boşlukla ayrılmış), satır satır ızgarayla aynı boyda. Bir grup birden çok board'da
+   * geçerse çipleri o board'lara tavlamayla dağılır; tek grubu olan board'da çipler referans sırasıyla
+   * (düşük bayt solda). Verilmezse çipler bölgelerinin bütün board'larına dağılır.
+   */
+  duzen?: string[][];
 }
 
 const TABAN: Omit<KartAsamasi, "test"> = { no: 1, ad: "Taban, besleme ve şerit kablo uyarlayıcısı", bloklar: ["Besleme ve arka panel"] };
@@ -55,28 +65,47 @@ const tabanTesti =
 export const PANOLAR: PanoTanimi[] = [
   {
     kart: "cpu", kisa: "CPU", baslik: "CPU kartı", sira: "arka", yuva: 5,
-    // ön kenarda (uyarlayıcı) bellek arayüzü ve program sayacı, sonra register dosyası, ortada kontrol
-    // birimi (her bloğa kontrol hattı verir), arkada ALU
+    // modül modül, arkadan öne: register'lar (R0–R7 her biri kendi board'unda, seçiciler sağ uçta),
+    // sabit birimi, ALU ve bayraklar, kontrol birimi (mikrokod kapı ağı, çözücüler, kontrol register'ı),
+    // ön kenarda (uyarlayıcının yanında) adım seçicileri, IR, program sayacı, MAR ve bellek arayüzü.
+    // Modüllerin yeri bölgelerinin içinde tahmini tel boyunu en kısa yapan yer (aynı işin board'ları
+    // yan yana); her board'un etiketi işini söyler.
     izgara: [
-      "AAAAA",
-      "AAAAA",
-      "AAAAA",
-      "AAAAK",
-      "KKKKK",
-      "KKKKK",
-      "KKKKK",
-      "KKKKK",
       "RRRRR",
-      "RRPPP",
+      "RRRRR",
+      "SSSSS",
+      "AAAAA",
+      "AAAAA",
+      "AAAAA",
+      "AAAAA",
+      "KKKKK",
+      "KKKKK",
+      "KKKKK",
+      "KKKPP",
       "PPPPP",
+    ],
+    duzen: [
+      ["r0", "r1", "r2", "r3", "register-cozuculeri register-saatleri"],
+      ["r4", "r5", "r6", "r7", "register-secimi"],
+      ["sabit-dusuk", "sabit-dusuk", "sabit-surucu", "sabit-yuksek", "sabit-yuksek"],
+      ["alu-kapilari", "alu-giris-kapilari", "toplayici", "tasma-kapilari cv-secici", "bayraklar kosul"],
+      ["alu-kapilari", "alu-giris-kapilari", "alu-giris-kapilari", "ta tb", "bayrak-surucu"],
+      ["mantik-dusuk", "mantik-dusuk", "mantik-yuksek", "mantik-yuksek", "bayrak-girisi bayrak-kapilari"],
+      ["alu-islem alu-cozucu", "sifir", "sonuc-secici", "sonuc-secici", "alu-surucu"],
+      ["mikrokod-kapilari", "mikrokod-kapilari", "mikrokod-kapilari", "mikrokod-kapilari", "halt-hata bus-cozucu"],
+      ["mikrokod-kapilari", "mikrokod-kapilari", "mikrokod-kapilari", "kontrol-registeri", "kontrol-kapilari"],
+      ["komut-cozucu alt-cozucu", "mikrokod-kapilari", "mikrokod-kapilari", "mikrokod-kapilari", "adim-cozucu adim-sayaci"],
+      ["adim-secici", "adim-secici", "adim-secici", "ir saat-kapilari", "pc-surucu"],
+      ["bayt-okuma bellek-kapilari", "bayt-seritleri", "bellek-kapilari", "mar", "pc"],
     ],
     bolgeler: {
       R: { ad: "Register dosyası", bloklar: ["Register dosyası"] },
+      S: { ad: "Sabit birimi", bloklar: ["Sabit birimi"] },
       A: { ad: "ALU, geçici register'lar ve bayraklar", bloklar: ["Geçici register'lar", "ALU", "ALU kod çözücü", "Bayraklar ve koşul"] },
+      K: { ad: "Kontrol birimi", bloklar: ["Kontrol birimi", "Kontrol"] },
       P: { ad: "Program sayacı, MAR, IR ve bellek arayüzü", bloklar: ["Program sayacı", "MAR ve IR", "Bellek arayüzü", "Besleme ve arka panel"] },
-      K: { ad: "Kontrol birimi ve sabit birimi", bloklar: ["Kontrol birimi", "Kontrol", "Sabit birimi"] },
     },
-    uyarlayici: { bx: 2, by: 10, c0: 30 },
+    uyarlayici: { bx: 2, by: 11, c0: 30 },
     asamalar: [
       { ...TABAN, test: tabanTesti },
       { no: 2, ad: "Register dosyası ve iç veriyolu", bloklar: ["Register dosyası"], deney: 4, test: "Deney 4: veriyoluna anahtarlarla değer ver, bir register'a yaz, geri oku; sürülmeyen veriyolu 0 okunur (RN1, RN2)." },

@@ -1,4 +1,4 @@
-// Uygulama iskeleti: dört bölümün (6502 die, CPU16 tezgâhı, CPU16 kartı 3D, 8 bit hesap 3D) ortak parçaları.
+// Uygulama iskeleti: beş bölümün (6502 die, CPU16 tezgâhı, CPU16 kartı 3D, 8 bit hesap 3D, mimari) ortak parçaları.
 //   AppHeader: üst çubuk (marka, bölüm geçişi, canlı ölçümler, tema, görünüm ayarları, kısayollar,
 //              Başlangıç paneli)
 //   Tabs: sekmeli paneller (yan ve alt paneller; yeni bir sekme diziye bir satır eklemekle gelir)

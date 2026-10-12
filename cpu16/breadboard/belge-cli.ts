@@ -56,7 +56,7 @@ function dizinMetni(m: MakineBbPlani, belgeler: UretilenBelge[], dizin: { html: 
   lines.push(
     "",
     `Toplam ${board} breadboard, ${sayi(tel.length)} atlama teli (kesim ${sayi(tel.reduce((s, t) => s + t.kesim, 0) / 1000, 0)} m; ` +
-    `%${sayi((100 * (tel.length - asan)) / tel.length, 1)}'i ${EN_UZUN_TEL} mm'den kısa), şerit kablo ≈ ${sayi(m.serit.boyMm)} mm ve ${m.serit.soketler.length} IDC soketi.`,
+    `${EN_UZUN_TEL} mm'den kısa olanlar %${sayi((100 * (tel.length - asan)) / tel.length, 1)}), şerit kablo ≈ ${sayi(m.serit.boyMm)} mm ve ${m.serit.soketler.length} IDC soketi.`,
     "",
     "Her kurulum belgesinde: kapak, nasıl okunur (delik adları, raylar, renk kodu), panonun haritası ve makinedeki yeri,",
     "besleme, aşamalar ve her aşamanın sonundaki test, board board yerleşim çizimleri, aşama aşama numaralı tel listesi",

@@ -19,6 +19,7 @@ inilir ve her seviyede sinyaller canlıdır. Kartlar elle yazılmış bir listed
 | Çip | Çipe tıkla | Kamera çip ile tellerinin öbür uçlarını birlikte görecek şekilde uçar. Çipin üstünde **kalıbı** (die) açılır. Yan panelde **Bağlantılar**: pin no + ad → net → öbür uçlar (çip.pin). Alt panelde **Çipin içi**: kapı seviyesi şema ya da bellek dizisi. |
 | Kapı | Kalıpta ya da şemada bir kapıya tıkla | O kapının CMOS transistör şeması. İletimdeki transistörler yeşil. |
 | Net | Bir pine, bir uca ya da bir net adına tıkla | Netin bütün uçları kalın bir telle, öteki her şeyin üstünde birleşir. Yan panelde netin uçları listelenir. |
+| Bölüm | Araç çubuğu: **Etiketler**; bir etikete tıkla | Kartın bölgeleri, blokları ve çip grupları işaretli ve adlı. Tıklanan bölümün görevi, nasıl çalıştığı ve çipleri yan panelde. Aşağıda. |
 
 ### Görünüm: PCB ve breadboard
 
@@ -27,14 +28,41 @@ Araç çubuğundaki **Görünüm: PCB | Breadboard** aynı bilgisayarın iki fiz
 düzenleyicisi ikisinde de aynıdır; değişen yalnız yerleşimdir.
 
 - **PCB**: yukarıdaki kartlar, arka panel şeritleri, tel kipleri.
-- **Breadboard**: yedi pano masada (kart başına bir taban plakası, 129 BB830), aradaki koridorda
-  64 damarlı şerit kablo ve IDC soketleri. Her parça bacaklarıyla deliklerine oturur; 6 793 atlama
+- **Breadboard**: yedi pano masada (kart başına bir taban plakası, 134 BB830), aradaki koridorda
+  64 damarlı şerit kablo ve IDC soketleri. Her parça bacaklarıyla deliklerine oturur; 6 838 atlama
   teli kurulumdaki yollarıyla (düz, dik açılı) ve yalıtımının renginde (renk kodu) çizilir; seçili
   çipin ya da netin telleri, **hepsi** kipinde bütün teller ve şerit kablonun damarları canlı seviyenin
   renginde. Breadboard verisi ayrı bir parçadır: yalnız bu görünüm ilk açılınca yüklenir.
 - **Kurulum** (breadboard görünümünde): pano ve aşama seçilir, teller numara sırasıyla gezilir;
   sıradaki tel 3D'de vurgulanır ve tarifi yazılır (`CPU · BB07 c14 → BB08 h3, 42 mm, sarı`).
   İşaretlenenler pano başına hatırlanır. Ayrıntı: [breadboard.md](breadboard.md).
+
+### Bölüm etiketleri
+
+Araç çubuğundaki **Etiketler: kapalı | bölümler | ayrıntılı** (kısayol `E`; varsayılan
+ayrıntılı, seçim tarayıcıda hatırlanır) kartın hangi kısmının ne iş yaptığını sahnenin üstüne yazar.
+Metinler tek kaynaktan gelir: `cpu16/board/bolum-bilgi.ts` (hiyerarşi kart → bölge → blok → çip
+grubu; metinleri `cpu16/board/bolum-metin.ts`, hesap makinesininki `hesap8/bolum-metin.ts`).
+
+- **Genel bakışta**: breadboard'da her bölge (aynı işi yapan board'lar, ör. "Register dosyası")
+  renkli bir çerçeveyle sarılır, ortasına uzaktan okunan bir başlık plakası konur; kartın adı
+  panonun dışında. PCB'de her işlev bloğu bir çerçeve ve plaka. Komşu çerçeveler ayrı renkte;
+  kırmızı yok (arayüzde kırmızı yalnız hata ve lojik 1). Plakalar ekranda belli bir boydan büyümez,
+  çok küçülünce gizlenir.
+- **Yaklaşınca** (ayrıntılı kipte): plakalar söner; ekranın iki yanında çip gruplarının etiketleri
+  (R0, ALU SONUÇ SEÇİCİ, PROGRAM SAYACI…) hedeflerinin yüksekliğine göre sıralı, üst üste binmeden
+  dizilir; her etiketten grubun en yakın çipine bir çizgi gider, grubun ekrandaki öbür parçaları ince
+  bir çerçeveyle işaretlenir. **bölümler** kipinde yalnız çerçeveler ve plakalar var.
+- **Üstüne gelince**: ipucunda bölümün görevi. Çipin ipucunda ve inceleme panelinde de grubunun
+  etiketi (tıklanınca grup seçilir).
+- **Tıklayınca**: bölüm seçilir, kamera ona gider; bölümün çipleri vurgulanır, ötekiler söner.
+  **İnceleme** sekmesinde başlık, yeri (kart › bölge › blok), görev, aşama ve deney, **Nasıl
+  çalışır**, kurulum aşamaları, dışarıyla bağlantıları (sinyaller), alt bölümleri ve parçaları
+  (tıklanınca çip seçilir). Esc seçimi kaldırır (önce kapı, net, çip, sonra bölüm).
+
+Bütün plakalar tek bir ağda, çerçeveler kalın çizgi olarak çizilir: genel bakışta bir çizim çağrısı
+fazlası. Breadboard kurulum belgelerinin pano haritası aynı bölgeleri aynı renklerle çizer
+([breadboard.md](breadboard.md)).
 
 ### Teller
 
@@ -128,8 +156,11 @@ Tarayıcı konsolunda `kart`:
 | `kart.tus("dir\n")`, `kart.uartGonder("merhaba")` | PS/2 klavye ve UART girişi |
 | `kart.secCip("U72")`, `kart.secKapi(112)`, `kart.secNet("BUS0")` | seçim |
 | `kart.cipler()`, `kart.pasifler()`, `kart.kartlar()`, `kart.baglantilar("U72")`, `kart.kapilar("U11")` | listeler |
+| `kart.etiketler("kapali" \| "bolumler" \| "ayrintili")` | bölüm etiketlerinin kipi (verilmezse şimdiki) |
+| `kart.bolumler("bolge" \| "blok" \| "grup" \| "kart")`, `kart.bolum("grup:cpu:komut-cozucu")` | bölümlerin kimlikleri ve etiketleri; bölümü seç (`null` kaldırır), seçiliyi döndür |
+| `kart.plakaEkranda(id)`, `kart.kenarEtiketleri()` | plakanın ekrandaki yeri, ekrandaki kenar etiketleri (testler için) |
 
-Kısayollar: Boşluk çalıştır/duraklat, `.` bir saat döngüsü, `N` bir komut, Esc seçimi kaldırır.
+Kısayollar: Boşluk çalıştır/duraklat, `.` bir saat döngüsü, `N` bir komut, `E` etiket kipi, Esc seçimi kaldırır.
 Düzenleyicide ve VGA ekranında yazarken kısayollar devre dışıdır.
 
 ## Hız
@@ -157,6 +188,11 @@ Saat seçicisinden 1 Hz ile 1 kHz arası sabit hızlar da seçilebilir.
   - `BoardScene.tsx`: sahne, teller, pasifler ve monitör;
   - `BoardView.tsx`: bölüm, paneller, düzenleyici ve konsol;
   - `MemoryInside.tsx`: bellek dizisi;
+  - bölüm etiketleri: `bolum.ts` (durum: kip, seçili bölüm), `bolumSahne.ts` (çerçeve, plaka ve
+    kenar etiketi geometrisi; saf), `Bolumler3D.tsx` (sahnedeki çerçeveler, plakalar, vurgu,
+    kamera), `BolumKatmani.tsx` (kenar etiketleri ve çizgileri, ipucu), `BolumPanel.tsx` (araç
+    çubuğu seçimi, yan panel); testler `cpu16/tests/bolum-bilgi.test.ts`, `bolum-3d.test.ts`,
+    `bolum-belge.test.ts`;
   - saf yardımcılar: `wires.ts`, `screen.ts`, `screen-source.ts`, `beam.ts`, `serial-in.ts`,
     `program.ts`, `memview.ts`.
 - `src/board3d/ornekler/`: düzenleyicinin kendi örnekleri (`merhaba-vga.c`).
@@ -183,8 +219,8 @@ Saat seçicisinden 1 Hz ile 1 kHz arası sabit hızlar da seçilebilir.
   yazdığı her baytı gösterir; G/Ç kartının gerçek TX hattındaki çerçevelerin hepsi bu hızda
   çıkmayabilir.
 - Yazılım GL ile (sanal makine, GPU'suz) sahne birkaç kare/s çizilir; GPU'lu tarayıcıda akıcıdır.
-  Breadboard genel bakışı PCB'nin ≈ 1,5 katı sürer (≈ 173 çizim çağrısı, 525 bin üçgen; PCB ≈ 106,
-  233 bin).
+  Breadboard genel bakışı PCB'nin ≈ 1,5 katı sürer (≈ 174 çizim çağrısı, 527 bin üçgen; PCB ≈ 108,
+  235 bin).
 - Transistör şeması mantıksal yerleşimdir, gerçek çip maskesi değildir.
 - Önceki 153 entegrelik CPU + test belleği görünümü yerini bütün bilgisayara bıraktı (CPU16
   tezgâhı bölümü durur).

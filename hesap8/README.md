@@ -35,6 +35,7 @@ npm run cpu16 -- kurulum hesap -o out   # PCB kurulum belgesi (HTML + PDF) ve ş
 npm run hesap8 -- breadboard            # 60 board, 2 784 tel; bağlantı netlistle birebir aynı mı
 npm run hesap8 -- breadboard --uret     # yerleşimi ve telleri yeniden üret (breadboard/veri.ts)
 npm run hesap8 -- breadboard-belge -o out   # breadboard kurulum belgesi (HTML + PDF)
+npm run cpu16 -- mimari hesap           # blok diyagramı SVG (docs/img/mimari-hesap.svg)
 npx vitest run hesap8                   # testler
 ```
 
@@ -48,6 +49,9 @@ düz, dik açılı, renk kodlu ve kesim boyuyla; 2.784 atlama teli) ya da **PCB*
 telleri `breadboard/`'dadır; bağlantısı yalnız fiziksel modelden (şeritler, raylar, teller)
 birleşim-bul ile kurulup netlistle karşılaştırılır. Silikon3D → 8 bit hesap 3D varsayılan olarak
 breadboard'u gösterir (PCB'ye geçilebilir); Kurulum modu teli 3D'de vurgulayıp delikten deliğe yazar.
+Bölgeler ve çip grupları 3D'de etiketlidir (**Etiketler**, kısayol `E`; bir etikete tıklayınca görevi
+ve nasıl çalıştığı yan panelde); metinleri `bolum-metin.ts`'te, kurulum belgesinin "Bölümler"
+kısmı da onlardan.
 
 | Dosya | İçerik |
 |---|---|
@@ -61,9 +65,11 @@ breadboard'u gösterir (PCB'ye geçilebilir); Kurulum modu teli 3D'de vurgulayı
 | `breadboard/yerlesim.ts` | Breadboard yerleşimi: board ızgarası, hangi blok hangi board'da, pasifler, raylar |
 | `breadboard/plan.ts`, `veri.ts` | Kurulum planı (aşamalar, tel sırası, renk, kesim boyu); üretilmiş yerleşim ve teller |
 | `breadboard/gorunum.ts` | Breadboard planından 3D yerleşim (Silikon3D, `src/board3d/Breadboard3D.tsx`) |
-| `breadboard/belge.ts` | Yazdırılabilir breadboard kurulum belgesi (board haritası, çizimler, tel ve kesim listesi, malzeme) |
+| `breadboard/belge.ts` | Yazdırılabilir breadboard kurulum belgesi (board haritası ve bölümler, çizimler, tel ve kesim listesi, malzeme) |
+| `bolum-metin.ts` | Bölgelerin ve çip gruplarının etiketi, görevi ve "nasıl çalışır" metni (3D etiketler, yan panel, kurulum belgesi; `cpu16/board/bolum-bilgi.ts`) |
 | `cpu16/board/breadboard/` | Ortak breadboard motoru (CPU16'nın breadboard panolarıyla ortak): BB830 geometrisi, çipleri board'lara dağıtan tavlama, tel yönlendirme (dik açılı, düz, çip gövdesinin üstünden geçmeyen yollar; A*, sökme ve yeniden döşeme), fiziksel modelden birleşim-bul doğrulaması, board çizimleri. `breadboard/geometri.ts`, `yonlendirme.ts`, `dogrulama.ts` eski içe aktarmalar için yeniden dışa aktarır |
-| `docs/tasarim.md` | Bloklar, hız, besleme, malzeme |
+| `mimari.ts` | Mimari (blok) diyagramının yerleşimi: kutular, yollar (içerik devreden; `cpu16/mimari/`). Silikon3D → Mimari |
+| `docs/tasarim.md` | Bloklar (blok diyagramı `docs/img/mimari-hesap.svg`), hız, besleme, malzeme |
 | `docs/kurulum-rehberi.md` | Fiziksel kurulum: aşamalar, testler, sorun giderme |
 | `tests/` | 74HC4511, yapı, uç durumlar, lamba testi, KiCad netlist'i, breadboard bağlantısı ve 3D görünümü |
 
