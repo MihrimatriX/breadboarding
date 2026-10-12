@@ -252,8 +252,11 @@ export function assemble(source: string): AsmResult {
 
   // ---- 2. geçiş: kodlama
   const image = new Uint8Array(0x10000);
-  const written = new Uint8Array(0x10000);
+  const written = new Set<number>();
   const listing: ListingLine[] = [];
+  // yazılan en küçük ve en büyük adres: aralıklar bütün 64 KB yerine yalnız bunların arasında aranır
+  let lo = 0x10000;
+  let hi = -1;
   for (const st of stmts) {
     const lookup2: Lookup = (n) => symbols.get(n);
     try {
@@ -261,9 +264,11 @@ export function assemble(source: string): AsmResult {
       if (bytes.length !== st.size) throw new LineError(`İç hata: boyut ${st.size} beklendi, ${bytes.length} üretildi`);
       bytes.forEach((b, k) => {
         const a = (st.addr + k) & 0xffff;
-        if (written[a]) throw new LineError(`0x${a.toString(16)} adresine iki kez yazılıyor`);
+        if (written.has(a)) throw new LineError(`0x${a.toString(16)} adresine iki kez yazılıyor`);
         image[a] = b;
-        written[a] = 1;
+        written.add(a);
+        lo = Math.min(lo, a);
+        hi = Math.max(hi, a);
       });
       listing.push({ line: st.line, addr: st.addr, bytes, source: st.source });
     } catch (e) {
@@ -272,10 +277,10 @@ export function assemble(source: string): AsmResult {
   }
 
   const ranges: [number, number][] = [];
-  for (let a = 0; a < 0x10000; a++) {
-    if (!written[a]) continue;
+  for (let a = lo; a <= hi; a++) {
+    if (!written.has(a)) continue;
     const start = a;
-    while (a < 0x10000 && written[a]) a++;
+    while (a < 0x10000 && written.has(a)) a++;
     ranges.push([start, a]);
   }
 
