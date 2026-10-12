@@ -63,7 +63,7 @@ describe("kurulum belgelerinde bölümler", () => {
     for (const { p, k } of panolar()) {
       const y = p.plan.yerlesim;
       for (const b of y.boards) {
-        const s = boardGruplari(b.no, y, k, 49, 2.2);
+        const s = boardGruplari(p.kart, b.no, y, k, 49, 2.2);
         expect(s.length).toBeLessThanOrEqual(2);
         for (const t of s) expect(0.6 * 2.2 * t.length, `${p.kart} ${b.ad}: ${t}`).toBeLessThanOrEqual(49 + 1e-9);
         const toplam = new Set(y.parcalar.filter((q) => q.board === b.no).map((q) => k.grubu.get(q.ref)).filter(Boolean)).size;

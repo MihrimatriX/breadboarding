@@ -157,3 +157,34 @@ export function grupBolgeleri(
   for (const [g, m] of say) out.set(g, [...m].sort((a, b) => b[1] - a[1] || sira.get(a[0])! - sira.get(b[0])!)[0][0]);
   return out;
 }
+
+// ---------------------------------------------------------------- board'un modülü
+
+/** Board'un etiketinde gereken: grupları (modüler panoda) ve parçaları */
+export interface ModulYerlesimi {
+  boards: readonly { gruplar?: readonly string[] }[];
+  parcalar: readonly { ref: string; board: number; cipMi?: boolean; sutun?: number }[];
+}
+
+/**
+ * Board'un çip gruplarının kimlikleri, etiketlerinin sırasıyla: modüler panoda (CPU kartı) düzendeki
+ * sırayla; öbür panolarda önce çipli gruplar (çip sayısına göre, eşitlikte soldaki), sonra yalnız
+ * pasifli gruplar (LED'ler, butonlar). 3D'deki board plakaları ve kurulum belgelerinin board
+ * çizimleri bu sırayı kullanır.
+ */
+export function boardunGruplari(kart: string, no: number, y: ModulYerlesimi, k: BolumKatalogu): string[] {
+  const say = new Map<string, { cip: number; pasif: number; sol: number }>();
+  for (const q of y.parcalar) {
+    if (q.board !== no) continue;
+    const g = k.grubu.get(q.ref);
+    if (!g) continue;
+    const s = say.get(g) ?? { cip: 0, pasif: 0, sol: Infinity };
+    if (q.cipMi) s.cip++;
+    else s.pasif++;
+    s.sol = Math.min(s.sol, q.sutun ?? 0);
+    say.set(g, s);
+  }
+  const duzen = (y.boards[no]?.gruplar ?? []).map((g) => bolumKimligi.grup(kart, g)).filter((g) => say.has(g));
+  const kalan = [...say].filter(([g]) => !duzen.includes(g)).sort((a, b) => b[1].cip - a[1].cip || b[1].pasif - a[1].pasif || a[1].sol - b[1].sol);
+  return [...duzen, ...kalan.map(([g]) => g)];
+}

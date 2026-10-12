@@ -4,7 +4,9 @@
 //   breadboard'da her bölge (aynı işi yapan board'lar, ör. "Register dosyası") bir çerçeve: board
 //   hücrelerinin birleşiminin sınırı, içe doğru birkaç mm; L biçimli bölgeler de tek çizgiyle sarılır.
 //   Bölgenin en büyük dikdörtgenine ortalanmış bir başlık plakası (yazı sığacak kadar büyük, gerekirse
-//   iki satır). Kartın plakası panonun dışında (koridordan uzak kenarda).
+//   iki satır). Kartın plakası panonun dışında (koridordan uzak kenarda). Her board'un ortasında da
+//   modülünün (çip gruplarının) küçük plakaları, alt alta: "R0", "TOPLAYICI", "MİKROKOD KAPI AĞI";
+//   bunlar yaklaşınca bölge plakalarının yerine gelir (Bolumler3D.tsx).
 //   PCB'de her işlev bloğunun dikdörtgeni bir çerçeve, plakası bloğun ortasında.
 //
 // Renkler: komşu iki çerçeve aynı renkte olmaz (açgözlü boyama). Kırmızı yok: arayüzde kırmızı yalnız
@@ -20,7 +22,7 @@ import { ADIM, BX_ADIM, BY_ADIM } from "../../cpu16/board/breadboard/geometri";
 import { boardDikdortgeni } from "../../cpu16/board/breadboard/gorunum";
 import type { BlockPlace, CardPlace } from "../../cpu16/board/layout";
 import { bolumKimligi, type BolumKatalogu } from "../../cpu16/board/bolum-bilgi";
-import { BOLUM_RENKLERI, boya, hucreSiniri, panoBolgeleri, tamDikdortgenler, type Hucre } from "../../cpu16/board/bolum-cizim";
+import { BOLUM_RENKLERI, boardunGruplari, boya, hucreSiniri, panoBolgeleri, tamDikdortgenler, type Hucre } from "../../cpu16/board/bolum-cizim";
 
 export { boya, hucreSiniri, tamDikdortgenler, type Hucre };
 /** Breadboard'daki çerçeve renkleri (krem board üstünde; kurulum belgelerinin pano haritasında da aynı) */
@@ -54,6 +56,9 @@ export interface PlakaMetni {
 
 const plakaEni = (h: number, yaziEni: number) => h * (PLAKA.serit + PLAKA.solBosluk + PLAKA.sagBosluk + yaziEni);
 const plakaBoyu = (h: number, n: number) => h * (2 * PLAKA.dikeyBosluk + 1 + (n - 1) * PLAKA.satir);
+
+/** Plakanın yazısını h yüksekliğine indir (satırlar aynı) */
+const plakaBoyla = (m: PlakaMetni, h: number, olc: Olcer): PlakaMetni => ({ ...m, h, w: plakaEni(h, Math.max(...m.satirlar.map(olc))), d: plakaBoyu(h, m.satirlar.length) });
 
 /**
  * Yazıyı en × boy kutusuna sığdırır: tek satır ya da en dengeli iki satır (boşluktan bölünür), hangisi
@@ -93,7 +98,8 @@ export interface Cerceve {
 
 export interface Plaka extends PlakaMetni {
   id: string;
-  tur: "kart" | "bolge" | "blok";
+  /** modul: board'un ortasında, board'daki bir çip grubunun (id: grup:…) plakası */
+  tur: "kart" | "bolge" | "blok" | "modul";
   renk: string;
   /** plakanın ortası (mm) */
   x: number;
@@ -103,6 +109,8 @@ export interface Plaka extends PlakaMetni {
 export interface SahneBolumleri {
   cerceveler: Cerceve[];
   plakalar: Plaka[];
+  /** breadboard'da board'ların modül plakaları (board başına en çok üç grup, alt alta); PCB'de boş */
+  modulPlakalari: Plaka[];
   /** parça → içinde durduğu çerçevenin sırası (kenar etiketinin rengi) */
   parcaCercevesi: Map<string, number>;
   /** kart → kartın kutusu: pano ya da PCB kartı (mm) */
@@ -119,7 +127,12 @@ export interface BbPanoGirdisi {
   w: number;
   h: number;
   sira?: "arka" | "on";
-  plan: { yerlesim: { boards: readonly { bx: number; by: number; rol: string }[]; parcalar: readonly { ref: string; board: number }[] } };
+  plan: {
+    yerlesim: {
+      boards: readonly { bx: number; by: number; rol: string; gruplar?: readonly string[] }[];
+      parcalar: readonly { ref: string; board: number; cipMi?: boolean; sutun?: number }[];
+    };
+  };
 }
 
 export interface YaziBoylari {
@@ -127,7 +140,12 @@ export interface YaziBoylari {
   bolge: number;
   /** kart plakasının en büyük yazısı (mm) */
   kart: number;
+  /** board'ların modül plakalarının en büyük yazısı (mm; breadboard'da) */
+  modul?: number;
 }
+
+/** Board başına en çok bu kadar modül plakası (fazla gruplar yakında kenar etiketlerinde) */
+export const MODUL_EN_COK = 3;
 
 const kutuBirlesimi = (k: Kutu[]): Kutu => {
   const x0 = Math.min(...k.map((a) => a.x));
@@ -190,6 +208,31 @@ export function bbSahneBolumleri(panolar: readonly BbPanoGirdisi[], k: BolumKata
     }
     plakalar.push({ ...en!.m, id: b.id, tur: "bolge", renk, x: en!.x, y: en!.y });
   });
+  // board'ların modül plakaları: board'un ortasında alt alta, aynı board'dakiler aynı yazı boyunda
+  const modulPlakalari: Plaka[] = [];
+  if (yazi.modul) {
+    for (const p of panolar) {
+      const renkler = new Map(bolgeler.filter((b) => b.kart === p.kart).map((b) => [b.id, b.renk]));
+      p.plan.yerlesim.boards.forEach((b, no) => {
+        const ids = boardunGruplari(p.kart, no, p.plan.yerlesim, k).slice(0, MODUL_EN_COK);
+        if (!ids.length) return;
+        const renk = renkler.get(bolumKimligi.bolge(p.kart, b.rol)) ?? BOLUM_RENKLERI[0];
+        const x = p.x + b0.x + b.bx * dx;
+        const y = p.y + b0.y + b.by * dy;
+        const ara = 0.3;
+        const boy = (b0.h * 0.8) / ids.length - ara * yazi.modul!;
+        const m = ids.map((id) => plakaSigdir(k.bolumler.get(id)!.etiket, b0.w * 0.86, boy, olc, yazi.modul!));
+        const h = Math.min(...m.map((q) => q.h));
+        const esit = m.map((q) => plakaBoyla(q, h, olc));
+        const toplam = esit.reduce((t, q) => t + q.d, 0) + ara * h * (esit.length - 1);
+        let yy = y + b0.h / 2 - toplam / 2;
+        esit.forEach((q, i) => {
+          modulPlakalari.push({ ...q, id: ids[i], tur: "modul", renk, x: x + b0.w / 2, y: yy + q.d / 2 });
+          yy += q.d + ara * h;
+        });
+      });
+    }
+  }
   const kartKutusu = new Map<string, Kutu>();
   for (const p of panolar) {
     kartKutusu.set(p.kart, { x: p.x, y: p.y, w: p.w, h: p.h });
@@ -200,7 +243,7 @@ export function bbSahneBolumleri(panolar: readonly BbPanoGirdisi[], k: BolumKata
     const y = p.sira === "on" ? p.y + p.h + ara + m.d / 2 : p.y - ara - m.d / 2;
     plakalar.push({ ...m, id: kart.id, tur: "kart", renk: KART_RENGI, x: p.x + p.w / 2, y });
   }
-  return { cerceveler, plakalar, parcaCercevesi: parcaBolgesi, kartKutusu, koyuZemin: false };
+  return { cerceveler, plakalar, modulPlakalari, parcaCercevesi: parcaBolgesi, kartKutusu, koyuZemin: false };
 }
 
 /** PCB sahnesinin bölümleri: her işlev bloğu bir çerçeve, plakası bloğun ortasında; kart plakası yok (kartın kendi başlığı var) */
@@ -237,7 +280,7 @@ export function pcbSahneBolumleri(
     if (n !== undefined) parcaCercevesi.set(p.ref, n);
   }
   const kartKutusu = new Map(lay.cards.map((c) => [c.name, { x: c.x, y: c.y, w: c.w, h: c.h }]));
-  return { cerceveler, plakalar, parcaCercevesi, kartKutusu, koyuZemin: true };
+  return { cerceveler, plakalar, modulPlakalari: [], parcaCercevesi, kartKutusu, koyuZemin: true };
 }
 
 // ---------------------------------------------------------------- kenar etiketleri

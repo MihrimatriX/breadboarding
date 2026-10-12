@@ -9,6 +9,7 @@ import type { Board } from "../board/board.ts";
 import { panolariDogrula } from "../board/breadboard/dogrulama.ts";
 import { rayDeligiVar } from "../board/breadboard/geometri.ts";
 import { netlistParmakIzi, telYollari3B } from "../board/breadboard/plan.ts";
+import { kartMetinleri, refleriAc } from "../board/bolum-bilgi.ts";
 import { buildFullMachineBoard } from "../board/machine-board.ts";
 import { dizinBelgesi, kartBbBelgesi, sirasiOnemliTeller } from "../breadboard/belge.ts";
 import { beslemeButcesi } from "../breadboard/besleme.ts";
@@ -106,7 +107,43 @@ describe("panolar: kurallar", () => {
         expect(parcalar.length, `${p.kart} ${b.ad} boş`).toBeGreaterThan(0);
       }
     }
-    expect(kartlar.reduce((s, p) => s + p.yerlesim.boards.length, 0)).toBe(129);
+    expect(kartlar.reduce((s, p) => s + p.yerlesim.boards.length, 0)).toBe(134);
+  });
+
+  it("CPU kartı modül modül: her board'da düzendeki gruplar; R0–R7 her biri kendi board'unda, düşük bayt solda; bir grubun board'ları yan yana", () => {
+    const p = kartlar.find((x) => x.kart === "cpu")!;
+    const t = panoTanimi("cpu");
+    const grubu = new Map<string, string>();
+    for (const g of kartMetinleri("cpu").gruplar) for (const r of refleriAc(g.refs)) grubu.set(r, g.id);
+    const grupBoardlari = new Map<string, Set<number>>();
+    for (const b of p.yerlesim.boards) {
+      expect(b.gruplar, b.ad).toEqual(t.duzen![b.by][b.bx].split(" "));
+      const cipler = p.yerlesim.parcalar.filter((q) => q.board === b.no && q.cipMi);
+      const gs = new Set(cipler.map((q) => grubu.get(q.ref)!));
+      // her çip board'un gruplarından birinde; düzendeki her grubun bu board'da çipi var
+      expect([...gs].every((g) => b.gruplar!.includes(g)), `${b.ad}: ${[...gs].join(", ")}`).toBe(true);
+      expect(b.gruplar!.every((g) => gs.has(g)), `${b.ad}: ${b.gruplar!.join(", ")}`).toBe(true);
+      for (const g of gs) grupBoardlari.set(g, new Set([...(grupBoardlari.get(g) ?? []), b.no]));
+      // tek gruplu board'da çipler referans sırasıyla soldan sağa
+      if (b.gruplar!.length === 1) {
+        const sira = [...cipler].sort((a, c) => a.sutun - c.sutun).map((q) => Number(q.ref.slice(1)));
+        expect(sira, b.ad).toEqual([...sira].sort((a, c) => a - c));
+      }
+    }
+    for (let r = 0; r < 8; r++) {
+      const bs = [...grupBoardlari.get(`r${r}`)!];
+      expect(bs.length, `r${r}`).toBe(1);
+      expect(p.yerlesim.boards[bs[0]].gruplar, `r${r}`).toEqual([`r${r}`]);
+    }
+    // birden çok board'a yayılan grubun her board'unun yanında (sağda, solda, önde ya da arkada) aynı gruptan bir board var
+    for (const [g, bs] of grupBoardlari) {
+      if (bs.size < 2) continue;
+      for (const n of bs) {
+        const b = p.yerlesim.boards[n];
+        const komsu = [...bs].some((m) => m !== n && Math.abs(p.yerlesim.boards[m].bx - b.bx) + Math.abs(p.yerlesim.boards[m].by - b.by) === 1);
+        expect(komsu, `${g}: ${b.ad}`).toBe(true);
+      }
+    }
   });
 
   it("her panoda bir şerit kablo uyarlayıcısı: 64 bacak, tek numaralılar f, çiftler e satırında, 32 ardışık sütunda", () => {
@@ -162,11 +199,13 @@ describe("panolar: kurallar", () => {
     expect(cpuRenkTanimi("sari").grup).toMatch(/adres/i);
   });
 
-  it(`tel boyu: bütün makinede tellerin %97'si ${EN_UZUN_TEL} mm'den kısa; kesim boyu delikten deliğe + iki uç`, () => {
+  it(`tel boyu: bütün makinede tellerin %94'ü ${EN_UZUN_TEL} mm'den kısa; kesim boyu delikten deliğe + iki uç`, () => {
     const tel = kartlar.flatMap((p) => p.teller);
     const asan = tel.filter((t) => t.uzunluk > EN_UZUN_TEL).length;
-    expect(asan / tel.length).toBeLessThan(0.03);
-    for (const p of kartlar) expect(p.teller.filter((t) => t.uzunluk > EN_UZUN_TEL).length / p.teller.length, p.kart).toBeLessThan(0.05);
+    expect(asan / tel.length).toBeLessThan(0.06);
+    // CPU kartı modül modül dizili (R0–R7, ALU dilimleri, sabit birimi her biri kendi board'unda): veriyolu
+    // ve kontrol hatları board'dan board'a gider, uzun tel payı öteki kartlarınkinin iki katı
+    for (const p of kartlar) expect(p.teller.filter((t) => t.uzunluk > EN_UZUN_TEL).length / p.teller.length, p.kart).toBeLessThan(p.kart === "cpu" ? 0.1 : 0.05);
     for (const t of tel) expect(t.kesim).toBe(Math.ceil(t.uzunluk + 16));
     // ölçüler teller kadar
     for (const p of kartlar) {

@@ -202,7 +202,7 @@ function harita(m: MakineBbPlani, p: KartBbPlani): string {
     const x = haritaX(b.bx), yy = haritaY(b.by);
     s.push(`<rect x="${x}" y="${yy}" width="${W}" height="${H}" rx="1" fill="${ASAMA_RENGI[b.asama - 1]}" stroke="#777" stroke-width="0.25"/>`);
     s.push(`<text x="${x + 1.5}" y="${yy + 4}" font-size="3.2" font-weight="700" fill="#333">${b.ad}</text>`);
-    const gruplar = boardGruplari(b.no, y, k, W - 3, 2.2);
+    const gruplar = boardGruplari(p.kart, b.no, y, k, W - 3, 2.2);
     (gruplar.length ? gruplar : [b.rol.length > 34 ? `${b.rol.slice(0, 33)}…` : b.rol]).forEach((t, i) => s.push(`<text x="${x + 1.5}" y="${yy + 7.7 + 2.9 * i}" font-size="2.2" fill="#333">${esc(t)}</text>`));
     const parcalar = y.parcalar.filter((q) => q.board === b.no);
     const cipler = parcalar.filter((q) => q.cipMi).length;

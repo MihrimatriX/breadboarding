@@ -34,7 +34,7 @@ yalnızca HTML yazılır, HTML tarayıcıda açılıp "Yazdır → PDF" ile bas�
 ## Kartlar ve yollar
 
 Deneyler (1–8) breadboard'da kurulur; tam bilgisayar PCB'de (kartlar KiCad şemalarından, çipler
-soketlerde) ya da breadboard panolarında ([breadboard.md](breadboard.md): yedi pano, 129 board, şerit
+soketlerde) ya da breadboard panolarında ([breadboard.md](breadboard.md): yedi pano, 134 board, şerit
 kablo). Bu belgelerin tel listesi pinden pinedir: deneylerin breadboard'unda takılacak teller, PCB'de
 bip testi listesi. Breadboard panolarının delikten deliğe tel listesi breadboard belgelerindedir.
 

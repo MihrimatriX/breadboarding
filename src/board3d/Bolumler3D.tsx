@@ -4,8 +4,10 @@
 // Çizim: bütün çerçeveler tek bir kalın çizgi ağında (ekran pikseliyle kalınlık), bütün plakalar tek
 // bir ağda (yazılar bir dokuya bir kez çizilir); ikisi de derinlik sınamasız, her şeyin üstünde.
 // Plakalar kameradan uzaklığa göre belirir ve kaybolur (LOD): yazı ekranda okunacak kadar büyükken
-// görünür, yaklaştıkça yazı ekranda 30 pikseli geçmesin diye küçülür; ayrıntılı kipte kenar etiketleri
-// gelince söner (çiplerin üstünü örtmesin).
+// görünür, yaklaştıkça yazı ekranda 30 pikseli geçmesin diye küçülür. Breadboard'da üç kat: uzaktan
+// bölge plakaları ("REGISTER DOSYASI"), yaklaşınca onların yerine her board'un modül plakaları ("R0",
+// "TOPLAYICI"), daha da yaklaşınca (ayrıntılı kipte) kenar etiketleri; PCB'de bölge (blok) plakaları
+// kenar etiketleri gelince söner (çiplerin üstünü örtmesin).
 // Plakaya tıklamak bölümü seçer ve kamerayı ona götürür; üstüne gelince görevi ipucunda.
 //
 // Kenar etiketleri (yalnız ayrıntılı kipte, yakından): her karede kamera değiştiyse ekranda görünen çip
@@ -207,17 +209,23 @@ function Dolgu({ alanlar, renk }: { alanlar: Kutu[]; renk: string }) {
 
 // ---------------------------------------------------------------- plakalar
 
-/** Doku pikseli / yazı yüksekliği */
-const U = 72;
+/** Doku pikseli / yazı yüksekliği: bölge ve kart plakaları; modül plakaları (ekranda daha küçük, çok sayıda) */
+const U_BOLGE = 72;
+const U_MODUL = 40;
 
-/** Plakaları bir dokuya çizer (raf yerleşimi) ve hepsini tek ağda toplar */
-function plakaAgi(plakalar: Plaka[], w: Dunya): { geo: BufferGeometry; doku: CanvasTexture; alfa: Float32Array } {
+/**
+ * Plakaları bir dokuya çizer (raf yerleşimi; aynı yazı ve renkteki plakalar dokuda bir kez) ve hepsini
+ * tek ağda toplar
+ */
+function plakaAgi(plakalar: Plaka[], w: Dunya, U: number): { geo: BufferGeometry; doku: CanvasTexture; alfa: Float32Array } {
   const EN = 2048;
-  const yer: { x: number; y: number; w: number; h: number }[] = [];
+  const hucreler = new Map<string, { x: number; y: number; w: number; h: number; p: Plaka }>();
+  const anahtar = (p: Plaka) => `${p.renk}|${p.satirlar.join("\n")}|${(p.w / p.h).toFixed(3)}`;
   let x = 0;
   let y = 0;
   let raf = 0;
   for (const p of plakalar) {
+    if (hucreler.has(anahtar(p))) continue;
     const pw = Math.min(EN, Math.ceil((p.w / p.h) * U) + 4);
     const ph = Math.ceil((p.d / p.h) * U) + 4;
     if (x + pw > EN) {
@@ -225,10 +233,11 @@ function plakaAgi(plakalar: Plaka[], w: Dunya): { geo: BufferGeometry; doku: Can
       y += raf;
       raf = 0;
     }
-    yer.push({ x, y, w: pw, h: ph });
+    hucreler.set(anahtar(p), { x, y, w: pw, h: ph, p });
     x += pw;
     raf = Math.max(raf, ph);
   }
+  const yer = plakalar.map((p) => hucreler.get(anahtar(p))!);
   const cv = document.createElement("canvas");
   cv.width = EN;
   cv.height = Math.max(4, y + raf);
@@ -237,8 +246,7 @@ function plakaAgi(plakalar: Plaka[], w: Dunya): { geo: BufferGeometry; doku: Can
     g.beginPath();
     g.roundRect(ox, oy, pw, ph, r);
   };
-  plakalar.forEach((p, i) => {
-    const { x: ox0, y: oy0, w: pw0, h: ph0 } = yer[i];
+  for (const { x: ox0, y: oy0, w: pw0, h: ph0, p } of hucreler.values()) {
     const [ox, oy, pw, ph] = [ox0 + 2, oy0 + 2, pw0 - 4, ph0 - 4];
     const r = Math.min(0.3 * U, ph / 4);
     g.save();
@@ -262,7 +270,7 @@ function plakaAgi(plakalar: Plaka[], w: Dunya): { geo: BufferGeometry; doku: Can
       // büyük harflerin ortası satırın ortasında (büyük harf yüksekliği ≈ 0,7 em)
       g.fillText(t, ox + (PLAKA.serit + PLAKA.solBosluk) * U, orta + 0.35 * U);
     });
-  });
+  }
   const n = plakalar.length;
   const pos = new Float32Array(n * 12);
   const uv = new Float32Array(n * 8);
@@ -295,7 +303,7 @@ function plakaAgi(plakalar: Plaka[], w: Dunya): { geo: BufferGeometry; doku: Can
 }
 
 /** Plaka yazısının ekrandaki en büyük yüksekliği (px): daha yakında plaka küçülür */
-const PLAKA_EN_BUYUK = { bolge: 30, kart: 40 } as const;
+const PLAKA_EN_BUYUK = { bolge: 30, kart: 40, modul: 22 } as const;
 
 const egri = (a: number, b: number, x: number) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
@@ -308,13 +316,26 @@ const ileri = new Vector3();
 /** Ekranın dikey pikseli / dünya birimi, bir birim uzaklıkta */
 const odakPikseli = (camera: PerspectiveCamera, yukseklik: number) => (yukseklik / 2 / Math.tan((camera.fov * Math.PI) / 360)) * camera.zoom;
 
-function Plakalar({ s }: { s: SahneBolumleri }) {
+/**
+ * Plakaların saydamlığı, ekranda milimetre başına piksele göre (yazının okunurluğu ayrıca). Modül
+ * plakası olan sahnede (breadboard) bölge plakaları yaklaşınca modüllere bırakır, modüller daha da
+ * yaklaşınca (ayrıntılı kipte) kenar etiketlerine.
+ */
+function plakaSaydamligi(tur: Plaka["tur"], pikselMm: number, kip: EtiketKipi, moduller: boolean): number {
+  if (tur === "kart") return 1;
+  if (tur === "modul") return egri(1.0, 1.4, pikselMm) * (1 - (kip === "ayrintili" ? egri(3.2, 4.2, pikselMm) : egri(5, 7, pikselMm)));
+  if (moduller) return 1 - egri(0.95, 1.35, pikselMm);
+  return 1 - (kip === "ayrintili" ? egri(1.6, 2.5, pikselMm) : egri(4, 6, pikselMm));
+}
+
+function Plakalar({ s, plakalar, u }: { s: SahneBolumleri; plakalar: Plaka[]; u: number }) {
   const { w } = useDunya();
   const kip = useBolum((x) => x.kip);
   const bbKurulum = useBbKurulum((x) => x.acik);
   const pcbKurulum = useKurulum((x) => x.acik);
   const kurulum = bbKurulum || pcbKurulum;
-  const ag = useMemo(() => plakaAgi(s.plakalar, w), [s, w]);
+  const moduller = s.modulPlakalari.length > 0;
+  const ag = useMemo(() => plakaAgi(plakalar, w, u), [plakalar, w, u]);
   const mat = useMemo(() => new MeshBasicMaterial({ map: ag.doku, transparent: true, depthTest: false, depthWrite: false, vertexColors: true, side: DoubleSide }), [ag]);
   useEffect(() => () => {
     ag.geo.dispose();
@@ -336,12 +357,12 @@ function Plakalar({ s }: { s: SahneBolumleri }) {
     };
     return m;
   }, [ag, mat]);
-  const merkez = useMemo(() => s.plakalar.map((p) => {
+  const merkez = useMemo(() => plakalar.map((p) => {
     const [x, z] = w(p.x, p.y);
     return new Vector3(x, PLAKA_Y, z);
-  }), [s, w]);
+  }), [plakalar, w]);
   // plakanın ölçeği: yaklaşınca yazı ekranda en çok PLAKA_EN_BUYUK piksel kalır (bölgenin üstünü örtmesin)
-  const olcek = useMemo(() => new Float32Array(s.plakalar.length).fill(1), [s]);
+  const olcek = useMemo(() => new Float32Array(plakalar.length).fill(1), [plakalar]);
   useFrame(({ camera, size }) => {
     const cam = camera as PerspectiveCamera;
     const f = odakPikseli(cam, size.height);
@@ -350,16 +371,15 @@ function Plakalar({ s }: { s: SahneBolumleri }) {
     const konum = ag.geo.getAttribute("position") as BufferAttribute;
     let degisti = false;
     let tasindi = false;
-    s.plakalar.forEach((p, i) => {
+    plakalar.forEach((p, i) => {
       const derinlik = tmpV.copy(merkez[i]).sub(cam.position).dot(ileri);
       let a = 0;
       if (!kurulum && derinlik > 0.1) {
         const pikselMm = (f * S) / derinlik;
         const yazi = p.h * pikselMm;
-        // ekranda okunamayacak kadar küçük plaka gösterilmez; ayrıntılı kipte kenar etiketleri gelince söner
-        a = egri(9, 12, yazi);
-        if (p.tur !== "kart") a *= 1 - (kip === "ayrintili" ? egri(1.6, 2.5, pikselMm) : egri(4, 6, pikselMm));
-        const k = Math.min(1, PLAKA_EN_BUYUK[p.tur === "kart" ? "kart" : "bolge"] / yazi);
+        // ekranda okunamayacak kadar küçük plaka gösterilmez; yaklaşınca bir alt kata bırakır
+        a = egri(9, 12, yazi) * plakaSaydamligi(p.tur, pikselMm, kip, moduller);
+        const k = Math.min(1, PLAKA_EN_BUYUK[p.tur === "kart" ? "kart" : p.tur === "modul" ? "modul" : "bolge"] / yazi);
         if (Math.abs(k - olcek[i]) > 0.01) {
           olcek[i] = k;
           const hw = (p.w * S * k) / 2;
@@ -378,7 +398,7 @@ function Plakalar({ s }: { s: SahneBolumleri }) {
     if (degisti) renk.needsUpdate = true;
     if (tasindi) konum.needsUpdate = true;
   });
-  const plakaId = (e: ThreeEvent<PointerEvent | MouseEvent>) => s.plakalar[e.instanceId ?? -1]?.id ?? null;
+  const plakaId = (e: ThreeEvent<PointerEvent | MouseEvent>) => plakalar[e.instanceId ?? -1]?.id ?? null;
   return (
     <primitive
       object={mesh}
@@ -473,8 +493,8 @@ export const useKenar = create<KenarDurumu>(() => ({ etiketler: [] }));
 
 /** Kenar kutusunun boyu, aralarındaki boşluk, sütunların ekran kenarına uzaklığı ve tahmini eni (px; yazı boyutuyla büyür) */
 export const KUTU = { h: 30, ara: 6, kenar: 14, en: 216 } as const;
-/** Kenar etiketleri çiplerin ekranda en az bu kadar büyük olduğu yerde (piksel / mm) */
-const KENAR_ESIGI = 1.3;
+/** Kenar etiketleri çiplerin ekranda en az bu kadar büyük olduğu yerde (piksel / mm); breadboard'da modül plakaları sönünce */
+const KENAR_ESIGI = { pcb: 1.3, modul: 3.4 } as const;
 /** Bir sütunda en çok bu kadar kenar etiketi: ekranın ortasına en yakın gruplar */
 const SUTUN_EN_COK = 8;
 
@@ -557,6 +577,7 @@ function KenarHesabi({ s }: { s: SahneBolumleri }) {
     if (durum.anahtar !== "" && imza.length === durum.imza.length && imza.every((v, i) => v === durum.imza[i]) && secili === durum.secili) return;
     durum.imza = imza;
     durum.secili = secili;
+    const esik = s.modulPlakalari.length ? KENAR_ESIGI.modul : KENAR_ESIGI.pcb;
     const merkezX = W / 2;
     const merkezY = H / 2;
     const adaylar: { g: GrupYeri; gorunen: { kose: [number, number][]; orta: [number, number] }[]; ax: number; ay: number; oncelik: number }[] = [];
@@ -571,7 +592,7 @@ function KenarHesabi({ s }: { s: SahneBolumleri }) {
         pikselMm = Math.max(pikselMm, (f * S) / derinlik);
         gorunen.push({ orta, kose: p.kose.map(ekran) });
       }
-      if (!gorunen.length || pikselMm < KENAR_ESIGI) continue;
+      if (!gorunen.length || pikselMm < esik) continue;
       const ax = gorunen.reduce((a, p) => a + p.orta[0], 0) / gorunen.length;
       const ay = gorunen.reduce((a, p) => a + p.orta[1], 0) / gorunen.length;
       adaylar.push({ g, gorunen, ax, ay, oncelik: g.id === secili ? -1 : Math.hypot(ax - merkezX, (ay - merkezY) * 1.3) });
@@ -676,7 +697,8 @@ export function Bolumler3D() {
       {kip !== "kapali" && (
         <>
           <Cerceveler s={s} />
-          <Plakalar s={s} />
+          <Plakalar s={s} plakalar={s.plakalar} u={U_BOLGE} />
+          {s.modulPlakalari.length > 0 && <Plakalar s={s} plakalar={s.modulPlakalari} u={U_MODUL} />}
           <KenarHesabi s={s} />
         </>
       )}
