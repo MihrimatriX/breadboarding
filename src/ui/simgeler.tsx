@@ -50,6 +50,12 @@ const YOLLAR = {
   genislet: <path d="M3.5 7.5v-4h4M16.5 7.5v-4h-4M3.5 12.5v4h4M16.5 12.5v4h-4" />,
   daralt: <path d="M7.5 3.5v4h-4M12.5 3.5v4h4M7.5 16.5v-4h-4M12.5 16.5v-4h4" />,
   daha: <path d="M5 10h.01M10 10h.01M15 10h.01" strokeWidth="2.6" />,
+  dil: (
+    <>
+      <circle cx="10" cy="10" r="7" />
+      <path d="M3 10h14M10 3c1.9 2.1 2.8 4.4 2.8 7s-.9 4.9-2.8 7c-1.9-2.1-2.8-4.4-2.8-7S8.1 5.1 10 3z" />
+    </>
+  ),
 } satisfies Record<string, ReactNode>;
 
 export type SimgeAdi = keyof typeof YOLLAR;

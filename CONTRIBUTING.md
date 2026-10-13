@@ -40,7 +40,7 @@ netlist'i ve şema PDF'leri), `g++` ve `python3` (EEPROM programlayıcısı), `p
    `Zamanlama: bütün anakartın analizi; 74AC ailesi seçeneği`).
 3. Göndermeden önce:
    ```bash
-   npm run check        # tsc -b + vitest (721 test, ≈ 1 dakika)
+   npm run check        # tsc -b + vitest (760 test, ≈ 1 dakika)
    npm run build        # üretim derlemesi
    ```
    Kart, mikrokod ya da deney tanımı değiştiyse önce üretilen dosyaları yenile
@@ -91,7 +91,9 @@ rehberleri).
 
 ### Kod biçimi
 
-- **Dil:** belgeler, yorumlar, arayüz metinleri ve commit mesajları Türkçe. Yeni kodda tanımlayıcılar
+- **Dil:** yorumlar ve commit mesajları Türkçe. Arayüz metinleri iki dilli: `t("Durdur", "Stop")`
+  (`src/ui/ceviri.ts`, ayrıntı `src/CLAUDE.md`). Belgelerin asıl hâli Türkçe, İngilizcesi yanında
+  (`spec.md` → `spec.en.md`); Türkçe belgeyi değiştirince İngilizcesini de güncelle. Yeni kodda tanımlayıcılar
   da çoğunlukla Türkçe (`kurulumPlani`, `buildKybCard`'daki `b.block = "Adres çözme"`, `HesapSim`,
   `sinyalSinifi`); eski kısımlarda (6502 tarafı, emülatörün çekirdeği) İngilizce. Değiştirdiğin
   dosyanın diline uy, bir dosyanın içinde dili karıştırma.

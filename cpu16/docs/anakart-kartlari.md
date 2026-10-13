@@ -166,7 +166,7 @@ olmadığı için yerlerini 4 × 62256 ve 28C256 aldı (AFU kararı, [spec.md](s
    önbellek kartlarında oynatılır. Her erişimde okunan değer, bekleme turu sayısı, bank register'ları,
    sayaçlar ve CACHE_CTRL; sonda EEPROM (iç durumu dahil), 128 KB RAM, 1024 etiket ve geçerli
    satırların verisi karşılaştırılır. Senaryolar: BIOS açılışı ("> " istemine kadar, ≈ 59 000 erişim),
-   monitör komutları (C, C 0 / C 1, W, D, B, I — EEPROM yazma koruması), F komutuyla Intel HEX → EEPROM
+   monitör komutları (C, C 0 / C 1, W, D, B ve EEPROM yazma korumasını sınayan I), F komutuyla Intel HEX → EEPROM
    (korumalı sayfa yazması, DATA yoklaması), 64 bank + bank register'ları + RAM/EEPROM/boş bölge
    gözetleme + önbellek kapalı/açık + sayaç taşması + EEPROM yazması, 1 MB fiziksel harita: EEPROM,
    boş alan 0xFF, RAM (önbellek açık ve kapalı). EEPROM'un zamanı kartı süren düzeneğin saatidir;

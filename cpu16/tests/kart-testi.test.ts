@@ -5,7 +5,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { buildBios } from "../bios/build.ts";
-import { beklenenCiktilar, kartTesti, kartTestProgramlari, simMakinesi } from "../bios/kart-testi.ts";
+import { beklenenCiktilar, ilkFark, kartTesti, kartTestProgramlari, simMakinesi, sonucMetni } from "../bios/kart-testi.ts";
 import { MachineLink } from "../bios/simlink.ts";
 import { loadLib } from "../cc/node.ts";
 
@@ -47,5 +47,16 @@ describe("Faz 9: kart testi (UART üzerinden simülatörle karşılaştırma)", 
     const sonuc = await kartTesti(link, programlar, beklenen);
     expect(sonuc.map((s) => s.ok)).toEqual([true, true, true, false]);
     expect(sonuc[3].mesaj).toMatch(/^satır 3: beklenen "VRAM: 2400 hucre yazildi ve okundu", gelen "VRAM: \d+ hucre hatali, ilki \d+"$/);
+  });
+
+  it("İngilizce arayüz: fark ve özet İngilizce, Türkçe varsayılan değişmedi", () => {
+    expect(ilkFark("a\nb", "a\nc", "en")).toBe('line 2: expected "b", got "c"');
+    expect(ilkFark("a", "a\nx", "en")).toBe('line 2: expected "(none)", got "x"');
+    expect(ilkFark("a\nb", "a\nc")).toBe('satır 2: beklenen "b", gelen "c"');
+    const sonuc = programlar.map((p, i) => ({ ad: p.ad, ok: i > 0, beklenen: "", gelen: "", mesaj: i > 0 ? "" : "fark" }));
+    const en = sonucMetni(programlar, sonuc, "en").split("\n");
+    expect(en[0]).toMatch(/^FAIL {3}/);
+    expect(en.at(-1)).toBe(`${programlar.length - 1}/${programlar.length} tests passed`);
+    expect(sonucMetni(programlar, sonuc).split("\n").at(-1)).toBe(`${programlar.length - 1}/${programlar.length} test geçti`);
   });
 });

@@ -1,37 +1,40 @@
 // Pasif elemanların değerleri ve okunuşları: direnç renk bantları, seramik kondansatör kodu ("104"),
 // direnç dizisi kodu ("A103J"), LED akımı. Saf fonksiyonlar: 3D görünüm (bant renkleri, gövde
-// yazıları), bilgi paneli ve rehberin çizimleri (kit/gorseller) aynı tabloları kullanır.
+// yazıları), bilgi paneli ve rehberin çizimleri (kit/gorseller) aynı tabloları kullanır. Sayı ve birim
+// metinleri dili son parametre olarak alır (varsayılan Türkçe: rehber ve belgeler).
 
+import type { Dil } from "./bolum-bilgi.ts";
 import { PASSIVES } from "./passives.ts";
 
-// ---------------------------------------------------------------- sayı biçimi (Türkçe: ondalık virgül)
+// ---------------------------------------------------------------- sayı biçimi (Türkçe ondalık virgül, İngilizce nokta)
 
-/** En çok `basamak` ondalıkla, sondaki sıfırlar atılmış, virgüllü sayı */
-export function sayi(x: number, basamak = 2): string {
-  const r = Number(x.toFixed(basamak));
-  return String(r).replace(".", ",");
+/** En çok `basamak` ondalıkla, sondaki sıfırlar atılmış sayı: Türkçede virgüllü, İngilizcede noktalı */
+export function sayi(x: number, basamak = 2, dil: Dil = "tr"): string {
+  const r = String(Number(x.toFixed(basamak)));
+  return dil === "en" ? r : r.replace(".", ",");
 }
 
 /** 330 → "330 Ω", 1300 → "1,3 kΩ", 10 000 → "10 kΩ" */
-export function ohmMetni(ohm: number): string {
-  if (ohm >= 1e6) return `${sayi(ohm / 1e6)} MΩ`;
-  if (ohm >= 1e3) return `${sayi(ohm / 1e3)} kΩ`;
-  return `${sayi(ohm)} Ω`;
+export function ohmMetni(ohm: number, dil: Dil = "tr"): string {
+  if (ohm >= 1e6) return `${sayi(ohm / 1e6, 2, dil)} MΩ`;
+  if (ohm >= 1e3) return `${sayi(ohm / 1e3, 2, dil)} kΩ`;
+  return `${sayi(ohm, 2, dil)} Ω`;
 }
 
 /** 1e-7 → "100 nF", 1e-4 → "100 µF", 2.2e-11 → "22 pF" */
-export function faradMetni(f: number): string {
-  if (f >= 1e-6 - 1e-12) return `${sayi(f * 1e6)} µF`;
-  if (f >= 1e-9 - 1e-15) return `${sayi(f * 1e9)} nF`;
-  return `${sayi(f * 1e12)} pF`;
+export function faradMetni(f: number, dil: Dil = "tr"): string {
+  if (f >= 1e-6 - 1e-12) return `${sayi(f * 1e6, 2, dil)} µF`;
+  if (f >= 1e-9 - 1e-15) return `${sayi(f * 1e9, 2, dil)} nF`;
+  return `${sayi(f * 1e12, 2, dil)} pF`;
 }
 
-export const akimMetni = (a: number): string =>
-  Math.abs(a) >= 1e-3 ? `${sayi(a * 1e3, 1)} mA` : Math.abs(a) >= 1e-4 ? `${sayi(a * 1e3, 2)} mA` : `${sayi(a * 1e6, 0)} µA`;
-export const gucMetni = (w: number): string => (w >= 1 ? `${sayi(w, 2)} W` : `${sayi(w * 1e3, 1)} mW`);
-export const sureMetni = (s: number): string => (s >= 1 ? `${sayi(s, 2)} s` : s >= 1e-3 ? `${sayi(s * 1e3, 1)} ms` : `${sayi(s * 1e6, 1)} µs`);
-export const frekansMetni = (hz: number): string =>
-  hz >= 1e6 ? `${sayi(hz / 1e6, 3)} MHz` : hz >= 1e3 ? `${sayi(hz / 1e3, 2)} kHz` : `${sayi(hz, 1)} Hz`;
+export const akimMetni = (a: number, dil: Dil = "tr"): string =>
+  Math.abs(a) >= 1e-3 ? `${sayi(a * 1e3, 1, dil)} mA` : Math.abs(a) >= 1e-4 ? `${sayi(a * 1e3, 2, dil)} mA` : `${sayi(a * 1e6, 0, dil)} µA`;
+export const gucMetni = (w: number, dil: Dil = "tr"): string => (w >= 1 ? `${sayi(w, 2, dil)} W` : `${sayi(w * 1e3, 1, dil)} mW`);
+export const sureMetni = (s: number, dil: Dil = "tr"): string =>
+  s >= 1 ? `${sayi(s, 2, dil)} s` : s >= 1e-3 ? `${sayi(s * 1e3, 1, dil)} ms` : `${sayi(s * 1e6, 1, dil)} µs`;
+export const frekansMetni = (hz: number, dil: Dil = "tr"): string =>
+  hz >= 1e6 ? `${sayi(hz / 1e6, 3, dil)} MHz` : hz >= 1e3 ? `${sayi(hz / 1e3, 2, dil)} kHz` : `${sayi(hz, 1, dil)} Hz`;
 
 // ---------------------------------------------------------------- renk kodu (IEC 60062)
 
@@ -41,6 +44,8 @@ export type BantRenk =
 export interface RenkKodu {
   renk: BantRenk;
   ad: string;
+  /** İngilizce adı */
+  en: string;
   /** çizimdeki renk */
   hex: string;
   /** üstündeki yazının rengi (renk örneği kutularında) */
@@ -53,18 +58,18 @@ export interface RenkKodu {
 }
 
 export const RENK_KODU: RenkKodu[] = [
-  { renk: "siyah", ad: "siyah", hex: "#1d1d1f", yazi: "#ffffff", rakam: 0, us: 0 },
-  { renk: "kahverengi", ad: "kahverengi", hex: "#7a4522", yazi: "#ffffff", rakam: 1, us: 1, tolerans: 1 },
-  { renk: "kirmizi", ad: "kırmızı", hex: "#d4282c", yazi: "#ffffff", rakam: 2, us: 2, tolerans: 2 },
-  { renk: "turuncu", ad: "turuncu", hex: "#f27a12", yazi: "#1d1d1f", rakam: 3, us: 3 },
-  { renk: "sari", ad: "sarı", hex: "#f5d31a", yazi: "#1d1d1f", rakam: 4, us: 4 },
-  { renk: "yesil", ad: "yeşil", hex: "#2e9a45", yazi: "#ffffff", rakam: 5, us: 5, tolerans: 0.5 },
-  { renk: "mavi", ad: "mavi", hex: "#2659cc", yazi: "#ffffff", rakam: 6, us: 6, tolerans: 0.25 },
-  { renk: "mor", ad: "mor", hex: "#7d3cba", yazi: "#ffffff", rakam: 7, us: 7, tolerans: 0.1 },
-  { renk: "gri", ad: "gri", hex: "#8b8d90", yazi: "#1d1d1f", rakam: 8, us: 8, tolerans: 0.05 },
-  { renk: "beyaz", ad: "beyaz", hex: "#f3f3f0", yazi: "#1d1d1f", rakam: 9, us: 9 },
-  { renk: "altin", ad: "altın", hex: "#c8a03c", yazi: "#1d1d1f", us: -1, tolerans: 5 },
-  { renk: "gumus", ad: "gümüş", hex: "#b9bec4", yazi: "#1d1d1f", us: -2, tolerans: 10 },
+  { renk: "siyah", ad: "siyah", en: "black", hex: "#1d1d1f", yazi: "#ffffff", rakam: 0, us: 0 },
+  { renk: "kahverengi", ad: "kahverengi", en: "brown", hex: "#7a4522", yazi: "#ffffff", rakam: 1, us: 1, tolerans: 1 },
+  { renk: "kirmizi", ad: "kırmızı", en: "red", hex: "#d4282c", yazi: "#ffffff", rakam: 2, us: 2, tolerans: 2 },
+  { renk: "turuncu", ad: "turuncu", en: "orange", hex: "#f27a12", yazi: "#1d1d1f", rakam: 3, us: 3 },
+  { renk: "sari", ad: "sarı", en: "yellow", hex: "#f5d31a", yazi: "#1d1d1f", rakam: 4, us: 4 },
+  { renk: "yesil", ad: "yeşil", en: "green", hex: "#2e9a45", yazi: "#ffffff", rakam: 5, us: 5, tolerans: 0.5 },
+  { renk: "mavi", ad: "mavi", en: "blue", hex: "#2659cc", yazi: "#ffffff", rakam: 6, us: 6, tolerans: 0.25 },
+  { renk: "mor", ad: "mor", en: "violet", hex: "#7d3cba", yazi: "#ffffff", rakam: 7, us: 7, tolerans: 0.1 },
+  { renk: "gri", ad: "gri", en: "gray", hex: "#8b8d90", yazi: "#1d1d1f", rakam: 8, us: 8, tolerans: 0.05 },
+  { renk: "beyaz", ad: "beyaz", en: "white", hex: "#f3f3f0", yazi: "#1d1d1f", rakam: 9, us: 9 },
+  { renk: "altin", ad: "altın", en: "gold", hex: "#c8a03c", yazi: "#1d1d1f", us: -1, tolerans: 5 },
+  { renk: "gumus", ad: "gümüş", en: "silver", hex: "#b9bec4", yazi: "#1d1d1f", us: -2, tolerans: 10 },
 ];
 
 const RENK = new Map(RENK_KODU.map((r) => [r.renk, r]));
@@ -157,11 +162,11 @@ export function ucHaneliKoduOku(kod: string): number {
 }
 
 /** Kodun açılımı: "104 = 10 × 10⁴ pF = 100 nF" */
-export function kodAcilimi(kod: string, birim: "pF" | "Ω"): string {
+export function kodAcilimi(kod: string, birim: "pF" | "Ω", dil: Dil = "tr"): string {
   const m = /^(\d\d)(\d)$/.exec(kod);
   if (!m) return kod;
   const v = ucHaneliKoduOku(kod);
-  const son = birim === "pF" ? faradMetni(v * 1e-12) : ohmMetni(v);
+  const son = birim === "pF" ? faradMetni(v * 1e-12, dil) : ohmMetni(v, dil);
   return `${kod} = ${m[1]} × ${usMetni(Number(m[2]))} ${birim} = ${son}`;
 }
 

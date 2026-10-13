@@ -2,7 +2,8 @@
 // makinesi) her bölgesi, her bloğu ve her çip grubu için kısa bir etiket, başlık, görev ve "nasıl
 // çalışır" metni. 3D görünüm (bölge çerçeveleri, kenar etiketleri, bölüm paneli) ve kurulum
 // belgeleri (pano haritası, "Bölümler" tablosu) bu modülden okur; metinler cpu16/board/bolum-metin.ts
-// ve hesap8/bolum-metin.ts'tedir.
+// ve hesap8/bolum-metin.ts'tedir. Her metnin İngilizcesi yanında (`en`): belgeler Türkçe alanları,
+// 3D görünüm seçili dildekini (bolumMetni, asamaAdi) okur.
 //
 // Hiyerarşi: kart → bölge (breadboard'da bir grup board) → blok (şemadaki işlev bloğu) → grup (aynı
 // işi yapan çipler, ör. bir register'ın iki 74HC574'ü) → parça. Her mantık çipi tam bir gruptadır
@@ -14,8 +15,11 @@ import { PANOLAR } from "../breadboard/panolar.ts";
 import { CPU16_METINLERI } from "./bolum-metin.ts";
 import { HESAP_ASAMALARI, HESAP_METINLERI } from "../../hesap8/bolum-metin.ts";
 
-/** Bir bölümün metni */
-export interface BolumMetni {
+/** Arayüz dili (src/ui/ceviri.ts'teki Dil ile aynı; cpu16 src'yi import edemez) */
+export type Dil = "tr" | "en";
+
+/** Bir bölüm metninin tek dildeki dört alanı */
+export interface DilMetni {
   /** kenar etiketi ve başlık plakası: kısa, BÜYÜK HARF (ör. "REGISTER R0") */
   etiket: string;
   /** cümle düzeninde başlık (ör. "Register r0") */
@@ -25,6 +29,20 @@ export interface BolumMetni {
   /** nasıl çalışır: iki-dört cümle, çipler ve sinyallerle */
   nasil: string;
 }
+
+/**
+ * Bir bölümün metni: Türkçe alanlar (kurulum belgeleri ve kit bunları okur) ve yanında İngilizcesi
+ * (3D görünüm seçili dile göre bolumMetni ile okur)
+ */
+export interface BolumMetni extends DilMetni {
+  en: DilMetni;
+}
+
+/** İngilizce metin, bolum-metin.ts yardımcılarının son argümanı: [etiket, başlık, görev, nasıl] */
+export type Ingilizce = [etiket: string, baslik: string, gorev: string, nasil: string];
+
+/** Bölümün seçili dildeki metni */
+export const bolumMetni = (b: BolumMetni, dil: Dil = "tr"): DilMetni => (dil === "en" ? b.en : b);
 
 /** Bir bölgenin metni; `bloklar`: bölgede kurulan bloklar (aşamalar bunlardan çıkar) */
 export interface BolgeMetni extends BolumMetni {
@@ -137,6 +155,40 @@ export function kartMetinleri(kart: string): KartMetinleri {
   return m;
 }
 
+/** Kurulum aşamalarının İngilizce adları (Türkçeleri pano tanımlarında: panolar.ts, hesap8/breadboard/yerlesim.ts) */
+const ASAMA_EN: Record<string, string> = {
+  "Taban, besleme ve şerit kablo uyarlayıcısı": "Base, power and ribbon cable adapter",
+  "Register dosyası ve iç veriyolu": "Register file and internal bus",
+  "ALU, geçici register'lar ve bayraklar": "ALU, temporary registers and flags",
+  "Program sayacı, MAR, IR ve bellek arayüzü": "Program counter, MAR, IR and memory interface",
+  "Kontrol birimi, sabit birimi ve durum LED'leri": "Control unit, immediate unit and status LEDs",
+  "Osilatör, reset ve butonlar": "Oscillator, reset and buttons",
+  "Saat üretimi, bekleme ve dağıtım": "Clock generation, wait states and distribution",
+  "Adres çözme ve bank register'ları": "Address decoding and bank registers",
+  "Bayt sıralayıcı, EEPROM ve RAM": "Byte sequencer, EEPROM and RAM",
+  "G/Ç çözme, bekleme ve sıralama": "I/O decoding, wait states and sequencing",
+  "Etiket ve veri belleği, sayaçlar": "Tag and data memory, counters",
+  "Adres çözme ve durum register'ları": "Address decoding and status registers",
+  "UART ve USB-seri modülü": "UART and USB serial module",
+  "Zamanlayıcı ve kesme denetleyicisi": "Timer and interrupt controller",
+  "PS/2 klavye": "PS/2 keyboard",
+  "Adres çözme, CPU arayüzü ve VRAM": "Address decoding, CPU interface and VRAM",
+  "Piksel saati, sayaçlar ve tarama": "Pixel clock, counters and scanning",
+  "Piksel yolu, imleç ve renk DAC'ı": "Pixel path, cursor and color DAC",
+  "Adres çözme ve veriyolu tamponu": "Address decoding and bus buffer",
+  "Bellek hücreleri": "Memory cells",
+  "Taban, besleme ve anahtarlar": "Base, power and switches",
+  "A sayısının göstergesi": "Display for A",
+  "B sayısının göstergesi": "Display for B",
+  "Toplama ve çıkarma": "Addition and subtraction",
+  "Çarpma": "Multiplication",
+  "Bölme": "Division",
+  "Sonuç seçici, sonuç ve kalan göstergeleri": "Result selector, result and remainder displays",
+};
+
+/** Aşamanın seçili dildeki adı (İngilizcesi tabloda yoksa Türkçesi; testler her aşamayı denetler) */
+export const asamaAdi = (a: Pick<BolumAsamasi, "ad">, dil: Dil = "tr"): string => (dil === "en" ? ASAMA_EN[a.ad] ?? a.ad : a.ad);
+
 function asamaBul(kart: string, blok: string): BolumAsamasi | null {
   if (kart === "hesap") {
     const a = HESAP_ASAMALARI.find((x) => x.bloklar.includes(blok));
@@ -220,7 +272,7 @@ export function bolumKatalogu(tur: "cpu16" | "hesap", board: Board): BolumKatalo
         ...kPasif.filter((p) => grupta.has(p.ref) || blokta(p.ref, p.block)).map((p) => p.ref),
       ];
       const asamaBloklari = gruplar ? [...new Set(refs.map(parcaBlogu))] : bloklar;
-      ekle({ etiket: m.etiket, baslik: m.baslik, gorev: m.gorev, nasil: m.nasil, id, tur: "bolge", kart, bolge: ad, refs, asamalar: asamalar(kart, asamaBloklari), ust: kartId, alt: [] });
+      ekle({ etiket: m.etiket, baslik: m.baslik, gorev: m.gorev, nasil: m.nasil, en: m.en, id, tur: "bolge", kart, bolge: ad, refs, asamalar: asamalar(kart, asamaBloklari), ust: kartId, alt: [] });
       if (tur === "cpu16") for (const b of bloklar) if (!bolgeOf.has(b)) bolgeOf.set(b, id);
     }
 
@@ -288,7 +340,7 @@ const ADSIZ_NET = /^(VCC|GND|U\d+\..*|[a-z]+\d*|n\d+)$/;
  * kısaltılmış (BUS0 … BUS15 → "BUS0–15"). VCC, GND ve adsız iç netler sayılmaz.
  * `en`: en çok kaç giriş (önce kalabalık veriyolları).
  */
-export function bolumSinyalleri(board: Board, refs: Iterable<string>, en = 14): string[] {
+export function bolumSinyalleri(board: Board, refs: Iterable<string>, en = 14, dil: Dil = "tr"): string[] {
   const ic = new Set(refs);
   const netler = new Set<number>();
   for (const c of board.chips) if (ic.has(c.ref)) for (const n of Object.values(c.nets)) netler.add(n);
@@ -301,11 +353,11 @@ export function bolumSinyalleri(board: Board, refs: Iterable<string>, en = 14): 
   for (const c of board.chips) bak(c.ref, Object.values(c.nets));
   for (const p of board.passives) if (!gruplanmazMi(p)) bak(p.ref, Object.values(p.pins));
   const adlar = [...disari].map((n) => board.netName(n)).filter((a) => a && !ADSIZ_NET.test(a));
-  return sinyalOzeti(adlar, en);
+  return sinyalOzeti(adlar, en, dil);
 }
 
 /** Ad listesini öneklerine göre kısalt: ["BUS0", "BUS1", "BUS3", "CLK"] → ["BUS0–1, 3", "CLK"] */
-export function sinyalOzeti(adlar: string[], en = 14): string[] {
+export function sinyalOzeti(adlar: string[], en = 14, dil: Dil = "tr"): string[] {
   const gruplar = new Map<string, number[]>();
   const tekler: string[] = [];
   for (const a of new Set(adlar)) {
@@ -336,6 +388,6 @@ export function sinyalOzeti(adlar: string[], en = 14): string[] {
   for (const t of tekler) out.push({ ad: t, n: 1 });
   out.sort((a, b) => b.n - a.n || a.ad.localeCompare(b.ad, "tr"));
   const sonuc = out.slice(0, en).map((x) => x.ad);
-  if (out.length > en) sonuc.push(`+${out.length - en} sinyal daha`);
+  if (out.length > en) sonuc.push(dil === "en" ? `+${out.length - en} more` : `+${out.length - en} sinyal daha`);
   return sonuc;
 }

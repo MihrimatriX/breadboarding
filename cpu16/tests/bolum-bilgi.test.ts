@@ -4,8 +4,11 @@
 
 import { describe, expect, it } from "vitest";
 import { buildFullMachineBoard } from "../board/machine-board.ts";
-import { anaBlok, bolumKatalogu, bolumleri, bolumSinyalleri, bolumZinciri, gruplanmazMi, kartMetinleri, refleriAc, sinyalOzeti, type BolumKatalogu } from "../board/bolum-bilgi.ts";
+import {
+  anaBlok, asamaAdi, bolumKatalogu, bolumleri, bolumMetni, bolumSinyalleri, bolumZinciri, gruplanmazMi, kartMetinleri, refleriAc, sinyalOzeti, type BolumKatalogu,
+} from "../board/bolum-bilgi.ts";
 import { PANOLAR } from "../breadboard/panolar.ts";
+import { HESAP_ASAMALARI } from "../../hesap8/bolum-metin.ts";
 import { buildHesapBoard } from "../../hesap8/kart.ts";
 import { bbPlani } from "../../hesap8/breadboard/plan.ts";
 import type { Board } from "../board/board.ts";
@@ -69,7 +72,32 @@ describe("bölüm kataloğu", () => {
         if (b.ust) expect(k.bolumler.get(b.ust)?.alt).toContain(b.id);
       }
     });
+
+    it(`${tur}: her metnin İngilizcesi dolu, etiketi BÜYÜK HARF ve kısa, içinde Türkçe kelime yok`, () => {
+      for (const b of k.bolumler.values()) {
+        expect(bolumMetni(b).etiket).toBe(b.etiket);
+        const e = bolumMetni(b, "en");
+        for (const alan of ["etiket", "baslik", "gorev", "nasil"] as const) expect(e[alan].trim().length, `${b.id}.en.${alan}`).toBeGreaterThan(0);
+        const birimsiz = e.etiket.replace(/\b[kM]Hz\b/g, "");
+        expect(birimsiz, b.id).toBe(birimsiz.toUpperCase());
+        expect(e.etiket.length, `${b.id}: ${e.etiket}`).toBeLessThanOrEqual(ETIKET_EN_UZUN);
+        expect(/[.?)]$/.test(e.gorev.trim()), `${b.id} görev cümlesi`).toBe(true);
+        expect(/[.?)]$/.test(e.nasil.trim()), `${b.id} nasıl cümlesi`).toBe(true);
+        const metin = [e.etiket, e.baslik, e.gorev, e.nasil].join(" ");
+        expect(metin, `${b.id}: uzun tire`).not.toMatch(/—/);
+        // küçük harfli Türkçe kelime çevrilmemiş metindir; sinyal adları (TOPLA, ÇIKAR) büyük harf kalır
+        expect(metin.split(/[^\p{L}\p{N}_~]+/u).filter((w) => /[çğıöşü]/.test(w)), b.id).toEqual([]);
+      }
+    });
   }
+
+  it("aşama adlarının İngilizcesi var", () => {
+    const asamalar = [...PANOLAR.flatMap((p) => p.asamalar), ...HESAP_ASAMALARI];
+    for (const a of asamalar) {
+      expect(asamaAdi(a)).toBe(a.ad);
+      expect(asamaAdi(a, "en"), a.ad).not.toBe(a.ad);
+    }
+  });
 
   it("CPU16: her breadboard bölgesinin metni var, aşamaları pano tanımındaki deneylerle", () => {
     const [, k] = katalog.cpu16;
@@ -130,6 +158,8 @@ describe("bölüm kataloğu", () => {
     expect(s).toContain("~ROE0");
     expect(s.join(" ")).not.toMatch(/\bVCC\b|\bGND\b/);
     expect(sinyalOzeti(["A0", "A1", "A2", "A5", "CLK"])).toEqual(["A0–2, 5", "CLK"]);
+    expect(sinyalOzeti(["A0", "B0", "CLK"], 2)).toEqual(["A0", "B0", "+1 sinyal daha"]);
+    expect(sinyalOzeti(["A0", "B0", "CLK"], 2, "en")).toEqual(["A0", "B0", "+1 more"]);
     expect(refleriAc("U1 U3-U5 D2")).toEqual(["U1", "U3", "U4", "U5", "D2"]);
   });
 });

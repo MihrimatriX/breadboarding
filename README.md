@@ -1,3 +1,5 @@
+[English](README.en.md)
+
 # breadboarding
 
 [![CI](https://github.com/MihrimatriX/breadboarding/actions/workflows/ci.yml/badge.svg)](https://github.com/MihrimatriX/breadboarding/actions/workflows/ci.yml)
@@ -288,7 +290,7 @@ Gerçek çiplerle kurmak isteyenler için sıra:
 ## Testler ve doğrulama
 
 ```bash
-npm test                                                  # bütün testler (721 test, ≈ 1 dakika)
+npm test                                                  # bütün testler (760 test, ≈ 1 dakika)
 npm run check                                             # tip denetimi + testler
 npx vitest run cpu16/tests/emu.test.ts                    # tek dosya
 npx vitest run cpu16/tests/cc-bios.test.ts -t "yılan"     # bir dosyada adı eşleşen testler

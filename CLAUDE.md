@@ -15,7 +15,9 @@ Yeni bir klasör, komut ya da kural eklenince bu dosyayı da güncelle; kısa ka
   PCB ve breadboard kurulum belgeleri.
 - **hesap8** (`hesap8/`): 74HC'den 8 bit dört işlem hesap makinesi; CPU16'nın parça kütüphanesini ve
   breadboard motorunu kullanır.
-- Sahibi AFU: PR'ları o inceler ve birleştirir. Belgeler, yorumlar, arayüz ve commit'ler Türkçe.
+- Sahibi AFU: PR'ları o inceler ve birleştirir. Yorumlar ve commit'ler Türkçe. Arayüz iki dilli
+  (Türkçe + İngilizce, `L` kısayolu; metinler `src/ui/ceviri.ts` ile çift yazılır). Belgelerin asıl hâli
+  Türkçe, İngilizcesi yanında (`spec.md` → `spec.en.md`); Türkçe belge değişince İngilizcesi de güncellenir.
 - Şu an nerede olduğumuz: [roadmap.md](cpu16/docs/roadmap.md)'nin en üstündeki "Şu an" satırı.
 
 ## Klasör haritası
@@ -41,7 +43,7 @@ Daha uzun harita: [README, Proje yapısı](README.md#proje-yapısı), [cpu16/REA
 ```bash
 npm ci && npm run dev                          # http://localhost:5173
 npx tsc -b                                     # tip denetimi (kullanılmayan değişken de hata)
-npx vitest run                                 # bütün testler: 721 test, ≈ 1 dakika
+npx vitest run                                 # bütün testler: 760 test, ≈ 1 dakika
 npx vitest run cpu16/tests/emu.test.ts -t "ad" # tek dosya, adı eşleşen testler
 npm run build                                  # üretim derlemesi (CI de koşar)
 npm run kontrast                               # tema renk karşıtlığı (arayüz rengi değişince)
@@ -69,7 +71,7 @@ npm run cpu16 -- machine x.s --cycles N < /dev/null   # bütün bilgisayar komut
 | yeni çip ya da pasif | `npm run cpu16 -- kicad-sym` | `cpu16/kicad/cpu16.kicad_sym` |
 | `cpu16/micro/cpu16.ucode` | `npm run cpu16 -- kontrol` | `cpu16/micro/cpu16-ucode.ts` |
 | kart tanımı, `cpu16/kit/deneyler.ts` | `npm run cpu16 -- kit` | `cpu16/kit/deney-*.md` otomatik bölümleri, `kit/gorseller/` |
-| kart tanımı, diyagram yerleşimi, tema renkleri | `npm run cpu16 -- mimari` | `cpu16/docs/img/mimari-*.svg`, `hesap8/docs/img/mimari-hesap.svg` |
+| kart tanımı, diyagram yerleşimi, tema renkleri | `npm run cpu16 -- mimari` | `cpu16/docs/img/mimari-*.svg`, `hesap8/docs/img/mimari-hesap.svg` (İngilizceleri `*.en.svg`) |
 | bir CPU16 kartının netlisti ya da pano tanımı | `npm run cpu16 -- breadboard --uret <kart>` (CPU ≈ 2,5 dakika) | `cpu16/breadboard/veri/<kart>.ts` |
 | hesap8 netlisti ya da yerleşimi | `npm run hesap8 -- breadboard --uret` | `hesap8/breadboard/veri.ts` |
 

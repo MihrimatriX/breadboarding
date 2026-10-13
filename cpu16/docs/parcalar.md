@@ -64,14 +64,15 @@ Güç verildiğinde flip-flopların değeri **bilinmiyor (X)** kabul edilir; ver
 | 74HC175 | DIP-16 | 4 | 145 | 4 × D flip-flop (ortak saat, asenkron reset) |
 | 74HC573 | DIP-20 | 17 | 210 | 8 bit şeffaf mandal (üç durumlu çıkış) |
 | 74HC574 | DIP-20 | 17 | 355 | 8 bit D flip-flop register (üç durumlu çıkış) |
-| 74HC273 | DIP-20 | 8 | 289 | 8 bit D flip-flop register (ortak asenkron reset) — bank register'ları |
+| 74HC273 | DIP-20 | 8 | 289 | 8 bit D flip-flop register (ortak asenkron reset): bank register'ları |
 | 74HC595 | DIP-16 | 25 | 643 | 8 bit seri giriş / paralel çıkış kaydırmalı register (çıkış mandallı) |
 | 74HC245 | DIP-20 | 20 | 144 | 8 bit çift yönlü veriyolu alıcı-vericisi |
 | 74HC541 | DIP-20 | 9 | 68 | 8 bit üç durumlu tampon (iki aktif düşük OE) |
-| 74HC4511 | DIP-16 | 37 | 368 | BCD'den 7 segmente kod çözücü / sürücü (mandallı, ortak katot) — 8 bit hesap makinesi (`hesap8/`) |
+| 74HC4511 | DIP-16 | 37 | 368 | BCD'den 7 segmente kod çözücü / sürücü (mandallı, ortak katot): 8 bit hesap makinesi (`hesap8/`) |
 | 62256 | DIP-28 | - | - | 32 KB statik RAM (32K × 8) |
 | 28C256 | DIP-28 | - | - | 32 KB paralel EEPROM (32K × 8, 5 V, bayt/sayfa yazma; 62256 ile aynı bacak düzeni) |
 | SST39SF010A | DIP-32 | - | - | 128 KB Flash (128K × 8, 5 V, komutla programlanır) |
+
 "Kapı" sayısında flip-flop ve mandal tek eleman sayılır; transistör sayısı onların açılmış halini içerir. Gerçek 74HC çiplerinde giriş koruma diyotları ve tamponlanmış çıkış katları da vardır, mantığı değiştirmedikleri için modellenmez; bu yüzden gerçek transistör sayısı biraz daha yüksektir.
 
 CPU16'da her çipin nerede kullanıldığı `usage` alanında ve KiCad sembolünün `CPU16_Kullanim` özelliğinde yazılı.

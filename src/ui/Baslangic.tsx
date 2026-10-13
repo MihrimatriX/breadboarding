@@ -1,12 +1,16 @@
-// Başlangıç paneli: ilk ziyarette sol altta açılan, sahneyi kapatmayan küçük bir tanıtım. Beş bölümü
-// birkaç cümleyle anlatır, fare ve klavye ipuçlarını verir. Üst çubuktaki "?" düğmesi ya da "?" tuşu
-// istendiği an yeniden açar. Kapatınca tarayıcı hatırlar; otomatik testlerde (navigator.webdriver)
-// kendiliğinden açılmaz ki ekran görüntülerinde sahneyi örtmesin.
+// Başlangıç paneli (uygulama içi kılavuz): ilk ziyarette sol altta açılan, sahneyi kapatmayan küçük bir
+// kutu. Solda altı bölümün listesi, sağda seçilenin tanıtımı ve 3-4 maddelik ilk adımları (metinler
+// kilavuz.ts'te, iki dilde); altta ortak kısayollar ve dil seçimi. Açılınca bulunulan bölüm seçili gelir;
+// listeden başka bir bölümü okuyup oradan o bölüme geçilebilir, panel açık kalır ki adımlar izlenebilsin.
+// Üst çubuktaki "?" düğmesi ya da "?" tuşu istendiği an yeniden açar. Kapatınca tarayıcı hatırlar;
+// otomatik testlerde (navigator.webdriver) kendiliğinden açılmaz ki ekran görüntülerinde sahneyi örtmesin.
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent as TusOlayi } from "react";
 import { create } from "zustand";
-import { BOLUMLER, type Mode } from "./ModeSwitch";
-import { Simge } from "./simgeler";
+import { BOLUMLER, bolum, type Mode } from "./ModeSwitch";
+import { Simge, type SimgeAdi } from "./simgeler";
+import { sec, useDil, useT } from "./ceviri";
+import { GIRIS, ILK_ADIMLAR, ORTAK_IPUCLARI, PANEL_IPUCU, parcala } from "./kilavuz";
 
 const ANAHTAR = "silikon3d.baslangic";
 
@@ -43,10 +47,23 @@ function yardimTusu(e: KeyboardEvent): boolean {
   return !el?.closest?.("input, textarea, select, [contenteditable], .vga-screen, #cpu16-vga, #cpu16-term");
 }
 
+/** Ters tırnaklı kılavuz metni: tırnak içleri <kbd> */
+function Metin({ m }: { m: string }) {
+  return <>{parcala(m).map((p, i) => (p.tus ? <kbd key={i}>{p.yazi}</kbd> : p.yazi))}</>;
+}
+
+const IPUCU_SIMGELERI: SimgeAdi[] = ["klavye", "dil"];
+
 export function Baslangic({ mode }: { mode: Mode }) {
   const acik = useBaslangic((s) => s.acik);
   const odakla = useBaslangic((s) => s.odakla);
   const kutu = useRef<HTMLDivElement>(null);
+  const liste = useRef<HTMLDivElement>(null);
+  const dil = useDil();
+  const t = useT();
+  // okunan bölüm: açılınca ve bölüm değişince bulunulan bölüm
+  const [secili, setSecili] = useState<Mode>(mode);
+  useEffect(() => setSecili(mode), [mode, acik]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -68,43 +85,84 @@ export function Baslangic({ mode }: { mode: Mode }) {
   }, [acik, odakla]);
 
   if (!acik) return null;
+
+  // bölüm listesi dikey sekmeler: yukarı / aşağı ok, Home, End
+  const okTusu = (e: TusOlayi<HTMLDivElement>) => {
+    const i = BOLUMLER.findIndex((b) => b.mode === secili);
+    const n = BOLUMLER.length;
+    const j = e.key === "ArrowDown" ? (i + 1) % n : e.key === "ArrowUp" ? (i + n - 1) % n : e.key === "Home" ? 0 : e.key === "End" ? n - 1 : -1;
+    if (j < 0) return;
+    e.preventDefault();
+    setSecili(BOLUMLER[j].mode);
+    liste.current?.querySelector<HTMLButtonElement>(`[data-bolum="${BOLUMLER[j].mode}"]`)?.focus();
+  };
+
+  const b = bolum(secili);
+  const ad = sec(b.ad, dil);
   return (
     <div className="baslangic" role="dialog" aria-modal="false" aria-labelledby="baslangic-baslik" tabIndex={-1} ref={kutu}>
       <div className="bs-bas">
         <div>
-          <p className="bs-ust">Başlangıç</p>
-          <h2 id="baslangic-baslik">Silikon3D'ye hoş geldin</h2>
+          <p className="bs-ust">{t("Başlangıç", "Getting started")}</p>
+          <h2 id="baslangic-baslik">{t("Silikon3D'ye hoş geldin", "Welcome to Silikon3D")}</h2>
         </div>
-        <button className="icon-btn" onClick={baslangiciKapat} aria-label="Kapat" data-tip="Kapat (Esc)" data-tip-hiza="son">
+        <button className="icon-btn" onClick={baslangiciKapat} aria-label={t("Kapat", "Close")} data-tip={t("Kapat (Esc)", "Close (Esc)")} data-tip-hiza="son">
           <Simge ad="kapat" />
         </button>
       </div>
-      <p className="bs-giris">
-        Bir bilgisayarı transistörden karta kadar tarayıcıda, canlı sinyallerle çalıştırır. Altı bölüm var; üst çubuktan istediğin an
-        geçebilirsin, her bölüm kaldığı yerden devam eder.
-      </p>
-      <ul className="bs-bolumler">
-        {BOLUMLER.map((b) => (
-          <li key={b.mode}>
-            <a href={b.hash} className="bs-bolum" aria-current={b.mode === mode ? "page" : undefined} onClick={baslangiciKapat}>
-              <span className="bs-bolum-bas">
-                <span className="bs-simge">{b.simge}</span>
-                <b>{b.ad}</b>
-                <span className="bs-git">{b.mode === mode ? "buradasın" : <>aç <Simge ad="ok" boyut={14} /></>}</span>
-              </span>
-              <span className="bs-tanitim">{b.tanitim}</span>
-            </a>
-          </li>
+      <p className="bs-giris">{sec(GIRIS, dil)}</p>
+      <div className="bs-govde">
+        <div className="bs-liste" role="tablist" aria-orientation="vertical" aria-label={t("Bölümler", "Sections")} ref={liste} onKeyDown={okTusu}>
+          {BOLUMLER.map((x) => (
+            <button
+              key={x.mode}
+              role="tab"
+              id={`bs-sekme-${x.mode}`}
+              data-bolum={x.mode}
+              aria-selected={x.mode === secili}
+              aria-controls="bs-ayrinti"
+              tabIndex={x.mode === secili ? 0 : -1}
+              className="bs-sekme"
+              onClick={() => setSecili(x.mode)}
+            >
+              <span className="bs-simge">{x.simge}</span>
+              <span className="bs-sekme-ad">{sec(x.ad, dil)}</span>
+              {x.mode === mode && (
+                <span className="bs-nokta" title={t("Buradasın", "You are here")}>
+                  <span className="sr-only">{t("(buradasın)", "(you are here)")}</span>
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        <div className="bs-ayrinti" id="bs-ayrinti" role="tabpanel" aria-labelledby={`bs-sekme-${secili}`}>
+          <div className="bs-ayrinti-bas">
+            <h3>{ad}</h3>
+            {secili === mode ? (
+              <span className="bs-burada">{t("buradasın", "you are here")}</span>
+            ) : (
+              <a href={b.hash} className="bs-ac">
+                {t("bölümü aç", "open section")} <Simge ad="ok" boyut={14} />
+              </a>
+            )}
+          </div>
+          <p className="bs-tanitim">{sec(b.tanitim, dil)}</p>
+          <p className="bs-adim-bas">{t("İlk adımlar", "First steps")}</p>
+          <ol className="bs-adimlar">
+            {ILK_ADIMLAR[secili].map((m, i) => (
+              <li key={i}><Metin m={sec(m, dil)} /></li>
+            ))}
+          </ol>
+        </div>
+      </div>
+      <div className="bs-ipuclari" role="group" aria-label={t("Ortak kısayollar", "Common shortcuts")}>
+        {ORTAK_IPUCLARI.map((m, i) => (
+          <span key={i}><Simge ad={IPUCU_SIMGELERI[i]} /> <span><Metin m={sec(m, dil)} /></span></span>
         ))}
-      </ul>
-      <div className="bs-ipuclari" aria-label="İpuçları">
-        <span><Simge ad="fare" /> <kbd>Sürükle</kbd> döndür · <kbd>Sağ tık</kbd> kaydır · <kbd>Tekerlek</kbd> yakınlaş</span>
-        <span><Simge ad="ayarlar" /> <kbd>T</kbd> tema · <kbd>Y</kbd> yazı boyutu · <kbd>F</kbd> odak modu (paneller gizli)</span>
-        <span><Simge ad="klavye" /> Bütün kısayollar sağ üstte; <kbd>?</kbd> bu paneli açar</span>
       </div>
       <div className="bs-alt">
-        <span className="hint-text">Paneller araç çubuğunun sağındaki düğmelerle gizlenir, kenarlarından sürüklenerek büyür; boyutları hatırlanır.</span>
-        <button className="primary" onClick={baslangiciKapat}>Başla</button>
+        <span className="hint-text">{sec(PANEL_IPUCU, dil)}</span>
+        <button className="primary" onClick={baslangiciKapat}>{t("Başla", "Start")}</button>
       </div>
     </div>
   );

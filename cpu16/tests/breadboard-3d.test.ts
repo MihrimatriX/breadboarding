@@ -4,6 +4,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ADIM, KENAR_SOL, KENAR_UST, PAY } from "../board/breadboard/geometri.ts";
+import { kartBasligi } from "../../src/board3d/adlar.ts";
 import { aktifGorunum, aktifKart, bbSahnesi, cpuBbHazir, cpuBbYukle, gorunumHazir, gorunumSec, kartYerlesimi } from "../../src/board3d/aktif.ts";
 import { bbPano, bbSeciliTel, telKimligi, useBbKurulum } from "../../src/board3d/bbKurulum.ts";
 import { boardLayoutData, findPart, useKart } from "../../src/board3d/store.ts";
@@ -59,6 +60,14 @@ describe("görünüm: PCB (varsayılan) ve breadboard", () => {
         expect(q.x > p.x && q.x < p.x + p.w && q.y > p.y && q.y < p.y + p.h, `${c.ref}.${q.num} panosunda`).toBe(true);
       }
     }
+  });
+
+  it("panoların 3D başlıkları İngilizcede kartın İngilizce adıyla, Türkçede panonun başlığıyla", () => {
+    for (const p of [...bbSahnesi("cpu16").panolar, ...bbSahnesi("hesap").panolar]) {
+      expect(kartBasligi(p.kart, p.baslik)).toBe(p.baslik);
+      expect(kartBasligi(p.kart, p.baslik, "en"), p.kart).not.toMatch(/[çğıöşüÇĞİÖŞÜ]|kart/);
+    }
+    expect(kartBasligi("kyb", "Kendin yap bellek kartı", "en")).toBe("DIY memory board");
   });
 });
 

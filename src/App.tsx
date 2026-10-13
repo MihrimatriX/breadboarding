@@ -15,34 +15,37 @@ import { useApp } from "./state/store";
 import { sim } from "./sim/SimClient";
 import { PROGRAMS } from "./sim/programs";
 import type { ChipData } from "./chip/types";
+import { ceviri, useDil, useT } from "./ui/ceviri";
 
 const CHIP_URL = `${import.meta.env.BASE_URL}chips/mos6502/chip.json`;
 const DEFAULT_WATCH = ["clk0", "sync", "rw", "ab0", "db0"];
 
 const SHORTCUTS: Shortcut[] = [
-  { keys: "Boşluk", what: "Çalıştır / duraklat" },
-  { keys: ".", what: "Yarım çevrim" },
-  { keys: "N", what: "Sonraki komut" },
-  { keys: "R", what: "Sıfırla" },
-  { keys: "Esc", what: "Seçimi kaldır" },
-  { keys: "Tıkla", what: "Die üzerindeki sinyali ölç" },
-  { keys: "Sürükle", what: "Döndür" },
-  { keys: "Sağ tık", what: "Kaydır" },
-  { keys: "Tekerlek", what: "Yakınlaş / uzaklaş" },
+  { keys: { tr: "Boşluk", en: "Space" }, what: { tr: "Çalıştır / duraklat", en: "Run / pause" } },
+  { keys: ".", what: { tr: "Yarım çevrim", en: "Half cycle" } },
+  { keys: "N", what: { tr: "Sonraki komut", en: "Next instruction" } },
+  { keys: "R", what: { tr: "Sıfırla", en: "Reset" } },
+  { keys: "Esc", what: { tr: "Seçimi kaldır", en: "Clear selection" } },
+  { keys: { tr: "Tıkla", en: "Click" }, what: { tr: "Die üzerindeki sinyali ölç", en: "Probe the signal on the die" } },
+  { keys: { tr: "Sürükle", en: "Drag" }, what: { tr: "Döndür", en: "Rotate" } },
+  { keys: { tr: "Sağ tık", en: "Right-drag" }, what: { tr: "Kaydır", en: "Pan" } },
+  { keys: { tr: "Tekerlek", en: "Wheel" }, what: { tr: "Yakınlaş / uzaklaş", en: "Zoom in / out" } },
 ];
 
 type SideTab = "durum" | "bellek" | "program" | "katmanlar";
 const SIDE_TABS: TabDef<SideTab>[] = [
-  { id: "durum", label: "Durum", title: "Yazmaçlar, sinyal arama ve ölçülen sinyal" },
-  { id: "bellek", label: "Bellek", title: "Sayfa 0 ve yığın" },
-  { id: "program", label: "Program", title: "6502 assembly programı" },
-  { id: "katmanlar", label: "Katmanlar", title: "Die katmanları ve görünüm" },
+  { id: "durum", label: { tr: "Durum", en: "Status" }, title: { tr: "Yazmaçlar, sinyal arama ve ölçülen sinyal", en: "Registers, signal search and the probed signal" } },
+  { id: "bellek", label: { tr: "Bellek", en: "Memory" }, title: { tr: "Sayfa 0 ve yığın", en: "Zero page and stack" } },
+  { id: "program", label: "Program", title: { tr: "6502 assembly programı", en: "6502 assembly program" } },
+  { id: "katmanlar", label: { tr: "Katmanlar", en: "Layers" }, title: { tr: "Die katmanları ve görünüm", en: "Die layers and view" } },
 ];
 
 export function App({ active = true }: { active?: boolean }) {
   const status = useApp((s) => s.status);
   const error = useApp((s) => s.error);
   const chip = useApp((s) => s.chip);
+  const dil = useDil();
+  const t = useT();
   // mantık analizörü (alt panel) ilk açılışta kapalı: sahne ferah kalsın; "Analizöre ekle" ya da araç
   // çubuğundaki düğme açar
   const [lay, setLay] = useLayout("6502", { side: true, bottom: false, bottomH: heightShare(0.3, 240, 340), sideTab: "durum" });
@@ -56,7 +59,7 @@ export function App({ active = true }: { active?: boolean }) {
     let cancelled = false;
     fetch(CHIP_URL)
       .then((r) => {
-        if (!r.ok) throw new Error(`Çip verisi yüklenemedi (HTTP ${r.status})`);
+        if (!r.ok) throw new Error(ceviri(`Çip verisi yüklenemedi (HTTP ${r.status})`, `Could not load the chip data (HTTP ${r.status})`));
         return r.json() as Promise<ChipData>;
       })
       .then((data) => {
@@ -101,7 +104,11 @@ export function App({ active = true }: { active?: boolean }) {
     >
       <AppHeader
         mode="6502"
-        context={chip ? `${chip.name} · ${chip.transistors.length.toLocaleString("tr-TR")} transistör` : "die verisi yükleniyor"}
+        context={
+          chip
+            ? `${chip.name} · ${chip.transistors.length.toLocaleString(dil === "en" ? "en-US" : "tr-TR")} ${t("transistör", "transistors")}`
+            : t("die verisi yükleniyor", "loading die data")
+        }
         meters={<Meters />}
         shortcuts={SHORTCUTS}
       />
@@ -110,13 +117,17 @@ export function App({ active = true }: { active?: boolean }) {
         <div className="center">
           <main className="stage">
             {status === "ready" && active && <DieScene />}
-            {status === "loading" && <Yukleniyor alt="visual6502 çip verisi (~1,6 MB) iniyor, ardından katmanların geometrisi hazırlanır">Die verisi yükleniyor…</Yukleniyor>}
-            {status === "error" && <HataKutusu baslik="Die verisi yüklenemedi">{error}</HataKutusu>}
+            {status === "loading" && (
+              <Yukleniyor alt={t("visual6502 çip verisi (~1,6 MB) iniyor, ardından katmanların geometrisi hazırlanır", "Downloading the visual6502 chip data (~1.6 MB), then building the layer geometry")}>
+                {t("Die verisi yükleniyor…", "Loading die data…")}
+              </Yukleniyor>
+            )}
+            {status === "error" && <HataKutusu baslik={t("Die verisi yüklenemedi", "Could not load the die data")}>{error}</HataKutusu>}
           </main>
           {panel.bottom && (
             <>
-              <Splitter value={lay.bottomH} onChange={(h) => setLay({ bottomH: h })} label="Mantık analizörünün yüksekliği" />
-              <section className="bottom" aria-label="Mantık analizörü">
+              <Splitter value={lay.bottomH} onChange={(h) => setLay({ bottomH: h })} label={t("Mantık analizörünün yüksekliği", "Logic analyzer height")} />
+              <section className="bottom" aria-label={t("Mantık analizörü", "Logic analyzer")}>
                 <LogicAnalyzer />
               </section>
             </>
@@ -124,8 +135,8 @@ export function App({ active = true }: { active?: boolean }) {
         </div>
         {panel.side && <YanBolucu lay={lay} setLay={setLay} />}
         {panel.side && (
-          <aside className="side" aria-label="Ölçüm paneli">
-            <Tabs tabs={SIDE_TABS} value={sideTab} onChange={(t) => setLay({ sideTab: t })} label="Yan panel" />
+          <aside className="side" aria-label={t("Ölçüm paneli", "Probe panel")}>
+            <Tabs tabs={SIDE_TABS} value={sideTab} onChange={(id) => setLay({ sideTab: id })} label={t("Yan panel", "Side panel")} />
             {/* sekmeler bağlı kalır, yalnız gizlenir: düzenleyicideki program ve bellek seçimi kaybolmaz */}
             <div className="side-body" role="tabpanel" hidden={sideTab !== "durum"}>
               <RegistersPanel visible={active && sideTab === "durum"} />
@@ -141,7 +152,7 @@ export function App({ active = true }: { active?: boolean }) {
             <div className="side-body" role="tabpanel" hidden={sideTab !== "katmanlar"}>
               <LayersPanel />
             </div>
-            {chip && <footer className="side-foot credit">{chip.license}</footer>}
+            {chip && <footer className="side-foot credit">{t(chip.license, chip.license.replace("Die verisi", "Die data"))}</footer>}
           </aside>
         )}
       </div>

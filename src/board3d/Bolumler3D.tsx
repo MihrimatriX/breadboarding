@@ -13,6 +13,9 @@
 // Kenar etiketleri (yalnız ayrıntılı kipte, yakından): her karede kamera değiştiyse ekranda görünen çip
 // gruplarından ekranın ortasına en yakın olanlar seçilir, iki yandaki sütunlara yerleştirilir
 // (bolumSahne.ts kenarYerlesimi) ve useKenar'a yazılır; BolumKatmani onları DOM'da çizer.
+//
+// Yazılar seçili dilde: dil değişince plakalar o dilin sahnesinden (sahneDili) yeniden çizilir, kenar
+// etiketleri yeniden hesaplanır.
 
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
@@ -25,13 +28,14 @@ import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { create } from "zustand";
-import { bolumleri, type BolumTuru } from "../../cpu16/board/bolum-bilgi";
+import { bolumleri, bolumMetni, type BolumTuru } from "../../cpu16/board/bolum-bilgi";
 import type { BoardLayout } from "../../cpu16/board/layout";
-import { ucusAdimi } from "../ui/ayarlar";
+import { ucusAdimi, useAyar } from "../ui/ayarlar";
+import { useDil } from "../ui/ceviri";
 import { aktifKart } from "./aktif";
 import { useBbKurulum } from "./bbKurulum";
 import { bolumRengi, bolumu, katalog, plakaYazisi, sahneBolumleri, useBolum, type EtiketKipi } from "./bolum";
-import { kapasite, kenarYerlesimi, PLAKA, type Kutu, type Plaka, type SahneBolumleri } from "./bolumSahne";
+import { kapasite, kenarYerlesimi, PLAKA, sahneDili, type Kutu, type Plaka, type SahneBolumleri } from "./bolumSahne";
 import { useKurulum } from "./kurulum";
 import { boardLayoutData, useKart } from "./store";
 
@@ -515,12 +519,13 @@ function KenarHesabi({ s }: { s: SahneBolumleri }) {
   const pcbKurulum = useKurulum((x) => x.acik);
   const kurulum = bbKurulum || pcbKurulum;
   const gl = useThree((x) => x.gl);
+  const dil = useDil();
   const gruplar = useMemo<GrupYeri[]>(() => {
     // çiplerin üstü 0,37, pasiflerin üstü ≈ 0,12 dünya birimi
     const yer = new Map<string, { k: Kutu; y: number }>([...lay.chips.map((c) => [c.ref, { k: c, y: 0.37 }] as const), ...lay.passives.map((p) => [p.ref, { k: p, y: 0.12 }] as const)]);
     return bolumleri(katalog(), "grup").map((g) => ({
       id: g.id,
-      etiket: g.etiket,
+      etiket: bolumMetni(g, dil).etiket,
       renk: bolumRengi(g.id),
       kart: g.kart,
       parcalar: g.refs.flatMap((r) => {
@@ -531,14 +536,19 @@ function KenarHesabi({ s }: { s: SahneBolumleri }) {
         return [{ orta: new Vector3((x0 + x1) / 2, p.y, (z0 + z1) / 2), kose: [new Vector3(x0, p.y, z0), new Vector3(x1, p.y, z0), new Vector3(x1, p.y, z1), new Vector3(x0, p.y, z1)] }];
       }),
     })).filter((g) => g.parcalar.length > 0);
-  }, [lay, w]);
+  }, [lay, w, dil]);
   const kartKoseleri = useMemo(() => new Map([...s.kartKutusu].map(([k, b]) => {
     const [x0, z0] = w(b.x, b.y);
     const [x1, z1] = w(b.x + b.w, b.y + b.h);
     return [k, [new Vector3(x0, 0, z0), new Vector3(x1, 0, z0), new Vector3(x1, 0, z1), new Vector3(x0, 0, z1)]] as const;
   })), [s, w]);
   const son = useRef({ anahtar: "", engel: null as { x0: number; x1: number; y1: number } | null, engelZamani: -1, olcek: 1, imza: [] as number[], secili: null as string | null });
-  useEffect(() => () => useKenar.setState({ etiketler: [] }), [s]);
+  // sahne ya da dil değişince kamera kıpırdamasa da yeniden hesaplanır
+  useEffect(() => {
+    son.current.anahtar = "";
+    son.current.imza = [];
+    return () => useKenar.setState({ etiketler: [] });
+  }, [s, gruplar]);
   useFrame(({ camera, size, clock }) => {
     const durum = son.current;
     if (kip !== "ayrintili" || kurulum) {
@@ -664,7 +674,7 @@ function BolumApi({ s }: { s: SahneBolumleri }) {
         if (k) useBolum.getState().kipSec(k);
         return useBolum.getState().kip;
       },
-      bolumler: (tur?: BolumTuru) => [...katalog().bolumler.values()].filter((b) => !tur || b.tur === tur).map((b) => `${b.id} · ${b.etiket}`),
+      bolumler: (tur?: BolumTuru) => [...katalog().bolumler.values()].filter((b) => !tur || b.tur === tur).map((b) => `${b.id} · ${bolumMetni(b, useAyar.getState().dil).etiket}`),
       plakaEkranda: (id: string) => {
         const p = s.plakalar.find((x) => x.id === id);
         if (!p) return null;
@@ -692,7 +702,8 @@ function BolumApi({ s }: { s: SahneBolumleri }) {
 export function Bolumler3D() {
   const kip = useBolum((x) => x.kip);
   const gorunum = useKart((x) => x.gorunum);
-  const s = useMemo(() => sahneBolumleri(aktifKart(), gorunum), [gorunum]);
+  const dil = useDil();
+  const s = useMemo(() => sahneDili(sahneBolumleri(aktifKart(), gorunum), dil), [gorunum, dil]);
   return (
     <group>
       {kip !== "kapali" && (

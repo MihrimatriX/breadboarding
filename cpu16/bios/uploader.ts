@@ -21,7 +21,11 @@ export interface UploadOptions {
   retries?: number;
   onProgress?: (done: number, total: number) => void;
   log?: (text: string) => void;
+  /** İletilerin dili (tezgâhın arayüz dili); komut satırı Türkçe. */
+  dil?: "tr" | "en";
 }
+
+type Cevir = (tr: string, en: string) => string;
 
 export interface UploadResult {
   ok: boolean;
@@ -84,11 +88,14 @@ export function programHex(asm: AsmResult, base?: number): { hex: string; entry:
 // ---------------------------------------------------------------- protokol
 
 /** Gelen karakterleri `until` sağlanana kadar biriktirir. */
-async function expect(link: SerialLink, until: (got: string) => boolean, timeoutMs: number, what: string): Promise<string> {
+async function expect(link: SerialLink, until: (got: string) => boolean, timeoutMs: number, what: string, t: Cevir): Promise<string> {
   let got = "";
   for (;;) {
     const ch = await link.read(timeoutMs);
-    if (ch === null) throw new Error(`Zaman aşımı: ${what} bekleniyordu` + (got ? ` (gelen: ${JSON.stringify(got.slice(-60))})` : ""));
+    if (ch === null) {
+      const gelen = got ? ` (${t("gelen", "received")}: ${JSON.stringify(got.slice(-60))})` : "";
+      throw new Error(t(`Zaman aşımı: ${what} bekleniyordu`, `Timed out waiting for ${what}`) + gelen);
+    }
     got += ch;
     if (until(got)) return got;
   }
@@ -99,34 +106,35 @@ export async function uploadHex(link: SerialLink, hex: string, opts: UploadOptio
   const timeout = opts.timeoutMs ?? 2000;
   const retries = opts.retries ?? 3;
   const log = opts.log ?? (() => {});
+  const t: Cevir = (tr, en) => (opts.dil === "en" ? en : tr);
   const lines = hex.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.startsWith(":"));
   try {
     // Monitörün istemde olduğundan emin ol: boş satır → "> "
     await link.write("\r");
-    await expect(link, (g) => g.endsWith("> "), timeout, "monitör istemi (\"> \")");
+    await expect(link, (g) => g.endsWith("> "), timeout, t("monitör istemi (\"> \")", "the monitor prompt (\"> \")"), t);
     await link.write(opts.mode === "flash" ? "F\r" : "L\r");
-    await expect(link, (g) => /HEX[^\n]*\n$/.test(g), timeout, "\"HEX bekleniyor\" satırı");
-    log(`${lines.length} kayıt gönderiliyor (${opts.mode === "flash" ? "EEPROM" : "RAM"})…\n`);
+    await expect(link, (g) => /HEX[^\n]*\n$/.test(g), timeout, t("\"HEX bekleniyor\" satırı", "the \"HEX bekleniyor\" line"), t);
+    log(t(`${lines.length} kayıt gönderiliyor`, `Sending ${lines.length} records`) + ` (${opts.mode === "flash" ? "EEPROM" : "RAM"})…\n`);
     let done = 0;
     for (const line of lines) {
       let reply = "";
       for (let attempt = 0; attempt <= retries; attempt++) {
         await link.write(line + "\r\n");
-        const got = await expect(link, (g) => /[.!X]$/.test(g), timeout * 4, "kayıt yanıtı");
+        const got = await expect(link, (g) => /[.!X]$/.test(g), timeout * 4, t("kayıt yanıtı", "the record reply"), t);
         reply = got.slice(-1);
         if (reply !== "!") break;
-        log(`sağlama hatası, yeniden: ${line}\n`);
+        log(t(`sağlama hatası, yeniden: ${line}\n`, `checksum error, resending: ${line}\n`));
       }
       if (reply === "X") {
-        const rest = await expect(link, (g) => g.endsWith("> "), timeout, "hata iletisi");
+        const rest = await expect(link, (g) => g.endsWith("> "), timeout, t("hata iletisi", "the error message"), t);
         const msg = rest.replace(/> $/, "").trim();
-        return { ok: false, message: msg || "BIOS kaydı reddetti", records: done };
+        return { ok: false, message: msg || t("BIOS kaydı reddetti", "The BIOS rejected the record"), records: done };
       }
-      if (reply !== ".") return { ok: false, message: `kayıt ${done + 1} tekrar tekrar bozuk geldi`, records: done };
+      if (reply !== ".") return { ok: false, message: t(`kayıt ${done + 1} tekrar tekrar bozuk geldi`, `record ${done + 1} kept arriving corrupted`), records: done };
       done++;
       opts.onProgress?.(done, lines.length);
     }
-    const tail = await expect(link, (g) => g.endsWith("> "), timeout * 4, "yükleme özeti");
+    const tail = await expect(link, (g) => g.endsWith("> "), timeout * 4, t("yükleme özeti", "the upload summary"), t);
     const summary = tail.replace(/> $/, "").trim();
     log(summary + "\n");
     if (opts.run) await link.write("G\r");
