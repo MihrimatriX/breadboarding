@@ -13,6 +13,7 @@ import {
   KART_ADLARI, adet, cipSayimi, gosterilenPasif, kutuGorevi, kutuParcalari, netOzeti, pasifSayimi, sayimMetni, yolEtiketMetni,
   type Grup, type Kutu, type Parcalar, type Yol, type Yon,
 } from "../../cpu16/mimari/model.ts";
+import { blokAdi } from "../board3d/adlar";
 import { useDil, useT } from "../ui/ceviri";
 import { Section } from "../ui/Shell";
 import type { Hedef } from "./MimariSahne";
@@ -326,12 +327,13 @@ function Ozet({ k, il, sec }: PanelOzellikleri) {
 
 function KutuAyrintisi({ k, il, sec, ayrintiAc, goster3d, kutu }: PanelOzellikleri & { kutu: Kutu }) {
   const t = useT();
+  const dil = useDil();
   const cerceve = il.cercevesi.get(kutu.id);
   const kartAdi = cerceve ? k.diyagram.gruplar.find((g) => g.id === cerceve)?.ad : undefined;
   const p = k.devre.parcalar(kutu.bloklar);
   const obekler: { ad: string; gorev?: string; p: Parcalar }[] = kutu.bolmeler?.length
     ? kutu.bolmeler.map((b) => ({ ad: b.ad, gorev: b.gorev, p: kutuParcalari(k.devre, kutu, b) }))
-    : kutu.bloklar.map((b) => ({ ad: b.block, p: k.devre.parcalar([b]) }));
+    : kutu.bloklar.map((b) => ({ ad: blokAdi(b.block, dil), p: k.devre.parcalar([b]) }));
   return (
     <>
       <Baslik rozet={<KutuRozeti rol={kutu.rol} cihaz={kutu.cihaz} />} ad={kutu.ad} alt={kutuGorevi(kutu)} kapat={() => sec(null)} />
@@ -368,6 +370,7 @@ function KutuAyrintisi({ k, il, sec, ayrintiAc, goster3d, kutu }: PanelOzellikle
 
 function GrupAyrintisi({ k, il, sec, ayrintiAc, goster3d, grup }: PanelOzellikleri & { grup: Grup }) {
   const t = useT();
+  const dil = useDil();
   const bloklar = ucBloklari(k.diyagram, grup.id);
   const hepsi = k.devre.parcalar(bloklar);
   const kendi = grup.bloklar ?? [];
@@ -402,7 +405,7 @@ function GrupAyrintisi({ k, il, sec, ayrintiAc, goster3d, grup }: PanelOzellikle
       {kendi.length > 0 && (
         <Section title={t("Kartın kendi parçaları", "The board's own parts")}>
           {kendi.map((b) => (
-            <ParcaObegi key={b.block} ad={b.block} p={k.devre.parcalar([b])} />
+            <ParcaObegi key={b.block} ad={blokAdi(b.block, dil)} p={k.devre.parcalar([b])} />
           ))}
         </Section>
       )}
