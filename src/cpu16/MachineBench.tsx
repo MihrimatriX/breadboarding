@@ -16,6 +16,7 @@ import { disassemble } from "../../cpu16/emu/disasm";
 import { CPU_HZ, Machine } from "../../cpu16/emu/machine";
 import { SET2 } from "../../cpu16/emu/devices/keyboard";
 import { textToChar } from "../../cpu16/video/font";
+import { sec, useDil, useT, type IkiDil } from "../ui/ceviri";
 import {
   AppHeader, Bayrak, Group, Menu, Meter, OdakDugmesi, PanelToggle, Section, Splitter, Tabs, YanBolucu, duzenStili, heightShare, useLayout, usePaneller, type Shortcut, type TabDef,
 } from "../ui/Shell";
@@ -32,24 +33,24 @@ const ORDER = [
   "yeni.c", "selam.c", "sayilar.c", "uzun.c", "kalbur.c", "siralama.c", "liste.c", "hesap.c", "sabit.c",
   "ekran.c", "kesme.c", "hayat.c", "yilan.c",
 ].filter((n) => n in EXAMPLES);
-const LABELS: Record<string, string> = {
-  merhaba: "merhaba.s · renkli selam ve toplam",
-  saat: "saat.s · kutu çizimi ve saat",
-  renkler: "renkler.s · 16×16 renk tablosu",
-  onbellek: "onbellek.s · önbellek açık / kapalı",
-  "yeni.c": "yeni.c · C: boş şablon, buradan başla",
-  "selam.c": "selam.c · C: printf, renkler, özyineleme",
-  "sayilar.c": "sayilar.c · C: onluk, hex, ikilik; 16 bit taşma",
-  "uzun.c": "uzun.c · C: 32 bit long, çarpma / bölme ne kadar sürer",
-  "kalbur.c": "kalbur.c · C: bit dizisiyle 65535'e kadar asallar",
-  "siralama.c": "siralama.c · C: 5 sıralama algoritması yarışıyor",
-  "liste.c": "liste.c · C: struct, işaretçi, malloc ile bağlı liste",
-  "hesap.c": "hesap.c · C: klavyeden hesap makinesi",
-  "sabit.c": "sabit.c · C: sabit noktalı sayılar, sinüs eğrisi",
-  "ekran.c": "ekran.c · C: VGA'ya doğrudan: pencere, Türkçe, animasyon",
-  "kesme.c": "kesme.c · C: vsync kesmesine C fonksiyonu bağlamak",
-  "hayat.c": "hayat.c · C: Hayat Oyunu (R, Q)",
-  "yilan.c": "yilan.c · C: yılan oyunu (W A S D)",
+const LABELS: Record<string, IkiDil> = {
+  merhaba: { tr: "merhaba.s · renkli selam ve toplam", en: "merhaba.s · colored greeting and a sum" },
+  saat: { tr: "saat.s · kutu çizimi ve saat", en: "saat.s · box drawing and a clock" },
+  renkler: { tr: "renkler.s · 16×16 renk tablosu", en: "renkler.s · 16×16 color table" },
+  onbellek: { tr: "onbellek.s · önbellek açık / kapalı", en: "onbellek.s · cache on / off" },
+  "yeni.c": { tr: "yeni.c · C: boş şablon, buradan başla", en: "yeni.c · C: empty template, start here" },
+  "selam.c": { tr: "selam.c · C: printf, renkler, özyineleme", en: "selam.c · C: printf, colors, recursion" },
+  "sayilar.c": { tr: "sayilar.c · C: onluk, hex, ikilik; 16 bit taşma", en: "sayilar.c · C: decimal, hex, binary; 16-bit overflow" },
+  "uzun.c": { tr: "uzun.c · C: 32 bit long, çarpma / bölme ne kadar sürer", en: "uzun.c · C: 32-bit long, how long multiply / divide take" },
+  "kalbur.c": { tr: "kalbur.c · C: bit dizisiyle 65535'e kadar asallar", en: "kalbur.c · C: primes up to 65535 with a bit array" },
+  "siralama.c": { tr: "siralama.c · C: 5 sıralama algoritması yarışıyor", en: "siralama.c · C: 5 sorting algorithms race" },
+  "liste.c": { tr: "liste.c · C: struct, işaretçi, malloc ile bağlı liste", en: "liste.c · C: linked list with struct, pointers, malloc" },
+  "hesap.c": { tr: "hesap.c · C: klavyeden hesap makinesi", en: "hesap.c · C: calculator on the keyboard" },
+  "sabit.c": { tr: "sabit.c · C: sabit noktalı sayılar, sinüs eğrisi", en: "sabit.c · C: fixed-point numbers, a sine curve" },
+  "ekran.c": { tr: "ekran.c · C: VGA'ya doğrudan: pencere, Türkçe, animasyon", en: "ekran.c · C: straight to VGA: windows, Turkish text, animation" },
+  "kesme.c": { tr: "kesme.c · C: vsync kesmesine C fonksiyonu bağlamak", en: "kesme.c · C: hooking a C function to the vsync interrupt" },
+  "hayat.c": { tr: "hayat.c · C: Hayat Oyunu (R, Q)", en: "hayat.c · C: Game of Life (R, Q)" },
+  "yilan.c": { tr: "yilan.c · C: yılan oyunu (W A S D)", en: "yilan.c · C: snake game (W A S D)" },
 };
 /** Kullanıcının örnek üzerinde yaptığı değişiklikler tarayıcıda saklanır (sayfa yenilense de kaybolmaz) */
 const KAYNAK_ANAHTARI = (name: string) => `cpu16.kaynak.${name}`;
@@ -77,29 +78,34 @@ const TESTLER = Object.fromEntries(
 );
 
 /** Hız seçenekleri: 4 MHz'in katı; 0 = turbo (karede sığdığı kadar). */
-const SPEEDS = [
-  { v: 0.1, label: "1/10 hız (400 kHz)" },
-  { v: 1, label: "gerçek hız (4 MHz)" },
-  { v: 4, label: "×4 (16 MHz)" },
-  { v: 0, label: "turbo" },
+const SPEEDS: { v: number; label: IkiDil }[] = [
+  { v: 0.1, label: { tr: "1/10 hız (400 kHz)", en: "1/10 speed (400 kHz)" } },
+  { v: 1, label: { tr: "gerçek hız (4 MHz)", en: "real speed (4 MHz)" } },
+  { v: 4, label: { tr: "×4 (16 MHz)", en: "×4 (16 MHz)" } },
+  { v: 0, label: { tr: "turbo", en: "turbo" } },
 ];
 /** Bir karede emülasyona ayrılan en uzun süre (ms). */
 const FRAME_BUDGET_MS = 11;
 /** Tarayıcı işlevleri için bırakılan tuşlar (yenile, tam ekran, geliştirici araçları). */
 const BROWSER_KEYS = new Set(["Tab", "F5", "F11", "F12"]);
 const REG_NAMES = ["r0", "r1", "r2", "r3", "r4", "r5", "r6 sp", "r7 lr"];
-const IRQ_NAMES = ["zamanlayıcı", "klavye", "UART", "vsync"];
+const IRQ_NAMES: IkiDil[] = [
+  { tr: "zamanlayıcı", en: "timer" },
+  { tr: "klavye", en: "keyboard" },
+  { tr: "UART", en: "UART" },
+  { tr: "vsync", en: "vsync" },
+];
 
-const SHORTCUTS: Shortcut[] = [
-  { keys: "Ctrl+Enter", what: "Düzenleyicide: derleyip RAM'e yükler ve çalıştırır" },
-  { keys: "Ekrana tıkla", what: "Klavye PS/2 olarak karta gider (ABD düzeni)" },
-  { keys: "Terminale tıkla", what: "Tuşlar UART'tan monitöre gider" },
-];
 type SideTab = "durum" | "anakart";
-const SIDE_TABS: TabDef<SideTab>[] = [
-  { id: "durum", label: "Durum", title: "Register'lar, UART terminali, komut izi" },
-  { id: "anakart", label: "Anakart ve bellek", title: "Bank, önbellek, kesmeler, bellek dökümü" },
+const SIDE_TABS: { id: SideTab; label: IkiDil; title: IkiDil }[] = [
+  { id: "durum", label: { tr: "Durum", en: "Status" }, title: { tr: "Register'lar, UART terminali, komut izi", en: "Registers, UART terminal, instruction trace" } },
+  {
+    id: "anakart",
+    label: { tr: "Anakart ve bellek", en: "Motherboard and memory" },
+    title: { tr: "Bank, önbellek, kesmeler, bellek dökümü", en: "Banks, cache, interrupts, memory dump" },
+  },
 ];
+const DERLEME_HATASI: IkiDil = { tr: "Derleme başarısız; hataları düzeltip tekrar dene.", en: "Compile failed. Fix the errors and try again." };
 
 const hex4 = (n: number) => (n & 0xffff).toString(16).toUpperCase().padStart(4, "0");
 const hex2 = (n: number) => (n & 0xff).toString(16).toUpperCase().padStart(2, "0");
@@ -112,8 +118,14 @@ function bios(): BiosBuild {
 }
 
 type Status = { kind: "idle" | "run" | "halt" | "bad"; text: string };
+/** Derleyici hatası: sütun yalnız cc16'dan gelir; ileti cpu16/asm ve cpu16/cc'den Türkçe */
+type Hata = { line: number; col?: number; message: string };
+const yasadisi = (a: number): IkiDil => ({ tr: `yasadışı komut @ ${hex4(a)}`, en: `illegal instruction @ ${hex4(a)}` });
 
 export function MachineBench({ switcher }: { switcher: ReactNode }) {
+  const t = useT();
+  const dil = useDil();
+  const yer = dil === "en" ? "en-US" : "tr-TR";
   const [m] = useState(() => {
     const mach = new Machine();
     mach.loadFlash(bios().flash);
@@ -127,17 +139,21 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
   /** Editördeki dil: örnekten gelir, yazdıkça içerikten tahmin edilir; elle seçilirse o kalır */
   const [lang, setLang] = useState<Dil>(() => dilBul(kayitliKaynak(ORDER[0])) ?? ornekDili(ORDER[0]));
   const langManual = useRef(false);
-  const [errors, setErrors] = useState<{ line: number; message: string }[]>([]);
-  const [info, setInfo] = useState("BIOS açıldı. Ekrana tıklayıp monitöre komut yazabilir ya da bir program yükleyebilirsin.");
+  const [errors, setErrors] = useState<Hata[]>([]);
+  // bilgi, meşgul ve hata metinleri iki dilli saklanır: dil sonradan değişince de doğru dilde görünsün
+  const [info, setInfo] = useState<IkiDil>({
+    tr: "BIOS açıldı. Ekrana tıklayıp monitöre komut yazabilir ya da bir program yükleyebilirsin.",
+    en: "The BIOS has started. Click the screen to type monitor commands, or load a program.",
+  });
   const [running, setRunning] = useState(true);
   const [speed, setSpeed] = useState(1);
-  const [busy, setBusy] = useState<string | null>(null);
+  const [busy, setBusy] = useState<IkiDil | null>(null);
   const [testOut, setTestOut] = useState("");
   /** Gerçek kartın UART hızı: UART bit süresi CPU saatinden (TCLK) bölünür, 1 MHz'de 28 800 baud */
   const [baud, setBaud] = useState(115200);
   const [focused, setFocused] = useState(false);
   const [flashRun, setFlashRun] = useState<string | null>(null);
-  const [bad, setBad] = useState<string | null>(null);
+  const [bad, setBad] = useState<IkiDil | null>(null);
   const [memAddr, setMemAddr] = useState("4000");
   const [termLine, setTermLine] = useState("");
   const [mhz, setMhz] = useState(0);
@@ -197,7 +213,7 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
         while (m.cycles < end && performance.now() - t0 < FRAME_BUDGET_MS) {
           if (m.run(Math.min(20_000, end - m.cycles)) === "illegal") {
             setRun(false);
-            setBad(`yasadışı komut @ ${hex4(m.cpu.illegalAt ?? m.cpu.pc)}`);
+            setBad(yasadisi(m.cpu.illegalAt ?? m.cpu.pc));
             break;
           }
         }
@@ -233,7 +249,7 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
   };
   const step = () => {
     prevRegs.current = Array.from(m.cpu.regs);
-    if (m.step() === "illegal") setBad(`yasadışı komut @ ${hex4(m.cpu.illegalAt ?? m.cpu.pc)}`);
+    if (m.step() === "illegal") setBad(yasadisi(m.cpu.illegalAt ?? m.cpu.pc));
     redraw();
   };
   const resetMachine = () => {
@@ -254,9 +270,9 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
       // cc16, BIOS hedefi: RAM'e 0x4000'dan yüklenir, giriş __reset (0x4000)
       const file = `/${prog.endsWith(".c") ? prog : `${prog}.c`}`;
       const b = buildProgram({ [file]: src }, [file], { lib: LIB, target: "bios" });
-      setErrors(b.errors.map((e) => ({ line: e.line, message: e.col ? `${e.col}. sütun: ${e.message}` : e.message })));
+      setErrors(b.errors.map((e) => ({ line: e.line, col: e.col || undefined, message: e.message })));
       if (b.errors.length) {
-        setInfo("Derleme başarısız; hataları düzeltip tekrar dene.");
+        setInfo(DERLEME_HATASI);
         return null;
       }
       return { image: b.image, ranges: b.ranges, symbols: new Map([["main", 0x4000]]) } as unknown as ReturnType<typeof assemble>;
@@ -264,11 +280,11 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
     const res = assemble(src);
     setErrors(res.errors);
     if (res.errors.length) {
-      setInfo("Derleme başarısız; hataları düzeltip tekrar dene.");
+      setInfo(DERLEME_HATASI);
       return null;
     }
     if (!res.ranges.length) {
-      setInfo("Program boş.");
+      setInfo({ tr: "Program boş.", en: "The program is empty." });
       return null;
     }
     return res;
@@ -286,31 +302,41 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
     const link = new MachineLink(m, false);
     linkRef.current = link;
     setFlashRun(null);
-    const what = mode === "ram" ? "RAM'e yükleniyor" : "EEPROM'a yazılıyor";
+    const what: IkiDil = mode === "ram" ? { tr: "RAM'e yükleniyor", en: "Loading into RAM" } : { tr: "EEPROM'a yazılıyor", en: "Writing to EEPROM" };
     setBusy(what);
     start();
     const r = await uploadHex(link, hex, {
       mode,
       run: mode === "ram",
-      onProgress: (d, t) => setBusy(`${what} ${d}/${t}`),
+      onProgress: (d, n) => setBusy({ tr: `${what.tr} ${d}/${n}`, en: `${what.en} ${d}/${n}` }),
     });
     linkRef.current = null;
     setBusy(null);
     if (!r.ok) {
-      setInfo(`Yükleme başarısız: ${r.message}`);
+      setInfo({ tr: `Yükleme başarısız: ${r.message}`, en: `Load failed: ${r.message}` });
       return;
     }
+    const e = hex4(entry);
     if (mode === "ram") {
-      setInfo(`${size} bayt (0x${hex4(size)}), ${r.records} HEX kaydı UART'tan yüklendi; G ${hex4(entry)} ile çalıştırıldı. BIOS: "${r.message}".`);
+      setInfo({
+        tr: `${size} bayt (0x${hex4(size)}), ${r.records} HEX kaydı UART'tan yüklendi; G ${e} ile çalıştırıldı. BIOS: "${r.message}".`,
+        en: `Loaded ${size} bytes (0x${hex4(size)}) as ${r.records} HEX records over UART and started with G ${e}. BIOS: "${r.message}".`,
+      });
       return;
     }
     const w = entry >> 14;
     if (w === 1) {
-      const cmd = `B ${w} ${w}\rG ${hex4(entry)}\r`;
+      const cmd = `B ${w} ${w}\rG ${e}\r`;
       setFlashRun(cmd);
-      setInfo(`EEPROM'a yazıldı (${size} bayt, EEPROM ofseti = CPU adresi). Çalıştırmak için monitörde: B ${w} ${w} (pencere ${w} → EEPROM bank ${w}), sonra G ${hex4(entry)}.`);
+      setInfo({
+        tr: `EEPROM'a yazıldı (${size} bayt, EEPROM ofseti = CPU adresi). Çalıştırmak için monitörde: B ${w} ${w} (pencere ${w} → EEPROM bank ${w}), sonra G ${e}.`,
+        en: `Written to EEPROM (${size} bytes, EEPROM offset = CPU address). To run it, type in the monitor: B ${w} ${w} (window ${w} → EEPROM bank ${w}), then G ${e}.`,
+      });
     } else {
-      setInfo(`EEPROM 32 KB'tır (bank 0 BIOS'un, bank 1 programların): EEPROM'dan çalıştırılacak program 0x4000–0x7FFF'e yerleştirilmeli.`);
+      setInfo({
+        tr: `EEPROM 32 KB'tır (bank 0 BIOS'un, bank 1 programların): EEPROM'dan çalıştırılacak program 0x4000–0x7FFF'e yerleştirilmeli.`,
+        en: `The EEPROM is 32 KB (bank 0 holds the BIOS, bank 1 holds programs): a program that runs from EEPROM must sit at 0x4000–0x7FFF.`,
+      });
     }
   };
 
@@ -333,16 +359,21 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
         boardTerm.push(b);
         redraw();
       };
-      setBusy("Karta gönderiliyor");
+      setBusy({ tr: "Karta gönderiliyor", en: "Sending to the board" });
       const r = await uploadHex(link, hex, {
         mode: "ram",
         run: true,
         timeoutMs: 3000,
-        onProgress: (d, t) => setBusy(`Karta gönderiliyor ${d}/${t}`),
+        onProgress: (d, n) => setBusy({ tr: `Karta gönderiliyor ${d}/${n}`, en: `Sending to the board ${d}/${n}` }),
       });
-      setInfo(r.ok ? `Kart: ${r.message}; G ile çalıştırıldı.` : `Kart: yükleme başarısız: ${r.message}`);
+      setInfo(
+        r.ok
+          ? { tr: `Kart: ${r.message}; G ile çalıştırıldı.`, en: `Board: ${r.message}; started with G.` }
+          : { tr: `Kart: yükleme başarısız: ${r.message}`, en: `Board: load failed: ${r.message}` },
+      );
     } catch (e) {
-      setInfo(`Web Serial: ${(e as Error).message}`);
+      const msg = `Web Serial: ${(e as Error).message}`;
+      setInfo({ tr: msg, en: msg });
     } finally {
       await link?.close();
       setBusy(null);
@@ -354,7 +385,7 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
   const boardTest = async (where: "kart" | "sim") => {
     if (busy) return;
     setTestOut("");
-    setBusy("Kart testi: beklenen çıktılar simülatörde hesaplanıyor");
+    setBusy({ tr: "Kart testi: beklenen çıktılar simülatörde hesaplanıyor", en: "Board test: computing the expected output in the simulator" });
     await new Promise((r) => setTimeout(r, 30));
     let close = async () => {};
     try {
@@ -378,10 +409,11 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
         link = l;
         start();
       }
-      const res = await kartTesti(link, programs, expected, (t) => setBusy(`Kart testi: ${t}`));
+      // ilerleme ve sonuç metni cpu16/bios/kart-testi.ts'ten Türkçe gelir
+      const res = await kartTesti(link, programs, expected, (s) => setBusy({ tr: `Kart testi: ${s}`, en: `Board test: ${s}` }));
       setTestOut(sonucMetni(programs, res));
     } catch (e) {
-      setTestOut(`Kart testi yapılamadı: ${(e as Error).message}`);
+      setTestOut(t(`Kart testi yapılamadı: ${(e as Error).message}`, `Board test could not run: ${(e as Error).message}`));
     } finally {
       linkRef.current = null;
       await close();
@@ -457,14 +489,14 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
   // ---- görünüm
   const cpu = m.cpu;
   const status: Status = bad
-    ? { kind: "bad", text: bad }
+    ? { kind: "bad", text: sec(bad, dil) }
     : busy
-      ? { kind: "run", text: busy }
+      ? { kind: "run", text: sec(busy, dil) }
       : !running
-        ? { kind: "idle", text: "duraklatıldı" }
+        ? { kind: "idle", text: t("duraklatıldı", "paused") }
         : cpu.halted
-          ? { kind: "halt", text: "HALT · kesme bekliyor" }
-          : { kind: "run", text: "çalışıyor" };
+          ? { kind: "halt", text: t("HALT · kesme bekliyor", "HALT · waiting for interrupt") }
+          : { kind: "run", text: t("çalışıyor", "running") };
 
   const trace = (() => {
     const start = Math.max(0, cpu.pc - 8) & 0xfffe;
@@ -488,44 +520,52 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
   const misses = m.cache.totalMisses;
   const rate = hits + misses ? ((hits / (hits + misses)) * 100).toFixed(1) : "-";
   const seconds = m.cycles / CPU_HZ;
+  const shortcuts: Shortcut[] = [
+    { keys: "Ctrl+Enter", what: t("Düzenleyicide: derleyip RAM'e yükler ve çalıştırır", "In the editor: compile, load into RAM and run") },
+    { keys: t("Ekrana tıkla", "Click the screen"), what: t("Klavye PS/2 olarak karta gider (ABD düzeni)", "The keyboard goes to the board as PS/2 (US layout)") },
+    { keys: t("Terminale tıkla", "Click the terminal"), what: t("Tuşlar UART'tan monitöre gider", "Keys go to the monitor over UART") },
+  ];
+  const sideTabs: TabDef<SideTab>[] = SIDE_TABS.map((x) => ({ id: x.id, label: sec(x.label, dil), title: sec(x.title, dil) }));
 
   return (
     <div className="bench bench-m shell" data-side={panel.side ? "open" : "closed"} style={duzenStili(lay, "--editor-h")}>
       <AppHeader
         mode="cpu16"
-        context="CPU16 · anakart + BIOS"
-        shortcuts={SHORTCUTS}
+        context={t("CPU16 · anakart + BIOS", "CPU16 · motherboard + BIOS")}
+        shortcuts={shortcuts}
         meters={
           <>
-            <Meter label="Süre" ikincil>{seconds.toLocaleString("tr-TR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} s</Meter>
-            <Meter label="Hız">{(running ? mhz : 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MHz</Meter>
-            <Meter label="Komut" ikincil>{cpu.instructions.toLocaleString("tr-TR")}</Meter>
+            <Meter label={t("Süre", "Time")} ikincil>{seconds.toLocaleString(yer, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} s</Meter>
+            <Meter label={t("Hız", "Speed")}>{(running ? mhz : 0).toLocaleString(yer, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MHz</Meter>
+            <Meter label={t("Komut", "Instructions")} ikincil>{cpu.instructions.toLocaleString(yer)}</Meter>
             <Meter label="PC" mono>{hex4(cpu.pc)}</Meter>
           </>
         }
       />
       <div className="toolbar">
-        <Group label="Çalıştırma">
+        <Group label={t("Çalıştırma", "Execution")}>
           <button className="primary" onClick={running ? pause : start} disabled={!!busy || !!bad}>
             <Simge ad={running ? "duraklat" : "oynat"} />
-            {running ? "Durdur" : "Çalıştır"}
+            {running ? t("Durdur", "Pause") : t("Çalıştır", "Run")}
           </button>
-          <button onClick={step} disabled={running || !!busy} title="Bir komut çalıştır"><Simge ad="adim" />Adım</button>
-          <button onClick={resetMachine} disabled={!!busy} title="Reset düğmesi: CPU ve cihazlar sıfırlanır, RAM ve EEPROM kalır"><Simge ad="sifirla" />Sıfırla</button>
+          <button onClick={step} disabled={running || !!busy} title={t("Bir komut çalıştır", "Run one instruction")}><Simge ad="adim" />{t("Adım", "Step")}</button>
+          <button onClick={resetMachine} disabled={!!busy} title={t("Reset düğmesi: CPU ve cihazlar sıfırlanır, RAM ve EEPROM kalır", "Reset button: resets the CPU and devices, keeps RAM and EEPROM")}>
+            <Simge ad="sifirla" />{t("Sıfırla", "Reset")}
+          </button>
         </Group>
-        <Group label="Saat hızı">
-          <span className="tb-label kisalir">Saat</span>
-          <select value={speed} onChange={(e) => pickSpeed(Number(e.target.value))} aria-label="Saat hızı">
-            {SPEEDS.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
+        <Group label={t("Saat hızı", "Clock speed")}>
+          <span className="tb-label kisalir">{t("Saat", "Clock")}</span>
+          <select value={speed} onChange={(e) => pickSpeed(Number(e.target.value))} aria-label={t("Saat hızı", "Clock speed")}>
+            {SPEEDS.map((s) => <option key={s.v} value={s.v}>{sec(s.label, dil)}</option>)}
           </select>
           <span className={`bench-status s-${status.kind}`} role="status">{status.text}</span>
         </Group>
-        <Group label="Kip">
-          <span className="tb-label kisalir">Makine</span>
+        <Group label={t("Kip", "Mode")}>
+          <span className="tb-label kisalir">{t("Makine", "Machine")}</span>
           {switcher}
         </Group>
-        <Group label="Paneller" className="tb-end">
-          <PanelToggle which="bottom" open={lay.bottom} onToggle={() => setLay({ bottom: !lay.bottom })} ad="Program düzenleyicisi" />
+        <Group label={t("Paneller", "Panels")} className="tb-end">
+          <PanelToggle which="bottom" open={lay.bottom} onToggle={() => setLay({ bottom: !lay.bottom })} ad={t("Program düzenleyicisi", "Program editor")} />
           <PanelToggle which="side" open={lay.side} onToggle={() => setLay({ side: !lay.side })} />
           <OdakDugmesi />
         </Group>
@@ -540,40 +580,44 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
                 id="cpu16-vga"
                 tabIndex={0}
                 role="img"
-                aria-label="VGA ekranı, 80×30 metin. Odaktayken klavye PS/2 olarak karta gider."
+                aria-label={t("VGA ekranı, 80×30 metin. Odaktayken klavye PS/2 olarak karta gider.", "VGA screen, 80×30 text. While it has focus, the keyboard goes to the board as PS/2.")}
                 onKeyDown={onScreenKeyDown}
                 onKeyUp={onScreenKeyUp}
                 onFocus={() => setFocused(true)}
                 onBlur={releaseKeys}
               />
-              {!focused && <span className="vga-hint">Klavyeyi kullanmak için ekrana tıkla (PS/2, ABD düzeni)</span>}
+              {!focused && <span className="vga-hint">{t("Klavyeyi kullanmak için ekrana tıkla (PS/2, ABD düzeni)", "Click the screen to use the keyboard (PS/2, US layout)")}</span>}
             </div>
           </div>
           <pre id="cpu16-screen-text" className="sr-only">{m.renderText()}</pre>
 
-          {panel.bottom && <Splitter value={lay.bottomH} onChange={(h) => setLay({ bottomH: h })} min={220} reserve={180} label="Program düzenleyicisinin yüksekliği" />}
+          {panel.bottom && (
+            <Splitter value={lay.bottomH} onChange={(h) => setLay({ bottomH: h })} min={220} reserve={180} label={t("Program düzenleyicisinin yüksekliği", "Program editor height")} />
+          )}
 
           <div className="bench-src panel" hidden={!panel.bottom}>
             <div className="panel-head">
               <h2>Program</h2>
-              <select value={prog} onChange={(e) => pick(e.target.value)} aria-label="Örnek program">
+              <select value={prog} onChange={(e) => pick(e.target.value)} aria-label={t("Örnek program", "Example program")}>
                 <optgroup label="Assembly">
-                  {ORDER.filter((n) => ornekDili(n) === "asm").map((n) => <option key={n} value={n}>{LABELS[n] ?? n}</option>)}
+                  {ORDER.filter((n) => ornekDili(n) === "asm").map((n) => <option key={n} value={n}>{LABELS[n] ? sec(LABELS[n], dil) : n}</option>)}
                 </optgroup>
                 <optgroup label="C">
-                  {ORDER.filter((n) => ornekDili(n) === "c").map((n) => <option key={n} value={n}>{LABELS[n] ?? n}</option>)}
+                  {ORDER.filter((n) => ornekDili(n) === "c").map((n) => <option key={n} value={n}>{LABELS[n] ? sec(LABELS[n], dil) : n}</option>)}
                 </optgroup>
               </select>
-              <div className="seg" role="group" aria-label="Dil">
-                <button className={lang === "asm" ? "on" : ""} aria-pressed={lang === "asm"} onClick={() => chooseLang("asm")} title="as16 ile derlenir">Assembly</button>
-                <button className={lang === "c" ? "on" : ""} aria-pressed={lang === "c"} onClick={() => chooseLang("c")} title="cc16 C derleyicisiyle derlenir (BIOS hedefi)">C</button>
+              <div className="seg" role="group" aria-label={t("Dil", "Language")}>
+                <button className={lang === "asm" ? "on" : ""} aria-pressed={lang === "asm"} onClick={() => chooseLang("asm")} title={t("as16 ile derlenir", "Assembled with as16")}>Assembly</button>
+                <button className={lang === "c" ? "on" : ""} aria-pressed={lang === "c"} onClick={() => chooseLang("c")} title={t("cc16 C derleyicisiyle derlenir (BIOS hedefi)", "Compiled with the cc16 C compiler (BIOS target)")}>C</button>
               </div>
               <span className="hint-text grow">
-                {lang === "c" ? "cc16 · BIOS üzerinde 0x4000'dan çalışır" : "as16 ile derlenir"}
+                {lang === "c" ? t("cc16 · BIOS üzerinde 0x4000'dan çalışır", "cc16 · runs on the BIOS from 0x4000") : t("as16 ile derlenir", "built with as16")}
                 {src !== EXAMPLES[prog] && (
                   <>
                     {" · "}
-                    <button className="link" onClick={restoreExample} title="Değişiklikleri at, örneğin aslına dön">örneğe dön</button>
+                    <button className="link" onClick={restoreExample} title={t("Değişiklikleri at, örneğin aslına dön", "Discard your changes and go back to the original example")}>
+                      {t("örneğe dön", "restore example")}
+                    </button>
                   </>
                 )}
               </span>
@@ -582,7 +626,7 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
               id="cpu16-msrc"
               spellCheck={false}
               value={src}
-              aria-label={lang === "c" ? "C kaynak kodu" : "Assembly kaynak kodu"}
+              aria-label={lang === "c" ? t("C kaynak kodu", "C source code") : t("Assembly kaynak kodu", "Assembly source code")}
               onChange={(e) => edit(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
@@ -592,52 +636,78 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
               }}
             />
             {errors.length > 0 && (
-              <ol className="bench-errors">{errors.map((e, i) => <li key={i}>satır {e.line}: {e.message}</li>)}</ol>
+              <ol className="bench-errors">
+                {errors.map((e, i) => (
+                  <li key={i}>{t(`satır ${e.line}: ${e.col ? `${e.col}. sütun: ` : ""}`, `line ${e.line}${e.col ? `, column ${e.col}` : ""}: `)}{e.message}</li>
+                ))}
+              </ol>
             )}
             <div className="panel-foot">
-              <button className="primary" onClick={() => void upload("ram")} disabled={!!busy} title="Ctrl+Enter"><Simge ad="yukle" />Derle ve RAM'e yükle</button>
-              <button onClick={() => void upload("flash")} disabled={!!busy} title="F komutu: 28C256 EEPROM'a korumalı sayfa yazmasıyla yazar (yalnız bank 1, 0x4000–0x7FFF; bank 0 BIOS'un)">EEPROM'a yaz</button>
-              {flashRun && <button onClick={runFromFlash} disabled={!!busy}>EEPROM'dan çalıştır</button>}
-              <Menu label="Gerçek kart" title="Web Serial ile gerçek karta yükleme ve kart testi" placement="up" keepMounted>
+              <button className="primary" onClick={() => void upload("ram")} disabled={!!busy} title="Ctrl+Enter"><Simge ad="yukle" />{t("Derle ve RAM'e yükle", "Compile and load into RAM")}</button>
+              <button
+                onClick={() => void upload("flash")}
+                disabled={!!busy}
+                title={t(
+                  "F komutu: 28C256 EEPROM'a korumalı sayfa yazmasıyla yazar (yalnız bank 1, 0x4000–0x7FFF; bank 0 BIOS'un)",
+                  "F command: writes to the 28C256 EEPROM with protected page writes (bank 1 only, 0x4000–0x7FFF; bank 0 holds the BIOS)",
+                )}
+              >
+                {t("EEPROM'a yaz", "Write to EEPROM")}
+              </button>
+              {flashRun && <button onClick={runFromFlash} disabled={!!busy}>{t("EEPROM'dan çalıştır", "Run from EEPROM")}</button>}
+              <Menu label={t("Gerçek kart", "Real board")} title={t("Web Serial ile gerçek karta yükleme ve kart testi", "Load and test the real board over Web Serial")} placement="up" keepMounted>
                 <div className="menu-col">
                   <button
                     onClick={() => void sendToBoard()}
                     disabled={!serialOk || !!busy}
-                    title={serialOk ? "Gerçek karta USB-UART üzerinden HEX gönder (L, sonra G)" : "Bu tarayıcıda Web Serial yok: Chrome ya da Edge (masaüstü), https ya da localhost gerekir"}
+                    title={
+                      serialOk
+                        ? t("Gerçek karta USB-UART üzerinden HEX gönder (L, sonra G)", "Send the HEX to the real board over USB-UART (L, then G)")
+                        : t("Bu tarayıcıda Web Serial yok: Chrome ya da Edge (masaüstü), https ya da localhost gerekir", "This browser has no Web Serial: you need desktop Chrome or Edge, on https or localhost")
+                    }
                   >
-                    Karta gönder (Web Serial)
+                    {t("Karta gönder (Web Serial)", "Send to board (Web Serial)")}
                   </button>
                   <button
                     onClick={() => void boardTest("kart")}
                     disabled={!serialOk || !!busy}
-                    title="cpu16/bios/testler'deki 4 programı karta yükler, çıktılarını simülatörünkiyle karşılaştırır (CPU, bellek, önbellek, G/Ç ve video)"
+                    title={t(
+                      "cpu16/bios/testler'deki 4 programı karta yükler, çıktılarını simülatörünkiyle karşılaştırır (CPU, bellek, önbellek, G/Ç ve video)",
+                      "Loads the 4 programs in cpu16/bios/testler onto the board and compares their output with the simulator's (CPU, memory, cache, I/O and video)",
+                    )}
                   >
-                    Kart testi (Web Serial)
+                    {t("Kart testi (Web Serial)", "Board test (Web Serial)")}
                   </button>
-                  <button onClick={() => void boardTest("sim")} disabled={!!busy} title="Aynı testi bu tezgâhtaki simüle karta karşı çalıştır">
-                    Kart testini simülatörde dene
+                  <button onClick={() => void boardTest("sim")} disabled={!!busy} title={t("Aynı testi bu tezgâhtaki simüle karta karşı çalıştır", "Run the same test against the simulated board in this workbench")}>
+                    {t("Kart testini simülatörde dene", "Try the board test in the simulator")}
                   </button>
                   <label className="field">
-                    <span>Kartın UART hızı</span>
-                    <select value={baud} onChange={(e) => setBaud(Number(e.target.value))} aria-label="Kartın UART hızı (baud)">
-                      <option value={115200}>115 200 baud (CPU 4 MHz)</option>
-                      <option value={57600}>57 600 baud (CPU 2 MHz)</option>
-                      <option value={28800}>28 800 baud (CPU 1 MHz, ilk kurulum)</option>
+                    <span>{t("Kartın UART hızı", "Board UART speed")}</span>
+                    <select value={baud} onChange={(e) => setBaud(Number(e.target.value))} aria-label={t("Kartın UART hızı (baud)", "Board UART speed (baud)")}>
+                      <option value={115200}>{t("115 200 baud (CPU 4 MHz)", "115,200 baud (CPU 4 MHz)")}</option>
+                      <option value={57600}>{t("57 600 baud (CPU 2 MHz)", "57,600 baud (CPU 2 MHz)")}</option>
+                      <option value={28800}>{t("28 800 baud (CPU 1 MHz, ilk kurulum)", "28,800 baud (CPU 1 MHz, first build)")}</option>
                     </select>
                   </label>
                   <p className="muted small">
                     {serialOk
-                      ? "Yükleme gerçek karttaki gibi çalışır: reset, BIOS açılır, program monitöre UART'tan Intel HEX olarak gider (bkz. cpu16/docs/bios.md)."
-                      : "Bu tarayıcıda Web Serial yok (Chrome / Edge masaüstü, https ya da localhost gerekir). Kart yine de CLI ile yüklenebilir."}
+                      ? t(
+                          "Yükleme gerçek karttaki gibi çalışır: reset, BIOS açılır, program monitöre UART'tan Intel HEX olarak gider (bkz. cpu16/docs/bios.md).",
+                          "Loading works as on the real board: reset, the BIOS starts, and the program goes to the monitor over UART as Intel HEX (see cpu16/docs/bios.md).",
+                        )
+                      : t(
+                          "Bu tarayıcıda Web Serial yok (Chrome / Edge masaüstü, https ya da localhost gerekir). Kart yine de CLI ile yüklenebilir.",
+                          "This browser has no Web Serial (it needs desktop Chrome / Edge, on https or localhost). You can still load the board from the CLI.",
+                        )}
                   </p>
                 </div>
               </Menu>
-              <p className="info" role="status">{info}</p>
+              <p className="info" role="status">{sec(info, dil)}</p>
             </div>
-            {testOut && <pre className="bench-uart" aria-label="Kart testi sonucu">{testOut}</pre>}
+            {testOut && <pre className="bench-uart" aria-label={t("Kart testi sonucu", "Board test result")}>{testOut}</pre>}
             {boardTerm.text && (
               <>
-                <h3>Kart (Web Serial)</h3>
+                <h3>{t("Kart (Web Serial)", "Board (Web Serial)")}</h3>
                 <pre className="bench-uart">{boardTerm.text}</pre>
               </>
             )}
@@ -646,10 +716,10 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
 
         {panel.side && <YanBolucu lay={lay} setLay={setLay} />}
         {panel.side && (
-          <aside className="bench-panel side" aria-label="Makine durumu">
-            <Tabs tabs={SIDE_TABS} value={sideTab} onChange={(t) => setLay({ sideTab: t })} label="Yan panel" />
+          <aside className="bench-panel side" aria-label={t("Makine durumu", "Machine state")}>
+            <Tabs tabs={sideTabs} value={sideTab} onChange={(s) => setLay({ sideTab: s })} label={t("Yan panel", "Side panel")} />
             <div className="side-body" role="tabpanel" hidden={sideTab !== "durum"}>
-              <Section title="Register'lar" actions={!running && <span className="hint-text">sarı: son adımda değişen</span>}>
+              <Section title={t("Register'lar", "Registers")} actions={!running && <span className="hint-text">{t("sarı: son adımda değişen", "yellow: changed in the last step")}</span>}>
                 <div className="kahraman">
                   <span className="k-ad">PC</span>
                   <span className="k-deger">{hex4(cpu.pc)}</span>
@@ -664,18 +734,18 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
                     </div>
                   ))}
                 </div>
-                <div className="pins" aria-label="Bayraklar">
+                <div className="pins" aria-label={t("Bayraklar", "Flags")}>
                   {(["n", "z", "c", "v", "i"] as const).map((f) => <Bayrak key={f} ad={f} on={cpu[f]} />)}
                   {cpu.irq && <span className="pin on">IRQ</span>}
                 </div>
               </Section>
 
               <Section
-                title="UART terminali"
+                title={t("UART terminali", "UART terminal")}
                 actions={
                   <>
-                    <span className="hint-text">115 200 baud</span>
-                    <button className="link" onClick={() => { term.clear(); redraw(); }}>temizle</button>
+                    <span className="hint-text">{t("115 200 baud", "115,200 baud")}</span>
+                    <button className="link" onClick={() => { term.clear(); redraw(); }}>{t("temizle", "clear")}</button>
                   </>
                 }
               >
@@ -684,18 +754,24 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
                   id="cpu16-term"
                   className="bench-uart bench-term"
                   tabIndex={0}
-                  aria-label="UART terminali; odaktayken tuşlar karta UART'tan gider"
+                  aria-label={t("UART terminali; odaktayken tuşlar karta UART'tan gider", "UART terminal; while it has focus, keys go to the board over UART")}
                   onKeyDown={onTermKeyDown}
                 >
-                  {term.text || "UART boş"}
+                  {term.text || t("UART boş", "UART is empty")}
                 </pre>
                 <form className="row" onSubmit={(e) => { e.preventDefault(); sendLine(); }}>
-                  <input className="mono" value={termLine} onChange={(e) => setTermLine(e.target.value)} placeholder="monitör komutu, ör. D 4000" aria-label="UART'a gönderilecek satır" />
-                  <button type="submit">Gönder</button>
+                  <input
+                    className="mono"
+                    value={termLine}
+                    onChange={(e) => setTermLine(e.target.value)}
+                    placeholder={t("monitör komutu, ör. D 4000", "monitor command, e.g. D 4000")}
+                    aria-label={t("UART'a gönderilecek satır", "Line to send over UART")}
+                  />
+                  <button type="submit">{t("Gönder", "Send")}</button>
                 </form>
               </Section>
 
-              <Section title="Komut izi">
+              <Section title={t("Komut izi", "Instruction trace")}>
                 <div className="bench-trace">
                   {trace.map((t) => (
                     <div key={t.a} className={t.cur ? "cur" : ""}><span>{hex4(t.a)}</span><span>{hex4(t.w)}</span><span>{t.text}</span></div>
@@ -705,28 +781,34 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
             </div>
 
             <div className="side-body" role="tabpanel" hidden={sideTab !== "anakart"}>
-              <Section title="Anakart">
+              <Section title={t("Anakart", "Motherboard")}>
                 <dl className="bench-kv">
-                  <dt>Bank</dt>
+                  <dt>{t("Bank", "Banks")}</dt>
                   <dd className="mono">{Array.from(m.banks, (b, i) => `B${i}=${hex2(b)}`).join("  ")}</dd>
-                  <dt>Önbellek</dt>
-                  <dd>{m.cache.enabled ? "açık" : "kapalı"} · isabet {hits.toLocaleString("tr-TR")} · ıskalama {misses.toLocaleString("tr-TR")} · %{rate}</dd>
-                  <dt>Bekleme</dt>
-                  <dd>{m.waitCycles.toLocaleString("tr-TR")} döngü</dd>
+                  <dt>{t("Önbellek", "Cache")}</dt>
+                  <dd>
+                    {t(
+                      `${m.cache.enabled ? "açık" : "kapalı"} · isabet ${hits.toLocaleString(yer)} · ıskalama ${misses.toLocaleString(yer)} · %${rate}`,
+                      `${m.cache.enabled ? "on" : "off"} · ${hits.toLocaleString(yer)} hits · ${misses.toLocaleString(yer)} misses · ${rate}%`,
+                    )}
+                  </dd>
+                  <dt>{t("Bekleme", "Wait states")}</dt>
+                  <dd>{m.waitCycles.toLocaleString(yer)} {t("döngü", "cycles")}</dd>
                   <dt>IRQ</dt>
                   <dd>
-                    bekleyen {IRQ_NAMES.filter((_, i) => (pend >> i) & 1).join(", ") || "-"} · maske {hex2(m.irqMask)} · kaynak {m.irqSource === 0xff ? "yok" : m.irqSource}
+                    {t("bekleyen", "pending")} {IRQ_NAMES.filter((_, i) => (pend >> i) & 1).map((x) => sec(x, dil)).join(", ") || "-"} · {t("maske", "mask")} {hex2(m.irqMask)} ·{" "}
+                    {t("kaynak", "source")} {m.irqSource === 0xff ? t("yok", "none") : m.irqSource}
                   </dd>
-                  <dt>Zamanlayıcı</dt>
-                  <dd>{m.timer.ctrl & 1 ? `açık, ${m.timer.reload} ms'de bir (1 kHz tık)` : "kapalı"}</dd>
+                  <dt>{t("Zamanlayıcı", "Timer")}</dt>
+                  <dd>{m.timer.ctrl & 1 ? t(`açık, ${m.timer.reload} ms'de bir (1 kHz tık)`, `on, every ${m.timer.reload} ms (1 kHz tick)`) : t("kapalı", "off")}</dd>
                   <dt>Video</dt>
-                  <dd>kare {m.video.frames.toLocaleString("tr-TR")} · imleç {m.video.cursorX},{m.video.cursorY}</dd>
+                  <dd>{t("kare", "frame")} {m.video.frames.toLocaleString(yer)} · {t("imleç", "cursor")} {m.video.cursorX},{m.video.cursorY}</dd>
                 </dl>
               </Section>
 
               <Section
-                title="Bellek (CPU adresi)"
-                actions={<input id="cpu16-mmem" className="addr" value={memAddr} onChange={(e) => setMemAddr(e.target.value)} size={6} aria-label="Bellek başlangıç adresi (hex)" />}
+                title={t("Bellek (CPU adresi)", "Memory (CPU address)")}
+                actions={<input id="cpu16-mmem" className="addr" value={memAddr} onChange={(e) => setMemAddr(e.target.value)} size={6} aria-label={t("Bellek başlangıç adresi (hex)", "Memory start address (hex)")} />}
               >
                 <pre className="bench-mem">
                   {memRows.map((r) => (
