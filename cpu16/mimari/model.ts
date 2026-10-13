@@ -11,8 +11,18 @@
 // Yapıştırıcı lojik çiplerinin (74HC00, 08, 32 …) her birimi (kapısı) Board'da bir bloğa aittir
 // (ChipInstance.glueUnits): bağlantı denetimi bir pini birimin bloğuna sayar, kutular da kendi
 // bloklarına düşen kapıları "+ N kapı" olarak gösterir.
+//
+// İki dil: diyagramı kuran fonksiyonlar (cpu.ts, makine.ts, hesap8/mimari.ts) dili parametre alır ve
+// metinleri o dilde yazar (`t("Türkçe", "English")`); sahne, SVG ve uygulamanın paneli kurulan
+// diyagramın metinlerini olduğu gibi kullanır. Kimlikler, netler ve bloklar iki dilde aynı.
 
 import { partValue, type Board, type ChipInstance, type Passive } from "../board/board.ts";
+
+/** Diyagramın dili (src/ui/ayarlar.ts'teki Dil ile aynı) */
+export type Dil = "tr" | "en";
+export type Cevir = (tr: string, en: string) => string;
+/** Dile göre çevirici: t("Veri yolu", "Data bus") */
+export const cevirici = (dil: Dil): Cevir => (dil === "en" ? (_tr, en) => en : (tr) => tr);
 
 // ---------------------------------------------------------------- tanım türleri
 
@@ -89,7 +99,8 @@ export interface Grup {
   /** çerçevenin kendi blokları (kutularda olmayan: kartın yapıştırıcı lojiği, arka panel konnektörleri);
    * parça listesi yan panelde, başlıkta yalnız entegre sayısı */
   bloklar?: BlokKimligi[];
-  /** başlıkta kendi bloklarının entegre sayısının adı, ör. "yapıştırıcı lojik" → "194 entegre · 72 yapıştırıcı lojik" */
+  /** başlıkta kendi bloklarının entegre sayısının adı, ör. "yapıştırıcı lojik" → "194 entegre · 72 yapıştırıcı lojik"
+   * (tekil; İngilizcede çoğulu "s" ile: "gate chip" → "72 gate chips") */
   bloklarAdi?: string;
   /** başlık çizgisi yok (arka panel gibi içinden yol geçen çerçeveler) */
   sade?: boolean;
@@ -166,12 +177,16 @@ export interface Diyagram {
 /** "A0".."A15" gibi bir dizi net adı */
 export const netDizisi = (onek: string, n: number, bas = 0): string[] => Array.from({ length: n }, (_, i) => `${onek}${bas + i}`);
 
-/** Türkçe büyük harf (i → İ) */
-export const buyuk = (s: string): string => s.toLocaleUpperCase("tr-TR");
+/** Büyük harf: Türkçede i → İ, İngilizcede i → I */
+export const buyuk = (s: string, dil: Dil = "tr"): string => s.toLocaleUpperCase(dil === "en" ? "en-US" : "tr-TR");
 
 /** Yol etiketinin metni: ad ve genişlik */
-export const yolEtiketMetni = (y: Pick<Yol, "ad" | "bit">, e?: Pick<YolEtiketi, "metin">): string =>
-  e?.metin ?? (y.bit ? `${y.ad} (${y.bit} BİT)` : y.ad);
+export const yolEtiketMetni = (y: Pick<Yol, "ad" | "bit">, e?: Pick<YolEtiketi, "metin">, dil: Dil = "tr"): string =>
+  e?.metin ?? (y.bit ? `${y.ad} (${y.bit} ${dil === "en" ? "BITS" : "BİT"})` : y.ad);
+
+/** "12 entegre" / "12 chips", "1 chip": sayı ve adı (İngilizcede tekil / çoğul) */
+export const adet = (n: number, tr: string, en: readonly [tekil: string, cogul: string], dil: Dil = "tr"): string =>
+  dil === "en" ? `${n} ${n === 1 ? en[0] : en[1]}` : `${n} ${tr}`;
 
 /** Kart adlarının okunur karşılığı (makinede) */
 export const KART_ADLARI: Record<string, string> = {
@@ -350,26 +365,26 @@ export const kutuGorevi = (k: Pick<Kutu, "gorev" | "bolmeler">): string =>
   k.gorev || (k.bolmeler ?? []).map((b) => b.gorev ?? "").filter(Boolean).join("; ");
 
 /** Kısa pasif adları (kutularda ve yan panelde) */
-const PASIF_ADLARI: Record<string, string> = {
-  SW_DIP_8: "8'li DIP anahtar",
-  SW_DIP_2: "2'li DIP anahtar",
-  SW_PUSH: "buton",
-  SW_SPDT: "iki konumlu anahtar",
-  DISP_7SEG_CC: "7 segment gösterge",
-  DISP_BAR_10: "çubuk gösterge",
-  LED: "LED",
-  CONN_VGA: "VGA konnektörü",
-  CONN_PS2: "PS/2 konnektörü",
-  CONN_CH340: "USB-UART modülü",
-  CONN_5V: "5 V girişi",
-  OSC_CAN: "kristal osilatör",
-  OSC_25M175: "25,175 MHz osilatör",
-  BACKPLANE_2x32: "2 × 32 konnektör",
-  POT_100K: "potansiyometre",
+const PASIF_ADLARI: Record<string, { tr: string; en: string }> = {
+  SW_DIP_8: { tr: "8'li DIP anahtar", en: "8-way DIP switch" },
+  SW_DIP_2: { tr: "2'li DIP anahtar", en: "2-way DIP switch" },
+  SW_PUSH: { tr: "buton", en: "push button" },
+  SW_SPDT: { tr: "iki konumlu anahtar", en: "SPDT switch" },
+  DISP_7SEG_CC: { tr: "7 segment gösterge", en: "7-segment display" },
+  DISP_BAR_10: { tr: "çubuk gösterge", en: "bar graph" },
+  LED: { tr: "LED", en: "LED" },
+  CONN_VGA: { tr: "VGA konnektörü", en: "VGA connector" },
+  CONN_PS2: { tr: "PS/2 konnektörü", en: "PS/2 connector" },
+  CONN_CH340: { tr: "USB-UART modülü", en: "USB-UART module" },
+  CONN_5V: { tr: "5 V girişi", en: "5 V input" },
+  OSC_CAN: { tr: "kristal osilatör", en: "crystal oscillator" },
+  OSC_25M175: { tr: "25,175 MHz osilatör", en: "25.175 MHz oscillator" },
+  BACKPLANE_2x32: { tr: "2 × 32 konnektör", en: "2 × 32 connector" },
+  POT_100K: { tr: "potansiyometre", en: "potentiometer" },
 };
 
 /** Pasifin kısa adı (bilinmeyen türlerde parça kodu) */
-export const pasifAdi = (part: string): string => PASIF_ADLARI[part] ?? part;
+export const pasifAdi = (part: string, dil: Dil = "tr"): string => PASIF_ADLARI[part]?.[dil] ?? part;
 /** Kutuda gösterilen pasif türleri */
 export const gosterilenPasif = (part: string): boolean => part in PASIF_ADLARI;
 
@@ -387,7 +402,7 @@ export const sayimMetni = ([p, n]: readonly [string, number]): string => (n > 1 
 export const cipSayimi = (cipler: readonly ChipInstance[]): [string, number][] => sayim(cipler.map((c) => partValue(c)));
 
 /** Kutuda gösterilen pasiflerin sayımı (kısa adlarıyla) */
-export const pasifSayimi = (pasifler: readonly Passive[]): [string, number][] => sayim(pasifler.filter((p) => gosterilenPasif(p.part)).map((p) => pasifAdi(p.part)));
+export const pasifSayimi = (pasifler: readonly Passive[], dil: Dil = "tr"): [string, number][] => sayim(pasifler.filter((p) => gosterilenPasif(p.part)).map((p) => pasifAdi(p.part, dil)));
 
 /** Bir kutunun ya da bölmenin parçaları */
 export function kutuParcalari(d: Devre, k: Pick<Kutu, "bloklar">, b?: Pick<Bolme, "bloklar" | "rol">): Parcalar {

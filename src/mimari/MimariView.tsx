@@ -5,27 +5,29 @@
 //
 // Düzen öbür bölümlerle aynı: üst çubuk, araç çubuğu (diyagram seçimi, yakınlaştırma, paneller),
 // sahne ve yan panel (seçilenin ayrıntıları). Adres: #mimari ya da #mimari/<cpu|makine|hesap>.
+// Dil değişince diyagram o dilde yeniden kurulur (kimlikler aynı: seçim ve görünüm yerinde kalır).
 
 import "./mimari.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { KUTU_ROLU_ADI, YOL_TURU_ADI } from "../../cpu16/mimari/cizim.ts";
-import { DIYAGRAMLAR, diyagramKaydi, diyagramKur, type DiyagramKimligi } from "../../cpu16/mimari/index.ts";
+import { DIYAGRAMLAR, diyagramKaydi, diyagramKur, kayitAdlari, type DiyagramKimligi } from "../../cpu16/mimari/index.ts";
 import { iliskiKur, vurgula } from "../../cpu16/mimari/iliski.ts";
-import { kutuGorevi, netOzeti, yolEtiketMetni } from "../../cpu16/mimari/model.ts";
+import { adet, kutuGorevi, netOzeti, yolEtiketMetni } from "../../cpu16/mimari/model.ts";
 import { kisayolAlani } from "../ui/ayarlar";
+import { useDil, useT, type Cevir, type Dil } from "../ui/ceviri";
 import { AppHeader, Group, OdakDugmesi, PanelToggle, YanBolucu, duzenStili, useLayout, usePaneller, type Shortcut } from "../ui/Shell";
 import { bolumuGoster } from "./bolumuGoster";
 import { MimariPanel } from "./MimariPanel";
 import { MimariSahne, ayniHedef, useGorunum, type Hedef } from "./MimariSahne";
 
-const KISAYOLLAR: Shortcut[] = [
-  { keys: "1 · 2 · 3", what: "Diyagram: CPU kartı, bütün bilgisayar, hesap makinesi" },
-  { keys: "Tekerlek", what: "İmlecin olduğu yere yakınlaştır / uzaklaştır" },
-  { keys: "Sürükle", what: "Diyagramı kaydır (dokunmatikte iki parmakla yakınlaştır)" },
-  { keys: "+ / −", what: "Yakınlaştır / uzaklaştır" },
-  { keys: "0", what: "Sahneye sığdır" },
-  { keys: "Tab", what: "Kutular arasında gez, Enter: ayrıntılar" },
-  { keys: "Esc", what: "Seçimi kaldır" },
+const kisayollar = (t: Cevir): Shortcut[] => [
+  { keys: "1 · 2 · 3", what: t("Diyagram: CPU kartı, bütün bilgisayar, hesap makinesi", "Diagram: CPU board, whole computer, calculator") },
+  { keys: t("Tekerlek", "Wheel"), what: t("İmlecin olduğu yere yakınlaştır / uzaklaştır", "Zoom in / out at the pointer") },
+  { keys: t("Sürükle", "Drag"), what: t("Diyagramı kaydır (dokunmatikte iki parmakla yakınlaştır)", "Pan the diagram (on touch screens, pinch with two fingers to zoom)") },
+  { keys: "+ / −", what: t("Yakınlaştır / uzaklaştır", "Zoom in / out") },
+  { keys: "0", what: t("Sahneye sığdır", "Fit to view") },
+  { keys: "Tab", what: t("Kutular arasında gez, Enter: ayrıntılar", "Move between boxes, Enter: details") },
+  { keys: "Esc", what: t("Seçimi kaldır", "Clear the selection") },
 ];
 
 const KAYIT = "silikon3d.mimari.diyagram";
@@ -57,13 +59,16 @@ const Simge = ({ d }: { d: string }) => (
 );
 
 export function MimariView() {
+  const t = useT();
+  const dil = useDil();
   const [id, setId] = useState<DiyagramKimligi>(ilkDiyagram);
   const [secim, setSecim] = useState<Hedef | null>(() => (sonSecim?.id === id ? sonSecim.secim : null));
   const [hover, setHover] = useState<Hedef | null>(null);
   const [lay, setLay] = useLayout("mimari", { side: true, bottom: false, bottomH: 0 });
   const panel = usePaneller(lay);
 
-  const k = useMemo(() => diyagramKur(id), [id]);
+  const k = useMemo(() => diyagramKur(id, dil), [id, dil]);
+  const kayitAdi = kayitAdlari(k.kayit, dil).ad;
   const il = useMemo(() => iliskiKur(k.diyagram, k.devre), [k]);
   const adlar = useMemo(() => {
     const m = new Map<string, string>();
@@ -133,38 +138,39 @@ export function MimariView() {
 
   const hedef = hover ?? secim;
   const vurgu = useMemo(() => (hedef ? vurgula(il, hedef) : null), [il, hedef]);
-  const bilgi = useMemo(() => bilgiSatiri(k, hedef), [k, hedef]);
+  const bilgi = useMemo(() => bilgiSatiri(k, hedef, t, dil), [k, hedef, t, dil]);
   const yuzde = gorunum.g ? Math.round(gorunum.g.s * 100) : null;
+  const kisayolListesi = useMemo(() => kisayollar(t), [t]);
 
   return (
     <div className="app mimari shell" data-side={panel.side ? "open" : "closed"} data-bottom="closed" style={duzenStili(lay)}>
-      <AppHeader mode="mimari" context="Mimari · blok diyagramları" shortcuts={KISAYOLLAR} />
+      <AppHeader mode="mimari" context={t("Mimari · blok diyagramları", "Architecture · block diagrams")} shortcuts={kisayolListesi} />
       <div className="toolbar">
-        <Group label="Diyagram">
-          <span className="tb-label kisalir">Diyagram</span>
-          <span className="seg mm-secici" role="group" aria-label="Diyagram">
+        <Group label={t("Diyagram", "Diagram")}>
+          <span className="tb-label kisalir">{t("Diyagram", "Diagram")}</span>
+          <span className="seg mm-secici" role="group" aria-label={t("Diyagram", "Diagram")}>
             {DIYAGRAMLAR.map((d, i) => (
-              <button key={d.id} className={id === d.id ? "on" : ""} aria-pressed={id === d.id} onClick={() => diyagramSec(d.id)} title={`${d.ad} (${i + 1})`}>
-                {d.kisa}
+              <button key={d.id} className={id === d.id ? "on" : ""} aria-pressed={id === d.id} onClick={() => diyagramSec(d.id)} title={`${kayitAdlari(d, dil).ad} (${i + 1})`}>
+                {kayitAdlari(d, dil).kisa}
               </button>
             ))}
           </span>
         </Group>
-        <Group label="Yakınlaştırma" className="mm-zoom">
-          <button className="icon-btn" onClick={() => yakinlas(0.8)} aria-label="Uzaklaştır" data-tip="Uzaklaştır (−)">
+        <Group label={t("Yakınlaştırma", "Zoom")} className="mm-zoom">
+          <button className="icon-btn" onClick={() => yakinlas(0.8)} aria-label={t("Uzaklaştır", "Zoom out")} data-tip={t("Uzaklaştır (−)", "Zoom out (−)")}>
             <Simge d="M5 10h10" />
           </button>
-          <span className="mm-yuzde" aria-live="off" title="Yakınlaştırma: diyagramın gerçek boyuna göre">{yuzde === null ? "" : `%${yuzde}`}</span>
-          <button className="icon-btn" onClick={() => yakinlas(1.25)} aria-label="Yakınlaştır" data-tip="Yakınlaştır (+)">
+          <span className="mm-yuzde" aria-live="off" title={t("Yakınlaştırma: diyagramın gerçek boyuna göre", "Zoom, relative to the diagram's actual size")}>{yuzde === null ? "" : dil === "en" ? `${yuzde}%` : `%${yuzde}`}</span>
+          <button className="icon-btn" onClick={() => yakinlas(1.25)} aria-label={t("Yakınlaştır", "Zoom in")} data-tip={t("Yakınlaştır (+)", "Zoom in (+)")}>
             <Simge d="M5 10h10M10 5v10" />
           </button>
-          <button className="mm-sigdir" onClick={sigdir} data-tip="Bütün diyagram sahneye sığsın (0)">
+          <button className="mm-sigdir" onClick={sigdir} data-tip={t("Bütün diyagram sahneye sığsın (0)", "Fit the whole diagram in view (0)")}>
             <Simge d="M3.5 7.5v-4h4M16.5 7.5v-4h-4M3.5 12.5v4h4M16.5 12.5v4h-4" />
-            <span className="kisalir">Sığdır</span>
+            <span className="kisalir">{t("Sığdır", "Fit")}</span>
           </button>
         </Group>
-        <Group label="Paneller" className="tb-end">
-          <PanelToggle which="side" open={lay.side} onToggle={() => setLay({ side: !lay.side })} ad="Ayrıntılar paneli" />
+        <Group label={t("Paneller", "Panels")} className="tb-end">
+          <PanelToggle which="side" open={lay.side} onToggle={() => setLay({ side: !lay.side })} ad={t("Ayrıntılar paneli", "Details panel")} />
           <OdakDugmesi />
         </Group>
       </div>
@@ -181,14 +187,14 @@ export function MimariView() {
               sec={sec}
               uzerinde={uzerinde}
               ayrintiAc={ayrintiAc}
-              etiket={`${k.kayit.ad}: blok diyagramı`}
+              etiket={t(`${kayitAdi}: blok diyagramı`, `${kayitAdi}: block diagram`)}
               bilgi={bilgi}
             />
           </main>
         </div>
         {panel.side && <YanBolucu lay={lay} setLay={setLay} />}
         {panel.side && (
-          <aside className="side mm-side" aria-label="Ayrıntılar">
+          <aside className="side mm-side" aria-label={t("Ayrıntılar", "Details")}>
             <div className="side-body">
               <MimariPanel k={k} il={il} secim={secim} sec={sec} ayrintiAc={ayrintiAc} goster3d={goster3d} />
             </div>
@@ -200,12 +206,12 @@ export function MimariView() {
 }
 
 /** Sahnenin altındaki satır: üstüne gelinen ya da seçilenin kısa tanımı; yoksa ipucu */
-function bilgiSatiri(k: ReturnType<typeof diyagramKur>, h: Hedef | null) {
+function bilgiSatiri(k: ReturnType<typeof diyagramKur>, h: Hedef | null, t: Cevir, dil: Dil) {
   if (!h) {
     return (
       <span className="mm-ipucu">
-        <span className="ince-yok">Kutunun üstüne gel: yolları öne çıkar · tıkla: ayrıntılar · tekerlek: yakınlaştır · sürükle: kaydır</span>
-        <span className="ince-var">Dokun: ayrıntılar (aşağıda) · iki parmak: yakınlaştır · sürükle: kaydır</span>
+        <span className="ince-yok">{t("Kutunun üstüne gel: yolları öne çıkar · tıkla: ayrıntılar · tekerlek: yakınlaştır · sürükle: kaydır", "Hover a box: highlight its connections · click: details · wheel: zoom · drag: pan")}</span>
+        <span className="ince-var">{t("Dokun: ayrıntılar (aşağıda) · iki parmak: yakınlaştır · sürükle: kaydır", "Tap: details (below) · two fingers: zoom · drag: pan")}</span>
       </span>
     );
   }
@@ -215,8 +221,8 @@ function bilgiSatiri(k: ReturnType<typeof diyagramKur>, h: Hedef | null) {
     return (
       <>
         <i className={`mm-sw mm-sw-y mm-y-${y.tur}`} aria-hidden="true" />
-        <b>{yolEtiketMetni(y)}</b>
-        <span className="mm-bilgi-ek">{YOL_TURU_ADI[y.tur]} · {netOzeti(y.netler)}</span>
+        <b>{yolEtiketMetni(y, undefined, dil)}</b>
+        <span className="mm-bilgi-ek">{YOL_TURU_ADI[y.tur][dil]} · {netOzeti(y.netler)}</span>
       </>
     );
   }
@@ -227,7 +233,7 @@ function bilgiSatiri(k: ReturnType<typeof diyagramKur>, h: Hedef | null) {
       <>
         <i className={`mm-sw mm-sw-k mm-k-${x.rol}${x.cihaz ? " mm-sw-cihaz" : ""}`} aria-hidden="true" />
         <b>{x.ad}</b>
-        <span className="mm-bilgi-ek">{[x.cihaz ? "Dış cihaz" : `${KUTU_ROLU_ADI[x.rol]} · ${n} entegre`, kutuGorevi(x)].filter(Boolean).join(" · ")}</span>
+        <span className="mm-bilgi-ek">{[x.cihaz ? t("Dış cihaz", "External device") : `${KUTU_ROLU_ADI[x.rol][dil]} · ${adet(n, "entegre", ["chip", "chips"], dil)}`, kutuGorevi(x)].filter(Boolean).join(" · ")}</span>
       </>
     );
   }
@@ -237,7 +243,7 @@ function bilgiSatiri(k: ReturnType<typeof diyagramKur>, h: Hedef | null) {
     <>
       <i className="mm-sw mm-sw-kart" aria-hidden="true" />
       <b>{g.ad}</b>
-      <span className="mm-bilgi-ek">{g.ayrinti ? "çift tıkla: ayrıntılı diyagram" : `${g.kutular.length} kutu`}</span>
+      <span className="mm-bilgi-ek">{g.ayrinti ? t("çift tıkla: ayrıntılı diyagram", "double-click: detailed diagram") : adet(g.kutular.length, "kutu", ["box", "boxes"], dil)}</span>
     </>
   );
 }

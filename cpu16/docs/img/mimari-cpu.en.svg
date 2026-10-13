@@ -1,0 +1,409 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="mm-svg" viewBox="0 0 1680 1030" width="1680" height="1030">
+  <!-- GENERATED, do not edit by hand: npm run cpu16 mimari cpu (cpu16/mimari/) -->
+  <title>CPU16 processor board: architecture</title>
+  <desc>The CPU board's blocks and the connections between them. A single 16-bit internal data bus: one unit drives it in each clock cycle and the selected units load. The control unit derives the 32 control lines from the instruction and the step counter. The board connects to the memory, clock and I/O boards through the backplane connector.</desc>
+  <style>
+.mm-t { font-family: "IBM Plex Sans", Inter, "DejaVu Sans", "Segoe UI", Arial, sans-serif; fill: #1a1f27; }
+.mm-kagit { fill: #ffffff; stroke: #cdd3db; stroke-width: 1; }
+.mm-baslik-bg { fill: #2c62d8; }
+.mm-t-baslik { font-size: 26px; font-weight: 700; fill: #ffffff; letter-spacing: 0.02em; }
+.mm-t-alt-baslik { font-size: 15px; fill: #ffffff; }
+.mm-grup-govde { fill: #f7f8f9; stroke: #858e9a; stroke-width: 1.5; }
+.mm-grup-cizgi { stroke: #858e9a; stroke-width: 1; }
+.mm-t-grup-ad { font-size: 15px; font-weight: 700; }
+.mm-t-grup-ek { font-size: 13px; fill: #4a5361; }
+.mm-t-grup-link { font-size: 13px; font-weight: 600; fill: #2b5bcc; }
+.mm-kutu-govde { stroke-width: 2; }
+.mm-cihaz .mm-kutu-govde, .mm-k-not .mm-kutu-govde { stroke-dasharray: 6 4; }
+.mm-bolme { fill: none; stroke-width: 1; stroke-dasharray: 4 3; }
+.mm-t-ad { font-size: 15px; font-weight: 700; }
+.mm-t-bolme-ad { font-size: 13.5px; font-weight: 700; }
+.mm-t-parca { font-family: "IBM Plex Mono", "DejaVu Sans Mono", Consolas, monospace; font-size: 12.5px; fill: #4a5361; }
+.mm-t-pasif { font-size: 12.5px; fill: #4a5361; }
+.mm-t-kapi { font-size: 12px; fill: #5d6775; font-style: italic; }
+.mm-t-gorev { font-size: 12.5px; fill: #4a5361; }
+.mm-hale { fill: none; stroke: #ffffff; stroke-linejoin: round; }
+.mm-cizgi { fill: none; stroke-linejoin: round; stroke-linecap: butt; }
+.mm-nokta { stroke: #ffffff; stroke-width: 1.5; }
+.mm-bag { fill: #ffffff; stroke-width: 1.5; }
+.mm-t-etiket { font-size: 12.5px; font-weight: 700; letter-spacing: 0.02em; paint-order: stroke; stroke: #ffffff; stroke-width: 4px; stroke-linejoin: round; }
+.mm-t-bag { font-size: 12px; font-weight: 700; }
+.mm-lejant-govde { fill: #ffffff; stroke: #858e9a; stroke-width: 1.2; }
+.mm-lej-cizgi { fill: none; }
+.mm-lej-kutu { stroke-width: 1.5; }
+.mm-t-lej-baslik { font-size: 13px; font-weight: 700; fill: #4a5361; letter-spacing: 0.04em; }
+.mm-t-lej { font-size: 12.5px; fill: #4a5361; }
+.mm-t-lej-kisa { font-size: 12.5px; font-weight: 700; }
+.mm-y-veri .mm-cizgi, .mm-lej-cizgi.mm-y-veri { stroke: #1f5bd1; } .mm-y-veri .mm-ok, .mm-y-veri .mm-nokta { fill: #1f5bd1; } .mm-y-veri .mm-t-etiket, .mm-y-veri .mm-t-bag { fill: #1f5bd1; } .mm-y-veri .mm-bag { stroke: #1f5bd1; }
+.mm-y-adres .mm-cizgi, .mm-lej-cizgi.mm-y-adres { stroke: #b5461e; } .mm-y-adres .mm-ok, .mm-y-adres .mm-nokta { fill: #b5461e; } .mm-y-adres .mm-t-etiket, .mm-y-adres .mm-t-bag { fill: #b5461e; } .mm-y-adres .mm-bag { stroke: #b5461e; }
+.mm-y-kontrol .mm-cizgi, .mm-lej-cizgi.mm-y-kontrol { stroke: #17803f; } .mm-y-kontrol .mm-ok, .mm-y-kontrol .mm-nokta { fill: #17803f; } .mm-y-kontrol .mm-t-etiket, .mm-y-kontrol .mm-t-bag { fill: #17803f; } .mm-y-kontrol .mm-bag { stroke: #17803f; }
+.mm-y-saat .mm-cizgi, .mm-lej-cizgi.mm-y-saat { stroke: #6b45c9; } .mm-y-saat .mm-ok, .mm-y-saat .mm-nokta { fill: #6b45c9; } .mm-y-saat .mm-t-etiket, .mm-y-saat .mm-t-bag { fill: #6b45c9; } .mm-y-saat .mm-bag { stroke: #6b45c9; }
+.mm-y-yerel .mm-cizgi, .mm-lej-cizgi.mm-y-yerel { stroke: #556171; } .mm-y-yerel .mm-ok, .mm-y-yerel .mm-nokta { fill: #556171; } .mm-y-yerel .mm-t-etiket, .mm-y-yerel .mm-t-bag { fill: #556171; } .mm-y-yerel .mm-bag { stroke: #556171; }
+.mm-y-dis .mm-cizgi, .mm-lej-cizgi.mm-y-dis { stroke: #0b7585; } .mm-y-dis .mm-ok, .mm-y-dis .mm-nokta { fill: #0b7585; } .mm-y-dis .mm-t-etiket, .mm-y-dis .mm-t-bag { fill: #0b7585; } .mm-y-dis .mm-bag { stroke: #0b7585; }
+.mm-k-register .mm-kutu-govde, .mm-lej-kutu.mm-k-register { stroke: #9a6700; fill: #f6f1e8; } .mm-k-register .mm-bolme { stroke: #9a6700; }
+.mm-k-islem .mm-kutu-govde, .mm-lej-kutu.mm-k-islem { stroke: #a3329a; fill: #f9f1f8; } .mm-k-islem .mm-bolme { stroke: #a3329a; }
+.mm-k-secici .mm-kutu-govde, .mm-lej-kutu.mm-k-secici { stroke: #17803f; fill: #ecf5f0; } .mm-k-secici .mm-bolme { stroke: #17803f; }
+.mm-k-tampon .mm-kutu-govde, .mm-lej-kutu.mm-k-tampon { stroke: #1f5bd1; fill: #eff4fc; } .mm-k-tampon .mm-bolme { stroke: #1f5bd1; }
+.mm-k-bellek .mm-kutu-govde, .mm-lej-kutu.mm-k-bellek { stroke: #0b7585; fill: #ebf4f5; } .mm-k-bellek .mm-bolme { stroke: #0b7585; }
+.mm-k-kontrol .mm-kutu-govde, .mm-lej-kutu.mm-k-kontrol { stroke: #6b45c9; fill: #f5f2fb; } .mm-k-kontrol .mm-bolme { stroke: #6b45c9; }
+.mm-k-gc .mm-kutu-govde, .mm-lej-kutu.mm-k-gc { stroke: #556171; fill: #f3f4f5; } .mm-k-gc .mm-bolme { stroke: #556171; }
+.mm-k-not .mm-kutu-govde, .mm-lej-kutu.mm-k-not { stroke: #6b7584; fill: #f8f8f9; } .mm-k-not .mm-bolme { stroke: #6b7584; }
+</style>
+  <rect class="mm-kagit" x="0.5" y="0.5" width="1679" height="1029" rx="10"/>
+  <path class="mm-baslik-bg" d="M0.5 56 V10.5 A10 10 0 0 1 10.5 0.5 H1669.5 A10 10 0 0 1 1679.5 10.5 V56 Z"/>
+  <g class="mm-baslik">
+    <text class="mm-t mm-t-baslik" x="24" y="37.4" text-anchor="start">CPU16 PROCESSOR BOARD · ARCHITECTURE</text>
+    <text class="mm-t mm-t-alt-baslik" x="1656" y="33.4" text-anchor="end">16-bit data bus · 16-bit address · microcode in gates (no ROM)</text>
+  </g>
+  <g class="mm-yol mm-y-veri" data-yol="veri">
+    <path class="mm-hale" d="M220 360 L1290 360" stroke-width="11.5"/>
+    <path class="mm-cizgi" d="M220 360 L1290 360" stroke-width="5.5"/>
+  </g>
+  <g class="mm-yol mm-y-veri" data-yol="veri">
+    <path class="mm-hale" d="M220 345 L220 344.3" stroke-width="11.5"/>
+    <path class="mm-hale" d="M540 345 L540 354.3" stroke-width="11.5"/>
+    <path class="mm-hale" d="M900 332 L900 344.3" stroke-width="11.5"/>
+    <path class="mm-hale" d="M1290 345 L1290 344.3" stroke-width="11.5"/>
+    <path class="mm-hale" d="M220 397 L220 375.8" stroke-width="11.5"/>
+    <path class="mm-hale" d="M540 410 L540 375.8" stroke-width="11.5"/>
+    <path class="mm-hale" d="M900 397 L900 365.8" stroke-width="11.5"/>
+    <path class="mm-hale" d="M1290 397 L1290 375.8" stroke-width="11.5"/>
+    <path class="mm-cizgi" d="M220 345 L220 344.3" stroke-width="5.5" data-kutular="reg"/>
+    <path class="mm-cizgi" d="M540 345 L540 360" stroke-width="5.5" data-kutular="gecici"/>
+    <path class="mm-cizgi" d="M900 332 L900 344.3" stroke-width="5.5" data-kutular="alu"/>
+    <path class="mm-cizgi" d="M1290 345 L1290 344.3" stroke-width="5.5" data-kutular="bayrak"/>
+    <path class="mm-cizgi" d="M220 397 L220 375.8" stroke-width="5.5" data-kutular="pc"/>
+    <path class="mm-cizgi" d="M540 410 L540 375.8" stroke-width="5.5" data-kutular="sabit"/>
+    <path class="mm-cizgi" d="M900 397 L900 360" stroke-width="5.5" data-kutular="marir"/>
+    <path class="mm-cizgi" d="M1290 397 L1290 375.8" stroke-width="5.5" data-kutular="bellek"/>
+    <circle class="mm-nokta" cx="540" cy="360" r="6.2"/>
+    <circle class="mm-nokta" cx="900" cy="360" r="6.2"/>
+  </g>
+  <g class="mm-yol mm-y-yerel" data-yol="ta">
+    <path class="mm-hale" d="M650 236 L707 236" stroke-width="11.5"/>
+    <path class="mm-cizgi" d="M650 236 L707 236" stroke-width="5.5" data-kutular="gecici alu"/>
+  </g>
+  <g class="mm-yol mm-y-yerel" data-yol="tb">
+    <path class="mm-hale" d="M650 286 L707 286" stroke-width="11.5"/>
+    <path class="mm-cizgi" d="M650 286 L707 286" stroke-width="5.5" data-kutular="gecici alu"/>
+  </g>
+  <g class="mm-yol mm-y-yerel" data-yol="nzcv">
+    <path class="mm-hale" d="M1110 261 L1179.4 261" stroke-width="9.5"/>
+    <path class="mm-cizgi" d="M1110 261 L1179.4 261" stroke-width="3.5" data-kutular="alu bayrak"/>
+  </g>
+  <g class="mm-yol mm-y-yerel" data-yol="c">
+    <path class="mm-hale" d="M1190 161 L1119 161" stroke-width="8.2"/>
+    <path class="mm-cizgi" d="M1190 161 L1119 161" stroke-width="2.2" data-kutular="bayrak alu"/>
+  </g>
+  <g class="mm-yol mm-y-yerel" data-yol="ir-sabit">
+    <path class="mm-hale" d="M720 476 L683 476" stroke-width="11.5"/>
+    <path class="mm-cizgi" d="M720 476 L683 476" stroke-width="5.5" data-kutular="marir sabit"/>
+  </g>
+  <g class="mm-yol mm-y-yerel" data-yol="ir-kontrol">
+    <path class="mm-hale" d="M790 560 L790 642" stroke-width="11.5"/>
+    <path class="mm-cizgi" d="M790 560 L790 642" stroke-width="5.5" data-kutular="marir kontrol"/>
+  </g>
+  <g class="mm-yol mm-y-adres" data-yol="adres">
+    <path class="mm-hale" d="M1000 560 L1000 610 L1507 610" stroke-width="11.5"/>
+    <path class="mm-hale" d="M1180 604.3 L1180 573" stroke-width="11.5"/>
+    <path class="mm-cizgi" d="M1000 560 L1000 610 L1507 610" stroke-width="5.5" data-kutular="marir arka"/>
+    <path class="mm-cizgi" d="M1180 610 L1180 573" stroke-width="5.5" data-kutular="bellek"/>
+    <circle class="mm-nokta" cx="1180" cy="610" r="6.2"/>
+  </g>
+  <g class="mm-yol mm-y-kontrol" data-yol="kontrol">
+    <path class="mm-hale" d="M90 730 L50 730 L50 88 L1400 88 L1400 103" stroke-width="11.5"/>
+    <path class="mm-hale" d="M320 93.8 L320 103" stroke-width="11.5"/>
+    <path class="mm-hale" d="M600 93.8 L600 103" stroke-width="11.5"/>
+    <path class="mm-hale" d="M1050 93.8 L1050 103" stroke-width="11.5"/>
+    <path class="mm-hale" d="M150 655 L150 573" stroke-width="11.5"/>
+    <path class="mm-hale" d="M470 655 L470 573" stroke-width="11.5"/>
+    <path class="mm-hale" d="M850 655 L850 573" stroke-width="11.5"/>
+    <path class="mm-hale" d="M1340 655 L1340 573" stroke-width="11.5"/>
+    <path class="mm-cizgi" d="M90 730 L50 730 L50 88 L1400 88 L1400 103" stroke-width="5.5" data-kutular="kontrol bayrak"/>
+    <path class="mm-cizgi" d="M320 88 L320 103" stroke-width="5.5" data-kutular="reg"/>
+    <path class="mm-cizgi" d="M600 88 L600 103" stroke-width="5.5" data-kutular="gecici"/>
+    <path class="mm-cizgi" d="M1050 88 L1050 103" stroke-width="5.5" data-kutular="alu"/>
+    <path class="mm-cizgi" d="M150 655 L150 573" stroke-width="5.5" data-kutular="kontrol pc"/>
+    <path class="mm-cizgi" d="M470 655 L470 573" stroke-width="5.5" data-kutular="kontrol sabit"/>
+    <path class="mm-cizgi" d="M850 655 L850 573" stroke-width="5.5" data-kutular="kontrol marir"/>
+    <path class="mm-cizgi" d="M1340 655 L1340 573" stroke-width="5.5" data-kutular="kontrol bellek"/>
+    <circle class="mm-nokta" cx="320" cy="88" r="6.2"/>
+    <circle class="mm-nokta" cx="600" cy="88" r="6.2"/>
+    <circle class="mm-nokta" cx="1050" cy="88" r="6.2"/>
+  </g>
+  <g class="mm-yol mm-y-kontrol" data-yol="kosul">
+    <path class="mm-hale" d="M1430 332 L1430 335.4" stroke-width="9.5"/>
+    <path class="mm-hale" d="M1250 833 L1250 815.6" stroke-width="9.5"/>
+    <path class="mm-cizgi" d="M1430 332 L1430 335.4" stroke-width="3.5" data-kutular="bayrak"/>
+    <path class="mm-cizgi" d="M1250 833 L1250 815.6" stroke-width="3.5" data-kutular="kontrol"/>
+  </g>
+  <g class="mm-yol mm-y-veri" data-yol="bayt">
+    <path class="mm-hale" d="M1413 446 L1507 446" stroke-width="11.5"/>
+    <path class="mm-cizgi" d="M1413 446 L1507 446" stroke-width="5.5" data-kutular="bellek arka"/>
+  </g>
+  <g class="mm-yol mm-y-kontrol" data-yol="bellek-denetim">
+    <path class="mm-hale" d="M1400 494 L1509.4 494" stroke-width="9.5"/>
+    <path class="mm-cizgi" d="M1400 494 L1509.4 494" stroke-width="3.5" data-kutular="bellek arka"/>
+  </g>
+  <g class="mm-yol mm-y-saat" data-yol="wrwin">
+    <path class="mm-hale" d="M1520 536 L1409 536" stroke-width="8.2"/>
+    <path class="mm-cizgi" d="M1520 536 L1409 536" stroke-width="2.2" data-kutular="arka bellek"/>
+  </g>
+  <g class="mm-yol mm-y-saat" data-yol="saat">
+    <path class="mm-hale" d="M1520 690 L1410.6 690" stroke-width="9.5"/>
+    <path class="mm-cizgi" d="M1520 690 L1410.6 690" stroke-width="3.5" data-kutular="arka kontrol"/>
+  </g>
+  <g class="mm-yol mm-y-kontrol" data-yol="irq">
+    <path class="mm-hale" d="M1520 734 L1409 734" stroke-width="8.2"/>
+    <path class="mm-cizgi" d="M1520 734 L1409 734" stroke-width="2.2" data-kutular="arka kontrol"/>
+  </g>
+  <g class="mm-yol mm-y-kontrol" data-yol="durum">
+    <path class="mm-hale" d="M1400 778 L1509.4 778" stroke-width="9.5"/>
+    <path class="mm-cizgi" d="M1400 778 L1509.4 778" stroke-width="3.5" data-kutular="kontrol arka"/>
+  </g>
+  <g class="mm-kutu mm-k-register" data-kutu="reg">
+    <rect class="mm-kutu-govde" x="90" y="116" width="290" height="216" rx="8"/>
+    <text class="mm-t mm-t-ad" x="235" y="183.8" text-anchor="middle">REGISTER FILE (R0–R7)</text>
+    <text class="mm-t mm-t-parca" x="235" y="202.9" text-anchor="middle">74HC541 ×16, 74HC574 ×16,</text>
+    <text class="mm-t mm-t-parca" x="235" y="218.9" text-anchor="middle">74HC151 ×3, 74HC138 ×2</text>
+    <text class="mm-t mm-t-pasif" x="235" y="237.9" text-anchor="middle">LED ×22, bar graph ×18</text>
+    <text class="mm-t mm-t-kapi" x="235" y="256.2" text-anchor="middle">+ 8 gates (in glue logic)</text>
+    <text class="mm-t mm-t-gorev" x="235" y="274.9" text-anchor="middle">8 × 16 bit; selected by the RSEL and IR fields</text>
+  </g>
+  <g class="mm-kutu mm-k-register" data-kutu="gecici">
+    <rect class="mm-kutu-govde" x="430" y="116" width="220" height="216" rx="8"/>
+    <text class="mm-t mm-t-ad" x="540" y="191.8" text-anchor="middle">TEMPORARY REGISTERS</text>
+    <text class="mm-t mm-t-parca" x="540" y="210.9" text-anchor="middle">74HC574 ×4</text>
+    <text class="mm-t mm-t-pasif" x="540" y="229.9" text-anchor="middle">LED ×2</text>
+    <text class="mm-t mm-t-kapi" x="540" y="248.2" text-anchor="middle">+ 2 gates (in glue logic)</text>
+    <text class="mm-t mm-t-gorev" x="540" y="266.9" text-anchor="middle">TA and TB: the two ALU inputs</text>
+  </g>
+  <g class="mm-kutu mm-k-islem" data-kutu="alu">
+    <rect class="mm-kutu-govde" x="720" y="116" width="390" height="216" rx="8"/>
+    <path class="mm-bolme" d="M726 204 H1104" data-bolme="1"/>
+    <text class="mm-t mm-t-bolme-ad" x="915" y="136.7" text-anchor="middle">ALU DECODER</text>
+    <text class="mm-t mm-t-parca" x="915" y="155.4" text-anchor="middle">74HC138 ×3</text>
+    <text class="mm-t mm-t-kapi" x="915" y="173.7" text-anchor="middle">+ 32 gates (in glue logic)</text>
+    <text class="mm-t mm-t-gorev" x="915" y="192.4" text-anchor="middle">opcode → 24 ALU control bits</text>
+    <text class="mm-t mm-t-bolme-ad" x="915" y="227.2" text-anchor="middle">ALU (ARITHMETIC LOGIC UNIT)</text>
+    <text class="mm-t mm-t-parca" x="915" y="245.9" text-anchor="middle">74HC151 ×16, 74HC153 ×9, 74HC283 ×4, 74HC541 ×2,</text>
+    <text class="mm-t mm-t-parca" x="915" y="261.9" text-anchor="middle">74HC688 ×2, 74HC157</text>
+    <text class="mm-t mm-t-pasif" x="915" y="280.9" text-anchor="middle">bar graph ×2</text>
+    <text class="mm-t mm-t-kapi" x="915" y="299.2" text-anchor="middle">+ 56 gates (in glue logic)</text>
+    <text class="mm-t mm-t-gorev" x="915" y="317.9" text-anchor="middle">add, subtract, logic, shift</text>
+  </g>
+  <g class="mm-kutu mm-k-kontrol" data-kutu="bayrak">
+    <rect class="mm-kutu-govde" x="1190" y="116" width="270" height="216" rx="8"/>
+    <text class="mm-t mm-t-ad" x="1325" y="175.8" text-anchor="middle">FLAGS AND CONDITION</text>
+    <text class="mm-t mm-t-parca" x="1325" y="194.9" text-anchor="middle">74HC74 ×3, 74HC157 ×2,</text>
+    <text class="mm-t mm-t-parca" x="1325" y="210.9" text-anchor="middle">74HC541 ×2, 74HC151</text>
+    <text class="mm-t mm-t-pasif" x="1325" y="229.9" text-anchor="middle">LED ×5</text>
+    <text class="mm-t mm-t-kapi" x="1325" y="248.2" text-anchor="middle">+ 12 gates (in glue logic)</text>
+    <text class="mm-t mm-t-gorev" x="1325" y="266.9" text-anchor="middle">N Z C V and I flags; branch condition</text>
+    <text class="mm-t mm-t-gorev" x="1325" y="282.9" text-anchor="middle">(COND)</text>
+  </g>
+  <g class="mm-kutu mm-k-register" data-kutu="pc">
+    <rect class="mm-kutu-govde" x="90" y="410" width="260" height="150" rx="8"/>
+    <text class="mm-t mm-t-ad" x="220" y="444.8" text-anchor="middle">PROGRAM COUNTER (PC)</text>
+    <text class="mm-t mm-t-parca" x="220" y="463.9" text-anchor="middle">74HC161 ×4, 74HC541 ×2</text>
+    <text class="mm-t mm-t-pasif" x="220" y="482.9" text-anchor="middle">bar graph ×2, LED ×2</text>
+    <text class="mm-t mm-t-kapi" x="220" y="501.2" text-anchor="middle">+ 2 gates (in glue logic)</text>
+    <text class="mm-t mm-t-gorev" x="220" y="519.9" text-anchor="middle">address of the next instruction; += 2 or</text>
+    <text class="mm-t mm-t-gorev" x="220" y="535.9" text-anchor="middle">loaded</text>
+  </g>
+  <g class="mm-kutu mm-k-secici" data-kutu="sabit">
+    <rect class="mm-kutu-govde" x="400" y="410" width="270" height="150" rx="8"/>
+    <text class="mm-t mm-t-ad" x="535" y="463.3" text-anchor="middle">IMMEDIATE UNIT</text>
+    <text class="mm-t mm-t-parca" x="535" y="482.4" text-anchor="middle">74HC151 ×16, 74HC541 ×2</text>
+    <text class="mm-t mm-t-gorev" x="535" y="501.4" text-anchor="middle">extends the instruction's constant (imm,</text>
+    <text class="mm-t mm-t-gorev" x="535" y="517.4" text-anchor="middle">offset) to 16 bits</text>
+  </g>
+  <g class="mm-kutu mm-k-register" data-kutu="marir">
+    <rect class="mm-kutu-govde" x="720" y="410" width="330" height="150" rx="8"/>
+    <path class="mm-bolme" d="M885 416 V554" data-bolme="1"/>
+    <text class="mm-t mm-t-bolme-ad" x="802.5" y="444.2" text-anchor="middle">INSTRUCTION</text>
+    <text class="mm-t mm-t-bolme-ad" x="802.5" y="460.2" text-anchor="middle">REGISTER (IR)</text>
+    <text class="mm-t mm-t-parca" x="802.5" y="478.9" text-anchor="middle">74HC574 ×2</text>
+    <text class="mm-t mm-t-pasif" x="802.5" y="497.9" text-anchor="middle">bar graph ×2, LED</text>
+    <text class="mm-t mm-t-kapi" x="802.5" y="516.2" text-anchor="middle">+ 1 gate (in glue logic)</text>
+    <text class="mm-t mm-t-gorev" x="802.5" y="534.9" text-anchor="middle">current instruction</text>
+    <text class="mm-t mm-t-bolme-ad" x="967.5" y="444.2" text-anchor="middle">ADDRESS REGISTER</text>
+    <text class="mm-t mm-t-bolme-ad" x="967.5" y="460.2" text-anchor="middle">(MAR)</text>
+    <text class="mm-t mm-t-parca" x="967.5" y="478.9" text-anchor="middle">74HC574 ×2</text>
+    <text class="mm-t mm-t-pasif" x="967.5" y="497.9" text-anchor="middle">bar graph ×2, LED</text>
+    <text class="mm-t mm-t-kapi" x="967.5" y="516.2" text-anchor="middle">+ 1 gate (in glue logic)</text>
+    <text class="mm-t mm-t-gorev" x="967.5" y="534.9" text-anchor="middle">memory address</text>
+  </g>
+  <g class="mm-kutu mm-k-tampon" data-kutu="bellek">
+    <rect class="mm-kutu-govde" x="1100" y="410" width="300" height="150" rx="8"/>
+    <text class="mm-t mm-t-ad" x="1250" y="452.8" text-anchor="middle">MEMORY INTERFACE</text>
+    <text class="mm-t mm-t-parca" x="1250" y="471.9" text-anchor="middle">74HC245 ×3, 74HC541</text>
+    <text class="mm-t mm-t-pasif" x="1250" y="490.9" text-anchor="middle">LED ×2</text>
+    <text class="mm-t mm-t-kapi" x="1250" y="509.2" text-anchor="middle">+ 16 gates (in glue logic)</text>
+    <text class="mm-t mm-t-gorev" x="1250" y="527.9" text-anchor="middle">16-bit internal data bus ↔ byte lanes (DE, DO)</text>
+  </g>
+  <g class="mm-kutu mm-k-kontrol" data-kutu="kontrol">
+    <rect class="mm-kutu-govde" x="90" y="655" width="1310" height="150" rx="8"/>
+    <path class="mm-bolme" d="M790 661 V799" data-bolme="1"/>
+    <text class="mm-t mm-t-bolme-ad" x="440" y="706.7" text-anchor="middle">CONTROL UNIT (MICROCODE)</text>
+    <text class="mm-t mm-t-parca" x="440" y="725.4" text-anchor="middle">74HC151 ×10, 74HC138 ×6</text>
+    <text class="mm-t mm-t-kapi" x="440" y="743.7" text-anchor="middle">+ 109 gates (in glue logic)</text>
+    <text class="mm-t mm-t-gorev" x="440" y="762.4" text-anchor="middle">32 control bits from instruction, step and condition; no ROM, built with 74HC138 / 151 and gates</text>
+    <text class="mm-t mm-t-bolme-ad" x="1095" y="697.2" text-anchor="middle">CONTROL REGISTER AND SEQUENCER</text>
+    <text class="mm-t mm-t-parca" x="1095" y="715.9" text-anchor="middle">74HC574 ×4, 74HC74 ×2, 74HC138, 74HC161</text>
+    <text class="mm-t mm-t-pasif" x="1095" y="734.9" text-anchor="middle">LED ×6</text>
+    <text class="mm-t mm-t-kapi" x="1095" y="753.2" text-anchor="middle">+ 17 gates (in glue logic)</text>
+    <text class="mm-t mm-t-gorev" x="1095" y="771.9" text-anchor="middle">control register (CR), step counter, interrupt and HALT; data bus driver select</text>
+  </g>
+  <g class="mm-kutu mm-k-gc" data-kutu="arka">
+    <rect class="mm-kutu-govde" x="1520" y="116" width="130" height="689" rx="8"/>
+    <text class="mm-t mm-t-ad" x="1585" y="438.8" text-anchor="middle">BACKPLANE</text>
+    <text class="mm-t mm-t-pasif" x="1585" y="457.9" text-anchor="middle">2 × 32 connector</text>
+    <text class="mm-t mm-t-gorev" x="1585" y="476.9" text-anchor="middle">J1: every line to</text>
+    <text class="mm-t mm-t-gorev" x="1585" y="492.9" text-anchor="middle">the other boards</text>
+  </g>
+  <g class="mm-kutu mm-k-not" data-kutu="yapistirici">
+    <rect class="mm-kutu-govde" x="90" y="866" width="350" height="140" rx="8"/>
+    <text class="mm-t mm-t-ad" x="265" y="898.3" text-anchor="middle">GLUE LOGIC</text>
+    <text class="mm-t mm-t-parca" x="265" y="917.4" text-anchor="middle">74HC08 ×17, 74HC32 ×9, 74HC86 ×9, 74HC00 ×8,</text>
+    <text class="mm-t mm-t-parca" x="265" y="933.4" text-anchor="middle">74HC10 ×7, 74HC02 ×5, 74HC04 ×4, 74HC20 ×4,</text>
+    <text class="mm-t mm-t-parca" x="265" y="949.4" text-anchor="middle">74HC21 ×4, 74HC11</text>
+    <text class="mm-t mm-t-gorev" x="265" y="968.4" text-anchor="middle">gates are assigned to blocks: the “+ N gates” lines in</text>
+    <text class="mm-t mm-t-gorev" x="265" y="984.4" text-anchor="middle">the boxes</text>
+  </g>
+  <g class="mm-yol-ust mm-y-veri" data-yol="veri">
+    <path class="mm-ok" d="M220 332 L228.7 348.3 L211.3 348.3 Z" data-kutular="reg"/>
+    <path class="mm-ok" d="M220 357.3 L211.3 341 L228.7 341 Z" data-kutular="reg"/>
+    <path class="mm-ok" d="M540 332 L548.7 348.3 L531.3 348.3 Z" data-kutular="gecici"/>
+    <path class="mm-ok" d="M900 357.3 L891.3 341 L908.7 341 Z" data-kutular="alu"/>
+    <path class="mm-ok" d="M1290 332 L1298.7 348.3 L1281.3 348.3 Z" data-kutular="bayrak"/>
+    <path class="mm-ok" d="M1290 357.3 L1281.3 341 L1298.7 341 Z" data-kutular="bayrak"/>
+    <path class="mm-ok" d="M220 410 L211.3 393.8 L228.7 393.8 Z" data-kutular="pc"/>
+    <path class="mm-ok" d="M220 362.8 L228.7 379 L211.3 379 Z" data-kutular="pc"/>
+    <path class="mm-ok" d="M540 362.8 L548.7 379 L531.3 379 Z" data-kutular="sabit"/>
+    <path class="mm-ok" d="M900 410 L891.3 393.8 L908.7 393.8 Z" data-kutular="marir"/>
+    <path class="mm-ok" d="M1290 410 L1281.3 393.8 L1298.7 393.8 Z" data-kutular="bellek"/>
+    <path class="mm-ok" d="M1290 362.8 L1298.7 379 L1281.3 379 Z" data-kutular="bellek"/>
+    <text class="mm-t mm-t-etiket" x="380" y="350" text-anchor="middle">DATA BUS (16 BITS)</text>
+    <text class="mm-t mm-t-etiket" x="1095" y="350" text-anchor="middle">BUS0–BUS15</text>
+  </g>
+  <g class="mm-yol-ust mm-y-yerel" data-yol="ta">
+    <path class="mm-ok" d="M720 236 L703.8 244.7 L703.8 227.3 Z" data-kutular="gecici"/>
+    <text class="mm-t mm-t-etiket" x="685" y="228" text-anchor="middle">TA</text>
+  </g>
+  <g class="mm-yol-ust mm-y-yerel" data-yol="tb">
+    <path class="mm-ok" d="M720 286 L703.8 294.7 L703.8 277.3 Z" data-kutular="gecici"/>
+    <text class="mm-t mm-t-etiket" x="685" y="278" text-anchor="middle">TB</text>
+  </g>
+  <g class="mm-yol-ust mm-y-yerel" data-yol="nzcv">
+    <path class="mm-ok" d="M1190 261 L1176.8 268 L1176.8 254 Z" data-kutular="alu"/>
+    <text class="mm-t mm-t-etiket" x="1150" y="253" text-anchor="middle">N Z C V</text>
+  </g>
+  <g class="mm-yol-ust mm-y-yerel" data-yol="c">
+    <path class="mm-ok" d="M1110 161 L1121.3 155.1 L1121.3 166.9 Z" data-kutular="bayrak"/>
+    <text class="mm-t mm-t-etiket" x="1150" y="153" text-anchor="middle">C</text>
+  </g>
+  <g class="mm-yol-ust mm-y-yerel" data-yol="ir-sabit">
+    <path class="mm-ok" d="M670 476 L686.3 467.3 L686.3 484.7 Z" data-kutular="marir"/>
+    <text class="mm-t mm-t-etiket" x="695" y="468" text-anchor="middle">IR</text>
+  </g>
+  <g class="mm-yol-ust mm-y-yerel" data-yol="ir-kontrol">
+    <path class="mm-ok" d="M790 655 L781.3 638.8 L798.7 638.8 Z" data-kutular="marir"/>
+    <text class="mm-t mm-t-etiket" x="780" y="612" text-anchor="end">INSTRUCTION (IR, 16 BITS)</text>
+  </g>
+  <g class="mm-yol-ust mm-y-adres" data-yol="adres">
+    <path class="mm-ok" d="M1520 610 L1503.8 618.7 L1503.8 601.3 Z" data-kutular="marir"/>
+    <path class="mm-ok" d="M1180 560 L1188.7 576.3 L1171.3 576.3 Z" data-kutular="bellek"/>
+    <text class="mm-t mm-t-etiket" x="1012" y="632" text-anchor="start">ADDRESS BUS A0–A15 (16 BITS)</text>
+  </g>
+  <g class="mm-yol-ust mm-y-kontrol" data-yol="kontrol">
+    <path class="mm-ok" d="M1400 116 L1391.3 99.8 L1408.7 99.8 Z" data-kutular="kontrol"/>
+    <path class="mm-ok" d="M320 116 L311.3 99.8 L328.7 99.8 Z" data-kutular="reg"/>
+    <path class="mm-ok" d="M600 116 L591.3 99.8 L608.7 99.8 Z" data-kutular="gecici"/>
+    <path class="mm-ok" d="M1050 116 L1041.3 99.8 L1058.7 99.8 Z" data-kutular="alu"/>
+    <path class="mm-ok" d="M150 560 L158.7 576.3 L141.3 576.3 Z" data-kutular="kontrol"/>
+    <path class="mm-ok" d="M470 560 L478.7 576.3 L461.3 576.3 Z" data-kutular="kontrol"/>
+    <path class="mm-ok" d="M850 560 L858.7 576.3 L841.3 576.3 Z" data-kutular="kontrol"/>
+    <path class="mm-ok" d="M1340 560 L1348.7 576.3 L1331.3 576.3 Z" data-kutular="kontrol"/>
+    <text class="mm-t mm-t-etiket" x="825" y="80" text-anchor="middle">CONTROL LINES (CW0–CW31 + 6 DRIVER SELECTS)</text>
+  </g>
+  <g class="mm-yol-ust mm-y-kontrol" data-yol="kosul">
+    <path class="mm-ok" d="M1430 346 L1423 332.8 L1437 332.8 Z" data-kutular="bayrak"/>
+    <path class="mm-ok" d="M1250 805 L1257 818.3 L1243 818.3 Z" data-kutular="kontrol"/>
+    <rect class="mm-bag" x="1360.4" y="346" width="139.3" height="22" rx="11"/>
+    <text class="mm-t mm-t-bag" x="1430" y="361.3" text-anchor="middle">COND, I → CONTROL</text>
+    <rect class="mm-bag" x="1190.6" y="833" width="118.8" height="22" rx="11"/>
+    <text class="mm-t mm-t-bag" x="1250" y="848.3" text-anchor="middle">COND, I ← FLAGS</text>
+  </g>
+  <g class="mm-yol-ust mm-y-veri" data-yol="bayt">
+    <path class="mm-ok" d="M1400 446 L1416.3 437.3 L1416.3 454.7 Z" data-kutular="bellek"/>
+    <path class="mm-ok" d="M1520 446 L1503.8 454.7 L1503.8 437.3 Z" data-kutular="bellek"/>
+    <text class="mm-t mm-t-etiket" x="1460" y="437" text-anchor="middle">DE, DO (16)</text>
+  </g>
+  <g class="mm-yol-ust mm-y-kontrol" data-yol="bellek-denetim">
+    <path class="mm-ok" d="M1520 494 L1506.8 501 L1506.8 487 Z" data-kutular="bellek"/>
+    <text class="mm-t mm-t-etiket" x="1460" y="486" text-anchor="middle">~MRD ~MWE</text>
+  </g>
+  <g class="mm-yol-ust mm-y-saat" data-yol="wrwin">
+    <path class="mm-ok" d="M1400 536 L1411.3 530.1 L1411.3 541.9 Z" data-kutular="arka"/>
+    <text class="mm-t mm-t-etiket" x="1460" y="528" text-anchor="middle">WR_WIN</text>
+  </g>
+  <g class="mm-yol-ust mm-y-saat" data-yol="saat">
+    <path class="mm-ok" d="M1400 690 L1413.3 683 L1413.3 697 Z" data-kutular="arka"/>
+    <text class="mm-t mm-t-etiket" x="1460" y="682" text-anchor="middle">CLK, ~RESET</text>
+  </g>
+  <g class="mm-yol-ust mm-y-kontrol" data-yol="irq">
+    <path class="mm-ok" d="M1400 734 L1411.3 728.1 L1411.3 739.9 Z" data-kutular="arka"/>
+    <text class="mm-t mm-t-etiket" x="1460" y="726" text-anchor="middle">IRQ</text>
+  </g>
+  <g class="mm-yol-ust mm-y-kontrol" data-yol="durum">
+    <path class="mm-ok" d="M1520 778 L1506.8 785 L1506.8 771 Z" data-kutular="kontrol"/>
+    <text class="mm-t mm-t-etiket" x="1460" y="770" text-anchor="middle">HALTED, FAULT</text>
+  </g>
+  <g class="mm-lejant">
+    <rect class="mm-lejant-govde" x="480" y="866" width="1160" height="140" rx="8"/>
+    <path class="mm-lej-cizgi mm-y-veri" d="M496 913 L526 913" stroke-width="4"/>
+    <path class="mm-lej-cizgi mm-y-yerel" d="M496 932 L526 932" stroke-width="4"/>
+    <path class="mm-lej-cizgi mm-y-adres" d="M496 951 L526 951" stroke-width="4"/>
+    <path class="mm-lej-cizgi mm-y-kontrol" d="M496 970 L526 970" stroke-width="4"/>
+    <path class="mm-lej-cizgi mm-y-saat" d="M637.52125 913 L667.52125 913" stroke-width="4"/>
+    <rect class="mm-lej-kutu mm-k-register" x="809.86875" y="906" width="24" height="15" rx="3"/>
+    <rect class="mm-lej-kutu mm-k-islem" x="809.86875" y="925" width="24" height="15" rx="3"/>
+    <rect class="mm-lej-kutu mm-k-kontrol" x="809.86875" y="944" width="24" height="15" rx="3"/>
+    <rect class="mm-lej-kutu mm-k-secici" x="809.86875" y="963" width="24" height="15" rx="3"/>
+    <rect class="mm-lej-kutu mm-k-tampon" x="975" y="906" width="24" height="15" rx="3"/>
+    <rect class="mm-lej-kutu mm-k-gc" x="975" y="925" width="24" height="15" rx="3"/>
+    <rect class="mm-lej-kutu mm-k-not" x="975" y="944" width="24" height="15" rx="3"/>
+    <text class="mm-t mm-t-lej-baslik" x="496" y="892" text-anchor="start">CONNECTIONS</text>
+    <text class="mm-t mm-t-lej" x="536" y="917" text-anchor="start">Data bus</text>
+    <text class="mm-t mm-t-lej" x="536" y="936" text-anchor="start">Local link</text>
+    <text class="mm-t mm-t-lej" x="536" y="955" text-anchor="start">Address bus</text>
+    <text class="mm-t mm-t-lej" x="536" y="974" text-anchor="start">Control lines</text>
+    <text class="mm-t mm-t-lej" x="677.52125" y="917" text-anchor="start">Clock and reset</text>
+    <text class="mm-t mm-t-lej-baslik" x="809.86875" y="892" text-anchor="start">BOXES</text>
+    <text class="mm-t mm-t-lej" x="843.86875" y="917" text-anchor="start">Register, counter</text>
+    <text class="mm-t mm-t-lej" x="843.86875" y="936" text-anchor="start">Processing unit</text>
+    <text class="mm-t mm-t-lej" x="843.86875" y="955" text-anchor="start">Control, timing</text>
+    <text class="mm-t mm-t-lej" x="843.86875" y="974" text-anchor="start">Selector, decoder</text>
+    <text class="mm-t mm-t-lej" x="1009" y="917" text-anchor="start">Buffer, transceiver</text>
+    <text class="mm-t mm-t-lej" x="1009" y="936" text-anchor="start">I/O, connection</text>
+    <text class="mm-t mm-t-lej" x="1009" y="955" text-anchor="start">Note</text>
+    <text class="mm-t mm-t-lej-baslik" x="1159.06625" y="892" text-anchor="start">ABBREVIATIONS</text>
+    <text class="mm-t mm-t-lej-kisa" x="1159.06625" y="917" text-anchor="start">ALU</text>
+    <text class="mm-t mm-t-lej" x="1199.976425" y="917" text-anchor="start">Arithmetic logic unit</text>
+    <text class="mm-t mm-t-lej-kisa" x="1159.06625" y="936" text-anchor="start">PC</text>
+    <text class="mm-t mm-t-lej" x="1199.976425" y="936" text-anchor="start">Program counter</text>
+    <text class="mm-t mm-t-lej-kisa" x="1159.06625" y="955" text-anchor="start">MAR</text>
+    <text class="mm-t mm-t-lej" x="1199.976425" y="955" text-anchor="start">Memory address register</text>
+    <text class="mm-t mm-t-lej-kisa" x="1159.06625" y="974" text-anchor="start">IR</text>
+    <text class="mm-t mm-t-lej" x="1199.976425" y="974" text-anchor="start">Instruction register</text>
+    <text class="mm-t mm-t-lej-kisa" x="1374.1051750000001" y="917" text-anchor="start">CW</text>
+    <text class="mm-t mm-t-lej" x="1429.7904250000001" y="917" text-anchor="start">Control word (32 lines)</text>
+    <text class="mm-t mm-t-lej-kisa" x="1374.1051750000001" y="936" text-anchor="start">NZCV</text>
+    <text class="mm-t mm-t-lej" x="1429.7904250000001" y="936" text-anchor="start">Negative, zero, carry, overflow</text>
+    <text class="mm-t mm-t-lej-kisa" x="1374.1051750000001" y="955" text-anchor="start">DE, DO</text>
+    <text class="mm-t mm-t-lej" x="1429.7904250000001" y="955" text-anchor="start">Even / odd byte lane</text>
+    <text class="mm-t mm-t-lej-kisa" x="1374.1051750000001" y="974" text-anchor="start">~</text>
+    <text class="mm-t mm-t-lej" x="1429.7904250000001" y="974" text-anchor="start">Active-low signal</text>
+  </g>
+</svg>
