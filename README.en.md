@@ -267,7 +267,7 @@ If you are new, here is an order for reading the docs: **[docs/README.md](docs/R
 | Annotated C examples | [c-ornekleri.md](cpu16/docs/c-ornekleri.en.md) |
 | Production: clock speed, build order, board test | [uretim.md](cpu16/docs/uretim.en.md) |
 | Build guides: wire list, chip cards, handbook | [kurulum.md](cpu16/docs/kurulum.en.md) |
-| The whole computer on breadboards: breadboard assemblies, ribbon cable, hole-to-hole wires | [breadboard.md](cpu16/docs/breadboard.en.md) |
+| The whole computer on breadboards: breadboard panels, ribbon cable, hole-to-hole wires | [breadboard.md](cpu16/docs/breadboard.en.md) |
 | Experiment kit (14 experiments) | [kit/README.md](cpu16/kit/README.en.md), first [led-ve-direnc.md](cpu16/kit/led-ve-direnc.en.md) |
 | The calculator | [hesap8/README.md](hesap8/README.en.md), [tasarim.md](hesap8/docs/tasarim.en.md), [kurulum-rehberi.md](hesap8/docs/kurulum-rehberi.en.md) |
 | License of the 6502 data | [NOTICE.md](public/chips/mos6502/NOTICE.md) |
@@ -281,7 +281,7 @@ If you want to build with real chips, go in this order:
    → [Experiment 13: snake game](cpu16/kit/deney-13-c.md); optionally
    [Experiment 14: build your own memory](cpu16/kit/deney-14-kendin-yap-bellek.md).
 3. [Build guides](cpu16/docs/kurulum.en.md): layout per board, numbered wire list, chip cards
-   (`npm run cpu16 -- kurulum hepsi`). Two routes: PCB or breadboard assemblies
+   (`npm run cpu16 -- kurulum hepsi`). Two routes: PCB or breadboard panels
    ([breadboard.md](cpu16/docs/breadboard.en.md), `npm run cpu16 -- breadboard-belge hepsi`).
 4. [Production and bring-up](cpu16/docs/uretim.en.md): speed target, build order, board test.
 5. The calculator: [physical build guide](hesap8/docs/kurulum-rehberi.en.md)

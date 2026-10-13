@@ -4,7 +4,7 @@ A 16-bit computer built entirely from 74HC chips, with its own instruction set a
 that you can inspect in 3D down to the transistor. It is also a teaching and experiment kit: over 14
 experiments you build it on breadboards, starting from the clock board and ending with a snake game
 written in C. The finished computer can take one of two routes: with PCBs (boards from KiCad) or
-entirely on breadboards (one breadboard assembly per board, 149 breadboards, ribbon cable between
+entirely on breadboards (one breadboard panel per board, 149 breadboards, ribbon cable between
 boards; [docs/breadboard.md](docs/breadboard.en.md)).
 
 - Current stage: the simulation side is done, and the real boards come next. Details: [docs/roadmap.md](docs/roadmap.en.md).
@@ -51,7 +51,7 @@ guides and the build guides are generated from this definition.
 | C examples: a guided tour, what you need to know when writing C for CPU16 | [c-ornekleri.md](docs/c-ornekleri.en.md) |
 | Production, timing, board test | [uretim.md](docs/uretim.en.md) |
 | Build guides: wire list, chip cards, handbook | [kurulum.md](docs/kurulum.en.md) |
-| The whole computer on breadboards: breadboard assemblies, ribbon cable, hole-to-hole wires | [breadboard.md](docs/breadboard.en.md) |
+| The whole computer on breadboards: breadboard panels, ribbon cable, hole-to-hole wires | [breadboard.md](docs/breadboard.en.md) |
 | Experiment kit | [kit/README.md](kit/README.en.md), [LEDs, resistors and capacitors](kit/led-ve-direnc.en.md) |
 
 ## Commands
@@ -86,7 +86,7 @@ npm run cpu16 -- zamanlama --anakart                 # static timing analysis fr
 # experiment kit, build guides, real board
 npm run cpu16 -- kit                                 # generate the automatic sections of the experiment guides
 npm run cpu16 -- kurulum hepsi                       # build guides (HTML + PDF): wire list, chip cards, handbook
-npm run cpu16 -- breadboard                          # breadboard assemblies: dimensions, power, check of the connections against the netlist
+npm run cpu16 -- breadboard                          # breadboard panels: dimensions, power, check of the connections against the netlist
 npm run cpu16 -- breadboard-belge hepsi              # breadboard build guides (HTML + PDF): one assembly per board + index
 npm run cpu16 -- mimari [cpu|makine|hesap|hepsi] [-o dir]   # block diagrams as SVG (without a directory: docs/img/ and hesap8/docs/img/)
 npm run cpu16 -- kart-testi --port /dev/ttyUSB0      # compare the real board with the simulator over UART
@@ -114,7 +114,7 @@ All the options of the commands are in the comments at the top of `tools/cli.ts`
 | `kit/` | experiment guides, images, programs for the experiments that come before the BIOS (`programlar/`) |
 | `kurulum/` | build guide generator; output in `kurulum/cikti/` (not committed) |
 | `mimari/` | architecture (block) diagrams: layout (`cpu.ts`, `makine.ts`; the calculator's is `hesap8/mimari.ts`), content from the circuit and netlist check (`model.ts`, `denetim.ts`), drawing (`cizim.ts`, `agac.ts`), SVG and doc page |
-| `breadboard/` | breadboard assemblies (layout, wires, ribbon cable, power), generated data (`veri/`), document generator; output in `breadboard/cikti/` (not committed). The shared engine is in `board/breadboard/` |
+| `breadboard/` | breadboard panels (layout, wires, ribbon cable, power), generated data (`veri/`), document generator; output in `breadboard/cikti/` (not committed). The shared engine is in `board/breadboard/` |
 | `programlayici/` | Arduino Nano + 2 × 74HC595 EEPROM programmer (`.ino`) and `yaz.py` |
 | `video/` | character ROM (8 × 16 font) |
 | `tools/` | `npm run cpu16` commands |
