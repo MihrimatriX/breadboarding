@@ -8,7 +8,8 @@
 
 import { useEffect, type CSSProperties } from "react";
 import { kisayolAlani } from "../ui/ayarlar";
-import { useT } from "../ui/ceviri";
+import { bolumMetni } from "../../cpu16/board/bolum-bilgi";
+import { useDil, useT } from "../ui/ceviri";
 import { bolumu, useBolum } from "./bolum";
 import { girisNoktasi } from "./bolumSahne";
 import { useKenar, type KenarEtiketi } from "./Bolumler3D";
@@ -37,16 +38,18 @@ function Cizgi({ e, kalin }: { e: KenarEtiketi; kalin: boolean }) {
 /** Plakanın ya da kenar etiketinin üstüne gelince: bölümün başlığı ve görevi */
 function BolumIpucu() {
   const t = useT();
+  const dil = useDil();
   const u = useBolum((s) => s.ustunde);
   const b = bolumu(u?.id ?? null);
   if (!u || !b) return null;
+  const m = bolumMetni(b, dil);
   return (
     <div className="tooltip bolum-ipucu" style={{ transform: `translate(${u.x + 14}px, ${u.y + 14}px)` }}>
       <div className="bi-ust">
-        <b>{b.etiket}</b>
-        <span>{b.baslik}</span>
+        <b>{m.etiket}</b>
+        <span>{m.baslik}</span>
       </div>
-      <p>{b.gorev}</p>
+      <p>{m.gorev}</p>
       <div className="bi-alt">{t("Tıkla: nasıl çalıştığı ve çipleri yan panelde", "Click: how it works and its chips, in the side panel")}</div>
     </div>
   );

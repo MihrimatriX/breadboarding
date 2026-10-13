@@ -9,7 +9,7 @@ import { boardDikdortgeni } from "../board/breadboard/gorunum.ts";
 import { bbSahnesi, cpuBbYukle, kartModeli } from "../../src/board3d/aktif.ts";
 import { katalog, sahneBolumleri, useBolum } from "../../src/board3d/bolum.ts";
 import {
-  BB_RENKLERI, boya, girisNoktasi, hucreSiniri, kapasite, kenarYerlesimi, PCB_RENKLERI, plakaSigdir, tamDikdortgenler, type Kutu, type SahneBolumleri,
+  BB_RENKLERI, boya, girisNoktasi, hucreSiniri, kapasite, kenarYerlesimi, PCB_RENKLERI, plakaSigdir, sahneDili, tamDikdortgenler, type Kutu, type SahneBolumleri,
 } from "../../src/board3d/bolumSahne.ts";
 import { useKart } from "../../src/board3d/store.ts";
 
@@ -169,6 +169,29 @@ describe("sahnenin bölümleri", () => {
       expect(cakisir(plakaKutusu(p), k), p.id).toBe(false);
     }
     expect(sahneBolumleri("hesap", "breadboard").plakalar.filter((p) => p.tur === "kart").length).toBe(1);
+  });
+
+  it("İngilizce sahne: plakalar İngilizce, çerçeveler ve renkler aynı, plakalar yine çerçevesinde ve çakışmaz", () => {
+    for (const [tur, g] of [["cpu16", "breadboard"], ["hesap", "breadboard"], ["cpu16", "pcb"], ["hesap", "pcb"]] as const) {
+      const tr = sahneBolumleri(tur, g);
+      const en = sahneDili(tr, "en");
+      expect(sahneDili(tr, "tr")).toBe(tr);
+      expect(sahneDili(tr, "en"), "önbellekte").toBe(en);
+      expect(en.dil).toBe("en");
+      expect(en.cerceveler).toEqual(tr.cerceveler);
+      const k = katalog(tur);
+      for (const p of en.plakalar) {
+        expect(p.satirlar.join(" "), p.id).toBe(k.bolumler.get(p.id)!.en.etiket);
+        const c = en.cerceveler.find((x) => x.id === p.id);
+        if (c) expect(icinde(plakaKutusu(p), c.kutu), `${p.id} plakası çerçevesinde`).toBe(true);
+      }
+      const p = en.plakalar.map(plakaKutusu);
+      for (let a = 0; a < p.length; a++) for (let b = a + 1; b < p.length; b++) expect(cakisir(p[a], p[b]), `${tur} ${g}: ${a} × ${b}`).toBe(false);
+      for (const m of en.modulPlakalari) expect(m.satirlar.join(" "), m.id).not.toMatch(/[çğıöşüÇĞİÖŞÜ]/);
+    }
+    // register'ın göstergeli board'undaki plaka: "R0 DISPLAYS"
+    const cpu = sahneDili(sahneBolumleri("cpu16", "breadboard"), "en").modulPlakalari;
+    expect(cpu.filter((x) => x.id === "grup:cpu:r0").map((x) => x.satirlar.join(" ")).sort()).toEqual(["R0", "R0 DISPLAYS"]);
   });
 });
 
