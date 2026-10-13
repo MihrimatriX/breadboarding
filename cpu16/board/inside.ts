@@ -366,12 +366,18 @@ export function gateCmos(gate: Gate, netName: (n: number) => string, pinName?: (
   return { netlist, boardNet, inputNodes, outputNodes, transistors, nodes, width: x + 10, height: maxY + 30 };
 }
 
-/** Kapı uçlarının etiketi (giriş adı, iç kat çıkışı ya da boş) */
-export function nodeLabel(cm: GateCmos, node: number): string {
+/** İç düğüm adlarının İngilizcesi (arayüz İngilizceyken); net, pin ve kat (s1, s2…) adları değişmez */
+const ETIKET_EN: Record<string, string> = { sabit1: "tie-hi" };
+
+/** Düğüm etiketi seçili dilde: CmosNode.label ve nodeLabel() Türkçe üretir, arayüz buradan çevirir */
+export const etiketDili = (label: string, dil: "tr" | "en" = "tr"): string => (dil === "en" ? ETIKET_EN[label] ?? label : label);
+
+/** Kapı uçlarının etiketi (giriş adı, iç kat çıkışı ya da boş), seçili dilde */
+export function nodeLabel(cm: GateCmos, node: number, dil: "tr" | "en" = "tr"): string {
   if (node === VCC_NODE) return "VCC";
   if (node === GND_NODE) return "GND";
   const n = cm.nodes.find((x) => x.node === node);
-  if (n?.label) return n.label;
+  if (n?.label) return etiketDili(n.label, dil);
   const names = cm.netlist.chip.nodeNames;
   for (const k in names) if (names[k] === node) return k;
   return "";

@@ -6,8 +6,9 @@
 
 import { useMemo, useState } from "react";
 import type { ChipInstance } from "../../cpu16/board/board";
+import { useDil, useT, type Cevir } from "../ui/ceviri";
 import { svgDugme } from "./InsideDiagram";
-import { LEVEL_VAR, levelOf } from "./levels";
+import { LEVEL_VAR, levelOf, sayi } from "./levels";
 import { colWindow, memGeometry, rowWindow, type MemGeometry } from "./memview";
 import { liveMem, liveNets, useKart } from "./store";
 
@@ -15,13 +16,15 @@ const CELL = 11;
 const hex = (v: number, n: number) => v.toString(16).toUpperCase().padStart(n, "0");
 
 /** Pin: tıklayınca (ya da klavyeyle) neti seçilir; GND / VCC ve bağlı olmayan pin seçilmez */
-function pinDugmesi(ad: string, net: number | undefined, lv: number) {
-  return svgDugme(`${ad} pini = ${"01ZX"[lv]}: netini seç`, () => {
+function pinDugmesi(t: Cevir, ad: string, net: number | undefined, lv: number) {
+  const v = "01ZX"[lv];
+  return svgDugme(t(`${ad} pini = ${v}: netini seç`, `${ad} pin = ${v}: select its net`), () => {
     if (net !== undefined && net > 1) useKart.getState().selectNet(net);
   });
 }
 
 function PinColumn({ ci, names, x, y, gap = 13, anchor = "end" }: { ci: ChipInstance; names: string[]; x: number; y: number; gap?: number; anchor?: "start" | "end" }) {
+  const t = useT();
   const v = liveNets.values;
   return (
     <g>
@@ -29,7 +32,7 @@ function PinColumn({ ci, names, x, y, gap = 13, anchor = "end" }: { ci: ChipInst
         const net = ci.nets[n];
         const lv = net === undefined ? 2 : levelOf(v, net);
         return (
-          <g key={n} className="ipin" {...pinDugmesi(n, net, lv)}>
+          <g key={n} className="ipin" {...pinDugmesi(t, n, net, lv)}>
             <rect x={x - 4} y={y + i * gap - 4} width={8} height={8} style={{ fill: LEVEL_VAR[lv] }} />
             <text x={anchor === "end" ? x - 8 : x + 8} y={y + i * gap + 4} textAnchor={anchor}>{n}</text>
           </g>
@@ -41,12 +44,13 @@ function PinColumn({ ci, names, x, y, gap = 13, anchor = "end" }: { ci: ChipInst
 
 /** 6T SRAM hücresi: iki çapraz bağlı evirici (M1–M4) ve iki erişim transistörü (M5, M6) */
 function SramCell({ bit, wl }: { bit: number; wl: boolean }) {
+  const t = useT();
   const q = { stroke: bit ? LEVEL_VAR[1] : LEVEL_VAR[0] };
   const qn = { stroke: bit ? LEVEL_VAR[0] : LEVEL_VAR[1] };
   const acc = { stroke: wl ? "var(--sema-acik)" : "var(--sema-kapali)" };
   const wlc = { stroke: wl ? LEVEL_VAR[1] : LEVEL_VAR[0] };
   return (
-    <svg className="cell-svg" viewBox="0 0 360 170" width={360} height={170} role="img" aria-label="6T SRAM hücresi">
+    <svg className="cell-svg" viewBox="0 0 360 170" width={360} height={170} role="img" aria-label={t("6T SRAM hücresi", "6T SRAM cell")}>
       <line x1={20} x2={20} y1={10} y2={160} className="sema-cizgi" strokeWidth={2} />
       <text x={24} y={20}>BL</text>
       <line x1={340} x2={340} y1={10} y2={160} className="sema-cizgi" strokeWidth={2} />
@@ -79,25 +83,32 @@ function SramCell({ bit, wl }: { bit: number; wl: boolean }) {
 
 /** Yüzer kapılı hücre (Flash / EEPROM): yüzer kapıda yük var = programlanmış = 0 */
 function FlashCell({ bit, wl }: { bit: number; wl: boolean }) {
+  const t = useT();
   const charged = bit === 0;
   const conducts = wl && !charged;
   return (
-    <svg className="cell-svg" viewBox="0 0 360 170" width={360} height={170} role="img" aria-label="Yüzer kapılı bellek hücresi">
+    <svg className="cell-svg" viewBox="0 0 360 170" width={360} height={170} role="img" aria-label={t("Yüzer kapılı bellek hücresi", "Floating-gate memory cell")}>
       <line x1={40} x2={320} y1={130} y2={130} style={{ stroke: "var(--sema-soluk)" }} strokeWidth={10} />
-      <text x={44} y={155}>kaynak (n+)</text>
-      <text x={250} y={155}>akaç (n+) → BL</text>
+      <text x={44} y={155}>{t("kaynak (n+)", "source (n+)")}</text>
+      <text x={250} y={155}>{t("akaç (n+) → BL", "drain (n+) → BL")}</text>
       <rect x={110} y={84} width={140} height={14} className="sema-cizgi" style={{ fill: charged ? "#ffcc33" : "var(--sema-bos)" }} />
-      <text x={258} y={95}>yüzer kapı</text>
+      <text x={258} y={95}>{t("yüzer kapı", "floating gate")}</text>
       <rect x={110} y={50} width={140} height={14} className="sema-cizgi" style={{ fill: wl ? LEVEL_VAR[1] : LEVEL_VAR[0] }} />
-      <text x={258} y={61}>kontrol kapısı = WL ({wl ? 1 : 0})</text>
+      <text x={258} y={61}>{t("kontrol kapısı", "control gate")} = WL ({wl ? 1 : 0})</text>
       {charged && Array.from({ length: 7 }, (_, i) => <circle key={i} cx={122 + i * 19} cy={91} r={3} fill="#1b1f25" />)}
       <line x1={110} x2={250} y1={118} y2={118} style={{ stroke: conducts ? "var(--sema-acik)" : "var(--sema-kapali)" }} strokeWidth={3} strokeDasharray={conducts ? undefined : "5 4"} />
-      <text x={20} y={24} className="big">{charged ? "programlanmış: yüzer kapıda elektron var → eşik yüksek → 0" : "silinmiş: yüzer kapı boş → okumada iletir → 1"}</text>
+      <text x={20} y={24} className="big">
+        {charged
+          ? t("programlanmış: yüzer kapıda elektron var → eşik yüksek → 0", "programmed: charge on the floating gate → high threshold → 0")
+          : t("silinmiş: yüzer kapı boş → okumada iletir → 1", "erased: floating gate empty → conducts on read → 1")}
+      </text>
     </svg>
   );
 }
 
 function ArrayView({ ci, g }: { ci: ChipInstance; g: MemGeometry }) {
+  const t = useT();
+  const dil = useDil();
   useKart((s) => s.tick);
   const [cell, setCell] = useState<{ addr: number; bit: number } | null>(null);
   const win = liveMem.window && liveMem.window.ref === ci.ref ? liveMem.window : null;
@@ -117,7 +128,13 @@ function ArrayView({ ci, g }: { ci: ChipInstance; g: MemGeometry }) {
   const selected = ce !== undefined && lvl(ce) === 0;
   const writing = selected && lvl(we) === 0;
   const reading = selected && !writing && lvl(oe) === 0;
-  const mode = writing ? "YAZMA" : reading ? "OKUMA" : selected ? "seçili, çıkış kapalı" : "seçili değil (~CE = 1)";
+  const mode = writing
+    ? t("YAZMA", "WRITE")
+    : reading
+      ? t("OKUMA", "READ")
+      : selected
+        ? t("seçili, çıkış kapalı", "selected, output off")
+        : t("seçili değil (~CE = 1)", "not selected (~CE = 1)");
 
   const rowAddrPins = g.addrPins.slice(g.colBits);
   const colAddrPins = g.addrPins.slice(0, g.colBits);
@@ -133,24 +150,30 @@ function ArrayView({ ci, g }: { ci: ChipInstance; g: MemGeometry }) {
   const activeCol = addr >= 0 ? addr & (g.bytesPerRow - 1) : -1;
   const sel = cell ? { row: cell.addr >> g.colBits, col: cell.addr & (g.bytesPerRow - 1) } : null;
   const selByte = sel ? byteAt(sel.row, sel.col) : null;
+  const adresHex = (a: number) => hex(a, Math.ceil(g.addrBits / 4));
+  const satir = t("satır", "row");
+  const bayt = t("bayt", "byte");
 
   return (
     <div className="mem-inside">
       <p className="muted small">
-        {ci.def.part}: {g.size.toLocaleString("tr-TR")} × {g.dataPins.length} bit · dizi {g.rows.toLocaleString("tr-TR")} satır × {g.bytesPerRow * 8} sütun
-        ({g.rowBits} satır adres biti, {g.colBits} sütun adres biti) · şu an: <b>{mode}</b>
-        {addr >= 0 ? <> · adres <b>{hex(addr, Math.ceil(g.addrBits / 4))}</b> (satır {activeRow}, bayt {activeCol})</> : " · adres pinlerinde X/Z"}
-        {" "}· pencere: {rw.count} satır × {cw.count} bayt
+        {t(
+          `${ci.def.part}: ${sayi(g.size, dil)} × ${g.dataPins.length} bit · dizi ${sayi(g.rows, dil)} satır × ${g.bytesPerRow * 8} sütun (${g.rowBits} satır adres biti, ${g.colBits} sütun adres biti)`,
+          `${ci.def.part}: ${sayi(g.size, dil)} × ${g.dataPins.length} bits · array of ${sayi(g.rows, dil)} rows × ${g.bytesPerRow * 8} columns (${g.rowBits} row address bits, ${g.colBits} column address bits)`,
+        )}
+        {" "}· {t("şu an", "now")}: <b>{mode}</b>
+        {addr >= 0 ? <> · {t("adres", "address")} <b>{adresHex(addr)}</b> ({satir} {activeRow}, {bayt} {activeCol})</> : ` · ${t("adres pinlerinde X/Z", "X/Z on the address pins")}`}
+        {" "}· {t(`pencere: ${rw.count} satır × ${cw.count} bayt`, `window: ${rw.count} rows × ${cw.count} bytes`)}
       </p>
       <div className="row wrap" style={{ alignItems: "flex-start" }}>
-        <svg className="inside-svg mem-svg" viewBox={`0 0 ${width} ${height}`} width={width} height={height} role="group" aria-label={`${ci.ref} bellek dizisi`}>
-          <text x={4} y={14} className="sel">satır adresi</text>
+        <svg className="inside-svg mem-svg" viewBox={`0 0 ${width} ${height}`} width={width} height={height} role="group" aria-label={t(`${ci.ref} bellek dizisi`, `${ci.ref} memory array`)}>
+          <text x={4} y={14} className="sel">{t("satır adresi", "row address")}</text>
           <PinColumn ci={ci} names={rowAddrPins} x={x0} y={26} />
-          <text x={4} y={34 + rowAddrPins.length * 13} className="sel">sütun adresi</text>
+          <text x={4} y={34 + rowAddrPins.length * 13} className="sel">{t("sütun adresi", "column address")}</text>
           <PinColumn ci={ci} names={colAddrPins} x={x0} y={46 + rowAddrPins.length * 13} />
           {/* satır kod çözücüsü */}
           <rect x={decX} y={arrY - 6} width={70} height={rw.count * CELL + 12} className="sema-govde" />
-          <text x={decX + 35} y={arrY - 12} textAnchor="middle">satır çözücü</text>
+          <text x={decX + 35} y={arrY - 12} textAnchor="middle">{t("satır çözücü", "row decoder")}</text>
           <text x={decX + 35} y={arrY + (rw.count * CELL) / 2} textAnchor="middle" className="glabel">{g.rowBits} → {g.rows}</text>
           {Array.from({ length: rw.count }, (_, i) => {
             const row = rw.first + i;
@@ -191,7 +214,7 @@ function ArrayView({ ci, g }: { ci: ChipInstance; g: MemGeometry }) {
                     className="cell"
                     onClick={() => setCell({ addr: (row << g.colBits) | col, bit: 7 - k })}
                   >
-                    <title>{`satır ${row}, bayt ${col}, bit ${7 - k} = ${bit < 0 ? "?" : bit} (adres ${hex((row << g.colBits) | col, Math.ceil(g.addrBits / 4))})`}</title>
+                    <title>{`${satir} ${row}, ${bayt} ${col}, bit ${7 - k} = ${bit < 0 ? "?" : bit} (${t("adres", "address")} ${adresHex((row << g.colBits) | col)})`}</title>
                   </rect>
                 );
               });
@@ -199,7 +222,7 @@ function ArrayView({ ci, g }: { ci: ChipInstance; g: MemGeometry }) {
           })}
           {Array.from({ length: cw.count }, (_, j) => (
             <text key={j} x={arrX + (j * 8 + 4) * CELL} y={arrY - 6} textAnchor="middle" className={cw.first + j === activeCol ? "sel" : ""}>
-              bayt {cw.first + j}
+              {bayt} {cw.first + j}
             </text>
           ))}
           {/* sütun seçici, okuma yükselteçleri, G/Ç */}
@@ -215,15 +238,17 @@ function ArrayView({ ci, g }: { ci: ChipInstance; g: MemGeometry }) {
                   return <line key={k} x1={x} x2={x} y1={arrY} y2={yMux} style={{ stroke: LEVEL_VAR[1] }} strokeOpacity={selected ? 0.8 : 0.25} pointerEvents="none" />;
                 })}
                 <rect x={arrX} y={yMux} width={w} height={20} className="sema-govde" />
-                <text x={arrX + w / 2} y={yMux + 14} textAnchor="middle">sütun seçici {g.bytesPerRow} : 1 (bit başına)</text>
+                <text x={arrX + w / 2} y={yMux + 14} textAnchor="middle">{t(`sütun seçici ${g.bytesPerRow} : 1 (bit başına)`, `column mux ${g.bytesPerRow} : 1 (per bit)`)}</text>
                 <rect x={arrX} y={yMux + 30} width={w} height={20} className="sema-govde" />
-                <text x={arrX + w / 2} y={yMux + 44} textAnchor="middle">{writing ? "yazma sürücüleri" : "okuma yükselteçleri (sense amp)"} · G/Ç tamponu</text>
+                <text x={arrX + w / 2} y={yMux + 44} textAnchor="middle">
+                  {writing ? t("yazma sürücüleri", "write drivers") : t("okuma yükselteçleri (sense amp)", "sense amplifiers")} · {t("G/Ç tamponu", "I/O buffer")}
+                </text>
                 {g.dataPins.map((n, i) => {
                   const net = ci.nets[n];
                   const lv = net === undefined ? 2 : levelOf(v, net);
                   const x = arrX + 10 + i * Math.max(28, w / g.dataPins.length);
                   return (
-                    <g key={n} className="ipin" {...pinDugmesi(n, net, lv)}>
+                    <g key={n} className="ipin" {...pinDugmesi(t, n, net, lv)}>
                       <rect x={x - 4} y={yMux + 58} width={8} height={8} style={{ fill: LEVEL_VAR[lv] }} />
                       <text x={x} y={yMux + 78} textAnchor="middle">{n}</text>
                     </g>
@@ -238,7 +263,7 @@ function ArrayView({ ci, g }: { ci: ChipInstance; g: MemGeometry }) {
             return (
               <g>
                 <rect x={cx} y={arrY - 6} width={150} height={20 + g.ctrlPins.length * 14} className="sema-govde" />
-                <text x={cx + 75} y={arrY - 12} textAnchor="middle">kontrol</text>
+                <text x={cx + 75} y={arrY - 12} textAnchor="middle">{t("kontrol", "control")}</text>
                 <PinColumn ci={ci} names={g.ctrlPins} x={cx + 14} y={arrY + 8} gap={14} anchor="start" />
                 <text x={cx} y={arrY + 34 + g.ctrlPins.length * 14} className="sel">{mode}</text>
               </g>
@@ -248,9 +273,9 @@ function ArrayView({ ci, g }: { ci: ChipInstance; g: MemGeometry }) {
         {cell && (
           <div className="cell-box">
             <p className="small">
-              Hücre: satır {cell.addr >> g.colBits}, bayt {cell.addr & (g.bytesPerRow - 1)}, bit {cell.bit} ={" "}
+              {t("Hücre", "Cell")}: {satir} {cell.addr >> g.colBits}, {bayt} {cell.addr & (g.bytesPerRow - 1)}, bit {cell.bit} ={" "}
               <b>{selByte === null ? "?" : (selByte >> cell.bit) & 1}</b>{" "}
-              <button className="link" onClick={() => setCell(null)}>kapat</button>
+              <button className="link" onClick={() => setCell(null)}>{t("kapat", "close")}</button>
             </p>
             {g.cell === "sram" ? (
               <SramCell bit={selByte === null ? 0 : (selByte >> cell.bit) & 1} wl={selected && (cell.addr >> g.colBits) === activeRow} />
@@ -259,8 +284,14 @@ function ArrayView({ ci, g }: { ci: ChipInstance; g: MemGeometry }) {
             )}
             <p className="muted small">
               {g.cell === "sram"
-                ? "6 transistör: iki çapraz bağlı evirici biti tutar (Q, Q̅), word line 1 olunca M5/M6 hücreyi bit hatlarına (BL, BL̅) bağlar."
-                : "Yüzer kapılı transistör: programlamada yüzer kapıya elektron itilir, eşik yükselir ve okumada hücre iletmez (0). Silme yükü boşaltır (1)."}
+                ? t(
+                  "6 transistör: iki çapraz bağlı evirici biti tutar (Q, Q̅), word line 1 olunca M5/M6 hücreyi bit hatlarına (BL, BL̅) bağlar.",
+                  "6 transistors: two cross-coupled inverters hold the bit (Q, Q̅); when the word line is 1, M5/M6 connect the cell to the bit lines (BL, BL̅).",
+                )
+                : t(
+                  "Yüzer kapılı transistör: programlamada yüzer kapıya elektron itilir, eşik yükselir ve okumada hücre iletmez (0). Silme yükü boşaltır (1).",
+                  "Floating-gate transistor: programming pushes electrons onto the floating gate, the threshold rises and the cell does not conduct on read (0). Erasing removes the charge (1).",
+                )}
             </p>
           </div>
         )}
@@ -270,7 +301,8 @@ function ArrayView({ ci, g }: { ci: ChipInstance; g: MemGeometry }) {
 }
 
 export function MemoryInside({ ci }: { ci: ChipInstance }) {
+  const t = useT();
   const g = useMemo(() => memGeometry(ci.def), [ci]);
-  if (!g) return <p className="muted pad">Bu çipin içi davranışsal modeldir.</p>;
+  if (!g) return <p className="muted pad">{t("Bu çipin içi davranışsal modeldir.", "The inside of this chip is a behavioral model.")}</p>;
   return <ArrayView ci={ci} g={g} />;
 }
