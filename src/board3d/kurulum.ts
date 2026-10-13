@@ -12,7 +12,7 @@ import { buildProgrammerBoard } from "../../cpu16/board/programmer-card";
 import { KURULUM_KARTLARI, kurulumKarti, type KurulumKarti, type KurulumKaynagi } from "../../cpu16/kurulum/kartlar";
 import { kurulumPlani, renkKodu, type CipYeri, type KurulumPlani, type Tel } from "../../cpu16/kurulum/plan";
 import type { Dil } from "../ui/ceviri";
-import { blokAdi as adlarBlokAdi, kartBasligi } from "./adlar";
+import { blokAdi, kartBasligi } from "./adlar";
 import { aktifKart, kartDegisince, kartModeli, kartYerlesimi, type KartTuru } from "./aktif";
 import { findPart } from "./store";
 
@@ -27,8 +27,8 @@ export const gorunenKartlar = (tur: KartTuru = aktifKart()): KurulumKarti[] =>
 /** Kartın adı seçili dilde: "Saat ve reset kartı", "Clock and reset board" (İngilizcesi adlar.ts) */
 export const kartAdi = (kart: string, dil: Dil = "tr"): string => kartBasligi(kart, cardTitle(kart), dil);
 
-/** Bloğun adı seçili dilde (adlar.ts; programlayıcı kartının tek bloğu 3D sahnede olmadığından orada yok) */
-export const blokAdi = (ad: string, dil: Dil = "tr"): string => (dil === "en" && ad === "Programlayıcı" ? "Programmer" : adlarBlokAdi(ad, dil));
+/** Bloğun adı seçili dilde (adlar.ts) */
+export { blokAdi };
 
 /** Binlik ayraçlı sayı seçili dilde: 1.234, 1,234 */
 export const sayiYaz = (n: number, dil: Dil = "tr"): string => n.toLocaleString(dil === "en" ? "en-US" : "tr-TR");
