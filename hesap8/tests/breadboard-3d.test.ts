@@ -5,7 +5,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ADIM, KENAR_SOL, KENAR_UST, PAY } from "../breadboard/geometri.ts";
 import { aktifHesapGorunumu, aktifKartiSec, hesapGorunumuSec, hesapPlani, kartYerlesimi } from "../../src/board3d/aktif.ts";
-import { bbSeciliTel, bbSiradakiAcik, telKimligi, telTarifi, ucunKomsulari, useBbKurulum } from "../../src/board3d/bbKurulum.ts";
+import { BB_RENKLERI, renkTanimi } from "../breadboard/renk.ts";
+import { bbSeciliTel, bbSiradakiAcik, telKimligi, telRengiYazisi, telTarifi, ucunKomsulari, useBbKurulum } from "../../src/board3d/bbKurulum.ts";
 import { boardLayoutData, findPart, useKart } from "../../src/board3d/store.ts";
 import { kartPlani } from "../../src/board3d/kurulum.ts";
 
@@ -68,6 +69,25 @@ describe("breadboard kurulum modu", () => {
     expect(ucunKomsulari(p, t.yol[0], t.yol[1])).toMatch(/^(U|R|C|D|SW|RN|DS|J)\w*\.\d+|boş şerit/);
     const r = p.teller.find((x) => x.ray)!;
     expect(ucunKomsulari(p, r.yol[0], r.yol[1])).toMatch(/rayı/);
+  });
+
+  it("İngilizce: delikler, raylar, renk ve grup İngilizce yazılır; Türkçesi değişmedi", () => {
+    const p = hesapPlani();
+    const t = p.teller.find((x) => !x.ray && x.renk === "sari")!;
+    const tr = telTarifi(p, t);
+    // sinyal teli şeritten şeride: Türkçeyle aynı, yalnız renk İngilizce
+    expect(telTarifi(p, t, "en")).toBe(tr.replace(/sarı$/, "yellow"));
+    const hesap = { kart: "hesap", renk: renkTanimi };
+    expect(telRengiYazisi(hesap, t)).toBe("sarı tel · A sayısı");
+    expect(telRengiYazisi(hesap, t, "en")).toBe("yellow wire · Number A");
+    // ray köprüsü: uçları raylarda
+    const r = p.teller.find((x) => x.ray && x.renk === "kirmizi")!;
+    expect(telTarifi(p, r)).toMatch(/^BB\d\d (üst|alt)\+\d+ → BB\d\d (üst|alt)\+\d+, \d+ mm, kırmızı$/);
+    expect(telTarifi(p, r, "en")).toMatch(/^BB\d\d (top|bottom)\+\d+ → BB\d\d (top|bottom)\+\d+, \d+ mm, red$/);
+    expect(ucunKomsulari(p, r.yol[0], r.yol[1])).toMatch(/^\+5 V rayı \((üst|alt)\)$/);
+    expect(ucunKomsulari(p, r.yol[0], r.yol[1], "en")).toMatch(/^\+5 V rail \((top|bottom)\)$/);
+    expect(telRengiYazisi(hesap, r, "en")).toBe("red wire · rail jumper");
+    for (const c of BB_RENKLERI) expect(c.en.grup, c.grup).toMatch(/^[\x20-\x7e]+$/);
   });
 
   it("işaretleyince odak sıradaki açık tele geçer; git() gezinir; sıfırla hepsini siler", () => {

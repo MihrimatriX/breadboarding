@@ -6,20 +6,25 @@ import { renkGrubu, type RenkTanimi, type TelRengi } from "../../cpu16/board/bre
 
 export type { RenkTanimi, TelRengi } from "../../cpu16/board/breadboard/renk.ts";
 
-export const BB_RENKLERI: RenkTanimi[] = [
-  renkGrubu("kirmizi", "+5 V", "+ raylar, ray köprüleri, çiplerin VCC bacağı, 1'e bağlı girişler, anahtarların ortak ucu"),
-  renkGrubu("siyah", "GND", "− raylar, ray köprüleri, çiplerin GND bacağı, 0'a bağlı (kullanılmayan) girişler, göstergelerin ortak katodu"),
-  renkGrubu("sari", "A sayısı", "A0–A7"),
-  renkGrubu("turuncu", "B sayısı", "B0–B7, tersleri (NB, bölme) ve çıkarmada çevrilmiş hali (BX)"),
-  renkGrubu("mor", "Kontrol", "işlem anahtarları ve kod çözme (OP, TOPLA … BOL), lamba testi, söndürme (~BI), NEG, HATA, B = 0"),
-  renkGrubu("yesil", "Ara işlem", "toplayıcıların, çarpıcının ve bölücünün iç sinyalleri: kısmi çarpımlar, ara toplamlar, eldeler, kalanlar"),
-  renkGrubu("mavi", "Sonuç", "dört işlemin sonuçları (M, P, Q, K, T8) ve seçilen sonuç (SONUC0–15)"),
-  renkGrubu("beyaz", "Onluk (BCD)", "ikiliden onluğa çevirme ağı ve 74HC4511'lerin BCD girişleri"),
-  renkGrubu("gri", "Segmentler", "74HC4511 çıkışları → 470 Ω dizi → gösterge"),
-  renkGrubu("kahverengi", "LED'ler", "330 Ω ile LED arası, eksi işareti"),
+/** Hesap makinesinin renk tanımı: grubun İngilizcesiyle (3D görünümün kurulum modu İngilizceyken) */
+export type HesapRenk = RenkTanimi & { en: { grup: string } };
+
+const grup = (renk: TelRengi, ad: string, aciklama: string, en: string): HesapRenk => ({ ...renkGrubu(renk, ad, aciklama), en: { grup: en } });
+
+export const BB_RENKLERI: HesapRenk[] = [
+  grup("kirmizi", "+5 V", "+ raylar, ray köprüleri, çiplerin VCC bacağı, 1'e bağlı girişler, anahtarların ortak ucu", "+5 V"),
+  grup("siyah", "GND", "− raylar, ray köprüleri, çiplerin GND bacağı, 0'a bağlı (kullanılmayan) girişler, göstergelerin ortak katodu", "GND"),
+  grup("sari", "A sayısı", "A0–A7", "Number A"),
+  grup("turuncu", "B sayısı", "B0–B7, tersleri (NB, bölme) ve çıkarmada çevrilmiş hali (BX)", "Number B"),
+  grup("mor", "Kontrol", "işlem anahtarları ve kod çözme (OP, TOPLA … BOL), lamba testi, söndürme (~BI), NEG, HATA, B = 0", "Control"),
+  grup("yesil", "Ara işlem", "toplayıcıların, çarpıcının ve bölücünün iç sinyalleri: kısmi çarpımlar, ara toplamlar, eldeler, kalanlar", "Intermediate signals"),
+  grup("mavi", "Sonuç", "dört işlemin sonuçları (M, P, Q, K, T8) ve seçilen sonuç (SONUC0–15)", "Result"),
+  grup("beyaz", "Onluk (BCD)", "ikiliden onluğa çevirme ağı ve 74HC4511'lerin BCD girişleri", "Decimal (BCD)"),
+  grup("gri", "Segmentler", "74HC4511 çıkışları → 470 Ω dizi → gösterge", "Segments"),
+  grup("kahverengi", "LED'ler", "330 Ω ile LED arası, eksi işareti", "LEDs"),
 ];
 
-export const renkTanimi = (r: TelRengi): RenkTanimi => BB_RENKLERI.find((x) => x.renk === r)!;
+export const renkTanimi = (r: TelRengi): HesapRenk => BB_RENKLERI.find((x) => x.renk === r)!;
 
 /**
  * Netin tel rengi. `bloklar`: netin uçlarının bulunduğu bloklar (adsız netlerde karar bloktan).
