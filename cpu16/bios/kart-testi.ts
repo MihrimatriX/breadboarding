@@ -15,6 +15,9 @@ import { Machine } from "../emu/machine.ts";
 import { MachineLink } from "./simlink.ts";
 import { intelHex, programHex, uploadHex, type SerialLink } from "./uploader.ts";
 
+type Dil = "tr" | "en";
+const cevirici = (dil: Dil) => (tr: string, en: string): string => (dil === "en" ? en : tr);
+
 export interface KartTestProgrami {
   /** dosya adı, ör. "1-cpu.c" */
   ad: string;
@@ -67,17 +70,20 @@ export function ciktiyiAyikla(ham: string): string {
 }
 
 /** Programı yükler, çalıştırır ve monitör istemine dönene kadar çıktısını toplar. */
-export async function programiCalistir(link: SerialLink, p: KartTestProgrami, onIlerleme?: (s: string) => void): Promise<{ ok: boolean; cikti: string; mesaj: string }> {
-  const up = await uploadHex(link, p.hex, { mode: "ram", run: true, timeoutMs: 3000, onProgress: (d, t) => onIlerleme?.(`${p.ad}: yükleniyor ${d}/${t}`) });
-  if (!up.ok) return { ok: false, cikti: "", mesaj: `yükleme başarısız: ${up.message}` };
-  onIlerleme?.(`${p.ad}: çalışıyor`);
+export async function programiCalistir(link: SerialLink, p: KartTestProgrami, onIlerleme?: (s: string) => void, dil: Dil = "tr"): Promise<{ ok: boolean; cikti: string; mesaj: string }> {
+  const t = cevirici(dil);
+  const up = await uploadHex(link, p.hex, { mode: "ram", run: true, timeoutMs: 3000, dil, onProgress: (d, n) => onIlerleme?.(`${p.ad}: ${t("yükleniyor", "loading")} ${d}/${n}`) });
+  if (!up.ok) return { ok: false, cikti: "", mesaj: `${t("yükleme başarısız", "upload failed")}: ${up.message}` };
+  onIlerleme?.(`${p.ad}: ${t("çalışıyor", "running")}`);
   // yükleme özetinden sonra monitör yeni istem yazar, G'yi yankılar; program çıktısı ondan sonra başlar
   let got = "";
   let bas = -1;
   for (;;) {
     const ch = await link.read(p.zamanAsimiMs);
     if (ch === null) {
-      const msg = bas < 0 ? "monitör G komutunu yankılamadı" : `program ${p.zamanAsimiMs} ms sessiz kaldı (takıldı mı?)`;
+      const msg = bas < 0
+        ? t("monitör G komutunu yankılamadı", "the monitor did not echo the G command")
+        : t(`program ${p.zamanAsimiMs} ms sessiz kaldı (takıldı mı?)`, `the program was silent for ${p.zamanAsimiMs} ms (stuck?)`);
       return { ok: false, cikti: ciktiyiAyikla(bas < 0 ? "" : got.slice(bas)), mesaj: msg };
     }
     got += ch;
@@ -101,24 +107,29 @@ export function simMakinesi(biosFlash: Uint8Array): Machine {
 }
 
 /** Her programın simülatördeki çıktısı (beklenen sonuç) */
-export async function beklenenCiktilar(programlar: KartTestProgrami[], biosFlash: Uint8Array): Promise<string[]> {
+export async function beklenenCiktilar(programlar: KartTestProgrami[], biosFlash: Uint8Array, dil: Dil = "tr"): Promise<string[]> {
+  const t = cevirici(dil);
   const out: string[] = [];
   for (const p of programlar) {
     const m = simMakinesi(biosFlash);
     const link = new MachineLink(m, true);
     m.uartOnOutput = (b) => link.push(b);
-    const r = await programiCalistir(link, p);
-    if (!r.ok) throw new Error(`${p.ad} simülatörde çalışmadı: ${r.mesaj}`);
+    const r = await programiCalistir(link, p, undefined, dil);
+    if (!r.ok) throw new Error(t(`${p.ad} simülatörde çalışmadı: ${r.mesaj}`, `${p.ad} did not run in the simulator: ${r.mesaj}`));
     out.push(r.cikti);
   }
   return out;
 }
 
 /** İki çıktının ilk farklı satırı */
-export function ilkFark(beklenen: string, gelen: string): string {
+export function ilkFark(beklenen: string, gelen: string, dil: Dil = "tr"): string {
+  const t = cevirici(dil);
   const a = beklenen.split("\n"), b = gelen.split("\n");
+  const yok = t("(yok)", "(none)");
   for (let i = 0; i < Math.max(a.length, b.length); i++) {
-    if (a[i] !== b[i]) return `satır ${i + 1}: beklenen ${JSON.stringify(a[i] ?? "(yok)")}, gelen ${JSON.stringify(b[i] ?? "(yok)")}`;
+    if (a[i] === b[i]) continue;
+    const be = JSON.stringify(a[i] ?? yok), ge = JSON.stringify(b[i] ?? yok);
+    return t(`satır ${i + 1}: beklenen ${be}, gelen ${ge}`, `line ${i + 1}: expected ${be}, got ${ge}`);
   }
   return "";
 }
@@ -129,21 +140,24 @@ export async function kartTesti(
   programlar: KartTestProgrami[],
   beklenen: string[],
   onIlerleme?: (s: string) => void,
+  dil: Dil = "tr",
 ): Promise<KartTestSonucu[]> {
   const sonuc: KartTestSonucu[] = [];
   for (let i = 0; i < programlar.length; i++) {
     const p = programlar[i];
-    const r = await programiCalistir(link, p, onIlerleme);
-    const fark = r.ok ? ilkFark(beklenen[i], r.cikti) : r.mesaj;
+    const r = await programiCalistir(link, p, onIlerleme, dil);
+    const fark = r.ok ? ilkFark(beklenen[i], r.cikti, dil) : r.mesaj;
     sonuc.push({ ad: p.ad, ok: r.ok && !fark, beklenen: beklenen[i], gelen: r.cikti, mesaj: fark });
   }
   return sonuc;
 }
 
 /** Sonuçların düz metin özeti */
-export function sonucMetni(programlar: KartTestProgrami[], sonuc: KartTestSonucu[]): string {
-  const L = sonuc.map((s, i) => `${s.ok ? "GEÇTİ " : "KALDI "} ${s.ad.padEnd(16)} ${programlar[i].aciklama}${s.ok ? "" : `\n        ${s.mesaj}`}`);
+export function sonucMetni(programlar: KartTestProgrami[], sonuc: KartTestSonucu[], dil: Dil = "tr"): string {
+  const t = cevirici(dil);
+  const L = sonuc.map((s, i) => `${s.ok ? t("GEÇTİ ", "PASS  ") : t("KALDI ", "FAIL  ")} ${s.ad.padEnd(16)} ${programlar[i].aciklama}${s.ok ? "" : `\n        ${s.mesaj}`}`);
   const ok = sonuc.filter((s) => s.ok).length;
-  L.push(`${ok}/${sonuc.length} test geçti${ok === sonuc.length ? ": kart simülatörle aynı davranıyor" : ""}`);
+  const hepsi = ok === sonuc.length;
+  L.push(t(`${ok}/${sonuc.length} test geçti${hepsi ? ": kart simülatörle aynı davranıyor" : ""}`, `${ok}/${sonuc.length} tests passed${hepsi ? ": the board behaves like the simulator" : ""}`));
   return L.join("\n");
 }
