@@ -12,6 +12,7 @@ import { createElement, memo, useCallback, useEffect, useLayoutEffect, useMemo, 
 import { agac, CSS_PALETI, svgStili, type Oge } from "../../cpu16/mimari/agac.ts";
 import type { Sahne } from "../../cpu16/mimari/cizim.ts";
 import type { Vurgu } from "../../cpu16/mimari/iliski.ts";
+import { useT } from "../ui/ceviri";
 
 export type Hedef = { tur: "kutu" | "yol"; id: string };
 
@@ -226,6 +227,7 @@ export interface SahneOzellikleri {
 }
 
 export function MimariSahne({ sahne, adlar, gorunum, vurgu, hedef, secim, sec, uzerinde, ayrintiAc, etiket, bilgi }: SahneOzellikleri) {
+  const t = useT();
   const svg = useRef<SVGSVGElement>(null);
   const isaretler = useRef(new Map<number, { x: number; y: number }>());
   const surukleme = useRef<{ x0: number; y0: number; g: Gorunum; hareket: boolean; hedef: Hedef | null; ayrinti: string | null } | null>(null);
@@ -359,7 +361,7 @@ export function MimariSahne({ sahne, adlar, gorunum, vurgu, hedef, secim, sec, u
         ref={svg}
         className={`mm-sahne${vurgu ? " mm-vurgulu" : ""}${suruklenyor ? " mm-surukle" : ""}`}
         role="group"
-        aria-roledescription="diyagram"
+        aria-roledescription={t("diyagram", "diagram")}
         aria-label={etiket}
         tabIndex={0}
         onPointerDown={onPointerDown}
