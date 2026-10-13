@@ -17,11 +17,14 @@
 //
 // Kenar etiketleri (yakından, çip gruplarına): ekranın iki yanında birer sütun; kutular hedeflerinin
 // yüksekliğine göre sıralanır ve üst üste binmeden yerleşir (kenarYerlesimi).
+//
+// Dil: plaka yazıları seçili dilde (bolumMetni). Yazının eni plakanın boyunu belirlediği için öbür dilin
+// sahnesi bir kez yeniden kurulur (sahneDili); çerçeveler ve renkler iki dilde aynıdır.
 
 import { ADIM, BY_ADIM, mmX, mmY } from "../../cpu16/board/breadboard/geometri";
 import { boardDikdortgeni } from "../../cpu16/board/breadboard/gorunum";
 import type { BlockPlace, CardPlace } from "../../cpu16/board/layout";
-import { bolumKimligi, type BolumKatalogu } from "../../cpu16/board/bolum-bilgi";
+import { bolumKimligi, bolumMetni, type BolumKatalogu, type BolumMetni, type Dil } from "../../cpu16/board/bolum-bilgi";
 import { BOLUM_RENKLERI, boardGrupEtiketi, boardunGruplari, boya, hucreSiniri, kutularinSiniri, panoBolgeleri, tamDikdortgenler, type Hucre } from "../../cpu16/board/bolum-cizim";
 
 export { boya, hucreSiniri, tamDikdortgenler, type Hucre };
@@ -122,6 +125,32 @@ export interface SahneBolumleri {
   kartKutusu: Map<string, Kutu>;
   /** çerçeveler koyu zeminde mi (PCB): açık tonlar */
   koyuZemin: boolean;
+  /** plaka yazılarının dili */
+  dil: Dil;
+  /** aynı sahneyi başka dilde kurar (yalnız plakalar değişir); sahneDili önbellekli çağırır */
+  dilde: (dil: Dil) => SahneBolumleri;
+}
+
+const diller = new WeakMap<SahneBolumleri, SahneBolumleri>();
+
+/** Sahnenin verilen dildeki hâli: kendi dilindeyse kendisi, değilse bir kez kurulan öbür dildeki */
+export function sahneDili(s: SahneBolumleri, dil: Dil): SahneBolumleri {
+  if (s.dil === dil) return s;
+  let o = diller.get(s);
+  if (!o) {
+    o = s.dilde(dil);
+    diller.set(s, o);
+  }
+  return o;
+}
+
+/**
+ * Board'daki grup etiketinin seçili dildeki hâli. boardGrupEtiketi (bolum-cizim.ts, kurulum belgeleriyle
+ * ortak) Türkçe kurar: grubun etiketi ya da yalnız göstergeleri o board'daysa "R0 GÖSTERGELERİ".
+ */
+function modulEtiketi(tr: string, g: BolumMetni, dil: Dil): string {
+  if (dil === "tr") return tr;
+  return tr === g.etiket ? g.en.etiket : `${g.en.etiket} DISPLAYS`;
 }
 
 /** Breadboard sahnesinden gereken: panonun yeri, board'ları ve parçaların board'ları */
@@ -174,7 +203,7 @@ const PCB_IC = 0.9;
  * Breadboard sahnesinin bölümleri: her panonun her bölgesi (board'ların rolü) bir çerçeve ve plaka,
  * her kartın plakası panonun dışında. Katalogda olmayan rol atlanır.
  */
-export function bbSahneBolumleri(panolar: readonly BbPanoGirdisi[], k: BolumKatalogu, olc: Olcer, yazi: YaziBoylari): SahneBolumleri {
+export function bbSahneBolumleri(panolar: readonly BbPanoGirdisi[], k: BolumKatalogu, olc: Olcer, yazi: YaziBoylari, dil: Dil = "tr"): SahneBolumleri {
   const b0 = boardDikdortgeni({ x0: 0, y0: 0 });
   const dy = BY_ADIM * ADIM;
   // board'lar arasındaki boşluk (dikeyde 1,27 mm) iki hücreye bölünür
@@ -230,7 +259,7 @@ export function bbSahneBolumleri(panolar: readonly BbPanoGirdisi[], k: BolumKata
     const kutu = kutuBirlesimi(taban);
     cerceveler.push({ id: b.id, kart: b.kart, renk, kenarlar, kutu, alanlar, taban });
     // plaka, yazısının en büyük olduğu dikdörtgende (eşitlikte alanı büyük olanda)
-    const etiket = k.bolumler.get(b.id)!.etiket;
+    const etiket = bolumMetni(k.bolumler.get(b.id)!, dil).etiket;
     let en: { m: PlakaMetni; x: number; y: number; alan: number } | null = null;
     for (const r of tamDikdortgenler(b.hucreler)) {
       // dikdörtgenin iç kutusu: sol sütunun en sağdaki sol kenarından sağ sütunun en soldaki sağ kenarına
@@ -259,7 +288,7 @@ export function bbSahneBolumleri(panolar: readonly BbPanoGirdisi[], k: BolumKata
         const d = boardDikdortgeni(b);
         const tam: Kutu = { x: p.x + d.x, y: p.y + d.y, w: b0.w, h: b0.h };
         const ara = 0.3;
-        const etiketler = ids.map((id) => boardGrupEtiketi(no, p.plan.yerlesim, k, id));
+        const etiketler = ids.map((id) => modulEtiketi(boardGrupEtiketi(no, p.plan.yerlesim, k, id), k.bolumler.get(id)!, dil));
         /** plakalar bir dikdörtgende alt alta (göstergelerin yanındaki alçak şeritte yazı büyük kalıyorsa yan yana), aynı yazı boyunda */
         const diz = (a: Kutu, yanaIzin = false) => {
           const n = ids.length;
@@ -312,12 +341,15 @@ export function bbSahneBolumleri(panolar: readonly BbPanoGirdisi[], k: BolumKata
     kartKutusu.set(p.kart, { x: p.x, y: p.y, w: p.w, h: p.h });
     const kart = k.bolumler.get(bolumKimligi.kart(p.kart));
     if (!kart) continue;
-    const m = plakaSigdir(kart.etiket, p.w - 16, yazi.kart * 2, olc, yazi.kart);
+    const m = plakaSigdir(bolumMetni(kart, dil).etiket, p.w - 16, yazi.kart * 2, olc, yazi.kart);
     const ara = 8;
     const y = p.sira === "on" ? p.y + p.h + ara + m.d / 2 : p.y - ara - m.d / 2;
     plakalar.push({ ...m, id: kart.id, tur: "kart", renk: KART_RENGI, x: p.x + p.w / 2, y });
   }
-  return { cerceveler, plakalar, modulPlakalari, parcaCercevesi: parcaBolgesi, kartKutusu, koyuZemin: false };
+  return {
+    cerceveler, plakalar, modulPlakalari, parcaCercevesi: parcaBolgesi, kartKutusu, koyuZemin: false, dil,
+    dilde: (d) => bbSahneBolumleri(panolar, k, olc, yazi, d),
+  };
 }
 
 /** PCB sahnesinin bölümleri: her işlev bloğu bir çerçeve, plakası bloğun ortasında; kart plakası yok (kartın kendi başlığı var) */
@@ -326,6 +358,7 @@ export function pcbSahneBolumleri(
   k: BolumKatalogu,
   olc: Olcer,
   yazi: Pick<YaziBoylari, "bolge">,
+  dil: Dil = "tr",
 ): SahneBolumleri {
   const bloklar = lay.blocks.filter((b) => k.bolumler.has(bolumKimligi.blok(b.card, b.name)));
   const komsu = (a: number, b: number) => {
@@ -345,7 +378,7 @@ export function pcbSahneBolumleri(
     const kenarlar = hucreSiniri([{ i: 0, j: 0 }], b.x, b.y, b.w, b.h, PCB_IC);
     const alan = { x: b.x + PCB_IC, y: b.y + PCB_IC, w: b.w - 2 * PCB_IC, h: b.h - 2 * PCB_IC };
     cerceveler.push({ id, kart: b.card, renk, kenarlar, kutu: { x: b.x, y: b.y, w: b.w, h: b.h }, alanlar: [alan] });
-    const m = plakaSigdir(k.bolumler.get(id)!.etiket, b.w - 6, b.h - 4, olc, yazi.bolge);
+    const m = plakaSigdir(bolumMetni(k.bolumler.get(id)!, dil).etiket, b.w - 6, b.h - 4, olc, yazi.bolge);
     plakalar.push({ ...m, id, tur: "blok", renk, x: b.x + b.w / 2, y: b.y + b.h / 2 });
   });
   const parcaCercevesi = new Map<string, number>();
@@ -354,7 +387,7 @@ export function pcbSahneBolumleri(
     if (n !== undefined) parcaCercevesi.set(p.ref, n);
   }
   const kartKutusu = new Map(lay.cards.map((c) => [c.name, { x: c.x, y: c.y, w: c.w, h: c.h }]));
-  return { cerceveler, plakalar, modulPlakalari: [], parcaCercevesi, kartKutusu, koyuZemin: true };
+  return { cerceveler, plakalar, modulPlakalari: [], parcaCercevesi, kartKutusu, koyuZemin: true, dil, dilde: (d) => pcbSahneBolumleri(lay, k, olc, yazi, d) };
 }
 
 // ---------------------------------------------------------------- kenar etiketleri
