@@ -91,7 +91,9 @@ rehberleri).
 
 ### Kod biçimi
 
-- **Dil:** belgeler, yorumlar, arayüz metinleri ve commit mesajları Türkçe. Yeni kodda tanımlayıcılar
+- **Dil:** yorumlar ve commit mesajları Türkçe. Arayüz metinleri iki dilli: `t("Durdur", "Stop")`
+  (`src/ui/ceviri.ts`, ayrıntı `src/CLAUDE.md`). Belgelerin asıl hâli Türkçe, İngilizcesi yanında
+  (`spec.md` → `spec.en.md`); Türkçe belgeyi değiştirince İngilizcesini de güncelle. Yeni kodda tanımlayıcılar
   da çoğunlukla Türkçe (`kurulumPlani`, `buildKybCard`'daki `b.block = "Adres çözme"`, `HesapSim`,
   `sinyalSinifi`); eski kısımlarda (6502 tarafı, emülatörün çekirdeği) İngilizce. Değiştirdiğin
   dosyanın diline uy, bir dosyanın içinde dili karıştırma.
