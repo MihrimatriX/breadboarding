@@ -9,11 +9,16 @@ import type { BoardLayout } from "../../cpu16/board/layout";
 import type { GateState } from "../../cpu16/board/computer";
 import { LIB } from "../../cpu16/cc/lib-vite";
 import { TerminalText } from "../cpu16/serial";
+import { useAyar } from "../ui/ayarlar";
+import { ceviri, type Dil, type IkiDil } from "../ui/ceviri";
 import { aktifGorunum, aktifKart, cpuBbHazir, cpuBbYukle, gorunumDegisince, gorunumHazir, gorunumSec, kartDegisince, kartModeli, kartParcasi, kartUclari, kartYerlesimi, type Gorunum, type KartTuru, type Parca } from "./aktif";
 import { compileProgram, detectLanguage, type Lang, type ProgramError } from "./program";
 import type { FromWorker, MemWindow, ToWorker } from "./protocol";
-import type { ScreenFrame } from "./screen";
+import { ekranBilgisi, type ScreenFrame } from "./screen";
 import type { Endpoint } from "./wires";
+
+/** Seçili arayüz dili (derleme özeti ve ekran bilgisi bu dilde yazılır) */
+const seciliDil = (): Dil => useAyar.getState().dil;
 
 // ---------------------------------------------------------------- örnek programlar
 
@@ -24,23 +29,23 @@ const fileName = (p: string) => p.split("/").pop()!;
 
 export interface Example {
   name: string;
-  label: string;
+  label: IkiDil;
   source: string;
 }
 
-const EXAMPLE_LABELS: Record<string, string> = {
-  "video-deneme.s": "video-deneme.s · VGA: Merhaba, 16 renk, kare sayacı",
-  "merhaba-vga.c": "merhaba-vga.c · C: printf (UART) ve VGA",
-  "gc-deneme.s": "gc-deneme.s · UART, zamanlayıcı, klavye kesmeleri",
-  "bellek-deneme.s": "bellek-deneme.s · 128 KB RAM sınaması",
-  "onbellek-deneme.s": "onbellek-deneme.s · önbellek açık / kapalı",
-  "kyb-deneme.s": "kyb-deneme.s · kendin yap bellek kartı (16 × 74HC574)",
-  "hello.s": "hello.s · UART'a merhaba",
+const EXAMPLE_LABELS: Record<string, IkiDil> = {
+  "video-deneme.s": { tr: "video-deneme.s · VGA: Merhaba, 16 renk, kare sayacı", en: "video-deneme.s · VGA: hello, 16 colors, frame counter" },
+  "merhaba-vga.c": { tr: "merhaba-vga.c · C: printf (UART) ve VGA", en: "merhaba-vga.c · C: printf (UART) and VGA" },
+  "gc-deneme.s": { tr: "gc-deneme.s · UART, zamanlayıcı, klavye kesmeleri", en: "gc-deneme.s · UART, timer and keyboard interrupts" },
+  "bellek-deneme.s": { tr: "bellek-deneme.s · 128 KB RAM sınaması", en: "bellek-deneme.s · 128 KB RAM test" },
+  "onbellek-deneme.s": { tr: "onbellek-deneme.s · önbellek açık / kapalı", en: "onbellek-deneme.s · cache on / off" },
+  "kyb-deneme.s": { tr: "kyb-deneme.s · kendin yap bellek kartı (16 × 74HC574)", en: "kyb-deneme.s · DIY memory board (16 × 74HC574)" },
+  "hello.s": { tr: "hello.s · UART'a merhaba", en: "hello.s · hello on the UART" },
 };
 const ORDER = ["video-deneme.s", "merhaba-vga.c", "gc-deneme.s", "hello.s", "bellek-deneme.s", "onbellek-deneme.s", "kyb-deneme.s"];
 
 export const EXAMPLES: Example[] = Object.entries({ ...kit, ...progs, ...own })
-  .map(([p, source]) => ({ name: fileName(p), label: EXAMPLE_LABELS[fileName(p)] ?? fileName(p), source }))
+  .map(([p, source]) => ({ name: fileName(p), label: EXAMPLE_LABELS[fileName(p)] ?? { tr: fileName(p), en: fileName(p) }, source }))
   .sort((a, b) => {
     const ia = ORDER.indexOf(a.name);
     const ib = ORDER.indexOf(b.name);
@@ -86,14 +91,10 @@ export function netDegerleri(tur: KartTuru, values: Uint8Array): void {
 export const liveScreen = { frame: null as ScreenFrame | null, beam: null as { rgba: Uint8ClampedArray; width: number; height: number; x: number; y: number } | null, version: 0 };
 export const liveMem = { window: null as MemWindow | null, version: 0 };
 
-export const SPEEDS = [
-  { hz: 1, label: "1 Hz" },
-  { hz: 4, label: "4 Hz" },
-  { hz: 20, label: "20 Hz" },
-  { hz: 200, label: "200 Hz" },
-  { hz: 1000, label: "1 kHz" },
-  { hz: 0, label: "en hızlı" },
-];
+/** Saat hızı seçenekleri (Hz); 0: en hızlı */
+export const SPEEDS = [1, 4, 20, 200, 1000, 0];
+export const speedLabel = (hz: number, dil: Dil = "tr"): string =>
+  hz === 0 ? (dil === "en" ? "fastest" : "en hızlı") : hz >= 1000 ? `${hz / 1000} kHz` : `${hz} Hz`;
 
 export type WireMode = "yok" | "secili" | "hepsi";
 export type BottomTab = "program" | "ic";
@@ -178,6 +179,10 @@ let lastPanel = 0;
 const terminal = new TerminalText();
 
 export const currentLang = (s: Pick<KartState, "langMode" | "source">): Lang => (s.langMode === "otomatik" ? detectLanguage(s.source) : s.langMode);
+
+/** Derleme hatalarının özeti: "C: 2 hata" */
+const hataOzeti = (lang: Lang, n: number): string =>
+  `${lang === "c" ? "C" : "Assembly"}: ${ceviri(`${n} hata`, `${n} error${n === 1 ? "" : "s"}`)}`;
 
 const firstExample = EXAMPLES[0];
 
@@ -271,7 +276,7 @@ export const useKart = create<KartState>((set, get) => ({
     try {
       await cpuBbYukle();
     } catch (e) {
-      set({ error: `Breadboard verisi yüklenemedi: ${String((e as Error).message ?? e)}` });
+      set({ error: `${ceviri("Breadboard verisi yüklenemedi", "Could not load the breadboard data")}: ${String((e as Error).message ?? e)}` });
     } finally {
       set({ gorunumYukleniyor: false });
     }
@@ -293,21 +298,22 @@ export const useKart = create<KartState>((set, get) => ({
   check() {
     const s = get();
     const lang = currentLang(s);
-    const r = compileProgram(s.source, lang, LIB);
-    set({ errors: r.errors, info: r.flash ? `${r.info} · derlendi (henüz yüklenmedi)` : `${lang === "c" ? "C" : "Assembly"}: ${r.errors.length} hata` });
+    const r = compileProgram(s.source, lang, LIB, seciliDil());
+    set({ errors: r.errors, info: r.flash ? `${r.info} · ${ceviri("derlendi (henüz yüklenmedi)", "compiled (not loaded yet)")}` : hataOzeti(lang, r.errors.length) });
     return !!r.flash;
   },
   compileAndLoad(run = true) {
     const s = get();
     const lang = currentLang(s);
-    const r = compileProgram(s.source, lang, LIB);
+    const r = compileProgram(s.source, lang, LIB, seciliDil());
     if (!r.flash) {
-      set({ errors: r.errors, info: `${lang === "c" ? "C" : "Assembly"}: ${r.errors.length} hata` });
+      set({ errors: r.errors, info: hataOzeti(lang, r.errors.length) });
       return false;
     }
     terminal.clear();
-    const name = s.example && EXAMPLES.find((e) => e.name === s.example)?.source === s.source ? s.example : `düzenlenmiş program (${lang === "c" ? "C" : "assembly"})`;
-    set({ errors: [], info: `${r.info} · EEPROM bank 0'a yazıldı, RESET`, uart: "", loaded: name, running: run });
+    const dilAdi = lang === "c" ? "C" : "assembly";
+    const name = s.example && EXAMPLES.find((e) => e.name === s.example)?.source === s.source ? s.example : ceviri(`düzenlenmiş program (${dilAdi})`, `edited program (${dilAdi})`);
+    set({ errors: [], info: `${r.info} · ${ceviri("EEPROM bank 0'a yazıldı, RESET", "written to EEPROM bank 0, RESET")}`, uart: "", loaded: name, running: run });
     send({ type: "load", flash: r.flash, run: false }, [r.flash.buffer]);
     if (run) send({ type: "run", hz: get().hz });
     return true;
@@ -334,12 +340,12 @@ export function startBoardWorker() {
   if (worker) return;
   try {
     const s = useKart.getState();
-    const first = compileProgram(s.source, currentLang(s), LIB);
-    if (!first.flash) throw new Error(`${s.example}: ${first.errors[0]?.message ?? "derlenemedi"}`);
+    const first = compileProgram(s.source, currentLang(s), LIB, seciliDil());
+    if (!first.flash) throw new Error(`${s.example}: ${first.errors[0]?.message ?? ceviri("derlenemedi", "compile failed")}`);
     worker = new Worker(new URL("./board.worker.ts", import.meta.url), { type: "module" });
     worker.onmessage = (e: MessageEvent<FromWorker>) => onWorker(e.data);
-    worker.onerror = (e) => useKart.setState({ error: e.message || "Simülasyon başlatılamadı" });
-    useKart.setState({ loaded: s.example, info: `${first.info} · EEPROM bank 0'da` });
+    worker.onerror = (e) => useKart.setState({ error: e.message || ceviri("Simülasyon başlatılamadı", "The simulation could not start") });
+    useKart.setState({ loaded: s.example, info: `${first.info} · ${ceviri("EEPROM bank 0'da", "in EEPROM bank 0")}` });
     send({ type: "init", flash: first.flash }, [first.flash.buffer]);
   } catch (err) {
     useKart.setState({ error: String((err as Error).message ?? err) });
@@ -350,12 +356,13 @@ function onWorker(m: FromWorker) {
   if (m.type === "error") useKart.setState({ error: m.message, running: false });
   else if (m.type === "ready") {
     const expect = kartModeli("cpu16").board.c.netCount;
-    if (m.netCount !== expect) useKart.setState({ error: `Worker'daki kart (${m.netCount} net) görünümdekinden (${expect} net) farklı` });
-    else useKart.setState({ ready: true, has: { screen: m.screen, keyboard: m.keyboard, uart: m.uart, beam: m.beam } });
+    if (m.netCount !== expect) {
+      useKart.setState({ error: ceviri(`Worker'daki kart (${m.netCount} net) görünümdekinden (${expect} net) farklı`, `The board in the worker (${m.netCount} nets) differs from the one in the view (${expect} nets)`) });
+    } else useKart.setState({ ready: true, has: { screen: m.screen, keyboard: m.keyboard, uart: m.uart, beam: m.beam } });
   } else if (m.type === "screen") {
     liveScreen.frame = m.frame;
     liveScreen.version++;
-    useKart.setState({ screenText: m.frame.text, screenInfo: m.frame.info });
+    useKart.setState({ screenText: m.frame.text, screenInfo: ekranBilgisi(m.frame, seciliDil()) });
   } else if (m.type === "beam") {
     liveScreen.beam = { rgba: m.rgba, width: m.width, height: m.height, x: m.x, y: m.y };
     liveScreen.version++;
@@ -380,6 +387,11 @@ function onWorker(m: FromWorker) {
     if (Object.keys(patch).length) useKart.setState(patch);
   }
 }
+
+// ekran bilgisi seçili dilde: dil değişince son kareninki yeniden yazılır
+useAyar.subscribe((a, once) => {
+  if (a.dil !== once.dil && liveScreen.frame) useKart.setState({ screenInfo: ekranBilgisi(liveScreen.frame, a.dil) });
+});
 
 // ---------------------------------------------------------------- kart değişince
 

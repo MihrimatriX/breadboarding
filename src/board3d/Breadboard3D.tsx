@@ -27,6 +27,8 @@ import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { delikVar, noktaninBoardu, KENAR_ALT, KENAR_SAG, KENAR_SOL, KENAR_UST, mmX, mmY, satirHarfi, SUTUN } from "../../cpu16/board/breadboard/geometri";
 import { telYollari3B, type BbTel } from "../../cpu16/board/breadboard/plan";
 import { ucusAdimi } from "../ui/ayarlar";
+import { useDil } from "../ui/ceviri";
+import { kartBasligi } from "./adlar";
 import { aktifGorunum, bbSahnesi, panodakiBoard, type BbPanosu, type BbSahnesi } from "./aktif";
 import { bbPano, bbSeciliTel, useBbKurulum } from "./bbKurulum";
 import { sahneBolumleri, useEtiketlerAcik } from "./bolum";
@@ -234,10 +236,14 @@ export function BreadboardTabani() {
   // birden çok pano: adı plakanın dışında, koridordan uzak kenarda (arka sırada arkada, ön sırada önde);
   // bölüm etiketleri açıkken yerinde kartın plakası var (Bolumler3D)
   const etiketler = useEtiketlerAcik();
+  // başlıklar dokuya çizilir: dil değişince yeniden çizilir
+  const dil = useDil();
   const basliklar = useMemo<TextItem[]>(() => (sahne.panolar.length < 2 ? [] : sahne.panolar.map((p) => {
     const [x, z] = w(p.x + 4, p.sira === "on" ? p.y + p.h + 6 : p.y - 20);
-    return { text: `${p.baslik} · ${p.plan.yerlesim.boards.length} board`, x, z, w: 150 * S, d: 14 * S, y: (-BOARD_KALINLIK - PLAKA_KALINLIK) * S, color: "#c9d2dc", align: "left" as const };
-  })), [sahne, w]);
+    const n = p.plan.yerlesim.boards.length;
+    const text = `${kartBasligi(p.kart, p.baslik, dil)} · ${n} ${dil === "en" ? "breadboards" : "board"}`;
+    return { text, x, z, w: 150 * S, d: 14 * S, y: (-BOARD_KALINLIK - PLAKA_KALINLIK) * S, color: "#c9d2dc", align: "left" as const };
+  })), [sahne, w, dil]);
   return (
     <group>
       {sahne.panolar.map((p) => {
