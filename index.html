@@ -48,15 +48,20 @@
       .acilis div { display: flex; flex-direction: column; align-items: center; gap: 16px; }
       .acilis i { width: 32px; height: 32px; border-radius: 50%; border: 3px solid #3a414b; border-top-color: #7aa7ff; animation: acilis 0.9s linear infinite; }
       html[data-tema="acik"] .acilis i { border-color: #cdd3db; border-top-color: #2c62d8; }
+      /* açılış yazısı kayıtlı dilde (lang yukarıdaki betikte yazılır) */
+      html[lang="en"] .acilis [lang="tr"], html:not([lang="en"]) .acilis [lang="en"] { display: none; }
       @keyframes acilis { to { transform: rotate(360deg); } }
       @media (prefers-reduced-motion: reduce) { .acilis i { animation-duration: 3s; } }
     </style>
   </head>
   <body>
     <div id="root">
-      <div class="acilis" role="status"><div><i></i>Silikon3D yükleniyor…</div></div>
+      <div class="acilis" role="status"><div><i></i><span lang="tr">Silikon3D yükleniyor…</span><span lang="en">Loading Silikon3D…</span></div></div>
     </div>
-    <noscript><p style="padding: 24px">Silikon3D tarayıcıda çalışan bir simülatördür; JavaScript gerekir.</p></noscript>
+    <noscript>
+      <p style="padding: 24px 24px 0" lang="tr">Silikon3D tarayıcıda çalışan bir simülatördür; JavaScript gerekir.</p>
+      <p style="padding: 8px 24px 24px" lang="en">Silikon3D is a simulator that runs in your browser and needs JavaScript.</p>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
