@@ -8,13 +8,23 @@
 //   Menu, TasmaMenusu: seyrek kullanılan denetimler için açılır kutu ("⋯")
 //   useLayout: panel düzeni tercihleri (tarayıcıda saklanır)
 
-import { useCallback, useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
+import { isValidElement, useCallback, useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import { ModeSwitch, type Mode } from "./ModeSwitch";
 import { baslangiciAc } from "./Baslangic";
 import { Simge } from "./simgeler";
 import { useAyar, type TemaSecimi } from "./ayarlar";
 import { useSikisma } from "./sikisma";
-import { useT } from "./ceviri";
+import { sec, useDil, useT, type Dil, type IkiDil } from "./ceviri";
+
+/** Kısayol ve sekme tablolarında metin düz yazı (tek dil) ya da { tr, en } olabilir */
+function ikiDilMi(x: unknown): x is IkiDil {
+  return typeof x === "object" && x !== null && !isValidElement(x) && "tr" in x && "en" in x;
+}
+
+/** Düz yazıyı olduğu gibi, iki dilli metni seçili dilde verir */
+export function metin<T>(m: T | IkiDil, dil: Dil): T | string {
+  return ikiDilMi(m) ? sec(m, dil) : m;
+}
 
 // ---------------------------------------------------------------- düzen tercihleri
 
@@ -84,23 +94,26 @@ export function usePaneller(lay: LayoutPrefs): { side: boolean; bottom: boolean;
 
 // ---------------------------------------------------------------- üst çubuk
 
+/** Kısayol satırı. Modül düzeyindeki tablolarda metinler { tr, en } olarak verilir (dil değişince güncellenir). */
 export interface Shortcut {
-  keys: string;
-  what: string;
+  keys: string | IkiDil;
+  what: string | IkiDil;
 }
 
 /** Her bölümün kısayol listesinin sonunda */
 const ORTAK_KISAYOLLAR: Shortcut[] = [
-  { keys: "F", what: "Odak modu: yan ve alt panelleri gizle / göster" },
-  { keys: "T", what: "Tema: koyu / açık" },
-  { keys: "Y", what: "Yazı boyutu: normal / büyük" },
-  { keys: "L", what: "Dil: Türkçe / English" },
-  { keys: "?", what: "Başlangıç: bölümler ve ipuçları" },
+  { keys: "F", what: { tr: "Odak modu: yan ve alt panelleri gizle / göster", en: "Focus mode: hide / show the side and bottom panels" } },
+  { keys: "T", what: { tr: "Tema: koyu / açık", en: "Theme: dark / light" } },
+  { keys: "Y", what: { tr: "Yazı boyutu: normal / büyük", en: "Text size: normal / large" } },
+  { keys: "L", what: { tr: "Dil: Türkçe / English", en: "Language: Türkçe / English" } },
+  { keys: "?", what: { tr: "Başlangıç: bölümler ve ipuçları", en: "Getting started: sections and tips" } },
 ];
 
 /** Üst çubuk: marka ve bölümün kısa açıklaması, bölüm geçişi, canlı ölçümler, tema, görünüm ayarları, kısayol listesi ve Başlangıç. */
 export function AppHeader({ mode, context, meters, shortcuts }: { mode: Mode; context?: ReactNode; meters?: ReactNode; shortcuts?: Shortcut[] }) {
   const ozel = shortcuts ?? [];
+  const dil = useDil();
+  const t = useT();
   // sığmazsa kademe kademe yer açılır (bölüm adları simgeye döner, ikincil ölçümler gizlenir …)
   const ref = useRef<HTMLElement>(null);
   useSikisma(ref);
@@ -117,23 +130,23 @@ export function AppHeader({ mode, context, meters, shortcuts }: { mode: Mode; co
       </div>
       <ModeSwitch mode={mode} />
       <div className="appbar-end">
-        {meters && <div className="meter" role="group" aria-label="Canlı ölçümler">{meters}</div>}
+        {meters && <div className="meter" role="group" aria-label={t("Canlı ölçümler", "Live readings")}>{meters}</div>}
         <div className="appbar-tools">
           <DilDugmesi />
           <TemaDugmesi />
           <GorunumMenusu />
-          <Menu label={<><Simge ad="klavye" boyut={18} /> <span className="menu-label">Kısayollar</span></>} title="Klavye ve fare kısayolları" className="icon-btn" align="end">
-            <p className="menu-baslik">Kısayollar</p>
+          <Menu label={<><Simge ad="klavye" boyut={18} /> <span className="menu-label">{t("Kısayollar", "Shortcuts")}</span></>} title={t("Klavye ve fare kısayolları", "Keyboard and mouse shortcuts")} className="icon-btn" align="end">
+            <p className="menu-baslik">{t("Kısayollar", "Shortcuts")}</p>
             <dl className="keys">
               {[...ozel, ...ORTAK_KISAYOLLAR].map((s, i) => (
-                <div key={s.keys} className={i === ozel.length && ozel.length > 0 ? "ayrac" : undefined}>
-                  <dt><kbd>{s.keys}</kbd></dt>
-                  <dd>{s.what}</dd>
+                <div key={i} className={i === ozel.length && ozel.length > 0 ? "ayrac" : undefined}>
+                  <dt><kbd>{metin(s.keys, dil)}</kbd></dt>
+                  <dd>{metin(s.what, dil)}</dd>
                 </div>
               ))}
             </dl>
           </Menu>
-          <button className="icon-btn" onClick={baslangiciAc} aria-label="Başlangıç ve yardım" data-tip="Başlangıç: bölümler ve ipuçları (?)" data-tip-hiza="son">
+          <button className="icon-btn" onClick={baslangiciAc} aria-label={t("Başlangıç ve yardım", "Getting started and help")} data-tip={t("Başlangıç: bölümler ve ipuçları (?)", "Getting started: sections and tips (?)")} data-tip-hiza="son">
             <Simge ad="yardim" boyut={20} />
           </button>
         </div>
@@ -163,13 +176,14 @@ function DilDugmesi() {
 /** Koyu ↔ açık tema (T). Ayar menüsünde "Sistem" de seçilebilir. */
 function TemaDugmesi() {
   const tema = useAyar((s) => s.tema);
-  const sonraki = tema === "koyu" ? "açık" : "koyu";
+  const t = useT();
+  const sonraki = tema === "koyu" ? t("açık", "light") : t("koyu", "dark");
   return (
     <button
       className="icon-btn"
       onClick={() => useAyar.getState().temaDegistir()}
-      aria-label={`Temayı değiştir: ${sonraki}`}
-      data-tip={`Tema: ${sonraki} (T)`}
+      aria-label={t(`Temayı değiştir: ${sonraki}`, `Switch theme: ${sonraki}`)}
+      data-tip={t(`Tema: ${sonraki} (T)`, `Theme: ${sonraki} (T)`)}
       data-tip-hiza="son"
     >
       <Simge ad={tema === "koyu" ? "gunes" : "ay"} boyut={20} />
@@ -177,13 +191,13 @@ function TemaDugmesi() {
   );
 }
 
-const TEMALAR: { t: TemaSecimi; ad: string }[] = [
-  { t: "sistem", ad: "Sistem" },
-  { t: "koyu", ad: "Koyu" },
-  { t: "acik", ad: "Açık" },
+const TEMALAR: { t: TemaSecimi; ad: IkiDil }[] = [
+  { t: "sistem", ad: { tr: "Sistem", en: "System" } },
+  { t: "koyu", ad: { tr: "Koyu", en: "Dark" } },
+  { t: "acik", ad: { tr: "Açık", en: "Light" } },
 ];
 
-/** Görünüm ayarları: tema, yazı boyutu, odak modu */
+/** Görünüm ayarları: tema, yazı boyutu, dil, odak modu */
 function GorunumMenusu() {
   const secim = useAyar((s) => s.secim);
   const boyut = useAyar((s) => s.boyut);
@@ -192,21 +206,21 @@ function GorunumMenusu() {
   const t = useT();
   const a = useAyar.getState();
   return (
-    <Menu label={<Simge ad="ayarlar" boyut={20} />} title="Görünüm: tema, yazı boyutu, odak modu" className="icon-btn tasma" align="end">
-      <p className="menu-baslik">Görünüm</p>
+    <Menu label={<Simge ad="ayarlar" boyut={20} />} title={t("Görünüm: tema, yazı boyutu, dil, odak modu", "View: theme, text size, language, focus mode")} className="icon-btn tasma" align="end">
+      <p className="menu-baslik">{t("Görünüm", "View")}</p>
       <div className="ayar-satiri">
-        <span>Tema</span>
-        <span className="seg" role="group" aria-label="Tema">
+        <span>{t("Tema", "Theme")}</span>
+        <span className="seg" role="group" aria-label={t("Tema", "Theme")}>
           {TEMALAR.map((x) => (
-            <button key={x.t} className={secim === x.t ? "on" : ""} aria-pressed={secim === x.t} onClick={() => a.temaSec(x.t)}>{x.ad}</button>
+            <button key={x.t} className={secim === x.t ? "on" : ""} aria-pressed={secim === x.t} onClick={() => a.temaSec(x.t)}>{sec(x.ad, dil)}</button>
           ))}
         </span>
       </div>
       <div className="ayar-satiri">
-        <span>Yazı boyutu</span>
-        <span className="seg" role="group" aria-label="Yazı boyutu">
+        <span>{t("Yazı boyutu", "Text size")}</span>
+        <span className="seg" role="group" aria-label={t("Yazı boyutu", "Text size")}>
           <button className={boyut === "normal" ? "on" : ""} aria-pressed={boyut === "normal"} onClick={() => a.boyutSec("normal")}>Normal</button>
-          <button className={boyut === "buyuk" ? "on" : ""} aria-pressed={boyut === "buyuk"} onClick={() => a.boyutSec("buyuk")}>Büyük</button>
+          <button className={boyut === "buyuk" ? "on" : ""} aria-pressed={boyut === "buyuk"} onClick={() => a.boyutSec("buyuk")}>{t("Büyük", "Large")}</button>
         </span>
       </div>
       <div className="ayar-satiri">
@@ -217,14 +231,14 @@ function GorunumMenusu() {
         </span>
       </div>
       <label className="ayar-satiri chk">
-        <span>Odak modu: paneller gizli</span>
+        <span>{t("Odak modu: paneller gizli", "Focus mode: panels hidden")}</span>
         <input type="checkbox" checked={odak} onChange={(e) => a.odakSec(e.target.checked)} />
       </label>
       <p className="menu-not">
-        <span>Kısayollar:</span>
-        <span><kbd>T</kbd> tema</span>
-        <span><kbd>Y</kbd> yazı boyutu</span>
-        <span><kbd>F</kbd> odak modu</span>
+        <span>{t("Kısayollar:", "Shortcuts:")}</span>
+        <span><kbd>T</kbd> {t("tema", "theme")}</span>
+        <span><kbd>Y</kbd> {t("yazı boyutu", "text size")}</span>
+        <span><kbd>F</kbd> {t("odak modu", "focus mode")}</span>
         <span><kbd>L</kbd> {t("dil", "language")}</span>
       </p>
     </Menu>
@@ -287,7 +301,8 @@ export function Group({ children, label, className = "" }: { children: ReactNode
 /** Yan ya da alt paneli açıp kapatır. Odak modundayken basılırsa odak modu kapanır ve panel görünür. */
 export function PanelToggle({ which, open, onToggle, ad }: { which: "side" | "bottom"; open: boolean; onToggle: () => void; ad?: string }) {
   const odak = useAyar((s) => s.odak);
-  const name = ad ?? (which === "side" ? "Yan panel" : "Alt panel");
+  const t = useT();
+  const name = ad ?? (which === "side" ? t("Yan panel", "Side panel") : t("Alt panel", "Bottom panel"));
   const gorunur = open && !odak;
   const tikla = () => {
     if (odak) {
@@ -296,7 +311,7 @@ export function PanelToggle({ which, open, onToggle, ad }: { which: "side" | "bo
     } else onToggle();
   };
   return (
-    <button className="icon-btn" aria-pressed={gorunur} onClick={tikla} data-tip={`${name}: ${gorunur ? "gizle" : "göster"}`} data-tip-hiza="son" aria-label={name}>
+    <button className="icon-btn" aria-pressed={gorunur} onClick={tikla} data-tip={`${name}: ${gorunur ? t("gizle", "hide") : t("göster", "show")}`} data-tip-hiza="son" aria-label={name}>
       <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5">
         <rect x="2.5" y="3.5" width="15" height="13" rx="2" />
         {which === "side" ? (
@@ -312,13 +327,14 @@ export function PanelToggle({ which, open, onToggle, ad }: { which: "side" | "bo
 /** Odak modu (F): yan ve alt paneller gizlenir, sahne bütün alanı alır */
 export function OdakDugmesi() {
   const odak = useAyar((s) => s.odak);
+  const t = useT();
   return (
     <button
       className="icon-btn"
       aria-pressed={odak}
       onClick={() => useAyar.getState().odakSec(!odak)}
-      aria-label="Odak modu"
-      data-tip={odak ? "Odak modundan çık: paneller görünür (F)" : "Odak modu: paneller gizli, sahne tam (F)"}
+      aria-label={t("Odak modu", "Focus mode")}
+      data-tip={odak ? t("Odak modundan çık: paneller görünür (F)", "Leave focus mode: panels visible (F)") : t("Odak modu: paneller gizli, sahne tam (F)", "Focus mode: panels hidden, full scene (F)")}
       data-tip-hiza="son"
     >
       <Simge ad={odak ? "daralt" : "genislet"} boyut={20} />
@@ -327,9 +343,10 @@ export function OdakDugmesi() {
 }
 
 /** Araç çubuğunda seyrek kullanılan denetimler: "⋯" düğmesiyle açılan kutu */
-export function TasmaMenusu({ children, title = "Diğer denetimler", align = "start" }: { children: ReactNode; title?: string; align?: "start" | "end" }) {
+export function TasmaMenusu({ children, title, align = "start" }: { children: ReactNode; title?: string; align?: "start" | "end" }) {
+  const t = useT();
   return (
-    <Menu label={<Simge ad="daha" boyut={20} />} title={title} className="icon-btn tasma" align={align}>
+    <Menu label={<Simge ad="daha" boyut={20} />} title={title ?? t("Diğer denetimler", "More controls")} className="icon-btn tasma" align={align}>
       <div className="menu-col">{children}</div>
     </Menu>
   );
@@ -339,8 +356,9 @@ export function TasmaMenusu({ children, title = "Diğer denetimler", align = "st
 
 export interface TabDef<T extends string> {
   id: T;
-  label: ReactNode;
-  title?: string;
+  /** modül düzeyindeki tablolarda { tr, en } */
+  label: ReactNode | IkiDil;
+  title?: string | IkiDil;
   disabled?: boolean;
 }
 
@@ -357,6 +375,7 @@ export function Tabs<T extends string>({ tabs, value, onChange, label, actions, 
   className?: string;
 }) {
   const base = useId();
+  const dil = useDil();
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== "ArrowRight" && e.key !== "ArrowLeft" && e.key !== "Home" && e.key !== "End") return;
     const usable = tabs.filter((t) => !t.disabled);
@@ -382,10 +401,10 @@ export function Tabs<T extends string>({ tabs, value, onChange, label, actions, 
             tabIndex={value === t.id ? 0 : -1}
             className={value === t.id ? "on" : ""}
             disabled={t.disabled}
-            title={t.title}
+            title={t.title === undefined ? undefined : metin(t.title, dil)}
             onClick={() => onChange(t.id)}
           >
-            {t.label}
+            {metin(t.label, dil)}
           </button>
         ))}
       </div>
@@ -401,7 +420,7 @@ export function Tabs<T extends string>({ tabs, value, onChange, label, actions, 
  * sürükle küçült. Dikey: yan panelin sol kenarı (bölücü yan panelden hemen önce gelir); sola sürükle
  * genişlet. Klavyede ok tuşları.
  */
-export function Splitter({ value, onChange, min = 140, reserve = 200, label = "Alt panelin yüksekliği", yon = "yatay" }: {
+export function Splitter({ value, onChange, min = 140, reserve = 200, label, yon = "yatay" }: {
   value: number;
   onChange: (px: number) => void;
   min?: number;
@@ -412,6 +431,7 @@ export function Splitter({ value, onChange, min = 140, reserve = 200, label = "A
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const drag = useRef<{ p: number; v: number } | null>(null);
+  const t = useT();
   const dikey = yon === "dikey";
   const sinif = dikey ? "resizing-x" : "resizing";
   /** dikey bölücüde değer kayıtlı değilse yan panelin o anki genişliği */
@@ -428,11 +448,11 @@ export function Splitter({ value, onChange, min = 140, reserve = 200, label = "A
       className={`splitter${dikey ? " dikey" : ""}`}
       role="separator"
       aria-orientation={dikey ? "vertical" : "horizontal"}
-      aria-label={label}
+      aria-label={label ?? t("Alt panelin yüksekliği", "Bottom panel height")}
       aria-valuenow={value || undefined}
       aria-valuemin={min}
       tabIndex={0}
-      title={dikey ? "Sürükle: paneli genişlet / daralt" : "Sürükle: paneli büyüt / küçült"}
+      title={dikey ? t("Sürükle: paneli genişlet / daralt", "Drag to widen / narrow the panel") : t("Sürükle: paneli büyüt / küçült", "Drag to resize the panel")}
       onPointerDown={(e) => {
         e.currentTarget.setPointerCapture(e.pointerId);
         drag.current = { p: dikey ? e.clientX : e.clientY, v: simdiki() };
@@ -464,7 +484,8 @@ export function Splitter({ value, onChange, min = 140, reserve = 200, label = "A
 
 /** Yan panelin sol kenarındaki bölücü: genişlik tercihlere yazılır */
 export function YanBolucu({ lay, setLay }: { lay: LayoutPrefs; setLay: (p: Partial<LayoutPrefs>) => void }) {
-  return <Splitter yon="dikey" value={lay.sideW ?? 0} onChange={(w) => setLay({ sideW: w })} min={320} reserve={420} label="Yan panelin genişliği" />;
+  const t = useT();
+  return <Splitter yon="dikey" value={lay.sideW ?? 0} onChange={(w) => setLay({ sideW: w })} min={320} reserve={420} label={t("Yan panelin genişliği", "Side panel width")} />;
 }
 
 // ---------------------------------------------------------------- açılır menü
