@@ -19,7 +19,7 @@ import {
 import { Simge } from "../ui/simgeler";
 import { HataKutusu, Yukleniyor } from "../ui/Yukleniyor";
 import { useYaziTipleri } from "../ui/yaziTipleri";
-import { blokAdi, kartBasligi } from "./adlar";
+import { blokAdi, kartBasligi, parcaBasligi } from "./adlar";
 import { aktifKart, aktifKartiSec, gorunumHazir, type Gorunum, type KartTuru } from "./aktif";
 import { BoardScene } from "./BoardScene";
 import { installHesapApi, useHesap } from "./hesap";
@@ -499,7 +499,7 @@ function PartPanel() {
   // breadboard'da kart çerçevesi yok: bilgisayarda kartın adı (panosu)
   const kartTr = lay.cards.find((c) => c.name === place.card)?.title ?? (aktifKart() === "cpu16" ? cardTitle(place.card) : place.card);
   const kartAdi = kartBasligi(place.card, kartTr, dil);
-  const title = ci ? ci.def.title : PASSIVES[place.part]?.title ?? place.part;
+  const title = parcaBasligi(place.part, ci ? ci.def.title : PASSIVES[place.part]?.title ?? place.part, dil);
   return (
     <section>
       <div className="parca-bas">

@@ -308,6 +308,7 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
     const r = await uploadHex(link, hex, {
       mode,
       run: mode === "ram",
+      dil,
       onProgress: (d, n) => setBusy({ tr: `${what.tr} ${d}/${n}`, en: `${what.en} ${d}/${n}` }),
     });
     linkRef.current = null;
@@ -364,6 +365,7 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
         mode: "ram",
         run: true,
         timeoutMs: 3000,
+        dil,
         onProgress: (d, n) => setBusy({ tr: `Karta gönderiliyor ${d}/${n}`, en: `Sending to the board ${d}/${n}` }),
       });
       setInfo(
@@ -390,7 +392,7 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
     let close = async () => {};
     try {
       const programs = kartTestProgramlari(TESTLER, LIB);
-      const expected = await beklenenCiktilar(programs, bios().flash);
+      const expected = await beklenenCiktilar(programs, bios().flash, dil);
       let link: SerialLink;
       if (where === "kart") {
         const l = await WebSerialLink.open(baud);
@@ -409,9 +411,8 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
         link = l;
         start();
       }
-      // ilerleme ve sonuç metni cpu16/bios/kart-testi.ts'ten Türkçe gelir
-      const res = await kartTesti(link, programs, expected, (s) => setBusy({ tr: `Kart testi: ${s}`, en: `Board test: ${s}` }));
-      setTestOut(sonucMetni(programs, res));
+      const res = await kartTesti(link, programs, expected, (s) => setBusy({ tr: `Kart testi: ${s}`, en: `Board test: ${s}` }), dil);
+      setTestOut(sonucMetni(programs, res, dil));
     } catch (e) {
       setTestOut(t(`Kart testi yapılamadı: ${(e as Error).message}`, `Board test could not run: ${(e as Error).message}`));
     } finally {

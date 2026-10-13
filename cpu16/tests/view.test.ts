@@ -1,7 +1,8 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import { BLOK_EN, blokAdi, kartBasligi } from "../../src/board3d/adlar.ts";
+import { BLOK_EN, PARCA_EN, blokAdi, kartBasligi, parcaBasligi } from "../../src/board3d/adlar.ts";
+import { CHIPS, CHIP_BY_PART } from "../chips/library.ts";
 import { findVgaOutput, dacVolts, resistance } from "../../src/board3d/beam.ts";
 import { colWindow, memGeometry, rowWindow } from "../../src/board3d/memview.ts";
 import { BANK0_END, compileProgram, detectLanguage, flashImage, FLASH_SIZE } from "../../src/board3d/program.ts";
@@ -149,6 +150,12 @@ describe("3D görünüm: bütün bilgisayar tek sahnede", () => {
     expect(blokAdi("Register dosyası", "en")).toBe("Register file");
     expect(blokAdi("Register dosyası")).toBe("Register dosyası");
     expect(blokAdi("tabloda olmayan blok", "en")).toBe("tabloda olmayan blok");
+  });
+
+  it("her çipin ve pasifin İngilizce başlığı var (src/board3d/adlar.ts)", () => {
+    for (const d of [...CHIPS, ...Object.values(PASSIVES)]) expect(PARCA_EN[d.part], `${d.part} İngilizce başlığı yok`).toBeDefined();
+    expect(parcaBasligi("74HC161", CHIP_BY_PART["74HC161"].title, "en")).toBe("4-bit synchronous binary counter (asynchronous reset)");
+    expect(parcaBasligi("74HC161", CHIP_BY_PART["74HC161"].title)).toBe(CHIP_BY_PART["74HC161"].title);
   });
 
   it("çipler ve pasifler kartlarının içinde, gövdeler çakışmıyor, pinler doğru netlerde", () => {
