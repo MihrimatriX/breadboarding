@@ -78,7 +78,7 @@ experiment file are generated from the board definitions.
 
 4. [kurulum.md](../cpu16/docs/kurulum.en.md): how to generate and read the printable build guide for
    each board (layout map, numbered wire list, chip cards). To build the whole computer on breadboards
-   instead of PCBs: [breadboard.md](../cpu16/docs/breadboard.en.md) (one breadboard assembly per board,
+   instead of PCBs: [breadboard.md](../cpu16/docs/breadboard.en.md) (one breadboard panel per board,
    ribbon cable between boards, hole-to-hole wire lists).
 5. [uretim.md](../cpu16/docs/uretim.en.md): the reasoning behind the build order, power supply, fault
    finding, board test.

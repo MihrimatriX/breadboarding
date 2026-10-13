@@ -69,7 +69,7 @@ are in `bolum-metin.ts`, and the "Bölümler" (sections) part of the build guide
 | `breadboard/gorunum.ts` | 3D layout from the breadboard plan (Silikon3D, `src/board3d/Breadboard3D.tsx`) |
 | `breadboard/belge.ts` | Printable breadboard build guide (breadboard map and sections, drawings, wire and cut lists, parts) |
 | `bolum-metin.ts` | The label, job and "how it works" text of each region and chip group (3D labels, side panel, build guide; `cpu16/board/bolum-bilgi.ts`) |
-| `cpu16/board/breadboard/` | Shared breadboard engine (shared with CPU16's breadboard assemblies): BB830 geometry, annealing that spreads the chips across breadboards, wire routing (right-angle, flat paths that never cross a chip body; A*, rip-up and reroute), union-find verification from the physical model, breadboard drawings. `breadboard/geometri.ts`, `yonlendirme.ts` and `dogrulama.ts` re-export for older imports |
+| `cpu16/board/breadboard/` | Shared breadboard engine (shared with CPU16's breadboard panels): BB830 geometry, annealing that spreads the chips across breadboards, wire routing (right-angle, flat paths that never cross a chip body; A*, rip-up and reroute), union-find verification from the physical model, breadboard drawings. `breadboard/geometri.ts`, `yonlendirme.ts` and `dogrulama.ts` re-export for older imports |
 | `mimari.ts` | Layout of the architecture (block) diagram: boxes, paths (content from the circuit; `cpu16/mimari/`). Silikon3D → Architecture |
 | `docs/tasarim.md` | Blocks (block diagram `docs/img/mimari-hesap.svg`), speed, power supply, parts |
 | `docs/kurulum-rehberi.md` | Physical build: stages, tests, troubleshooting |

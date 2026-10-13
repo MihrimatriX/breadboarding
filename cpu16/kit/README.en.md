@@ -24,7 +24,7 @@ Once the experiments are done, the computer's boards become permanent in one of 
 
 - PCB: the boards are made from the KiCad schematics and the chips go into sockets; the wire list in
   the build guides is a beep test list ([docs/kurulum.md](../docs/kurulum.en.md)).
-- Breadboards: each board sits on its own breadboard assembly (a group of BB830s on a base plate: 5 for
+- Breadboards: each board sits on its own breadboard panel (a group of BB830s on a base plate: 5 for
   the clock board, 55 for the CPU, 12 each for memory and cache, 18 for I/O, 21 for video, 6 for build
   your own memory), and all the connections between boards run on a 64-conductor ribbon cable (the
   backplane). Each assembly's document is written hole to hole: layout drawings for each breadboard, a
@@ -33,7 +33,7 @@ Once the experiments are done, the computer's boards become permanent in one of 
   The same wires in the app: Silikon3D → CPU16 board 3D → View: Breadboard → Build.
 
 The "Malzeme ve bağlantılar" tables in the experiments are the same for both routes (which pin goes to
-which net); for the breadboard assemblies, which hole each of these connections goes into is in that
+which net); for the breadboard panels, which hole each of these connections goes into is in that
 assembly's document.
 
 ## Experiments
@@ -71,7 +71,7 @@ need it to run, and it plugs into the computer from the first 13 experiments aft
 | Tool | Why |
 |---|---|
 | 5 V adjustable / current-limited power supply, at least 2 A | The full computer is ≈ 400 chips; at the first power-up the current limit catches shorts |
-| Breadboards (830 holes) × 25–35, 0.5 mm solid-core wire | The CPU board alone is ≈ 195 chips. The whole computer on breadboard assemblies: 134 breadboards, ≈ 820 m of 22 AWG wire ([docs/breadboard.md](../docs/breadboard.en.md)) |
+| Breadboards (830 holes) × 25–35, 0.5 mm solid-core wire | The CPU board alone is ≈ 195 chips. The whole computer on breadboard panels: 134 breadboards, ≈ 820 m of 22 AWG wire ([docs/breadboard.md](../docs/breadboard.en.md)) |
 | Multimeter | measuring the supply and logic levels |
 | Logic probe or an 8-channel USB logic analyzer (sigrok / PulseView) | clock, UART, PS/2 and VGA timing |
 | Arduino Nano (a clone works) + ZIF-28 socket | EEPROM programmer (Experiment 3) |
@@ -97,7 +97,7 @@ sockets while you drive with the switches ([LEDs and resistors](led-ve-direnc.en
   the same circuit at gate level. If the real board behaves differently, select the same net name in the
   simulator and compare the levels.
 - Boards connect to each other through the backplane signals (see the backplane section of
-  `cpu16/docs/kartlar.md`). On the breadboard assemblies this is the 64-conductor ribbon cable that runs
+  `cpu16/docs/kartlar.md`). On the breadboard panels this is the 64-conductor ribbon cable that runs
   along the aisle: on each assembly a ribbon cable adapter takes the place of the board's edge
   connector, and the cable has an IDC socket for each assembly
   ([docs/breadboard.md](../docs/breadboard.en.md#backplane-ribbon-cable)). In the experiments, while a
