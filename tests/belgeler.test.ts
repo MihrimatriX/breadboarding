@@ -361,8 +361,9 @@ describe("depodaki belgeler", () => {
           if (dosya.endsWith(".en.md")) expect(agac.has(yolBirlestir(y, dosya) ?? ""), `${y}: ${s.href}: dosya yok`).toBe(true);
           const h = hedefCoz(y, s.href, (z) => agac.has(z));
           if (h.tur !== "belge") continue;
-          // İngilizce belge, İngilizcesi olan belgeye .en.md adıyla bağlanır (klasör bağlantısı serbest)
-          if (ingilizce && dosya && !dosya.endsWith("/") && trYolu(h.yol) === null) expect(agac.has(enYolu(h.yol)), `${y}: ${s.href}: ${enYolu(h.yol)} var, ona bağlan`).toBe(false);
+          // İngilizce belge, İngilizcesi olan belgeye .en.md adıyla bağlanır (klasör bağlantısı ve belgenin
+          // kendi Türkçe eşine dil geçişi bağlantısı serbest)
+          if (ingilizce && dosya && !dosya.endsWith("/") && trYolu(h.yol) === null && h.yol !== trYolu(y)) expect(agac.has(enYolu(h.yol)), `${y}: ${s.href}: ${enYolu(h.yol)} var, ona bağlan`).toBe(false);
           if (!h.capa) continue;
           sayi++;
           expect(kimlikler.get(h.yol)?.has(h.capa), `${y}: ${s.href}`).toBe(true);

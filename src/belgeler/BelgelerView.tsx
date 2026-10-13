@@ -512,6 +512,16 @@ function Satir({ c, k, baglantida = false }: { c: Inline[]; k: Baglam; baglantid
           }
           case "baglanti": {
             const h = hedefCoz(k.yol, x.href, belgeVar);
+            // belgenin kendi öbür dildeki eşine bağlantı ([English](README.en.md)): dili değiştirir
+            const dosya = x.href.split("#")[0];
+            if (h.tur === "belge" && h.yol === k.yol && dosya) {
+              const hedefDil: Dil = dosya.endsWith(".en.md") ? "en" : "tr";
+              return (
+                <a key={i} href={belgeHash(h.yol)} lang={hedefDil} hrefLang={hedefDil} onClick={(e) => { e.preventDefault(); useAyar.getState().dilSec(hedefDil); }}>
+                  <Satir c={x.c} k={k} baglantida />
+                </a>
+              );
+            }
             if (h.tur === "belge") {
               return (
                 <a key={i} href={belgeHash(h.yol, h.capa)} onClick={k.ayniAdres}>
