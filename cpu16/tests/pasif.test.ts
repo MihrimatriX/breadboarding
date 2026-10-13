@@ -4,15 +4,16 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { boardLayout } from "../board/layout.ts";
 import { buildFullMachineBoard } from "../board/machine-board.ts";
-import { LED_RENKLERI, ledRengi } from "../board/passives.ts";
+import { LED_RENK_KURALLARI, LED_RENKLERI, ledRengi } from "../board/passives.ts";
 import {
   akimMetni, bantFormulu, bantlariOku, carpanMetni, direncBantlari, direncGucu, faradMetni, kodAcilimi, ledAkimi, ohmMetni, pasifDegeri, rcSabiti,
   seriDirenc, ucHaneliKod, ucHaneliKoduOku, type BantRenk,
 } from "../board/pasif-bilgi.ts";
 import { ACIK, KOYU, direncCizimi, ledCizimi, ledDevreCizimi, svgBelge } from "../kit/cizim.ts";
 import { gorselDosyalari } from "../kit/gorseller.ts";
+import { buildHesapBoard } from "../../hesap8/kart.ts";
 import {
-  cekmeDirenci, dacDirenci, etkinNet, ledAkimiOf, ledDevresi, ledYanik, pasifAciklamasi, rcCifti, seriLed, type PasifBaglam,
+  cekmeDirenci, dacDirenci, etkinNet, ledAkimiOf, ledDevresi, ledKuralNedeni, ledYanik, pasifAciklamasi, rcCifti, seriLed, type PasifBaglam,
 } from "../../src/board3d/pasif-analiz.ts";
 import { netEndpoints } from "../../src/board3d/wires.ts";
 
@@ -206,6 +207,36 @@ describe("Pasifin kartta ne iş yaptığı (bilgisayarın şeması)", () => {
       expect(a.gorev.length, p.ref).toBeGreaterThan(0);
       const metin = [a.tur, a.deger ?? "", a.ozet, ...a.gorev, ...a.hesaplar.flatMap((h) => [h.ad, h.formul, h.sonuc]), a.durum?.metin ?? ""].join(" ");
       expect(metin, p.ref).not.toMatch(/NaN|undefined|Infinity/);
+    }
+  });
+
+  it("açıklama İngilizce: aynı hesaplar, noktalı sayılar, Türkçe kelime yok (kartın Türkçe parça görevi dışında)", () => {
+    const clk = net("CLK");
+    const a = pasifAciklamasi(P("D201"), ctx({ [clk]: 1 }), "en");
+    expect(a.ozet).toBe("blue LED · CLK · ≈ 5.8 mA · on");
+    expect(a.durum?.metin).toMatch(/^ON: .*U206\.Y0/);
+    expect(pasifAciklamasi(P("R205"), ctx({ [clk]: 1 }), "en").ozet).toBe("330 Ω (orange-orange-brown-gold) · ≈ 5.8 mA for D201");
+    const dek = lay.passives.find((p) => p.chip === "U201" && p.part === "C_100N")!;
+    expect(pasifAciklamasi(dek, ctx(), "en").gorev[0]).toContain("VCC (14) and GND (7)");
+    expect([ohmMetni(1300, "en"), akimMetni(0.0058, "en"), faradMetni(2.2e-6, "en"), kodAcilimi("103", "Ω", "en")]).toEqual(["1.3 kΩ", "5.8 mA", "2.2 µF", "103 = 10 × 10³ Ω = 10 kΩ"]);
+    for (const k of LED_RENK_KURALLARI) expect(ledKuralNedeni(k, "en"), k.neden).not.toBe(k.neden);
+    const hesapKarti = buildHesapBoard().board;
+    const hesap = boardLayout(hesapKarti);
+    const hFind = (ref: string) => {
+      const passive = hesap.passives.find((p) => p.ref === ref);
+      const chip = hesap.chips.find((c) => c.ref === ref);
+      return chip || passive ? { chip, passive } : null;
+    };
+    const hCtx: PasifBaglam = { ends: netEndpoints(hesap), find: hFind, netName: (n) => hesapKarti.netName(n), level: (n) => (n <= 1 ? n : 2) };
+    for (const [c, p] of [...lay.passives.map((p) => [ctx(), p] as const), ...hesap.passives.map((p) => [hCtx, p] as const)]) {
+      const tr = pasifAciklamasi(p, c);
+      const en = pasifAciklamasi(p, c, "en");
+      expect(en.hesaplar.map((h) => h.formul.replace(/,/g, ".")), p.ref).toEqual(tr.hesaplar.map((h) => h.formul.replace(/,/g, ".")));
+      expect(en.ilgili.map((x) => x.ref), p.ref).toEqual(tr.ilgili.map((x) => x.ref));
+      let metin = [en.tur, en.deger ?? "", en.ozet, ...en.gorev, ...en.hesaplar.flatMap((h) => [h.ad, h.formul, h.sonuc]), en.durum?.metin ?? "", ...en.ilgili.map((x) => x.neden)].join(" ");
+      for (const r of [p.role, p.role.replace(/ LED'i$/, ""), p.role.replace(/: çubuk gösterge$/, "")]) metin = metin.split(r).join(" ");
+      expect(metin, p.ref).not.toMatch(/NaN|undefined|Infinity|—/);
+      expect(metin.split(/[^\p{L}\p{N}_~]+/u).filter((w) => /[çğıöşü]/.test(w)), `${p.ref}: ${metin}`).toEqual([]);
     }
   });
 

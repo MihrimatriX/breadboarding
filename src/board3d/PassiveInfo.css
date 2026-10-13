@@ -121,6 +121,6 @@
 .pasif-info .pi-ilgili button span { color: var(--text-faint); font-family: var(--sans); font-weight: 400; }
 
 .pasif-info .pi-rehber { margin: var(--sp-1) 0 0; font-size: var(--fs-sm); color: var(--text-faint); }
-.pasif-info .pi-rehber code { font-size: var(--fs-cap); color: var(--text-muted); }
+.pasif-info .pi-rehber code { font-size: var(--fs-cap); color: var(--text-muted); overflow-wrap: anywhere; }
 
 .pi-ipucu { color: var(--text); }
