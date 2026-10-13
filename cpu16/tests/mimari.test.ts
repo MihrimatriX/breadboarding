@@ -1,7 +1,8 @@
 // Mimari diyagramları (cpu16/mimari): çizilen her kutu ve yol devreye uyuyor mu. Denetimlerin
 // ayrıntısı cpu16/mimari/denetim.ts'te; burada CPU kartı ve bütün bilgisayar için çalıştırılır,
 // arka panel şeritlerinin tamlığı (her kart kullandığı her şeride bağlı) ayrıca denetlenir.
-// Hesap makinesinin diyagramı: hesap8/tests/mimari.test.ts.
+// Hesap makinesinin diyagramı: hesap8/tests/mimari.test.ts. İngilizce diyagramlar aynı denetimlerden
+// geçer; yapıları Türkçeyle aynı, metinleri İngilizce.
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -10,9 +11,9 @@ import { mimariBolumu, mimariSvg } from "../mimari/belge.ts";
 import { belgeDosyasi } from "../mimari/cli.ts";
 import { blokDenetimi, diyagramiDenetle, sayiDenetimi, ucDurumu, yolDenetimi } from "../mimari/denetim.ts";
 import { iliskiKur, vurgula } from "../mimari/iliski.ts";
-import { diyagramKur, DIYAGRAMLAR } from "../mimari/index.ts";
+import { diyagramKur, DIYAGRAMLAR, kayitAdlari } from "../mimari/index.ts";
 import { MAKINE_KARTLARI } from "../mimari/makine.ts";
-import { Devre, netOzeti, type Diyagram } from "../mimari/model.ts";
+import { adet, buyuk, Devre, netOzeti, pasifAdi, yolEtiketMetni, type Diyagram } from "../mimari/model.ts";
 import { temaPaleti } from "../mimari/palet.ts";
 
 describe("mimari diyagramları: CPU kartı ve bütün bilgisayar", () => {
@@ -217,12 +218,95 @@ describe("mimari diyagramları: çizim", () => {
   });
 });
 
-describe("mimari diyagramları: belgeler", () => {
-  it("belgelerdeki SVG'ler devreyle güncel (değiştiyse: npm run cpu16 -- mimari)", () => {
+describe("mimari diyagramları: İngilizce", () => {
+  for (const d of DIYAGRAMLAR) {
+    it(`${d.id}: İngilizce sahne de hatasız (yazılar kutulara, lejant ve başlıklar yerine sığıyor; sayılar devreyle aynı)`, () => {
+      expect(diyagramiDenetle(diyagramKur(d.id, "en"))).toEqual([]);
+    });
+  }
+
+  it("iki dilde kimlikler, bloklar, netler ve uçlar aynı; yalnız metinler değişir", () => {
     for (const d of DIYAGRAMLAR) {
-      const yol = new URL(`../../${belgeDosyasi(d)}`, import.meta.url);
-      expect(readFileSync(yol, "utf8") === mimariSvg(d.id), `${belgeDosyasi(d)} eski: npm run cpu16 -- mimari`).toBe(true);
+      const tr = diyagramKur(d.id).diyagram;
+      const en = diyagramKur(d.id, "en").diyagram;
+      const yapi = (dg: Diyagram) => ({
+        kutular: dg.kutular.map((k) => [k.id, k.rol, k.x, k.y, k.w, k.h, k.bloklar, k.bolmeler?.map((b) => [b.x, b.y, b.w, b.h, b.bloklar, String(b.rol)])]),
+        yollar: dg.yollar.map((y) => [y.id, y.tur, y.netler, y.uclar, y.kollar, y.etiketler.map((e) => [e.x, e.y])]),
+        gruplar: dg.gruplar.map((g) => [g.id, g.kutular, g.bloklar]),
+      });
+      expect(yapi(en), d.id).toEqual(yapi(tr));
+      expect(en.baslik).not.toBe(tr.baslik);
     }
+  });
+
+  it("İngilizce metinlerde Türkçeye özgü harf yok (sinyal adları TOPLA, ÇIKAR, BÖL, KALAN_SÖNÜK hariç)", () => {
+    const tr = /[ğıışİĞŞ]/;
+    for (const d of DIYAGRAMLAR) {
+      const { diyagram: dg, sahne } = diyagramKur(d.id, "en");
+      const metinler = [
+        dg.baslik, dg.altBaslik, dg.aciklama, ...dg.lejant.kisaltmalar.map(([, u]) => u),
+        ...dg.kutular.flatMap((k) => [k.ad, k.gorev, k.aciklama, ...(k.bolmeler ?? []).flatMap((b) => [b.ad, b.gorev ?? ""])]),
+        ...dg.yollar.flatMap((y) => [y.ad, y.aciklama, ...y.etiketler.map((e) => e.metin ?? ""), ...(y.baglayicilar ?? []).map((b) => b.metin)]),
+        ...dg.gruplar.flatMap((g) => [g.ad, g.ek ?? "", g.aciklama ?? "", g.bloklarAdi ?? ""]),
+        ...[...sahne.baslik, ...sahne.lejant.metinler, ...sahne.gruplar.flatMap((g) => g.metinler), ...sahne.kutular.flatMap((k) => k.metinler), ...sahne.yollar.flatMap((y) => y.etiketler)].map((m) => m.m),
+      ];
+      expect(metinler.filter((m) => tr.test(m)), d.id).toEqual([]);
+    }
+  });
+
+  it("İngilizce sahne: başlık, kapı satırları, çerçeve başlıkları, yol etiketleri ve lejant İngilizce", () => {
+    const cpu = diyagramKur("cpu", "en");
+    const yazilar = (k: typeof cpu) => [...k.sahne.baslik, ...k.sahne.lejant.metinler, ...k.sahne.kutular.flatMap((x) => x.metinler), ...k.sahne.yollar.flatMap((y) => y.etiketler)].map((m) => m.m);
+    expect(cpu.sahne.baslik[0].m).toBe("CPU16 PROCESSOR BOARD · ARCHITECTURE");
+    expect(yazilar(cpu)).toContain("REGISTER FILE (R0–R7)");
+    expect(yazilar(cpu)).toContain("DATA BUS (16 BITS)");
+    expect(yazilar(cpu)).toEqual(expect.arrayContaining(["CONNECTIONS", "BOXES", "ABBREVIATIONS", "Data bus", "Selector, decoder"]));
+    expect(yazilar(cpu).some((m) => /^\+ \d+ gates?\b/.test(m))).toBe(true);
+    const makine = diyagramKur("makine", "en");
+    expect(makine.sahne.baslik.some((m) => m.m.includes(`${makine.devre.board.chips.length} chips`))).toBe(true);
+    const cerceve = makine.sahne.gruplar.find((g) => g.id === "cpu")!.metinler.map((m) => m.m);
+    expect(cerceve[0]).toBe("CPU BOARD");
+    expect(cerceve[1]).toMatch(/^\d+ chips · \d+ gate chips?$/);
+    expect(cerceve).toContain("details ›");
+    expect(kayitAdlari(diyagramKur("hesap", "en").kayit, "en")).toEqual({ ad: "8-bit calculator", kisa: "Calculator" });
+  });
+
+  it("dile göre yardımcılar: büyük harf, bit etiketi, adet, pasif adları", () => {
+    expect(buyuk("details", "en")).toBe("DETAILS");
+    expect(buyuk("ayrıntı")).toBe("AYRINTI");
+    expect(buyuk("sabit birimi")).toBe("SABİT BİRİMİ");
+    expect(yolEtiketMetni({ ad: "DATA BUS", bit: 16 }, undefined, "en")).toBe("DATA BUS (16 BITS)");
+    expect(yolEtiketMetni({ ad: "VERİ YOLU", bit: 16 })).toBe("VERİ YOLU (16 BİT)");
+    expect(adet(1, "kapı", ["gate", "gates"], "en")).toBe("1 gate");
+    expect(adet(3, "kapı", ["gate", "gates"], "en")).toBe("3 gates");
+    expect(adet(3, "kapı", ["gate", "gates"])).toBe("3 kapı");
+    expect(pasifAdi("OSC_25M175", "en")).toBe("25.175 MHz oscillator");
+    expect(pasifAdi("OSC_25M175")).toBe("25,175 MHz osilatör");
+    expect(pasifAdi("BILINMEYEN", "en")).toBe("BILINMEYEN");
+  });
+});
+
+describe("mimari diyagramları: belgeler", () => {
+  it("belgelerdeki SVG'ler (Türkçe ve İngilizce) devreyle güncel (değiştiyse: npm run cpu16 -- mimari)", () => {
+    for (const d of DIYAGRAMLAR) {
+      for (const dil of ["tr", "en"] as const) {
+        const yol = new URL(`../../${belgeDosyasi(d, dil)}`, import.meta.url);
+        expect(readFileSync(yol, "utf8") === mimariSvg(d.id, "acik", dil), `${belgeDosyasi(d, dil)} eski: npm run cpu16 -- mimari`).toBe(true);
+      }
+    }
+    expect(belgeDosyasi(DIYAGRAMLAR[0], "en")).toBe("cpu16/docs/img/mimari-cpu.en.svg");
+    expect(belgeDosyasi(DIYAGRAMLAR[2], "en")).toBe("hesap8/docs/img/mimari-hesap.en.svg");
+  });
+
+  it("İngilizce SVG ve kurulum sayfası İngilizce başlıklı; baştaki yorumda \"--\" yok", () => {
+    const svg = mimariSvg("cpu", "acik", "en");
+    expect(svg).toContain("<title>CPU16 processor board: architecture</title>");
+    expect(svg).toContain("GENERATED, do not edit by hand");
+    expect(svg).toContain("REGISTER FILE");
+    expect(svg.split("<!--")[1].split("-->")[0]).not.toContain("--");
+    const html = mimariBolumu("makine", { dil: "en" });
+    expect(html).toContain("<h2>Architecture: CPU16 computer</h2>");
+    expect(html).toContain("BACKPLANE");
   });
 
   it("kurulum belgelerinin mimari sayfası: A4 yatay, diyagram gömülü", () => {
