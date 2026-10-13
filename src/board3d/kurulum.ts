@@ -1,15 +1,18 @@
 // Kurulum modu: kartı gerçekte kurarken tel tel ilerleme. Veri kurulum belgesiyle aynıdır
 // (cpu16/kurulum/plan.ts): aynı tel numaraları (T0001 …), aynı sıra, aynı renkler; böylece
 // yazdırılmış belge ile ekran yan yana kullanılabilir. Takılan teller tarayıcıda saklanır
-// (kart başına), 3D sahne seçili teli iki bacağı arasında çizer.
+// (kart başına), 3D sahne seçili teli iki bacağı arasında çizer. Panelin metin yardımcıları da burada,
+// dili parametre alır (varsayılan Türkçe; kart ve blok adlarının İngilizcesi adlar.ts'te).
 
 import { create } from "zustand";
 import type { Board } from "../../cpu16/board/board";
 import { buildComputerBoard } from "../../cpu16/board/computer";
-import { boardLayout, type BoardLayout } from "../../cpu16/board/layout";
+import { boardLayout, cardTitle, type BoardLayout } from "../../cpu16/board/layout";
 import { buildProgrammerBoard } from "../../cpu16/board/programmer-card";
 import { KURULUM_KARTLARI, kurulumKarti, type KurulumKarti, type KurulumKaynagi } from "../../cpu16/kurulum/kartlar";
-import { kurulumPlani, type KurulumPlani, type Tel } from "../../cpu16/kurulum/plan";
+import { kurulumPlani, renkKodu, type CipYeri, type KurulumPlani, type Tel } from "../../cpu16/kurulum/plan";
+import type { Dil } from "../ui/ceviri";
+import { blokAdi as adlarBlokAdi, kartBasligi } from "./adlar";
 import { aktifKart, kartDegisince, kartModeli, kartYerlesimi, type KartTuru } from "./aktif";
 import { findPart } from "./store";
 
@@ -18,6 +21,40 @@ export { KURULUM_KARTLARI };
 /** Kart türünün kurulum listesindeki kartları: hesap makinesi bölümünde yalnız o, bilgisayarda onun dışındakiler */
 export const gorunenKartlar = (tur: KartTuru = aktifKart()): KurulumKarti[] =>
   KURULUM_KARTLARI.filter((k) => (k.kaynak === "hesap") === (tur === "hesap"));
+
+// ---------------------------------------------------------------- metinler (iki dil)
+
+/** Kartın adı seçili dilde: "Saat ve reset kartı", "Clock and reset board" (İngilizcesi adlar.ts) */
+export const kartAdi = (kart: string, dil: Dil = "tr"): string => kartBasligi(kart, cardTitle(kart), dil);
+
+/** Bloğun adı seçili dilde (adlar.ts; programlayıcı kartının tek bloğu 3D sahnede olmadığından orada yok) */
+export const blokAdi = (ad: string, dil: Dil = "tr"): string => (dil === "en" && ad === "Programlayıcı" ? "Programmer" : adlarBlokAdi(ad, dil));
+
+/** Binlik ayraçlı sayı seçili dilde: 1.234, 1,234 */
+export const sayiYaz = (n: number, dil: Dil = "tr"): string => n.toLocaleString(dil === "en" ? "en-US" : "tr-TR");
+
+/** İngilizce sıra sayısı: 1st, 2nd, 3rd, 4th, 11th */
+export const siraSayisi = (n: number): string => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : (["th", "st", "nd", "rd"][n % 10] ?? "th")}`;
+
+/** PCB telinin rengi ve sınıfı: "sarı tel · adres", "yellow wire · Address" */
+export function pcbTelRengi(t: Pick<Tel, "renk" | "sinif">, dil: Dil = "tr"): string {
+  if (dil === "tr") return `${t.renk} tel · ${t.sinif}`;
+  const r = renkKodu(t.sinif).en;
+  return `${r.renk} wire · ${r.ad}`;
+}
+
+/** DIP bacağının yeri: 1..n/2 alt sırada soldan sağa, gerisi üst sırada sağdan sola (çentik solda) */
+export function bacakYeri(pin: number, pinSayisi: number): { sira: "alt" | "üst"; sol: number } {
+  const yarim = pinSayisi / 2;
+  return pin <= yarim ? { sira: "alt", sol: pin } : { sira: "üst", sol: pinSayisi - pin + 1 };
+}
+
+/** Bacağın yeri yazıyla: "alt sırada soldan 3. · yer C4", "bottom row, 3rd from left · grid C4" */
+export function bacakYeriYazisi(pin: number, cip: Pick<CipYeri, "pinSayisi" | "hucre">, dil: Dil = "tr"): string {
+  const { sira, sol } = bacakYeri(pin, cip.pinSayisi);
+  if (dil === "tr") return `${sira} sırada soldan ${sol}. · yer ${cip.hucre}`;
+  return `${sira === "alt" ? "bottom" : "top"} row, ${siraSayisi(sol)} from left · grid ${cip.hucre}`;
+}
 
 // ---------------------------------------------------------------- plan
 
