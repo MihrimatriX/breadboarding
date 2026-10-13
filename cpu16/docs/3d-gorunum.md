@@ -165,7 +165,7 @@ Düzenleyicide ve VGA ekranında yazarken kısayollar devre dışıdır.
 
 ## Hız
 
-Bütün bilgisayar kapı seviyesinde, tarayıcıda (Chromium, yazılım GL) ~3 000–4 000 saat döngüsü
+Bütün bilgisayar kapı seviyesinde, tarayıcıda (Chromium, yazılım GL) saniyede ~3 000–4 000 saat döngüsü
 olarak ölçüldü. Bu, 4 MHz'lik gerçek kartın ~1/1 000'i. Birkaç örnek:
 
 - `video-deneme.s`: ilk kare sayacı ~20 s'de görünür;
