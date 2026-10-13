@@ -16,7 +16,7 @@ const g = (id: string, refs: string, etiket: string, baslik: string, gorev: stri
 const sayiAnahtari = (ad: "A" | "B", sw: string, rn: string): GrupTanimi =>
   g(`${ad.toLowerCase()}-anahtarlari`, `${sw} ${rn}`, `${ad} ANAHTARLARI`, `${ad} sayısının anahtarları`,
     `Sayı ${ad} (0–255): sekiz anahtar, her biri bir bit.`,
-    `8'li DIP anahtar ${sw}: soldan sağa ${ad}7 … ${ad}0, açık (ON) = 1. ${rn} (10 kΩ dizi) açık anahtarların hattını 0'a çeker. ${ad}0–${ad}7 toplayıcıya, çarpıcıya, bölücüye ve ${ad}'nın onluğa çeviricisine gider.`,
+    `8'li DIP anahtar ${sw}: soldan sağa ${ad}7 … ${ad}0, açık (ON) = 1. ${rn} (10 kΩ dizi) kapalı anahtarların hattını 0'a çeker. ${ad}0–${ad}7 toplayıcıya, çarpıcıya, bölücüye ve ${ad}'nın onluğa çeviricisine gider.`,
     [`${ad} SWITCHES`, `Switches for ${ad}`,
      `Number ${ad} (0–255): eight switches, one per bit.`,
      `8-position DIP switch ${sw}: ${ad}7 … ${ad}0 from left to right, ON = 1. ${rn} (10 kΩ network) pulls the line of each OFF switch to 0. ${ad}0–${ad}7 go to the adder, the multiplier, the divider and the decimal converter for ${ad}.`]);

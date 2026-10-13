@@ -28,7 +28,7 @@ export const BLOK_EN: Record<string, string> = {
   "Geçici register'lar": "Temporary registers",
   "MAR ve IR": "MAR and IR",
   "Program sayacı": "Program counter",
-  "Sabit birimi": "Constant unit",
+  "Sabit birimi": "Immediate unit",
   "ALU": "ALU",
   "ALU kod çözücü": "ALU decoder",
   "Bayraklar ve koşul": "Flags and condition",
