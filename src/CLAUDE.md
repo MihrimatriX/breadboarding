@@ -17,9 +17,12 @@ konsol API'si: [cpu16/docs/3d-gorunum.md](../cpu16/docs/3d-gorunum.md).
 
 Her bölüm kendi kod parçasında, ilk açılınca yüklenir (`bolumler.ts`, `Root.tsx`'te `React.lazy`).
 Bölüm geçişi `ui/ModeSwitch.tsx`; ortak iskelet `ui/Shell.tsx`; renk ve boyut belirteçleri
-`styles.css`; tema, yazı boyutu ve odak modu `ui/ayarlar.ts` (kısayollar T, Y, F). Üst çubuğun dar
-ekran eşikleri sabit değil: sığmayınca `ui/sikisma.ts` kademe kademe sıkıştırır (`data-sikisma`: bölüm
-adları simgeye, ikincil ölçümler gizli, …); üst çubuğa öğe eklersen 900–1680 px'te iki yazı boyutunda bak.
+`styles.css`; tema, yazı boyutu, odak modu ve dil `ui/ayarlar.ts` (kısayollar T, Y, F, L). Üst çubuğun
+dar ekran eşikleri sabit değil: sığmayınca `ui/sikisma.ts` altı kademede sıkıştırır (`data-sikisma`:
+bölüm adları simgeye, ikincil ölçümler gizli, …, en sonda seçili bölümün adı da); üst çubuğa öğe eklersen
+900–1680 px'te iki dilde ve iki yazı boyutunda bak. Başlangıç paneli uygulamanın kılavuzu: bölüm başına
+tanıtım ve "İlk adımlar" `ui/kilavuz.ts`'te (testi `tests/ceviri-kabuk.test.ts`); bir bölümün düğmesi
+ya da kısayolu değişince oradaki adımı da güncelle.
 
 ## board3d/ (kartların 3D'si)
 
