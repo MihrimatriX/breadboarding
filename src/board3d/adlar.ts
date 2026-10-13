@@ -21,6 +21,8 @@ export function kartBasligi(kart: string, turkce: string, dil: Dil = "tr"): stri
 export const BLOK_EN: Record<string, string> = {
   // CPU16
   "Kontrol birimi": "Control unit",
+  // programlayıcı kartının tek bloğu (3D sahnede yok, kurulum modunda görünür)
+  "Programlayıcı": "Programmer",
   "Kontrol": "Control",
   "Register dosyası": "Register file",
   "Geçici register'lar": "Temporary registers",
