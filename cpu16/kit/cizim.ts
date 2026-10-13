@@ -3,11 +3,12 @@
 // direnci, dekuplaj, renk kodu tablosu ve breadboard yerleşimi. Saf metin üretir (DOM yok): 3D
 // görünümün bilgi paneli koyu paletle satır içi, rehberin görselleri (kit/gorseller/*.svg) açık
 // paletle dosya olarak kullanır. Değerler ve renkler board/pasif-bilgi.ts ile board/passives.ts'ten.
+// Bilgi panelinin kullandığı çizimler dili parametre alır (varsayılan Türkçe: rehber görselleri aynı kalır).
 
 import { LED_RENKLERI, type LedRenk } from "../board/passives.ts";
 import {
   RENK_KODU, VCC, akimMetni, bantFormulu, carpanMetni, direncBantlari, faradMetni, ledAkimi, ohmMetni, renkKodu, sayi, ucHaneliKoduOku,
-  type Bant,
+  type Bant, type BantRenk,
 } from "../board/pasif-bilgi.ts";
 
 // ---------------------------------------------------------------- palet ve yardımcılar
@@ -165,6 +166,30 @@ function ton(hex: string, k: number): string {
 const binlik = (x: number) => String(Math.round(x)).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 const ust = (s: string) => s.split("").map((d) => "⁰¹²³⁴⁵⁶⁷⁸⁹"[Number(d)] ?? d).join("");
 
+// ---------------------------------------------------------------- dil
+
+/**
+ * Çizimin dili: rehber görselleri Türkçe (varsayılan), 3D görünümün bilgi paneli seçili dilde. İngilizcede
+ * ondalık ayraç nokta, yüzde işareti sayıdan sonra; renk adları aşağıdaki tablolardan.
+ */
+export type Dil = "tr" | "en";
+
+const BANT_EN: Record<BantRenk, string> = {
+  siyah: "black", kahverengi: "brown", kirmizi: "red", turuncu: "orange", sari: "yellow", yesil: "green", mavi: "blue", mor: "violet", gri: "gray", beyaz: "white", altin: "gold", gumus: "silver",
+};
+const LED_EN: Record<LedRenk, string> = { kirmizi: "red", turuncu: "orange (amber)", sari: "yellow", yesil: "green", mavi: "blue", beyaz: "white" };
+
+/** Dile göre metin seçici ve sayı yazımı ("1,8 V" → "1.8 V", "± %5" → "± 5%") */
+function diller(dil: Dil) {
+  const en = dil === "en";
+  return {
+    L: (tr: string, ing: string) => (en ? ing : tr),
+    sy: (s: string) => (en ? s.replace(/(\d),(\d)/g, "$1.$2").replace(/%(\d+(?:[.,]\d+)?)/g, (_, x: string) => `${x.replace(",", ".")}%`) : s),
+    led: (r: LedRenk) => (en ? LED_EN[r] : LED_RENKLERI[r].ad),
+    bant: (b: Bant) => (en ? BANT_EN[b.renk] : b.ad),
+  };
+}
+
 // ---------------------------------------------------------------- direnç (renk bantları)
 
 /** Eksenel direncin "kemik" gövdesi: x0 sol uç, cy eksen */
@@ -180,14 +205,18 @@ function kemik(x0: number, cy: number, L: number, hc: number, hm: number, cl: nu
 
 export const DIRENC_GOVDE = { karbon: "#d8c39b", metal: "#6f9fe0" };
 const BANT_YERI: Record<number, number[]> = { 4: [26, 58, 84, 176], 5: [24, 48, 70, 92, 178] };
-const BANT_GOREVI = (b: Bant, i: number) => (b.gorev === "rakam" ? `${i + 1}. rakam` : b.gorev === "carpan" ? "çarpan" : "tolerans");
+const BANT_GOREVI = (b: Bant, i: number, dil: Dil) =>
+  dil === "en"
+    ? (b.gorev === "rakam" ? `digit ${i + 1}` : b.gorev === "carpan" ? "multiplier" : "tolerance")
+    : (b.gorev === "rakam" ? `${i + 1}. rakam` : b.gorev === "carpan" ? "çarpan" : "tolerans");
 
 /**
  * Renk bantlı eksenel direnç. etiket: her bandın altında rengi, anlamı ve görevi, en altta okunuşu.
  * id: satır içi birden çok çizimde kırpma yolunun adı tekil olmalı.
  */
-export function direncCizimi(ohm: number, tolerans: number, pal: Palet, o: { id: string; etiket?: boolean; baslik?: string; govde?: string }): Parca {
+export function direncCizimi(ohm: number, tolerans: number, pal: Palet, o: { id: string; etiket?: boolean; baslik?: string; govde?: string }, dil: Dil = "tr"): Parca {
   const c = cizer(pal);
+  const { sy, bant } = diller(dil);
   const bantlar = direncBantlari(ohm, tolerans);
   const govde = o.govde ?? (tolerans <= 2 ? DIRENC_GOVDE.metal : DIRENC_GOVDE.karbon);
   const W = 340;
@@ -216,19 +245,20 @@ export function direncCizimi(ohm: number, tolerans: number, pal: Palet, o: { id:
     const lx = lx0 + ((lx1 - lx0) * i) / (bantlar.length - 1);
     g += c.yol(`M${n(bx)},${n(yb + 3)} L${n(bx)},${n(yb + 9)} L${n(lx)},${n(yb + 22)}`, { fill: "none", stroke: pal.soluk, "stroke-width": 0.9 });
     g += c.kutu(lx - 28, yb + 24, 56, 22, { rx: 11, fill: b.hex, stroke: "#000", "stroke-opacity": 0.25 });
-    g += c.yazi(lx, yb + 39.5, b.anlam, { boy: 13, kalin: 700, hiza: "middle", renk: renkKodu(b.renk).yazi });
-    g += c.yazi(lx, yb + 61, b.ad, { boy: 11, hiza: "middle", renk: pal.soluk });
-    g += c.yazi(lx, yb + 75, BANT_GOREVI(b, i), { boy: 10.5, hiza: "middle", renk: pal.soluk, italik: true });
+    g += c.yazi(lx, yb + 39.5, sy(b.anlam), { boy: 13, kalin: 700, hiza: "middle", renk: renkKodu(b.renk).yazi });
+    g += c.yazi(lx, yb + 61, bant(b), { boy: 11, hiza: "middle", renk: pal.soluk });
+    g += c.yazi(lx, yb + 75, BANT_GOREVI(b, i, dil), { boy: 10.5, hiza: "middle", renk: pal.soluk, italik: true });
   });
-  g += c.yazi(W / 2, yb + 100, `${bantFormulu(bantlar, ohm)} ${bantlar.at(-1)!.anlam}`, { boy: 13.5, kalin: 700, hiza: "middle" });
+  g += c.yazi(W / 2, yb + 100, sy(`${bantFormulu(bantlar, ohm)} ${bantlar.at(-1)!.anlam}`), { boy: 13.5, kalin: 700, hiza: "middle" });
   return { w: W, h: yb + 108, g };
 }
 
 // ---------------------------------------------------------------- LED (anatomi)
 
 /** 3 mm LED'in yandan kesiti: kubbe, yonga, bağlantı teli, anot direği, katot örsü, flanş, bacaklar. */
-export function ledCizimi(renk: LedRenk, pal: Palet, o: { id: string; yanik?: boolean; sembol?: boolean }): Parca {
+export function ledCizimi(renk: LedRenk, pal: Palet, o: { id: string; yanik?: boolean; sembol?: boolean }, dil: Dil = "tr"): Parca {
   const c = cizer(pal);
+  const { L, sy, led } = diller(dil);
   const info = LED_RENKLERI[renk];
   const yanik = o.yanik ?? false;
   const cx = 130;
@@ -265,18 +295,18 @@ export function ledCizimi(renk: LedRenk, pal: Palet, o: { id: string; yanik?: bo
     if (b) s += c.yazi(sx, y + 14, b, { boy: 11, renk: pal.soluk });
     return s;
   };
-  g += etiket(36, "mercek (epoksi kubbe)", "ışığı öne toplar", cx + 24, top + 12);
-  g += etiket(82, "bağlantı teli (altın)", "yongayı anota bağlar", cx, 92);
-  g += etiket(124, "yonga: ışık burada", `${info.ad}, Vf ≈ ${sayi(info.vf, 1)} V`, kx + 4, 117);
-  g += etiket(160, "katot örsü + çanak", "yonga bunun üstünde", kx + 9, 150);
-  g += etiket(200, "flanş", "düz kenarı = katot (−)", cx + r + 2, fl + 6);
-  g += c.lider(ax + 6, 140, 78, 140) + c.yazi(74, 137, "anot", { boy: 12, kalin: 600, hiza: "end" }) + c.yazi(74, 151, "direği", { boy: 11, renk: pal.soluk, hiza: "end" });
-  g += c.lider(kx, 286, kx + 12, 286) + c.yazi(kx + 16, 290, "katot (−): kısa bacak", { boy: 12, kalin: 600 });
-  g += c.lider(ax, 320, ax + 12, 320) + c.yazi(ax + 16, 324, "anot (+): uzun bacak", { boy: 12, kalin: 600 });
+  g += etiket(36, L("mercek (epoksi kubbe)", "lens (epoxy dome)"), L("ışığı öne toplar", "focuses light forward"), cx + 24, top + 12);
+  g += etiket(82, L("bağlantı teli (altın)", "bond wire (gold)"), L("yongayı anota bağlar", "joins die to anode"), cx, 92);
+  g += etiket(124, L("yonga: ışık burada", "die: the light source"), sy(`${led(renk)}, Vf ≈ ${sayi(info.vf, 1)} V`), kx + 4, 117);
+  g += etiket(160, L("katot örsü + çanak", "cathode anvil + cup"), L("yonga bunun üstünde", "the die sits on it"), kx + 9, 150);
+  g += etiket(200, L("flanş", "flange"), L("düz kenarı = katot (−)", "flat edge = cathode (−)"), cx + r + 2, fl + 6);
+  g += c.lider(ax + 6, 140, 78, 140) + c.yazi(74, 137, L("anot", "anode"), { boy: 12, kalin: 600, hiza: "end" }) + c.yazi(74, 151, L("direği", "post"), { boy: 11, renk: pal.soluk, hiza: "end" });
+  g += c.lider(kx, 286, kx + 12, 286) + c.yazi(kx + 16, 290, L("katot (−): kısa bacak", "cathode (−): short leg"), { boy: 12, kalin: 600 });
+  g += c.lider(ax, 320, ax + 12, 320) + c.yazi(ax + 16, 324, L("anot (+): uzun bacak", "anode (+): long leg"), { boy: 12, kalin: 600 });
   if (o.sembol !== false) {
     // şema simgesi: anot üstte, katot altta
     const sx0 = 42;
-    g += c.yazi(sx0, 206, "şema simgesi", { boy: 10.5, renk: pal.soluk, hiza: "middle", italik: true });
+    g += c.yazi(sx0, 206, L("şema simgesi", "schematic symbol"), { boy: 10.5, renk: pal.soluk, hiza: "middle", italik: true });
     g += c.cizgi(sx0, 216, sx0, 232) + c.diyot(sx0, 232, true, yanik ? info.isik : null, 22) + c.cizgi(sx0, 254, sx0, 272);
     g += c.isinlar(sx0 + 12, 238, yanik ? info.isik : pal.soluk);
     g += c.yazi(sx0 - 12, 224, "A", { boy: 11.5, kalin: 700, hiza: "end" }) + c.yazi(sx0 - 12, 270, "K", { boy: 11.5, kalin: 700, hiza: "end" });
@@ -290,8 +320,9 @@ export function ledCizimi(renk: LedRenk, pal: Palet, o: { id: string; yanik?: bo
 export const SERAMIK_GOVDE = { "104": "#c27632", diger: "#d5a43c" };
 
 /** Disk seramik kondansatör ve kodunun okunuşu */
-export function seramikCizimi(kod: string, pal: Palet): Parca {
+export function seramikCizimi(kod: string, pal: Palet, dil: Dil = "tr"): Parca {
   const c = cizer(pal);
+  const { L, sy } = diller(dil);
   const govde = kod === "104" ? SERAMIK_GOVDE["104"] : SERAMIK_GOVDE.diger;
   let g = "";
   g += c.yol("M52,96 L52,110 L44,122 L44,166", { fill: "none", stroke: pal.kalay, "stroke-width": 3.2, "stroke-linecap": "round", "stroke-linejoin": "round" });
@@ -304,18 +335,19 @@ export function seramikCizimi(kod: string, pal: Palet): Parca {
   const x = 150;
   g += c.yazi(x, 30, kod.slice(0, 2), { boy: 30, kalin: 700, renk: pal.akim, mono: true });
   g += c.yazi(x + 66, 30, kod[2], { boy: 30, kalin: 700, renk: pal.gnd, mono: true });
-  g += c.yazi(x, 48, "rakamlar", { boy: 10.5, renk: pal.akim }) + c.yazi(x + 66, 48, "sıfır sayısı", { boy: 10.5, renk: pal.gnd });
-  g += c.yazi(x, 78, `${kod.slice(0, 2)} × 10${ust(kod[2])} pF = ${binlik(pf)} pF`, { boy: 13 });
+  g += c.yazi(x, 48, L("rakamlar", "digits"), { boy: 10.5, renk: pal.akim }) + c.yazi(x + 66, 48, L("sıfır sayısı", "number of zeros"), { boy: 10.5, renk: pal.gnd });
+  g += c.yazi(x, 78, `${kod.slice(0, 2)} × 10${ust(kod[2])} pF = ${dil === "en" ? binlik(pf).replace(/ /g, ",") : binlik(pf)} pF`, { boy: 13 });
   const uf = pf * 1e-6;
-  g += c.yazi(x, 100, `= ${faradMetni(pf * 1e-12)}${uf < 1 ? ` = ${sayi(uf, 3)} µF` : ""}`, { boy: 15, kalin: 700 });
-  g += c.yazi(x, 128, "birim hep pF (pikofarad)", { boy: 11, renk: pal.soluk });
-  g += c.yazi(x, 144, "kutupsuz: iki yönde de takılır", { boy: 11, renk: pal.soluk });
+  g += c.yazi(x, 100, sy(`= ${faradMetni(pf * 1e-12)}${uf < 1 ? ` = ${sayi(uf, 3)} µF` : ""}`), { boy: 15, kalin: 700 });
+  g += c.yazi(x, 128, L("birim hep pF (pikofarad)", "unit is always pF (picofarad)"), { boy: 11, renk: pal.soluk });
+  g += c.yazi(x, 144, L("kutupsuz: iki yönde de takılır", "non-polarized: fits either way"), { boy: 11, renk: pal.soluk });
   return { w: 360, h: 172, g };
 }
 
 /** Elektrolitik kondansatör: şerit (−), uzun bacak (+), değer ve gerilim */
-export function elektrolitikCizimi(deger: string, volt: number, pal: Palet): Parca {
+export function elektrolitikCizimi(deger: string, volt: number, pal: Palet, dil: Dil = "tr"): Parca {
   const c = cizer(pal);
+  const { L } = diller(dil);
   let g = "";
   const x0 = 40;
   const x1 = 112;
@@ -330,20 +362,21 @@ export function elektrolitikCizimi(deger: string, volt: number, pal: Palet): Par
   g += `<text x="66" y="88" transform="rotate(-90 66 88)" text-anchor="middle" font-size="13" font-weight="700" fill="#e8ecf2">${esc(deger)}</text>`;
   g += `<text x="82" y="88" transform="rotate(-90 82 88)" text-anchor="middle" font-size="11" fill="#e8ecf2">${volt} V</text>`;
   const sx = 150;
-  g += c.lider(110, 60, sx - 6, 44) + c.yazi(sx, 42, "açık renk şerit = eksi (−)", { boy: 12, kalin: 600 }) + c.yazi(sx, 56, "üstünde − işaretleri", { boy: 11, renk: pal.soluk });
-  g += c.lider(74, 116, sx - 6, 96) + c.yazi(sx, 94, `${deger}: sığa`, { boy: 12, kalin: 600 }) + c.yazi(sx, 108, `${volt} V: en yüksek gerilim (hattın ≥ 2 katı)`, { boy: 11, renk: pal.soluk });
-  g += c.lider(92, 204, sx - 6, 200) + c.yazi(sx, 204, "kısa bacak: − (GND)", { boy: 12, kalin: 600 });
-  g += c.lider(60, 232, sx - 6, 228) + c.yazi(sx, 232, "uzun bacak: + (VCC)", { boy: 12, kalin: 600 });
-  g += c.yazi(sx, 160, "Kutupludur: ters takılırsa ısınır,", { boy: 11.5, renk: pal.vurgu, kalin: 600 });
-  g += c.yazi(sx, 174, "şişer, patlayabilir.", { boy: 11.5, renk: pal.vurgu, kalin: 600 });
+  g += c.lider(110, 60, sx - 6, 44) + c.yazi(sx, 42, L("açık renk şerit = eksi (−)", "light stripe = negative (−)"), { boy: 12, kalin: 600 }) + c.yazi(sx, 56, L("üstünde − işaretleri", "marked with − signs"), { boy: 11, renk: pal.soluk });
+  g += c.lider(74, 116, sx - 6, 96) + c.yazi(sx, 94, `${deger}: ${L("sığa", "capacitance")}`, { boy: 12, kalin: 600 }) + c.yazi(sx, 108, L(`${volt} V: en yüksek gerilim (hattın ≥ 2 katı)`, `${volt} V: maximum voltage (≥ 2× the rail)`), { boy: 11, renk: pal.soluk });
+  g += c.lider(92, 204, sx - 6, 200) + c.yazi(sx, 204, L("kısa bacak: − (GND)", "short leg: − (GND)"), { boy: 12, kalin: 600 });
+  g += c.lider(60, 232, sx - 6, 228) + c.yazi(sx, 232, L("uzun bacak: + (VCC)", "long leg: + (VCC)"), { boy: 12, kalin: 600 });
+  g += c.yazi(sx, 160, L("Kutupludur: ters takılırsa ısınır,", "Polarized: reversed, it heats up,"), { boy: 11.5, renk: pal.vurgu, kalin: 600 });
+  g += c.yazi(sx, 174, L("şişer, patlayabilir.", "swells and can burst."), { boy: 11.5, renk: pal.vurgu, kalin: 600 });
   return { w: 360, h: 246, g };
 }
 
 // ---------------------------------------------------------------- direnç dizisi (SIP)
 
 /** SIP direnç dizisi: dışı (nokta, kod) ve iç şeması (ortak bara, n − 1 direnç) */
-export function diziCizimi(kod: string, pinler: number, pal: Palet, o: { ortak?: string; hat?: string; ohm?: number } = {}): Parca {
+export function diziCizimi(kod: string, pinler: number, pal: Palet, o: { ortak?: string; hat?: string; ohm?: number } = {}, dil: Dil = "tr"): Parca {
   const c = cizer(pal);
+  const { L, sy } = diller(dil);
   const W = 360;
   const p = (W - 40) / (pinler - 1 + 0.0001);
   const px = (i: number) => 20 + i * p;
@@ -353,11 +386,11 @@ export function diziCizimi(kod: string, pinler: number, pal: Palet, o: { ortak?:
   g += c.daire(24, 22, 4.2, { fill: "#f2f2ee" });
   g += c.yazi(W / 2, 37, kod, { boy: 19, kalin: 700, hiza: "middle", renk: "#f2f2ee" });
   for (let i = 0; i < pinler; i++) g += c.kutu(px(i) - 3, 50, 6, 14, { fill: pal.kalay });
-  g += c.yazi(24, 6, "nokta = 1. bacak (ortak uç)", { boy: 10.5, renk: pal.soluk });
+  g += c.yazi(24, 6, L("nokta = 1. bacak (ortak uç)", "dot = pin 1 (common)"), { boy: 10.5, renk: pal.soluk });
   // iç şema
   const yb = 96;
   g += c.kutu(8, 80, W - 16, 98, { fill: "none", stroke: pal.soluk, "stroke-dasharray": "4 3", rx: 4 });
-  g += c.yazi(W - 14, 92, "içi", { boy: 10.5, renk: pal.soluk, hiza: "end", italik: true });
+  g += c.yazi(W - 14, 92, L("içi", "inside"), { boy: 10.5, renk: pal.soluk, hiza: "end", italik: true });
   g += c.cizgi(px(0), yb, px(pinler - 1), yb, pal.cizgi, 2);
   g += c.cizgi(px(0), yb, px(0), 196, pal.cizgi, 1.8);
   for (let i = 1; i < pinler; i++) {
@@ -365,19 +398,20 @@ export function diziCizimi(kod: string, pinler: number, pal: Palet, o: { ortak?:
   }
   g += c.nokta(px(0), yb);
   for (let i = 0; i < pinler; i++) g += c.yazi(px(i), 210, String(i + 1), { boy: 11.5, kalin: 700, hiza: "middle", mono: true });
-  g += c.yazi(px(0) - 6, 234, o.ortak ?? "ortak", { boy: 11, hiza: "start", renk: pal.vcc, kalin: 600 });
+  g += c.yazi(px(0) - 6, 234, o.ortak ?? L("ortak", "common"), { boy: 11, hiza: "start", renk: pal.vcc, kalin: 600 });
   const orta = (px(1) + px(pinler - 1)) / 2;
-  g += c.cizgi(px(1) - 4, 218, px(pinler - 1) + 4, 218, pal.soluk, 0.9) + c.yazi(orta + 50, 234, o.hat ?? `${pinler - 1} sinyal hattı`, { boy: 11, hiza: "middle", renk: pal.soluk });
+  g += c.cizgi(px(1) - 4, 218, px(pinler - 1) + 4, 218, pal.soluk, 0.9) + c.yazi(orta + 50, 234, o.hat ?? L(`${pinler - 1} sinyal hattı`, `${pinler - 1} signal lines`), { boy: 11, hiza: "middle", renk: pal.soluk });
   const ohm = o.ohm ?? ucHaneliKoduOku(kod.slice(1, 4));
-  g += c.yazi(W / 2, 258, `${kod}: A = ortak uçlu dizi · ${kod.slice(1, 3)} × 10${ust(kod[3])} Ω = ${ohmMetni(ohm)} · J = ± %5`, { boy: 11.5, hiza: "middle" });
+  g += c.yazi(W / 2, 258, sy(`${kod}: ${L("A = ortak uçlu dizi", "A = common-pin array")} · ${kod.slice(1, 3)} × 10${ust(kod[3])} Ω = ${ohmMetni(ohm)} · J = ± %5`), { boy: 11.5, hiza: "middle" });
   return { w: W, h: 276, g: `<g transform="translate(0 10)">${g}</g>` };
 }
 
 // ---------------------------------------------------------------- osilatör
 
 /** DIP-14 kılıflı kristal osilatörün üstten görünüşü: sivri köşe ve nokta 1. bacak */
-export function osilatorCizimi(frekans: string, pal: Palet): Parca {
+export function osilatorCizimi(frekans: string, pal: Palet, dil: Dil = "tr"): Parca {
   const c = cizer(pal);
+  const { L } = diller(dil);
   let g = "";
   const x0 = 70;
   const x1 = 290;
@@ -400,7 +434,7 @@ export function osilatorCizimi(frekans: string, pal: Palet): Parca {
   g += c.yazi((x0 + x1) / 2, 104, "MHz", { boy: 13, kalin: 600, hiza: "middle", renk: "#2b3036" });
   g += c.yazi(px(0), 160, "1 EN", { boy: 11.5, kalin: 700, hiza: "middle" }) + c.yazi(px(6), 160, "7 GND", { boy: 11.5, kalin: 700, hiza: "middle", renk: pal.gnd });
   g += c.yazi(px(0), 14, "14 VCC", { boy: 11.5, kalin: 700, hiza: "middle", renk: pal.vcc }) + c.yazi(px(6), 14, "8 OUT", { boy: 11.5, kalin: 700, hiza: "middle", renk: pal.akim });
-  g += c.yazi(6, 110, "sivri köşe", { boy: 10.5, renk: pal.soluk }) + c.yazi(6, 123, "ve nokta:", { boy: 10.5, renk: pal.soluk }) + c.yazi(6, 136, "1. bacak", { boy: 10.5, renk: pal.soluk });
+  g += c.yazi(6, 110, L("sivri köşe", "sharp corner"), { boy: 10.5, renk: pal.soluk }) + c.yazi(6, 123, L("ve nokta:", "and dot:"), { boy: 10.5, renk: pal.soluk }) + c.yazi(6, 136, L("1. bacak", "pin 1"), { boy: 10.5, renk: pal.soluk });
   return { w: 360, h: 170, g };
 }
 
@@ -421,9 +455,10 @@ export interface LedDevreCizim {
 }
 
 /** Sinyal → direnç → LED → GND (ya da aktif düşükte VCC → direnç → LED → sinyal), düğüm gerilimleri, akım ve okunuşu */
-export function ledDevreCizimi(d: LedDevreCizim, pal: Palet): Parca {
-  if (d.aktifDusuk) return ledDevreDusukCizimi(d, pal);
+export function ledDevreCizimi(d: LedDevreCizim, pal: Palet, dil: Dil = "tr"): Parca {
+  if (d.aktifDusuk) return ledDevreDusukCizimi(d, pal, dil);
   const c = cizer(pal);
+  const { L, sy, led } = diller(dil);
   const info = LED_RENKLERI[d.renk];
   const yanik = d.seviye === 1;
   const I = ledAkimi(VCC, info.vf, d.ohm);
@@ -435,29 +470,34 @@ export function ledDevreCizimi(d: LedDevreCizim, pal: Palet): Parca {
   g += c.yazi(62, y + 22, `${d.sinyal} = ${d.seviye === 0 || d.seviye === 1 ? d.seviye : "?"}`, { boy: 11, hiza: "middle", renk: tel, mono: true, kalin: 600 });
   g += c.yazi(62, y - 8, yanik ? "5 V" : d.seviye === 0 ? "0 V" : "", { boy: 11, hiza: "middle", renk: pal.soluk });
   g += c.direncSema(130, y, false, 52, 16);
-  g += c.yazi(130, y - 16, d.direnc, { boy: 11.5, kalin: 600, hiza: "middle", mono: true }) + c.yazi(130, y + 26, ohmMetni(d.ohm), { boy: 11.5, hiza: "middle" });
+  g += c.yazi(130, y - 16, d.direnc, { boy: 11.5, kalin: 600, hiza: "middle", mono: true }) + c.yazi(130, y + 26, sy(ohmMetni(d.ohm)), { boy: 11.5, hiza: "middle" });
   g += c.cizgi(156, y, 208, y, yanik ? pal.yuksek : c.seviyeRengi(d.seviye === 1 ? 1 : d.seviye === 0 ? 0 : undefined), 2) + c.nokta(182, y);
-  g += c.yazi(182, y - 8, yanik ? `≈ ${sayi(info.vf, 1)} V` : d.seviye === 0 ? "0 V" : "", { boy: 11, hiza: "middle", renk: pal.soluk });
+  g += c.yazi(182, y - 8, yanik ? sy(`≈ ${sayi(info.vf, 1)} V`) : d.seviye === 0 ? "0 V" : "", { boy: 11, hiza: "middle", renk: pal.soluk });
   if (yanik) g += c.daire(222, y, 26, { fill: info.isik, opacity: 0.22 }) + c.daire(222, y, 15, { fill: info.isik, opacity: 0.3 });
   g += c.diyot(208, y, false, yanik ? info.isik : null, 26) + c.isinlar(222, y - 18, yanik ? info.isik : pal.soluk);
-  g += c.yazi(222, y - 38, `${d.led} (${info.ad})`, { boy: 11.5, kalin: 600, hiza: "middle" });
+  g += c.yazi(222, y - 38, `${d.led} (${led(d.renk)})`, { boy: 11.5, kalin: 600, hiza: "middle" });
   g += c.cizgi(234, y, 292, y, pal.cizgi, 2) + c.cizgi(292, y, 292, y + 36, pal.cizgi, 2) + c.toprak(292, y + 36);
   g += c.yazi(300, y + 64, "GND 0 V", { boy: 11, renk: pal.soluk, hiza: "middle" });
-  if (yanik) g += c.ok(70, y - 30, 100, y - 30, pal.akim, 1.8, 7) + c.yazi(85, y - 36, `I ≈ ${akimMetni(I)}`, { boy: 11, renk: pal.akim, kalin: 700, hiza: "middle" });
+  if (yanik) g += c.ok(70, y - 30, 100, y - 30, pal.akim, 1.8, 7) + c.yazi(85, y - 36, sy(`I ≈ ${akimMetni(I)}`), { boy: 11, renk: pal.akim, kalin: 700, hiza: "middle" });
   // gerilim ölçüleri
   const vy = y + 44;
   const olcu = (a: number, b: number, s: string) =>
-    c.cizgi(a, vy - 4, a, vy + 4, pal.soluk, 1) + c.cizgi(b, vy - 4, b, vy + 4, pal.soluk, 1) + c.cizgi(a, vy, b, vy, pal.soluk, 1) + c.yazi((a + b) / 2, vy + 16, s, { boy: 11, hiza: "middle", renk: pal.soluk });
+    c.cizgi(a, vy - 4, a, vy + 4, pal.soluk, 1) + c.cizgi(b, vy - 4, b, vy + 4, pal.soluk, 1) + c.cizgi(a, vy, b, vy, pal.soluk, 1) + c.yazi((a + b) / 2, vy + 16, sy(s), { boy: 11, hiza: "middle", renk: pal.soluk });
   g += olcu(104, 156, `V_R = ${sayi(VCC - info.vf, 1)} V`) + olcu(206, 236, `Vf ≈ ${sayi(info.vf, 1)} V`);
-  g += c.yazi(180, vy + 46, `I = (5 V − ${sayi(info.vf, 1)} V) / ${ohmMetni(d.ohm)} ≈ ${akimMetni(I)}`, { boy: 13.5, kalin: 700, hiza: "middle" });
-  const durum = yanik ? `${d.sinyal} = 1: akım akar, LED yanar` : d.seviye === 0 ? `${d.sinyal} = 0: iki uç da 0 V, akım yok, LED sönük` : `${d.sinyal} 1 olunca yanar`;
+  g += c.yazi(180, vy + 46, sy(`I = (5 V − ${sayi(info.vf, 1)} V) / ${ohmMetni(d.ohm)} ≈ ${akimMetni(I)}`), { boy: 13.5, kalin: 700, hiza: "middle" });
+  const durum = yanik
+    ? L(`${d.sinyal} = 1: akım akar, LED yanar`, `${d.sinyal} = 1: current flows, LED on`)
+    : d.seviye === 0
+      ? L(`${d.sinyal} = 0: iki uç da 0 V, akım yok, LED sönük`, `${d.sinyal} = 0: both ends at 0 V, no current, LED off`)
+      : L(`${d.sinyal} 1 olunca yanar`, `lights when ${d.sinyal} is 1`);
   g += c.yazi(180, vy + 64, durum, { boy: 11.5, hiza: "middle", renk: yanik ? pal.akim : pal.soluk, kalin: 600 });
   return { w: 360, h: vy + 72, g };
 }
 
 /** Aktif düşük LED: VCC → direnç → LED → çıkış; çıkış 0 olunca akımı çeker */
-function ledDevreDusukCizimi(d: LedDevreCizim, pal: Palet): Parca {
+function ledDevreDusukCizimi(d: LedDevreCizim, pal: Palet, dil: Dil): Parca {
   const c = cizer(pal);
+  const { L, sy, led } = diller(dil);
   const info = LED_RENKLERI[d.renk];
   const yanik = d.seviye === 0;
   const I = ledAkimi(VCC, info.vf, d.ohm);
@@ -465,13 +505,13 @@ function ledDevreDusukCizimi(d: LedDevreCizim, pal: Palet): Parca {
   let g = "";
   g += c.besleme(40, y, "5 V") + c.cizgi(40, y, 104, y, pal.yuksek, 2);
   g += c.direncSema(130, y, false, 52, 16);
-  g += c.yazi(130, y - 16, d.direnc, { boy: 11.5, kalin: 600, hiza: "middle", mono: true }) + c.yazi(130, y + 26, ohmMetni(d.ohm), { boy: 11.5, hiza: "middle" });
+  g += c.yazi(130, y - 16, d.direnc, { boy: 11.5, kalin: 600, hiza: "middle", mono: true }) + c.yazi(130, y + 26, sy(ohmMetni(d.ohm)), { boy: 11.5, hiza: "middle" });
   // anot düğümü: yanarken ≈ Vf, sönükken 5 V (direnç akım taşımaz)
   g += c.cizgi(156, y, 208, y, yanik || d.seviye === 1 ? pal.yuksek : pal.cizgi, 2) + c.nokta(182, y);
-  g += c.yazi(182, y - 8, yanik ? `≈ ${sayi(info.vf, 1)} V` : d.seviye === 1 ? "5 V" : "", { boy: 11, hiza: "middle", renk: pal.soluk });
+  g += c.yazi(182, y - 8, yanik ? sy(`≈ ${sayi(info.vf, 1)} V`) : d.seviye === 1 ? "5 V" : "", { boy: 11, hiza: "middle", renk: pal.soluk });
   if (yanik) g += c.daire(222, y, 26, { fill: info.isik, opacity: 0.22 }) + c.daire(222, y, 15, { fill: info.isik, opacity: 0.3 });
   g += c.diyot(208, y, false, yanik ? info.isik : null, 26) + c.isinlar(222, y - 18, yanik ? info.isik : pal.soluk);
-  g += c.yazi(222, y - 38, `${d.led} (${info.ad})`, { boy: 11.5, kalin: 600, hiza: "middle" });
+  g += c.yazi(222, y - 38, `${d.led} (${led(d.renk)})`, { boy: 11.5, kalin: 600, hiza: "middle" });
   // katot: sinyal hattı ve onu süren çıkış (üçgen sola bakar, ucu hattta)
   const tel = c.seviyeRengi(d.seviye);
   g += c.cizgi(234, y, 312, y, tel, 2) + c.nokta(270, y, tel);
@@ -479,14 +519,18 @@ function ledDevreDusukCizimi(d: LedDevreCizim, pal: Palet): Parca {
   g += c.yazi(270, y - 8, d.seviye === 0 ? "0 V" : d.seviye === 1 ? "5 V" : "", { boy: 11, hiza: "middle", renk: pal.soluk });
   g += `<polygon points="${n(342)},${n(y - 15)} ${n(342)},${n(y + 15)} ${n(312)},${n(y)}" fill="none" stroke="${pal.cizgi}" stroke-width="1.8" stroke-linejoin="round"/>`;
   g += c.yazi(327, y - 24, d.surucu, { boy: 11.5, kalin: 600, hiza: "middle", mono: true });
-  if (yanik) g += c.ok(52, y - 30, 96, y - 30, pal.akim, 1.8, 7) + c.yazi(74, y - 36, `I ≈ ${akimMetni(I)}`, { boy: 11, renk: pal.akim, kalin: 700, hiza: "middle" });
+  if (yanik) g += c.ok(52, y - 30, 96, y - 30, pal.akim, 1.8, 7) + c.yazi(74, y - 36, sy(`I ≈ ${akimMetni(I)}`), { boy: 11, renk: pal.akim, kalin: 700, hiza: "middle" });
   // gerilim ölçüleri
   const vy = y + 44;
   const olcu = (a: number, b: number, s: string) =>
-    c.cizgi(a, vy - 4, a, vy + 4, pal.soluk, 1) + c.cizgi(b, vy - 4, b, vy + 4, pal.soluk, 1) + c.cizgi(a, vy, b, vy, pal.soluk, 1) + c.yazi((a + b) / 2, vy + 16, s, { boy: 11, hiza: "middle", renk: pal.soluk });
+    c.cizgi(a, vy - 4, a, vy + 4, pal.soluk, 1) + c.cizgi(b, vy - 4, b, vy + 4, pal.soluk, 1) + c.cizgi(a, vy, b, vy, pal.soluk, 1) + c.yazi((a + b) / 2, vy + 16, sy(s), { boy: 11, hiza: "middle", renk: pal.soluk });
   g += olcu(104, 156, `V_R = ${sayi(VCC - info.vf, 1)} V`) + olcu(206, 236, `Vf ≈ ${sayi(info.vf, 1)} V`);
-  g += c.yazi(180, vy + 46, `I = (5 V − ${sayi(info.vf, 1)} V) / ${ohmMetni(d.ohm)} ≈ ${akimMetni(I)}`, { boy: 13.5, kalin: 700, hiza: "middle" });
-  const durum = yanik ? `${d.sinyal} = 0: çıkış akımı çeker, LED yanar` : d.seviye === 1 ? `${d.sinyal} = 1: iki uç da 5 V, akım yok, LED sönük` : `aktif düşük: ${d.sinyal} 0 olunca yanar`;
+  g += c.yazi(180, vy + 46, sy(`I = (5 V − ${sayi(info.vf, 1)} V) / ${ohmMetni(d.ohm)} ≈ ${akimMetni(I)}`), { boy: 13.5, kalin: 700, hiza: "middle" });
+  const durum = yanik
+    ? L(`${d.sinyal} = 0: çıkış akımı çeker, LED yanar`, `${d.sinyal} = 0: the output sinks current, LED on`)
+    : d.seviye === 1
+      ? L(`${d.sinyal} = 1: iki uç da 5 V, akım yok, LED sönük`, `${d.sinyal} = 1: both ends at 5 V, no current, LED off`)
+      : L(`aktif düşük: ${d.sinyal} 0 olunca yanar`, `active low: lights when ${d.sinyal} is 0`);
   g += c.yazi(180, vy + 64, durum, { boy: 11.5, hiza: "middle", renk: yanik ? pal.akim : pal.soluk, kalin: 600 });
   return { w: 360, h: vy + 72, g };
 }
@@ -506,8 +550,9 @@ export interface CekmeCizim {
 }
 
 /** Çekme direnci: VCC (ya da GND) → direnç → hat → giriş; karşı rayda sürücü (buton ya da çıkış) */
-export function cekmeCizimi(d: CekmeCizim, pal: Palet): Parca {
+export function cekmeCizimi(d: CekmeCizim, pal: Palet, dil: Dil = "tr"): Parca {
   const c = cizer(pal);
+  const { L, sy } = diller(dil);
   const yukari = d.yon === "yukari";
   const x = 110;
   const ny = 104;
@@ -520,7 +565,7 @@ export function cekmeCizimi(d: CekmeCizim, pal: Palet): Parca {
     g += c.cizgi(x, ny, x, 124, tel, 2) + c.direncSema(x, 146, true, 44, 15) + c.cizgi(x, 168, x, 178) + c.toprak(x, 178);
   }
   const ry = yukari ? 62 : 146;
-  g += c.yazi(x + 14, ry - 2, d.ref, { boy: 11.5, kalin: 600, mono: true }) + (d.ref === ohmMetni(d.ohm) ? "" : c.yazi(x + 14, ry + 13, ohmMetni(d.ohm), { boy: 11.5 }));
+  g += c.yazi(x + 14, ry - 2, d.ref, { boy: 11.5, kalin: 600, mono: true }) + (d.ref === ohmMetni(d.ohm) ? "" : c.yazi(x + 14, ry + 13, sy(ohmMetni(d.ohm)), { boy: 11.5 }));
   // karşı taraf: anahtar (buton ya da çıkış)
   const sy0 = yukari ? ny : 22;
   const s = (a: number) => (yukari ? sy0 + a : ny - a);
@@ -532,17 +577,17 @@ export function cekmeCizimi(d: CekmeCizim, pal: Palet): Parca {
   g += c.cizgi(x, yukari ? k1 + 2.6 : k1 + 2.6, x + 15, yukari ? k2 - 6 : k2 - 6, pal.cizgi, 1.8);
   if (yukari) g += c.cizgi(x, k2 + 2.6, x, s(66)) + c.toprak(x, s(66));
   else g += c.cizgi(x, k2 + 2.6, x, ny, tel, 2);
-  const sur = d.surucu ?? (yukari ? "buton ya da çıkış: 0'a çeker" : "çıkış ya da buton: 1'e çeker");
+  const sur = d.surucu ?? (yukari ? L("buton ya da çıkış: 0'a çeker", "button or output: pulls to 0") : L("çıkış ya da buton: 1'e çeker", "output or button: pulls to 1"));
   g += c.yazi(x + 24, (k1 + k2) / 2 + (yukari ? 14 : -2), sur, { boy: 10.5, renk: pal.soluk });
   // hat ve alıcı
   g += c.nokta(x, ny, tel, 3.2) + c.cizgi(x, ny, 252, ny, tel, 2) + c.tampon(252, ny, 28);
   g += c.yazi(182, ny - 8, d.hat, { boy: 11.5, kalin: 600, hiza: "middle", mono: true, renk: tel === pal.cizgi ? pal.yazi : tel });
   if (d.seviye === 0 || d.seviye === 1 || d.seviye === 2) g += c.yazi(182, ny + 18, `= ${d.seviye === 2 ? "Z" : d.seviye}`, { boy: 11.5, hiza: "middle", mono: true, renk: tel, kalin: 700 });
   if (d.alici) g += c.yazi(266, ny - 22, d.alici, { boy: 11, hiza: "middle", mono: true, renk: pal.soluk });
-  g += c.yazi(266, ny + 32, "CMOS giriş", { boy: 10.5, hiza: "middle", renk: pal.soluk });
+  g += c.yazi(266, ny + 32, L("CMOS giriş", "CMOS input"), { boy: 10.5, hiza: "middle", renk: pal.soluk });
   const I = VCC / d.ohm;
-  g += c.yazi(180, 212, `${yukari ? "0'a" : "1'e"} sürülünce I = 5 V / ${ohmMetni(d.ohm)} = ${akimMetni(I)}`, { boy: 12, kalin: 600, hiza: "middle" });
-  g += c.yazi(180, 228, `kimse sürmezken hat ${yukari ? "1" : "0"}: akım yok`, { boy: 11, hiza: "middle", renk: pal.soluk });
+  g += c.yazi(180, 212, sy(L(`${yukari ? "0'a" : "1'e"} sürülünce I = 5 V / ${ohmMetni(d.ohm)} = ${akimMetni(I)}`, `driven to ${yukari ? "0" : "1"}: I = 5 V / ${ohmMetni(d.ohm)} = ${akimMetni(I)}`)), { boy: 12, kalin: 600, hiza: "middle" });
+  g += c.yazi(180, 228, L(`kimse sürmezken hat ${yukari ? "1" : "0"}: akım yok`, `undriven, the line is ${yukari ? "1" : "0"}: no current`), { boy: 11, hiza: "middle", renk: pal.soluk });
   return { w: 360, h: 236, g };
 }
 
@@ -582,8 +627,9 @@ export interface DekuplajCizim {
 }
 
 /** Dekuplaj: çipin VCC ve GND bacakları, yanındaki 100 nF, kısa akım döngüsü ve uzun besleme kablosu */
-export function dekuplajCizimi(d: DekuplajCizim, pal: Palet): Parca {
+export function dekuplajCizimi(d: DekuplajCizim, pal: Palet, dil: Dil = "tr"): Parca {
   const c = cizer(pal);
+  const { L } = diller(dil);
   let g = "";
   const yV = 30;
   const yG = 196;
@@ -597,15 +643,15 @@ export function dekuplajCizimi(d: DekuplajCizim, pal: Palet): Parca {
   const pinUst = (k: number) => k > sira;
   // raylar ve kaynak
   g += c.cizgi(20, yV, 300, yV, pal.vcc, 2.4) + c.cizgi(20, yG, 300, yG, pal.gnd, 2.4);
-  g += c.yazi(20, yV - 8, "+5 V rayı", { boy: 11, renk: pal.vcc, kalin: 600 }) + c.yazi(20, yG + 18, "GND rayı", { boy: 11, renk: pal.gnd, kalin: 600 });
+  g += c.yazi(20, yV - 8, L("+5 V rayı", "+5 V rail"), { boy: 11, renk: pal.vcc, kalin: 600 }) + c.yazi(20, yG + 18, L("GND rayı", "GND rail"), { boy: 11, renk: pal.gnd, kalin: 600 });
   g += c.kutu(304, yV - 6, 44, yG - yV + 12, { fill: "none", stroke: pal.soluk, rx: 6, "stroke-dasharray": "4 3" });
-  g += c.yazi(326, (yV + yG) / 2 - 4, "güç", { boy: 11, hiza: "middle", renk: pal.soluk }) + c.yazi(326, (yV + yG) / 2 + 10, "kaynağı", { boy: 11, hiza: "middle", renk: pal.soluk });
+  g += c.yazi(326, (yV + yG) / 2 - 4, L("güç", "power"), { boy: 11, hiza: "middle", renk: pal.soluk }) + c.yazi(326, (yV + yG) / 2 + 10, L("kaynağı", "supply"), { boy: 11, hiza: "middle", renk: pal.soluk });
   // uzun kablonun endüktansı
   let bobin = `M${248},${yV}`;
   for (let i = 0; i < 4; i++) bobin += ` a6 7 0 0 1 12 0`;
   g += c.kutu(244, yV - 4, 56, 8, { fill: pal.zemin ?? "#0e1217" });
   g += c.yol(bobin, { fill: "none", stroke: pal.vcc, "stroke-width": 2 });
-  g += c.yazi(272, yV - 10, "uzun kablo (L)", { boy: 10.5, hiza: "middle", renk: pal.soluk });
+  g += c.yazi(272, yV - 10, L("uzun kablo (L)", "long cable (L)"), { boy: 10.5, hiza: "middle", renk: pal.soluk });
   // çip
   for (let k = 1; k <= d.pinSayisi; k++) {
     const x = pinX(k);
@@ -635,7 +681,7 @@ export function dekuplajCizimi(d: DekuplajCizim, pal: Palet): Parca {
   g += c.yol(loop, { fill: "none", stroke: pal.akim, "stroke-width": 1.8, "stroke-dasharray": "5 3" });
   g += c.ok(kx + i0, 70, kx + i0, 52, pal.akim) + c.ok(gx - i0 - 30, yG - i0, gx - i0 - 60, yG - i0, pal.akim);
   const lx = cx0 + cw + 10;
-  g += c.yazi(lx, cy0 + 8, "kısa döngü:", { boy: 11, kalin: 700, renk: pal.akim }) + c.yazi(lx, cy0 + 22, "darbeyi", { boy: 11, renk: pal.akim }) + c.yazi(lx, cy0 + 36, "100 nF verir", { boy: 11, renk: pal.akim });
+  g += c.yazi(lx, cy0 + 8, L("kısa döngü:", "short loop:"), { boy: 11, kalin: 700, renk: pal.akim }) + c.yazi(lx, cy0 + 22, L("darbeyi", "100 nF feeds"), { boy: 11, renk: pal.akim }) + c.yazi(lx, cy0 + 36, L("100 nF verir", "the pulse"), { boy: 11, renk: pal.akim });
   return { w: 360, h: 220, g };
 }
 

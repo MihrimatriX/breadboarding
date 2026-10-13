@@ -7,7 +7,7 @@
 
 import type { Board } from "../board.ts";
 import { delikEtiketi, noktaninBoardu } from "./geometri.ts";
-import { tablodanRenk, type RenkTanimi, type TelRengi } from "./renk.ts";
+import { tablodanRenk, TEL_RENGI, type RenkTanimi, type TelRengi } from "./renk.ts";
 import { yolUzunlugu, UC_PAYI, type BbTel, type RenkSecici, bacakNeti } from "./yonlendirme.ts";
 import { pinNeti, type Asama, type BbYerlesim } from "./yerlesim.ts";
 
@@ -315,11 +315,22 @@ export function telYollari3B(teller: readonly Pick<BbTel, "yol">[], enCok = 3): 
 
 // ---------------------------------------------------------------- yazılar
 
-/** Izgara noktasının etiketi: "BB07 c14", "BB07 üst+14" */
-export function ucEtiketi(y: BbYerlesim, X: number, Y: number): string {
+/** Arayüz dili (belgeler Türkçe; İngilizce yalnız 3D görünümün kurulum modunda) */
+export type Dil = "tr" | "en";
+
+/** Izgara noktasının etiketi: "BB07 c14", "BB07 üst+14" (İngilizcede raylar "BB07 top+14", "BB07 bottom−3") */
+export function ucEtiketi(y: BbYerlesim, X: number, Y: number, dil: Dil = "tr"): string {
   const b = y.boards[noktaBoardu(y, X, Y)];
-  return `${b.ad} ${delikEtiketi(Y - b.y0, X - b.x0)}`;
+  const d = delikEtiketi(Y - b.y0, X - b.x0);
+  return `${b.ad} ${dil === "en" ? d.replace(/^üst/, "top").replace(/^alt/, "bottom") : d}`;
 }
 
 /** Renk tablosundaki tanım (tabloda yoksa adı ve rengi) */
 export const renkBilgisi = (tablo: readonly RenkTanimi[], r: TelRengi): RenkTanimi => tablodanRenk(tablo, r);
+
+const RENK_EN: Record<TelRengi, string> = {
+  kirmizi: "red", siyah: "black", sari: "yellow", turuncu: "orange", mor: "purple", yesil: "green", mavi: "blue", beyaz: "white", gri: "gray", kahverengi: "brown",
+};
+
+/** Rengin adı seçili dilde: "sarı", "yellow" */
+export const renkAdi = (r: TelRengi, dil: Dil = "tr"): string => (dil === "en" ? RENK_EN[r] : TEL_RENGI[r].ad);

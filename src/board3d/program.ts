@@ -5,9 +5,11 @@
 import { assemble } from "../../cpu16/asm/assembler";
 import { buildProgram, type LibSources } from "../../cpu16/cc/index";
 import { EEPROM_SIZE } from "../../cpu16/emu/devices/eeprom";
-import { dilBul, type Dil } from "../cpu16/dil";
+import { dilBul, type Dil as KaynakDili } from "../cpu16/dil";
+import type { Dil } from "../ui/ceviri";
+import { sayi } from "./levels";
 
-export type Lang = Dil;
+export type Lang = KaynakDili;
 
 /** EEPROM çipinin boyu (28C256: 32 KB) ve bank 0'ın sonu (CPU adresi 0x0000–0x3FFF) */
 export const FLASH_SIZE = EEPROM_SIZE;
@@ -22,10 +24,13 @@ export function detectLanguage(src: string): Lang {
  * Bellek imajının bayt aralıklarından 32 KB EEPROM imajı (program bank 0'da). Boş yerler 0xFF
  * (silinmiş EEPROM). Bank 0 dışına taşan aralık hata verir.
  */
-export function flashImage(image: Uint8Array, ranges: readonly [number, number][], size = FLASH_SIZE): Uint8Array {
+export function flashImage(image: Uint8Array, ranges: readonly [number, number][], size = FLASH_SIZE, dil: Dil = "tr"): Uint8Array {
   const img = new Uint8Array(size).fill(0xff);
   for (const [s, e] of ranges) {
-    if (e > BANK0_END) throw new Error(`program 0x${s.toString(16)}–0x${(e - 1).toString(16)} bank 0'a (0x0000–0x3FFF) sığmıyor`);
+    const aralik = `0x${s.toString(16)}–0x${(e - 1).toString(16)}`;
+    if (e > BANK0_END) {
+      throw new Error(dil === "en" ? `program ${aralik} does not fit in bank 0 (0x0000–0x3FFF)` : `program ${aralik} bank 0'a (0x0000–0x3FFF) sığmıyor`);
+    }
     img.set(image.subarray(s, e), s);
   }
   return img;
@@ -50,25 +55,32 @@ export interface CompileOutput {
 /** Kullanıcının C dosyasının adı (hata satırları bu dosyaya göre) */
 export const C_FILE = "program.c";
 
-/** Kaynağı derler ve EEPROM imajını üretir. lib: cc16 çalışma zamanı kütüphanesi (C için) */
-export function compileProgram(src: string, lang: Lang, lib: LibSources): CompileOutput {
+/**
+ * Kaynağı derler ve EEPROM imajını üretir. lib: cc16 çalışma zamanı kütüphanesi (C için); dil: özetin
+ * ve sütun bilgisinin dili (derleyicinin kendi hata iletileri Türkçe kalır)
+ */
+export function compileProgram(src: string, lang: Lang, lib: LibSources, dil: Dil = "tr"): CompileOutput {
+  const en = dil === "en";
   try {
     if (lang === "asm") {
       const r = assemble(src);
       if (r.errors.length) return { lang, flash: null, errors: r.errors.map((e) => ({ line: e.line, message: e.message })), info: "" };
-      const bytes = r.ranges.reduce((s, [a, b]) => s + b - a, 0);
-      return { lang, flash: flashImage(r.image, r.ranges), errors: [], info: `assembly · ${bytes.toLocaleString("tr-TR")} bayt` };
+      const bytes = sayi(r.ranges.reduce((s, [a, b]) => s + b - a, 0), dil);
+      return { lang, flash: flashImage(r.image, r.ranges, FLASH_SIZE, dil), errors: [], info: `assembly · ${bytes} ${en ? "bytes" : "bayt"}` };
     }
     const b = buildProgram({ [C_FILE]: src }, [C_FILE], { lib, target: "rom" });
     if (b.errors.length) {
+      const sutun = (c: number) => (en ? `column ${c}: ` : `${c}. sütun: `);
       return {
         lang, flash: null, info: "",
-        errors: b.errors.map((e) => ({ line: e.file === C_FILE ? e.line : 0, message: e.col ? `${e.col}. sütun: ${e.message}` : e.message, file: e.file === C_FILE ? undefined : e.file })),
+        errors: b.errors.map((e) => ({ line: e.file === C_FILE ? e.line : 0, message: e.col ? `${sutun(e.col)}${e.message}` : e.message, file: e.file === C_FILE ? undefined : e.file })),
       };
     }
+    const rom = sayi(b.romSize, dil);
+    const ram = sayi(b.ramSize, dil);
     return {
-      lang, flash: flashImage(b.image, b.ranges), errors: [],
-      info: `C · ${b.romSize.toLocaleString("tr-TR")} bayt kod (ROM), ${b.ramSize.toLocaleString("tr-TR")} bayt veri (RAM)`,
+      lang, flash: flashImage(b.image, b.ranges, FLASH_SIZE, dil), errors: [],
+      info: en ? `C · ${rom} bytes of code (ROM), ${ram} bytes of data (RAM)` : `C · ${rom} bayt kod (ROM), ${ram} bayt veri (RAM)`,
     };
   } catch (e) {
     return { lang, flash: null, errors: [{ line: 0, message: String((e as Error).message ?? e) }], info: "" };

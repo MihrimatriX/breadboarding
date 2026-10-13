@@ -7,9 +7,11 @@ import { useEffect, useState, type KeyboardEvent } from "react";
 import { ISLEMLER, type GostergeGrubu } from "../../hesap8/kart";
 import { hesapla, type IslemKodu } from "../../hesap8/model";
 import { L1 } from "../../cpu16/chips/logic";
+import { useDil, useT } from "../ui/ceviri";
 import { Meter, Section } from "../ui/Shell";
+import { blokAdi } from "./adlar";
 import { hesapKarti } from "./aktif";
-import { beklenenGorunum, blokDegerleri, dogruMu, hesapSim, ikili, islemSimgesi, useHesap, type GirisGrubu } from "./hesap";
+import { GRUP_BASLIGI, ISLEM_ADI, beklenenGorunum, blokDegerleri, dogruMu, hesapSim, ikili, islemSimgesi, useHesap, type GirisGrubu } from "./hesap";
 import { useKart } from "./store";
 import "./hesap.css";
 
@@ -52,26 +54,34 @@ function grupSegmentleri(g: GostergeGrubu): { isaret: boolean | null; haneler: b
 }
 
 function Gostergeler() {
+  const t = useT();
+  const dil = useDil();
   useHesap((s) => s.surum);
   const g = useHesap((s) => s.gorunum);
   const kart = hesapKarti();
   const sim = hesapSim();
   const hata = !!sim && sim.sim.get(kart.ic.hata) === L1;
+  const ozet = g
+    ? t(
+      `Göstergeler: A ${g.a.trim()}, B ${g.b.trim()}, sonuç ${g.sonuc.trim() || "boş"}, kalan ${g.kalan.trim() || "boş"}${g.hata ? ", HATA" : ""}`,
+      `Displays: A ${g.a.trim()}, B ${g.b.trim()}, result ${g.sonuc.trim() || "blank"}, remainder ${g.kalan.trim() || "blank"}${g.hata ? ", ERROR" : ""}`,
+    )
+    : t("Göstergeler", "Displays");
   return (
-    <div className="hs-ekran" role="img" aria-label={g ? `Göstergeler: A ${g.a.trim()}, B ${g.b.trim()}, sonuç ${g.sonuc.trim() || "boş"}, kalan ${g.kalan.trim() || "boş"}${g.hata ? ", HATA" : ""}` : "Göstergeler"}>
+    <div className="hs-ekran" role="img" aria-label={ozet}>
       {kart.gruplar.map((gr) => {
         const s = grupSegmentleri(gr);
         return (
           <div key={gr.ad} className={`hs-grup hs-${gr.ad}`}>
-            <span className="hs-etiket">{gr.baslik}</span>
+            <span className="hs-etiket">{GRUP_BASLIGI[gr.ad][dil]}</span>
             <span className="hs-haneler">
               {s.isaret !== null && <Hane yanan={[false, false, false, false, false, false, s.isaret]} isaret />}
               {s.haneler.map((h, i) => <Hane key={i} yanan={h} />)}
             </span>
             {gr.ad === "sonuc" && (
-              <span className={`hs-led${hata ? " on" : ""}`} title="HATA LED'i: sıfıra bölme">
+              <span className={`hs-led${hata ? " on" : ""}`} title={t("HATA LED'i: sıfıra bölme", "ERROR LED: division by zero")}>
                 <i />
-                HATA
+                {t("HATA", "ERROR")}
               </span>
             )}
           </div>
@@ -83,21 +93,31 @@ function Gostergeler() {
 
 /** Altın model: göstergelerde ne görünmeli, devre ile aynı mı */
 function Model() {
+  const t = useT();
   const { a, b, op, lamba, gorunum } = useHesap();
   const r = hesapla(a, b, op);
   const e = beklenenGorunum({ a, b, op });
   const ok = dogruMu(gorunum, e);
-  const formul = r.hata ? `${a} ÷ 0: tanımsız (HATA)` : `${a} ${islemSimgesi(op)} ${b} = ${r.deger}${r.kalan !== null ? `, kalan ${r.kalan}` : ""}`;
+  const formul = r.hata
+    ? `${a} ÷ 0: ${t("tanımsız (HATA)", "undefined (ERROR)")}`
+    : `${a} ${islemSimgesi(op)} ${b} = ${r.deger}${r.kalan !== null ? `, ${t("kalan", "remainder")} ${r.kalan}` : ""}`;
   return (
     <div className="hs-model">
       <div className="hs-model-ust">
-        <span className="hs-model-ad">Beklenen (altın model)</span>
+        <span className="hs-model-ad">{t("Beklenen (altın model)", "Expected (golden model)")}</span>
         {lamba ? (
-          <span className="hs-durum bilgi">lamba testi: bütün segmentler yanıyor</span>
+          <span className="hs-durum bilgi">{t("lamba testi: bütün segmentler yanıyor", "lamp test: all segments are lit")}</span>
         ) : ok ? (
-          <span className="hs-durum ok" title="Göstergelerde görünen, hesap8/model.ts'in beklediğiyle aynı">✓ göstergeler aynı</span>
+          <span className="hs-durum ok" title={t("Göstergelerde görünen, hesap8/model.ts'in beklediğiyle aynı", "The displays show what hesap8/model.ts expects")}>
+            {t("✓ göstergeler aynı", "✓ displays match")}
+          </span>
         ) : (
-          <span className="hs-durum fark" title={`beklenen: A "${e.a}", B "${e.b}", sonuç "${e.sonuc}", kalan "${e.kalan}"`}>✗ fark var</span>
+          <span
+            className="hs-durum fark"
+            title={t(`beklenen: A "${e.a}", B "${e.b}", sonuç "${e.sonuc}", kalan "${e.kalan}"`, `expected: A "${e.a}", B "${e.b}", result "${e.sonuc}", remainder "${e.kalan}"`)}
+          >
+            {t("✗ fark var", "✗ mismatch")}
+          </span>
         )}
       </div>
       <code className="hs-formul">{formul}</code>
@@ -108,6 +128,7 @@ function Model() {
 // ---------------------------------------------------------------- girişler
 
 function Sayi({ grup, ad, deger }: { grup: GirisGrubu; ad: string; deger: number }) {
+  const t = useT();
   const [metin, setMetin] = useState(String(deger));
   useEffect(() => setMetin(String(deger)), [deger]);
   const yaz = (v: string) => {
@@ -121,7 +142,7 @@ function Sayi({ grup, ad, deger }: { grup: GirisGrubu; ad: string; deger: number
     <div className="hs-sayi">
       <div className="hs-sayi-bas">
         <b className="hs-sayi-ad">{ad}</b>
-        <span className="hs-sayi-not">anahtarlar soldan sağa {ad}7 … {ad}0</span>
+        <span className="hs-sayi-not">{t("anahtarlar soldan sağa", "switches left to right")} {ad}7 … {ad}0</span>
         <input
           className="hs-sayi-gir"
           type="number"
@@ -130,10 +151,10 @@ function Sayi({ grup, ad, deger }: { grup: GirisGrubu; ad: string; deger: number
           value={metin}
           onChange={(e) => yaz(e.target.value)}
           onBlur={() => setMetin(String(deger))}
-          aria-label={`${ad} sayısı (0–255)`}
+          aria-label={t(`${ad} sayısı (0–255)`, `Number ${ad} (0–255)`)}
         />
       </div>
-      <div className="hs-bitler" role="group" aria-label={`${ad} anahtarları`}>
+      <div className="hs-bitler" role="group" aria-label={t(`${ad} anahtarları`, `${ad} switches`)}>
         {[7, 6, 5, 4, 3, 2, 1, 0].map((bit) => {
           const on = ((deger >> bit) & 1) === 1;
           return (
@@ -142,7 +163,7 @@ function Sayi({ grup, ad, deger }: { grup: GirisGrubu; ad: string; deger: number
               className={on ? "on" : ""}
               aria-pressed={on}
               onClick={() => useHesap.getState().bitDegistir(grup, bit)}
-              title={`${ad}${bit} · ${8 - bit}. anahtar · değeri ${1 << bit}`}
+              title={t(`${ad}${bit} · ${8 - bit}. anahtar · değeri ${1 << bit}`, `${ad}${bit} · switch ${8 - bit} · value ${1 << bit}`)}
             >
               <small>{ad}{bit}</small>
               <b>{on ? 1 : 0}</b>
@@ -155,6 +176,7 @@ function Sayi({ grup, ad, deger }: { grup: GirisGrubu; ad: string; deger: number
 }
 
 function LambaTesti() {
+  const t = useT();
   const lamba = useHesap((s) => s.lamba);
   const bas = (v: boolean) => useHesap.getState().lambaBas(v);
   const tus = (e: KeyboardEvent<HTMLButtonElement>, v: boolean) => {
@@ -176,14 +198,19 @@ function LambaTesti() {
       onKeyDown={(e) => tus(e, true)}
       onKeyUp={(e) => tus(e, false)}
       onBlur={() => bas(false)}
-      title="LAMBA TESTİ butonu (SW4): basılı tutunca 74HC4511'lerin ~LT girişi 0 olur, bütün segmentler yanar"
+      title={t(
+        "LAMBA TESTİ butonu (SW4): basılı tutunca 74HC4511'lerin ~LT girişi 0 olur, bütün segmentler yanar",
+        "LAMP TEST button (SW4): while you hold it, the ~LT input of the 74HC4511s is 0 and all segments light up",
+      )}
     >
-      Lamba testi <span>basılı tut</span>
+      {t("Lamba testi", "Lamp test")} <span>{t("basılı tut", "hold")}</span>
     </button>
   );
 }
 
 function Girisler() {
+  const t = useT();
+  const dil = useDil();
   const { a, b, op } = useHesap();
   return (
     <>
@@ -191,20 +218,20 @@ function Girisler() {
       <Sayi grup="b" ad="B" deger={b} />
       <div className="hs-islem">
         <div className="hs-islem-bas">
-          <b>İşlem</b>
+          <b>{t("İşlem", "Operation")}</b>
           <span className="hs-sayi-not">
             OP1 OP0 = <code>{(op >> 1) & 1}{op & 1}</code>
           </span>
         </div>
-        <div className="hs-islemler" role="group" aria-label="İşlem">
+        <div className="hs-islemler" role="group" aria-label={t("İşlem", "Operation")}>
           {ISLEMLER.map((x) => (
             <button
               key={x.kod}
               className={op === x.kod ? "on" : ""}
               aria-pressed={op === x.kod}
               onClick={() => useHesap.getState().islemSec(x.kod as IslemKodu)}
-              title={`${x.ad}: OP1 OP0 = ${(x.kod >> 1) & 1}${x.kod & 1}`}
-              aria-label={x.ad}
+              title={`${ISLEM_ADI[x.kod][dil]}: OP1 OP0 = ${(x.kod >> 1) & 1}${x.kod & 1}`}
+              aria-label={ISLEM_ADI[x.kod][dil]}
             >
               {x.simge}
             </button>
@@ -219,11 +246,13 @@ function Girisler() {
 // ---------------------------------------------------------------- bloklar
 
 function Bloklar() {
+  const t = useT();
+  const dil = useDil();
   useHesap((s) => s.surum);
   const op = useHesap((s) => s.op);
   const sim = hesapSim();
   if (!sim) return null;
-  const satirlar = blokDegerleri(sim, op);
+  const satirlar = blokDegerleri(sim, op, dil);
   const git = (blok: string) => useKart.getState().focusBlock(blok);
   return (
     <>
@@ -231,10 +260,10 @@ function Bloklar() {
         {satirlar.map((r) => (
           <li key={r.blok} className={r.secili ? "secili" : ""}>
             <div className="hs-blok-bas">
-              <button className="link" onClick={() => git(r.blok)} title={`Kamerayı "${r.blok}" bloğuna götür`}>
+              <button className="link" onClick={() => git(r.blok)} title={t(`Kamerayı "${r.blok}" bloğuna götür`, `Move the camera to the "${blokAdi(r.blok, dil)}" block`)}>
                 {r.baslik}
               </button>
-              {r.secili && <span className="hs-rozet">göstergede</span>}
+              {r.secili && <span className="hs-rozet">{t("göstergede", "on display")}</span>}
             </div>
             {r.degerler.map((d) => (
               <div key={d.ad} className="hs-deger">
@@ -248,7 +277,10 @@ function Bloklar() {
         ))}
       </ul>
       <p className="hs-not">
-        Bütün bloklar aynı anda, sürekli hesaplar (saat yok); işlem anahtarı yalnız sonuç seçicide hangisinin göstergeye gideceğini seçer.
+        {t(
+          "Bütün bloklar aynı anda, sürekli hesaplar (saat yok); işlem anahtarı yalnız sonuç seçicide hangisinin göstergeye gideceğini seçer.",
+          "All blocks compute at the same time, continuously (there is no clock); the operation switch only chooses, in the result selector, which one goes to the display.",
+        )}
       </p>
     </>
   );
@@ -257,21 +289,23 @@ function Bloklar() {
 // ---------------------------------------------------------------- sekme
 
 export function HesapPanel() {
+  const t = useT();
   const hazir = useHesap((s) => s.hazir);
   const hata = useHesap((s) => s.hata);
   const git = (blok: string | null) => useKart.getState().focusBlock(blok);
   if (hata) return <p className="warn">{hata}</p>;
-  if (!hazir) return <p className="muted">Hesap makinesi kuruluyor; birkaç saniye içinde göstergeler burada açılır.</p>;
+  if (!hazir) return <p className="muted">{t("Hesap makinesi kuruluyor; birkaç saniye içinde göstergeler burada açılır.", "Building the calculator; the displays appear here in a few seconds.")}</p>;
+  const goster = t("3D'de göster", "Show in 3D");
   return (
     <div className="hs">
-      <Section title="Göstergeler" actions={<button className="link" onClick={() => git("Gösterge")}>3D'de göster</button>}>
+      <Section title={t("Göstergeler", "Displays")} actions={<button className="link" onClick={() => git("Gösterge")}>{goster}</button>}>
         <Gostergeler />
         <Model />
       </Section>
-      <Section title="Anahtarlar" actions={<button className="link" onClick={() => git("Anahtarlar")}>3D'de göster</button>}>
+      <Section title={t("Anahtarlar", "Switches")} actions={<button className="link" onClick={() => git("Anahtarlar")}>{goster}</button>}>
         <Girisler />
       </Section>
-      <Section title="Bloklar şu an" actions={<button className="link" onClick={() => git(null)}>genel bakış</button>}>
+      <Section title={t("Bloklar şu an", "Blocks right now")} actions={<button className="link" onClick={() => git(null)}>{t("genel bakış", "overview")}</button>}>
         <Bloklar />
       </Section>
     </div>
@@ -280,18 +314,25 @@ export function HesapPanel() {
 
 /** Üst çubuk: işlem ve göstergedeki sonuç, devre modelle aynı mı */
 export function HesapMeters() {
+  const t = useT();
   const { a, b, op, lamba, gorunum } = useHesap();
   const ok = dogruMu(gorunum, beklenenGorunum({ a, b, op }));
-  const sonuc = gorunum ? (gorunum.hata ? "HATA" : gorunum.sonuc.replace(/\s+/g, "") || "-") : "-";
+  const sonuc = gorunum ? (gorunum.hata ? t("HATA", "ERROR") : gorunum.sonuc.replace(/\s+/g, "") || "-") : "-";
   const kalan = gorunum?.kalan.trim();
   return (
     <>
-      <Meter label="Göstergede" title="İşlem ve göstergelerde görünen sonuç (devrenin kapı seviyesi simülasyonundan)">
-        {lamba ? "lamba testi" : `${a} ${islemSimgesi(op)} ${b} = ${sonuc}${kalan ? ` k ${kalan}` : ""}`}
+      <Meter
+        label={t("Göstergede", "On display")}
+        title={t("İşlem ve göstergelerde görünen sonuç (devrenin kapı seviyesi simülasyonundan)", "The operation and the result on the displays (from the gate-level simulation of the circuit)")}
+      >
+        {lamba ? t("lamba testi", "lamp test") : `${a} ${islemSimgesi(op)} ${b} = ${sonuc}${kalan ? ` ${t("k", "r")} ${kalan}` : ""}`}
       </Meter>
       {!lamba && gorunum && (
-        <span className={`bench-status ${ok ? "s-halt" : "s-bad"}`} title="Göstergeler altın modelin (hesap8/model.ts) beklediğiyle aynı mı">
-          {ok ? "modelle aynı" : "modelden farklı"}
+        <span
+          className={`bench-status ${ok ? "s-halt" : "s-bad"}`}
+          title={t("Göstergeler altın modelin (hesap8/model.ts) beklediğiyle aynı mı", "Whether the displays match what the golden model (hesap8/model.ts) expects")}
+        >
+          {ok ? t("modelle aynı", "matches model") : t("modelden farklı", "differs from model")}
         </span>
       )}
     </>

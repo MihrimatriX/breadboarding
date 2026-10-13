@@ -17,9 +17,12 @@ konsol API'si: [cpu16/docs/3d-gorunum.md](../cpu16/docs/3d-gorunum.md).
 
 Her bölüm kendi kod parçasında, ilk açılınca yüklenir (`bolumler.ts`, `Root.tsx`'te `React.lazy`).
 Bölüm geçişi `ui/ModeSwitch.tsx`; ortak iskelet `ui/Shell.tsx`; renk ve boyut belirteçleri
-`styles.css`; tema, yazı boyutu ve odak modu `ui/ayarlar.ts` (kısayollar T, Y, F). Üst çubuğun dar
-ekran eşikleri sabit değil: sığmayınca `ui/sikisma.ts` kademe kademe sıkıştırır (`data-sikisma`: bölüm
-adları simgeye, ikincil ölçümler gizli, …); üst çubuğa öğe eklersen 900–1680 px'te iki yazı boyutunda bak.
+`styles.css`; tema, yazı boyutu, odak modu ve dil `ui/ayarlar.ts` (kısayollar T, Y, F, L). Üst çubuğun
+dar ekran eşikleri sabit değil: sığmayınca `ui/sikisma.ts` altı kademede sıkıştırır (`data-sikisma`:
+bölüm adları simgeye, ikincil ölçümler gizli, …, en sonda seçili bölümün adı da); üst çubuğa öğe eklersen
+900–1680 px'te iki dilde ve iki yazı boyutunda bak. Başlangıç paneli uygulamanın kılavuzu: bölüm başına
+tanıtım ve "İlk adımlar" `ui/kilavuz.ts`'te (testi `tests/ceviri-kabuk.test.ts`); bir bölümün düğmesi
+ya da kısayolu değişince oradaki adımı da güncelle.
 
 ## board3d/ (kartların 3D'si)
 
@@ -30,6 +33,18 @@ adları simgeye, ikincil ölçümler gizli, …); üst çubuğa öğe eklersen 9
 - Bölge çerçeveleri ve etiketleri: `bolumSahne.ts` (saf geometri, testli), `Bolumler3D.tsx`,
   `BolumPanel.tsx`; metinler `cpu16/board/bolum-bilgi.ts`'ten. Etiketler `E` ile açılıp kapanır.
 - Kurulum modu: `kurulum.ts` + `KurulumPanel.tsx` (PCB), `bbKurulum.ts` + `BbKurulumPanel.tsx` (breadboard).
+
+## Dil (Türkçe + İngilizce)
+
+- Kullanıcıya görünen her metin iki dilli ve kullanıldığı yerde çift: bileşende `const t = useT();`
+  sonra `t("Durdur", "Stop")`; bileşen dışında `ceviri(tr, en)` (`ui/ceviri.ts`). Seçim `ui/ayarlar.ts`
+  deposunda (`dil`, `L` kısayolu, `<html lang>`).
+- Modül düzeyindeki tablolarda `ceviri()` çağırma (dil değişince güncellenmez): `{ tr, en }` (`IkiDil`)
+  tut, çizerken `sec(m, dil)`. Saf fonksiyonlar `dil: Dil = "tr"` alır; varsayılan Türkçe testleri korur.
+- `cpu16/` ve `hesap8/` veri tablolarında Türkçe alanlar belge üreteçlerine gider, değişmez; İngilizce
+  yanlarına eklenir. Kart, blok, çip ve pasif adlarının İngilizcesi `board3d/adlar.ts`'te (eksik ad testte yakalanır).
+- Terimler: kart → board, pano → panel, tek BB830 → breadboard, kurulum → build, tezgâh → workbench.
+- Derleyici ve assembler hata iletileri ile örnek programların çıktıları Türkçe kalır.
 
 ## Kurallar ve tuzaklar
 

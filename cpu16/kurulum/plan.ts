@@ -30,19 +30,21 @@ export interface RenkKodu {
   hex: string;
   /** hangi hatlar */
   aciklama: string;
+  /** sınıfın ve rengin İngilizce adı (arayüz İngilizceyken; belgeler Türkçe) */
+  en: { ad: string; renk: string };
 }
 
 /** Tel renk kodu: breadboard ve wire-wrap tellerinin rengi, belgelerdeki renk kutucukları */
 export const RENK_KODU: RenkKodu[] = [
-  { sinif: "vcc", ad: "Besleme +5 V", renk: "kırmızı", hex: "#d62828", aciklama: "VCC rayı, çiplerin VCC bacağı, sabit 1'e bağlanan girişler" },
-  { sinif: "gnd", ad: "Toprak", renk: "siyah", hex: "#1f1f1f", aciklama: "GND rayı, çiplerin GND bacağı, sabit 0'a bağlanan girişler" },
-  { sinif: "adres", ad: "Adres", renk: "sarı", hex: "#f2c40f", aciklama: "A0..A15, PA14..PA19, bellek çiplerinin ve VRAM'in adres hatları, bank register'ları" },
-  { sinif: "veri", ad: "Veri", renk: "mavi", hex: "#1f66cc", aciklama: "DE0..7, DO0..7, BUS0..15, register, ALU ve bellek veri hatları" },
-  { sinif: "secim", ad: "Seçim ve yetki", renk: "turuncu", hex: "#f08a24", aciklama: "~CE, ~CS, ~OE, ~WE, ~MRD, ~MWE_E/O, seçici çıkışları, sürücü izinleri" },
-  { sinif: "kontrol", ad: "Kontrol", renk: "yeşil", hex: "#2f9e44", aciklama: "mikrokod kelimesi, bayraklar, sayaç taşmaları ve diğer lojik hatlar" },
-  { sinif: "saat", ad: "Saat", renk: "beyaz", hex: "#ffffff", aciklama: "CLK, OSC, TCLK, piksel ve karakter saati, kaydırma / mandal saatleri" },
-  { sinif: "reset", ad: "Reset ve kesme", renk: "mor", hex: "#7b3fb5", aciklama: "~RESET, ~RST, RESET, IRQ, ~INT, VSYNC_REQ" },
-  { sinif: "dis", ad: "Dış bağlantı", renk: "kahverengi", hex: "#8b5a2b", aciklama: "LED, buton, RC devreleri, VGA, PS/2 ve UART konnektör hatları" },
+  { sinif: "vcc", ad: "Besleme +5 V", renk: "kırmızı", hex: "#d62828", aciklama: "VCC rayı, çiplerin VCC bacağı, sabit 1'e bağlanan girişler", en: { ad: "Power +5 V", renk: "red" } },
+  { sinif: "gnd", ad: "Toprak", renk: "siyah", hex: "#1f1f1f", aciklama: "GND rayı, çiplerin GND bacağı, sabit 0'a bağlanan girişler", en: { ad: "Ground", renk: "black" } },
+  { sinif: "adres", ad: "Adres", renk: "sarı", hex: "#f2c40f", aciklama: "A0..A15, PA14..PA19, bellek çiplerinin ve VRAM'in adres hatları, bank register'ları", en: { ad: "Address", renk: "yellow" } },
+  { sinif: "veri", ad: "Veri", renk: "mavi", hex: "#1f66cc", aciklama: "DE0..7, DO0..7, BUS0..15, register, ALU ve bellek veri hatları", en: { ad: "Data", renk: "blue" } },
+  { sinif: "secim", ad: "Seçim ve yetki", renk: "turuncu", hex: "#f08a24", aciklama: "~CE, ~CS, ~OE, ~WE, ~MRD, ~MWE_E/O, seçici çıkışları, sürücü izinleri", en: { ad: "Select and enable", renk: "orange" } },
+  { sinif: "kontrol", ad: "Kontrol", renk: "yeşil", hex: "#2f9e44", aciklama: "mikrokod kelimesi, bayraklar, sayaç taşmaları ve diğer lojik hatlar", en: { ad: "Control", renk: "green" } },
+  { sinif: "saat", ad: "Saat", renk: "beyaz", hex: "#ffffff", aciklama: "CLK, OSC, TCLK, piksel ve karakter saati, kaydırma / mandal saatleri", en: { ad: "Clock", renk: "white" } },
+  { sinif: "reset", ad: "Reset ve kesme", renk: "mor", hex: "#7b3fb5", aciklama: "~RESET, ~RST, RESET, IRQ, ~INT, VSYNC_REQ", en: { ad: "Reset and interrupt", renk: "purple" } },
+  { sinif: "dis", ad: "Dış bağlantı", renk: "kahverengi", hex: "#8b5a2b", aciklama: "LED, buton, RC devreleri, VGA, PS/2 ve UART konnektör hatları", en: { ad: "External", renk: "brown" } },
 ];
 
 export const renkKodu = (s: UcSinifi): RenkKodu => RENK_KODU.find((r) => r.sinif === s)!;

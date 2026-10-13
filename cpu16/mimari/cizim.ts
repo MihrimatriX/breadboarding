@@ -5,11 +5,12 @@
 //
 // Yazıların genişliği yazı tipinin (IBM Plex Sans / Mono) ortalama harf genişlikleriyle tahmin edilir
 // (yedek yazı tipleri için %5 paylı); kutuya sığmayan satırlar `hatalar`a yazılır (testler boş
-// olmasını ister).
+// olmasını ister). Sahne iki dilde kurulur: kutu ve yol metinleri diyagramdan, ortak olanlar (lejant,
+// "+ N kapı", "N entegre", "ayrıntı ›") burada dile göre; denetim iki dilde de koşar.
 
 import {
-  buyuk, cipSayimi, Devre, kutuParcalari, pasifSayimi, sayimMetni, yolEtiketMetni,
-  type BlokKimligi, type Diyagram, type Grup, type KutuRolu, type Nokta, type Yol, type YolTuru,
+  adet, buyuk, cevirici, cipSayimi, Devre, kutuParcalari, pasifSayimi, sayimMetni, yolEtiketMetni,
+  type BlokKimligi, type Dil, type Diyagram, type Grup, type KutuRolu, type Nokta, type Yol, type YolTuru,
 } from "./model.ts";
 
 // ---------------------------------------------------------------- ölçüler
@@ -164,24 +165,24 @@ export interface Sahne {
 
 // ---------------------------------------------------------------- adlar (lejant ve yan panel)
 
-export const YOL_TURU_ADI: Record<YolTuru, string> = {
-  veri: "Veri yolu",
-  adres: "Adres yolu",
-  kontrol: "Kontrol hatları",
-  saat: "Saat ve reset",
-  yerel: "Yerel bağlantı",
-  dis: "Dış bağlantı",
+export const YOL_TURU_ADI: Record<YolTuru, { tr: string; en: string }> = {
+  veri: { tr: "Veri yolu", en: "Data bus" },
+  adres: { tr: "Adres yolu", en: "Address bus" },
+  kontrol: { tr: "Kontrol hatları", en: "Control lines" },
+  saat: { tr: "Saat ve reset", en: "Clock and reset" },
+  yerel: { tr: "Yerel bağlantı", en: "Local link" },
+  dis: { tr: "Dış bağlantı", en: "External link" },
 };
 
-export const KUTU_ROLU_ADI: Record<KutuRolu, string> = {
-  register: "Register, sayaç",
-  islem: "İşlem birimi",
-  secici: "Seçici, kod çözücü",
-  tampon: "Tampon, alıcı-verici",
-  bellek: "Bellek (ROM, RAM)",
-  kontrol: "Kontrol, zamanlama",
-  gc: "Giriş / çıkış, bağlantı",
-  not: "Not",
+export const KUTU_ROLU_ADI: Record<KutuRolu, { tr: string; en: string }> = {
+  register: { tr: "Register, sayaç", en: "Register, counter" },
+  islem: { tr: "İşlem birimi", en: "Processing unit" },
+  secici: { tr: "Seçici, kod çözücü", en: "Selector, decoder" },
+  tampon: { tr: "Tampon, alıcı-verici", en: "Buffer, transceiver" },
+  bellek: { tr: "Bellek (ROM, RAM)", en: "Memory (ROM, RAM)" },
+  kontrol: { tr: "Kontrol, zamanlama", en: "Control, timing" },
+  gc: { tr: "Giriş / çıkış, bağlantı", en: "I/O, connection" },
+  not: { tr: "Not", en: "Note" },
 };
 
 // ---------------------------------------------------------------- geometri
@@ -270,7 +271,7 @@ interface Icerik {
 }
 
 /** Bir kutunun ya da bölmenin yazıları: ad, parçalar, pasifler, kapılar, görev */
-function icerik(ad: string, parcaMetinleri: string[], pasifMetinleri: string[], kapi: number, gorev: string, genislik: number, bolme: boolean): Icerik {
+function icerik(ad: string, parcaMetinleri: string[], pasifMetinleri: string[], kapi: number, gorev: string, genislik: number, bolme: boolean, dil: Dil): Icerik {
   const satirlar: Icerik["satirlar"] = [];
   const adBoy = bolme ? YAZI.bolmeAd : YAZI.ad;
   const adOlc = (s: string) => metinGenisligi(s, adBoy, "kalin");
@@ -285,8 +286,9 @@ function icerik(ad: string, parcaMetinleri: string[], pasifMetinleri: string[], 
   }
   if (kapi > 0) {
     // dar kutularda kısa biçim (açıklaması yapıştırıcı lojik notunda)
-    const uzun = `+ ${kapi} kapı (yapıştırıcı lojikte)`;
-    const m = metinGenisligi(uzun, YAZI.kapi, "sans") <= genislik ? uzun : `+ ${kapi} kapı`;
+    const kisa = `+ ${adet(kapi, "kapı", ["gate", "gates"], dil)}`;
+    const uzun = `${kisa} ${dil === "en" ? "(in glue logic)" : "(yapıştırıcı lojikte)"}`;
+    const m = metinGenisligi(uzun, YAZI.kapi, "sans") <= genislik ? uzun : kisa;
     satirlar.push({ m, s: "kapi", boy: YAZI.kapi, yuk: SATIR.kapi, tur: "sans" });
   }
   if (gorev) {
@@ -346,8 +348,9 @@ export function ucBloklari(dg: Diyagram, id: string): BlokKimligi[] {
   return g ? grupBloklari(dg, g) : [];
 }
 
-/** Diyagramın sahnesi */
-export function sahneKur(dg: Diyagram, devre: Devre): Sahne {
+/** Diyagramın sahnesi; `dil` ortak yazıların dili (kutu ve yol metinleri diyagramdan) */
+export function sahneKur(dg: Diyagram, devre: Devre, dil: Dil = "tr"): Sahne {
+  const t = cevirici(dil);
   const hatalar: string[] = [];
   const kutuYeri = new Map<string, Dikdortgen>();
   for (const k of dg.kutular) kutuYeri.set(k.id, k);
@@ -355,9 +358,12 @@ export function sahneKur(dg: Diyagram, devre: Devre): Sahne {
 
   // ---- başlık
   const baslik: SMetin[] = [
-    { x: 24, y: P(BASLIK_H / 2 + YAZI.baslik * 0.36), m: buyuk(dg.baslik), s: "baslik", hiza: "start" },
+    { x: 24, y: P(BASLIK_H / 2 + YAZI.baslik * 0.36), m: buyuk(dg.baslik, dil), s: "baslik", hiza: "start" },
     { x: dg.genislik - 24, y: P(BASLIK_H / 2 + YAZI.altBaslik * 0.36), m: dg.altBaslik, s: "alt-baslik", hiza: "end" },
   ];
+  // başlık ve alt başlık çakışmasın
+  const baslikSag = 24 + metinGenisligi(baslik[0].m, YAZI.baslik, "kalin") + 24 + metinGenisligi(dg.altBaslik, YAZI.altBaslik, "sans") + 24;
+  if (baslikSag > dg.genislik + 0.5) hatalar.push(`başlık ve alt başlık sığmıyor (${Math.ceil(baslikSag)} > ${dg.genislik})`);
 
   // ---- kutular
   const kutular: SKutu[] = dg.kutular.map((k) => {
@@ -365,14 +371,14 @@ export function sahneKur(dg: Diyagram, devre: Devre): Sahne {
     const bolmeler: SKutu["bolmeler"] = [];
     const yaz = (ad: string, gorev: string, r: Dikdortgen, bolme: boolean, b?: NonNullable<typeof k.bolmeler>[number]) => {
       if (k.cihaz) {
-        metinler.push(...diz(icerik(ad, [], [], 0, gorev, r.w - 2 * PAY.x, bolme), r, k.id, hatalar));
+        metinler.push(...diz(icerik(ad, [], [], 0, gorev, r.w - 2 * PAY.x, bolme, dil), r, k.id, hatalar));
         return;
       }
       const p = kutuParcalari(devre, k, b);
       const cipler = cipSayimi(p.cipler).map(sayimMetni);
-      const pasifler = pasifSayimi(p.pasifler).map(sayimMetni);
+      const pasifler = pasifSayimi(p.pasifler, dil).map(sayimMetni);
       const kapi = k.rol === "not" ? 0 : p.kapilar.length;
-      metinler.push(...diz(icerik(ad, cipler, pasifler, kapi, gorev, r.w - 2 * PAY.x, bolme), r, b ? `${k.id}/${b.ad}` : k.id, hatalar));
+      metinler.push(...diz(icerik(ad, cipler, pasifler, kapi, gorev, r.w - 2 * PAY.x, bolme, dil), r, b ? `${k.id}/${b.ad}` : k.id, hatalar));
     };
     if (k.bolmeler?.length) {
       for (const b of k.bolmeler) {
@@ -387,33 +393,36 @@ export function sahneKur(dg: Diyagram, devre: Devre): Sahne {
   // ---- gruplar (kart çerçeveleri)
   const gruplar: SGrup[] = dg.gruplar.map((g) => {
     const cipSayisi = grupCipleri(dg, g, devre).length;
+    const ad = buyuk(g.ad, dil);
     const metinler: SMetin[] = [
-      { x: g.x + 14, y: g.y + 23, m: buyuk(g.ad), s: "grup-ad", hiza: "start" },
+      { x: g.x + 14, y: g.y + 23, m: ad, s: "grup-ad", hiza: "start" },
     ];
-    const adW = metinGenisligi(buyuk(g.ad), YAZI.grupAd, "kalin");
-    const kendi = g.bloklar?.length && g.bloklarAdi ? ` · ${devre.parcalar(g.bloklar).cipler.length} ${g.bloklarAdi}` : "";
-    const ek = g.ek ?? `${cipSayisi} entegre${kendi}`;
+    const adW = metinGenisligi(ad, YAZI.grupAd, "kalin");
+    // bloklarAdi tekil yazılır, İngilizcede çoğulu "s" ile ("gate chip" → "gate chips")
+    const kendi = g.bloklar?.length && g.bloklarAdi ? ` · ${adet(devre.parcalar(g.bloklar).cipler.length, g.bloklarAdi, [g.bloklarAdi, `${g.bloklarAdi}s`], dil)}` : "";
+    const ek = g.ek ?? `${adet(cipSayisi, "entegre", ["chip", "chips"], dil)}${kendi}`;
     metinler.push({ x: P(g.x + 14 + adW + 10), y: g.y + 23, m: ek, s: "grup-ek", hiza: "start" });
     let sag = g.x + 14 + adW + 10 + metinGenisligi(ek, YAZI.grupEk, "sans");
     if (g.ayrinti) {
-      metinler.push({ x: g.x + g.w - 14, y: g.y + 23, m: "ayrıntı ›", s: "grup-link", hiza: "end" });
-      sag += 12 + metinGenisligi("ayrıntı ›", YAZI.grupEk, "kalin");
+      const link = t("ayrıntı ›", "details ›");
+      metinler.push({ x: g.x + g.w - 14, y: g.y + 23, m: link, s: "grup-link", hiza: "end" });
+      sag += 12 + metinGenisligi(link, YAZI.grupEk, "kalin");
     }
     if (sag > g.x + g.w - 14 + 0.5) hatalar.push(`${g.id}: çerçeve başlığı sığmıyor (${Math.ceil(sag - g.x)} > ${g.w - 14})`);
     return { id: g.id, x: g.x, y: g.y, w: g.w, h: g.h, metinler, ayrinti: g.ayrinti, sade: !!g.sade };
   });
 
   // ---- yollar
-  const yollar = dg.yollar.map((y) => yolCiz(y, kutuYeri, hatalar));
+  const yollar = dg.yollar.map((y) => yolCiz(y, kutuYeri, hatalar, dil));
 
   // ---- lejant
-  const lejant = lejantKur(dg, hatalar);
+  const lejant = lejantKur(dg, hatalar, dil);
 
   return { id: dg.id, w: dg.genislik, h: dg.yukseklik, baslik, gruplar, kutular, yollar, lejant, hatalar };
 }
 
 /** Bir yolun çizgileri, okları, dallanma noktaları, etiketleri */
-function yolCiz(y: Yol, kutuYeri: Map<string, Dikdortgen>, hatalar: string[]): SYol {
+function yolCiz(y: Yol, kutuYeri: Map<string, Dikdortgen>, hatalar: string[], dil: Dil): SYol {
   const w = yolKalinligi(y.netler.length);
   const out: SYol = { id: y.id, tur: y.tur, w, cizgiler: [], oklar: [], noktalar: [], etiketler: [], baglayicilar: [] };
   const govde = y.govde ?? [];
@@ -519,7 +528,7 @@ function yolCiz(y: Yol, kutuYeri: Map<string, Dikdortgen>, hatalar: string[]): S
     if (r && !y.kollar.some((k) => kenarda(k[0], r) || kenarda(k[k.length - 1], r))) hatalar.push(`${y.id}: ${u.kutu} kutusuna değen kol yok`);
   }
   for (const e of y.etiketler) {
-    out.etiketler.push({ x: e.x, y: e.y, m: yolEtiketMetni(y, e), s: "etiket", hiza: e.hiza === "bas" ? "start" : e.hiza === "son" ? "end" : "middle", dikey: e.dikey });
+    out.etiketler.push({ x: e.x, y: e.y, m: yolEtiketMetni(y, e, dil), s: "etiket", hiza: e.hiza === "bas" ? "start" : e.hiza === "son" ? "end" : "middle", dikey: e.dikey });
   }
   return out;
 }
@@ -543,7 +552,8 @@ function baglayiciCiz(p: Nokta, metin: string, yon: "sol" | "sag" | "yukari" | "
 }
 
 /** Lejant: yol türleri, kutu rolleri, kısaltmalar */
-function lejantKur(dg: Diyagram, hatalar: string[]): Sahne["lejant"] {
+function lejantKur(dg: Diyagram, hatalar: string[], dil: Dil): Sahne["lejant"] {
+  const t = cevirici(dil);
   const L = dg.lejant;
   const cizgiler: Sahne["lejant"]["cizgiler"] = [];
   const kutucuklar: Sahne["lejant"]["kutucuklar"] = [];
@@ -580,23 +590,23 @@ function lejantKur(dg: Diyagram, hatalar: string[]): Sahne["lejant"] {
   };
 
   const turler = [...new Set(dg.yollar.map((y) => y.tur))];
-  bolum("YOLLAR", turler.map((t) => ({
-    metin: YOL_TURU_ADI[t],
+  bolum(t("YOLLAR", "CONNECTIONS"), turler.map((tur) => ({
+    metin: YOL_TURU_ADI[tur][dil],
     ciz: (ox, oy) => {
       const yy = oy + 9;
-      cizgiler.push({ d: `M${ox} ${yy} L${ox + 30} ${yy}`, tur: t, w: 4 });
+      cizgiler.push({ d: `M${ox} ${yy} L${ox + 30} ${yy}`, tur, w: 4 });
       return 40;
     },
   })));
   const roller = [...new Set(dg.kutular.map((k) => k.rol))];
-  bolum("KUTULAR", roller.map((r) => ({
-    metin: KUTU_ROLU_ADI[r],
+  bolum(t("KUTULAR", "BOXES"), roller.map((r) => ({
+    metin: KUTU_ROLU_ADI[r][dil],
     ciz: (ox, oy) => {
       kutucuklar.push({ x: ox, y: oy + 2, w: 24, h: 15, rol: r });
       return 34;
     },
   })));
-  if (L.kisaltmalar.length) bolum("KISALTMALAR", L.kisaltmalar.map(([k, u]) => ({ metin: u, kisa: k, ciz: () => 0 })));
+  if (L.kisaltmalar.length) bolum(t("KISALTMALAR", "ABBREVIATIONS"), L.kisaltmalar.map(([k, u]) => ({ metin: u, kisa: k, ciz: () => 0 })));
   if (x - 14 > L.x + L.w + 0.5) hatalar.push(`lejant sığmıyor (${Math.ceil(x - 14 - L.x)} > ${L.w})`);
   return { x: L.x, y: L.y, w: L.w, h: L.h, cizgiler, kutucuklar, metinler };
 }

@@ -4,6 +4,7 @@
 // (ör. piksel tamponu) yalnızca kaynağı (screen-source.ts) değişir, çizim aynı kalır.
 
 import { charToText } from "../../cpu16/video/font";
+import type { Dil } from "../ui/ceviri";
 
 /** 16 renkli CGA paleti (renk baytı: düşük 4 bit yazı, yüksek 4 bit zemin); src/cpu16/vga.ts ile aynı */
 export const PALETTE = [
@@ -18,8 +19,16 @@ export interface ScreenFrame {
   pixels: Uint8Array;
   /** ekrandaki metin (metin kipinde satırlar), yoksa boş */
   text: string;
-  /** kısa açıklama, ör. "80 × 30 metin · imleç (12, 4)" */
-  info: string;
+  /** metin kipinin sütun ve satır sayısı, imlecin hücresi (görünmüyorsa null); açıklaması ekranBilgisi() */
+  cols: number;
+  rows: number;
+  imlec: [number, number] | null;
+}
+
+/** Kısa açıklama seçili dilde, ör. "80 × 30 metin · imleç (12, 4)" */
+export function ekranBilgisi(f: Pick<ScreenFrame, "cols" | "rows" | "imlec">, dil: Dil = "tr"): string {
+  const imlec = f.imlec ? ` · ${dil === "en" ? "cursor" : "imleç"} (${f.imlec[0]}, ${f.imlec[1]})` : "";
+  return `${f.cols} × ${f.rows} ${dil === "en" ? "text" : "metin"}${imlec}`;
 }
 
 export interface TextScreen {
@@ -68,14 +77,14 @@ export function screenText(chars: ArrayLike<number>, cols: number, rows: number)
 
 /** Metin ekranından ScreenFrame */
 export function textFrame(s: TextScreen): ScreenFrame {
-  const cx = s.cursor >= 0 ? s.cursor % s.cols : -1;
-  const cy = s.cursor >= 0 ? Math.floor(s.cursor / s.cols) : -1;
   return {
     width: s.cols * 8,
     height: s.rows * 16,
     pixels: renderTextScreen(s),
     text: screenText(s.chars, s.cols, s.rows),
-    info: `${s.cols} × ${s.rows} metin${s.cursor >= 0 ? ` · imleç (${cx}, ${cy})` : ""}`,
+    cols: s.cols,
+    rows: s.rows,
+    imlec: s.cursor >= 0 ? [s.cursor % s.cols, Math.floor(s.cursor / s.cols)] : null,
   };
 }
 
