@@ -1,6 +1,8 @@
 /**
  * Küçük bir 6502 assembler/disassembler. Yalnızca resmi (legal) 151 opcode.
  */
+import type { Dil } from "../ui/ceviri";
+
 export type Mode = "imp" | "acc" | "imm" | "zp" | "zpx" | "zpy" | "abs" | "abx" | "aby" | "ind" | "izx" | "izy" | "rel";
 
 const TABLE: Record<string, Partial<Record<Mode, number>>> = {
@@ -74,10 +76,12 @@ export interface AsmResult {
 /**
  * Söz dizimi: `etiket:`, `LDA #$10`, `STA $0200,X`, `JMP dongu`, `.byte $01, 2`, `; yorum`.
  * Sayılar: $hex, %ikili, ondalık. Program $0000'dan başlar (`* = $adres` ile değiştirilebilir).
+ * Hata iletileri `dil` dilinde ("Satır 3: …" / "Line 3: …").
  */
-export function assemble(source: string): AsmResult {
+export function assemble(source: string, dil: Dil = "tr"): AsmResult {
   const lines = source.split("\n");
   const labels = new Map<string, number>();
+  const hata = (line: number, tr: string, en: string) => new Error(dil === "en" ? `Line ${line + 1}: ${en}` : `Satır ${line + 1}: ${tr}`);
 
   const parseNum = (s: string, line: number): number | string => {
     s = s.trim();
@@ -85,7 +89,7 @@ export function assemble(source: string): AsmResult {
     if (s.startsWith("%")) return parseInt(s.slice(1), 2);
     if (/^\d+$/.test(s)) return parseInt(s, 10);
     if (/^[A-Za-z_][\w]*$/.test(s)) return s;
-    throw new Error(`Satır ${line + 1}: anlaşılmayan sayı '${s}'`);
+    throw hata(line, `anlaşılmayan sayı '${s}'`, `cannot parse number '${s}'`);
   };
 
   type Parsed = { line: number; addr: number; mn: string; mode: Mode; arg: number | string | null } | { line: number; addr: number; bytes: (number | string)[] };
@@ -97,7 +101,7 @@ export function assemble(source: string): AsmResult {
     if (!text) return;
     const lab = text.match(/^([A-Za-z_]\w*):\s*(.*)$/);
     if (lab) {
-      if (labels.has(lab[1])) throw new Error(`Satır ${line + 1}: '${lab[1]}' etiketi iki kez tanımlı`);
+      if (labels.has(lab[1])) throw hata(line, `'${lab[1]}' etiketi iki kez tanımlı`, `label '${lab[1]}' is defined twice`);
       labels.set(lab[1], pc);
       text = lab[2].trim();
       if (!text) return;
@@ -105,7 +109,7 @@ export function assemble(source: string): AsmResult {
     const org = text.match(/^\*\s*=\s*(.+)$/);
     if (org) {
       const v = parseNum(org[1], line);
-      if (typeof v !== "number") throw new Error(`Satır ${line + 1}: adres sayı olmalı`);
+      if (typeof v !== "number") throw hata(line, "adres sayı olmalı", "address must be a number");
       pc = v;
       return;
     }
@@ -116,10 +120,10 @@ export function assemble(source: string): AsmResult {
       return;
     }
     const m = text.match(/^([A-Za-z]{3})\s*(.*)$/);
-    if (!m) throw new Error(`Satır ${line + 1}: anlaşılmayan komut '${text}'`);
+    if (!m) throw hata(line, `anlaşılmayan komut '${text}'`, `cannot parse instruction '${text}'`);
     const mn = m[1].toUpperCase();
     const modes = TABLE[mn];
-    if (!modes) throw new Error(`Satır ${line + 1}: bilinmeyen komut '${mn}'`);
+    if (!modes) throw hata(line, `bilinmeyen komut '${mn}'`, `unknown instruction '${mn}'`);
     const op = m[2].replace(/\s+/g, "");
     let mode: Mode;
     let arg: number | string | null = null;
@@ -140,7 +144,7 @@ export function assemble(source: string): AsmResult {
       const absMode: Mode = reg === "X" ? "abx" : reg === "Y" ? "aby" : "abs";
       mode = small && modes[zpMode] !== undefined ? zpMode : absMode;
     }
-    if (modes[mode] === undefined) throw new Error(`Satır ${line + 1}: ${mn} bu adresleme kipini desteklemiyor`);
+    if (modes[mode] === undefined) throw hata(line, `${mn} bu adresleme kipini desteklemiyor`, `${mn} does not support this addressing mode`);
     parsed.push({ line, addr: pc, mn, mode, arg });
     pc += SIZE[mode];
   });
@@ -148,7 +152,7 @@ export function assemble(source: string): AsmResult {
   const resolve = (v: number | string, line: number) => {
     if (typeof v === "number") return v;
     const a = labels.get(v);
-    if (a === undefined) throw new Error(`Satır ${line + 1}: tanımsız etiket '${v}'`);
+    if (a === undefined) throw hata(line, `tanımsız etiket '${v}'`, `undefined label '${v}'`);
     return a;
   };
 
@@ -163,7 +167,7 @@ export function assemble(source: string): AsmResult {
     const v = resolve(p.arg, p.line);
     if (p.mode === "rel") {
       const off = v - (p.addr + 2);
-      if (off < -128 || off > 127) throw new Error(`Satır ${p.line + 1}: dallanma hedefi çok uzak`);
+      if (off < -128 || off > 127) throw hata(p.line, "dallanma hedefi çok uzak", "branch target is too far");
       put(p.addr + 1, off);
     } else if (SIZE[p.mode] === 2) put(p.addr + 1, v);
     else { put(p.addr + 1, v); put(p.addr + 2, v >> 8); }

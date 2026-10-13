@@ -2,17 +2,19 @@ import { live } from "./state/live";
 import { useApp } from "./state/store";
 import { sim } from "./sim/SimClient";
 import { assemble } from "./sim/asm6502";
+import { ceviri } from "./ui/ceviri";
+import { useAyar } from "./ui/ayarlar";
 
 /**
- * Tarayıcı konsolundan betik yazmak için `window.silikon`.
+ * Tarayıcı konsolundan betik yazmak için `window.silikon`. Hata ve dönüş iletileri arayüzün dilinde.
  * Örnek: silikon.load("LDA #5\nSTA $10\nloop: JMP loop"); silikon.step(40); silikon.mem(0x10)
  */
 export function installConsoleApi() {
   const nodeId = (signal: string | number) => {
     const chip = useApp.getState().chip;
-    if (!chip) throw new Error("Çip henüz yüklenmedi");
+    if (!chip) throw new Error(ceviri("Çip henüz yüklenmedi", "The chip has not loaded yet"));
     const id = typeof signal === "number" ? signal : chip.nodeNames[signal];
-    if (id === undefined) throw new Error(`Sinyal bulunamadı: ${signal}`);
+    if (id === undefined) throw new Error(ceviri(`Sinyal bulunamadı: ${signal}`, `Signal not found: ${signal}`));
     return id;
   };
   const api = {
@@ -23,9 +25,9 @@ export function installConsoleApi() {
     reset: () => sim.reset(),
     speed: (hz: number) => sim.setHz(hz),
     load: (source: string) => {
-      const { bytes } = assemble(source);
+      const { bytes } = assemble(source, useAyar.getState().dil);
       sim.loadProgram(bytes);
-      return `${bytes.length} bayt yüklendi`;
+      return ceviri(`${bytes.length} bayt yüklendi`, `${bytes.length} bytes loaded`);
     },
     poke: (address: number, value: number) => sim.poke(address, value),
     mem: (address: number) => {

@@ -5,6 +5,7 @@
 import { Component, type ReactNode } from "react";
 import { AppHeader } from "./Shell";
 import { bolum, type Mode } from "./ModeSwitch";
+import { sec, useDil, useT } from "./ceviri";
 
 /** Sahnenin ortasında: dönen halka, başlık, isteğe bağlı açıklama. Sınıf adı "overlay": eski testler bunu bekler. */
 export function Yukleniyor({ children, alt, hemen = false }: { children: ReactNode; alt?: ReactNode; hemen?: boolean }) {
@@ -36,9 +37,12 @@ export function HataKutusu({ baslik, children, eylem }: { baslik: string; childr
 /** Bölümün kodu inerken: bölümün iskeleti, üst çubukta bölüm seçili */
 export function BolumYukleniyor({ mode }: { mode: Mode }) {
   const b = bolum(mode);
+  const dil = useDil();
+  const t = useT();
+  const ad = sec(b.ad, dil);
   return (
     <div className="shell iskelet" aria-busy="true">
-      <AppHeader mode={mode} context="yükleniyor…" />
+      <AppHeader mode={mode} context={t("yükleniyor…", "loading…")} />
       <div className="toolbar">
         <span className="isk-blok" style={{ width: 180 }} />
         <span className="isk-blok" style={{ width: 120 }} />
@@ -47,7 +51,7 @@ export function BolumYukleniyor({ mode }: { mode: Mode }) {
       <div className="workspace">
         <div className="center">
           <main className="stage">
-            <Yukleniyor alt={b.ipucu}>{b.ad} yükleniyor…</Yukleniyor>
+            <Yukleniyor alt={sec(b.ipucu, dil)}>{t(`${ad} yükleniyor…`, `Loading ${ad}…`)}</Yukleniyor>
           </main>
         </div>
         <aside className="side" aria-hidden="true">
@@ -81,18 +85,24 @@ export class BolumSiniri extends Component<{ mode: Mode; aktif: boolean; childre
   render() {
     if (!this.state.hata) return this.props.children;
     if (!this.props.aktif) return null;
-    const b = bolum(this.props.mode);
-    return (
-      <div className="shell">
-        <AppHeader mode={this.props.mode} />
-        <div className="workspace">
-          <main className="stage">
-            <HataKutusu baslik={`${b.ad} açılamadı`} eylem={<button className="primary" onClick={() => location.reload()}>Sayfayı yenile</button>}>
-              {this.state.hata}
-            </HataKutusu>
-          </main>
-        </div>
-      </div>
-    );
+    return <BolumHatasi mode={this.props.mode} hata={this.state.hata} />;
   }
+}
+
+/** BolumSiniri'nin hata ekranı (dil değişince yeniden çizilsin diye ayrı bileşen) */
+function BolumHatasi({ mode, hata }: { mode: Mode; hata: string }) {
+  const t = useT();
+  const ad = sec(bolum(mode).ad, useDil());
+  return (
+    <div className="shell">
+      <AppHeader mode={mode} />
+      <div className="workspace">
+        <main className="stage">
+          <HataKutusu baslik={t(`${ad} açılamadı`, `Could not open ${ad}`)} eylem={<button className="primary" onClick={() => location.reload()}>{t("Sayfayı yenile", "Reload page")}</button>}>
+            {hata}
+          </HataKutusu>
+        </main>
+      </div>
+    </div>
+  );
 }

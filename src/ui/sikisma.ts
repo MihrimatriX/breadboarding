@@ -3,14 +3,15 @@
 //   1: seçili olmayan bölümler yalnız simge   2: ikincil ölçümler gizli
 //   3: ölçüm etiketleri görünmez (ekran okuyucuda ve ipucunda kalır)   4: marka adı görünmez (logo kalır)
 //   5: üst çubuktaki durum rozeti ("modelle aynı", "HALT") yalnız renkli nokta (yazısı ekran okuyucuda)
+//   6: seçili bölümün adı da simge (ör. büyük yazıda 960 px'te "8-bit calculator 3D" sığmaz)
 // Sabit bir piksel eşiği yerine sığan ilk kademe seçilir: bölüm sayısı, ölçümlerin uzunluğu (hesap
-// sonucu, MHz) ve yazı boyutu (normal / büyük) ne olursa olsun ölçümler "…" ile kesilmez. Eksik genişlik:
+// sonucu, MHz), arayüz dili ve yazı boyutu (normal / büyük) ne olursa olsun ölçümler "…" ile kesilmez. Eksik genişlik:
 // taşan ölçüm değerleri, marka ve üst çubuğun kendisi. Üst çubuk boyut değiştirince (pencere, yazı boyutu)
 // baştan seçilir; ölçüm değerleri uzarsa saniyede bir bakılıp gerekirse bir kademe daha sıkışır.
 
 import { useLayoutEffect, type RefObject } from "react";
 
-export const SIKISMA_EN_COK = 5;
+export const SIKISMA_EN_COK = 6;
 
 /** Sığan ilk kademe (eksik ≤ 0); hiçbiri sığmazsa en sonuncusu. eksik(k): k kademesinde eksik kalan piksel. */
 export function sigenKademe(eksik: (k: number) => number, enCok = SIKISMA_EN_COK): number {
