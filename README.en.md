@@ -290,7 +290,7 @@ If you want to build with real chips, go in this order:
 ## Tests and verification
 
 ```bash
-npm test                                                  # all tests (721 tests, ≈ 1 minute)
+npm test                                                  # all tests (760 tests, ≈ 1 minute)
 npm run check                                             # type check + tests
 npx vitest run cpu16/tests/emu.test.ts                    # a single file
 npx vitest run cpu16/tests/cc-bios.test.ts -t "yılan"     # tests in one file whose name matches
