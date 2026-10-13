@@ -16,7 +16,7 @@
 import { partValue, type Board, type ChipInstance, type Passive } from "../board/board.ts";
 import { ucBloklari, type SMetin } from "./cizim.ts";
 import type { KuruluDiyagram } from "./index.ts";
-import { Devre, gosterilenPasif, pasifAdi, type BlokKimligi, type Diyagram } from "./model.ts";
+import { adet, Devre, gosterilenPasif, pasifAdi, type BlokKimligi, type Diyagram } from "./model.ts";
 
 const anahtar = (b: BlokKimligi) => `${b.card}/${b.block}`;
 
@@ -174,9 +174,9 @@ function topla(liste: string[]): Map<string, number> {
 const esit = (a: Map<string, number>, b: Map<string, number>) => a.size === b.size && [...a].every(([k, v]) => b.get(k) === v);
 const yaz = (m: Map<string, number>) => [...m].sort().map(([k, v]) => `${k} ×${v}`).join(", ");
 
-/** 3. Kutularda ve çerçevelerde yazan sayılar */
+/** 3. Kutularda ve çerçevelerde yazan sayılar (sahnenin dilinde: "kapı" / "gate", "entegre" / "chip") */
 export function sayiDenetimi(k: KuruluDiyagram): string[] {
-  const { diyagram: dg, sahne, devre } = k;
+  const { diyagram: dg, sahne, devre, dil } = k;
   const board: Board = devre.board;
   const hatalar: string[] = [];
   const blokta = (card: string, block: string, bl: readonly BlokKimligi[]) => bl.some((b) => b.card === card && b.block === block);
@@ -190,14 +190,14 @@ export function sayiDenetimi(k: KuruluDiyagram): string[] {
     if (!esit(beklenen, yazilan)) hatalar.push(`${kt.id}: yazan parçalar [${yaz(yazilan)}], devrede [${yaz(beklenen)}]`);
     // gösterilen pasifler
     const pasifler: Passive[] = board.passives.filter((p) => blokta(p.card, p.block, kt.bloklar) && gosterilenPasif(p.part));
-    const bp = topla(sayimMetinleri(pasifler.map((p) => pasifAdi(p.part))));
+    const bp = topla(sayimMetinleri(pasifler.map((p) => pasifAdi(p.part, dil))));
     const yp = topla(yazilanParcalar(sk.metinler, "pasif"));
     if (!esit(bp, yp)) hatalar.push(`${kt.id}: yazan pasifler [${yaz(yp)}], devrede [${yaz(bp)}]`);
     // yapıştırıcı kapıları
     if (kt.rol !== "not") {
       let kapi = 0;
       for (const c of board.chips) for (const u of c.glueUnits ?? []) if (blokta(c.card, u.block, kt.bloklar)) kapi++;
-      const yazan = sk.metinler.filter((m) => m.s === "kapi").reduce((s, m) => s + Number(/^\+ (\d+) kapı/.exec(m.m)?.[1] ?? NaN), 0);
+      const yazan = sk.metinler.filter((m) => m.s === "kapi").reduce((s, m) => s + Number(/^\+ (\d+) (?:kapı|gate)/.exec(m.m)?.[1] ?? NaN), 0);
       if (kapi !== yazan) hatalar.push(`${kt.id}: ${yazan} kapı yazıyor, devrede ${kapi}`);
     }
   }
@@ -208,7 +208,7 @@ export function sayiDenetimi(k: KuruluDiyagram): string[] {
     const bl = ucBloklari(dg, g.id);
     const toplam = board.chips.filter((c) => blokta(c.card, c.block, bl)).length;
     const kendi = board.chips.filter((c) => blokta(c.card, c.block, g.bloklar ?? [])).length;
-    if (!ek.startsWith(`${toplam} entegre`)) hatalar.push(`${g.id}: başlıkta "${ek}", devrede ${toplam} entegre`);
+    if (!ek.startsWith(adet(toplam, "entegre", ["chip", "chips"], dil))) hatalar.push(`${g.id}: başlıkta "${ek}", devrede ${toplam} entegre`);
     if (kendi && !ek.includes(`· ${kendi} `)) hatalar.push(`${g.id}: başlıkta "${ek}", kendi bloklarında ${kendi} entegre`);
     // kart çerçevesi bütün kartı kapsıyorsa sayı kartın bütün entegreleri
     const kartlar = new Set(bl.map((b) => b.card));
