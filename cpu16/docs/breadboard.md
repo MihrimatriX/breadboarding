@@ -330,7 +330,7 @@ Delik adları: `BB07 c14` = BB07'nin c satırı, 14. sütunu; raylar `BB07 üst+
 - **Akım** veri sayfası tipik değerleridir, LED'ler en kötü durumla (bütün segmentler yanık); ilk
   açılışta kaynağın akım sınırını ≈ 300 mA'e koy, pano pano artır.
 - Yerleşim ve teller üretilmiştir (`breadboard/veri/`, elle değiştirilmez); devre değişince
-  `npm run cpu16 -- breadboard --uret` hepsini yeniden üretir (kart başına saniyeler – bir dakika) ve
+  `npm run cpu16 -- breadboard --uret` hepsini yeniden üretir (kart başına birkaç saniyeden bir dakikaya kadar) ve
   tel numaraları değişebilir: belgeleri yeniden bas.
 
 ## Dosyalar
