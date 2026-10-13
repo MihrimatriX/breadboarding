@@ -31,6 +31,18 @@ adları simgeye, ikincil ölçümler gizli, …); üst çubuğa öğe eklersen 9
   `BolumPanel.tsx`; metinler `cpu16/board/bolum-bilgi.ts`'ten. Etiketler `E` ile açılıp kapanır.
 - Kurulum modu: `kurulum.ts` + `KurulumPanel.tsx` (PCB), `bbKurulum.ts` + `BbKurulumPanel.tsx` (breadboard).
 
+## Dil (Türkçe + İngilizce)
+
+- Kullanıcıya görünen her metin iki dilli ve kullanıldığı yerde çift: bileşende `const t = useT();`
+  sonra `t("Durdur", "Stop")`; bileşen dışında `ceviri(tr, en)` (`ui/ceviri.ts`). Seçim `ui/ayarlar.ts`
+  deposunda (`dil`, `L` kısayolu, `<html lang>`).
+- Modül düzeyindeki tablolarda `ceviri()` çağırma (dil değişince güncellenmez): `{ tr, en }` (`IkiDil`)
+  tut, çizerken `sec(m, dil)`. Saf fonksiyonlar `dil: Dil = "tr"` alır; varsayılan Türkçe testleri korur.
+- `cpu16/` ve `hesap8/` veri tablolarında Türkçe alanlar belge üreteçlerine gider, değişmez; İngilizce
+  yanlarına eklenir. Kart, blok, çip ve pasif adlarının İngilizcesi `board3d/adlar.ts`'te (eksik ad testte yakalanır).
+- Terimler: kart → board, pano → panel, tek BB830 → breadboard, kurulum → build, tezgâh → workbench.
+- Derleyici ve assembler hata iletileri ile örnek programların çıktıları Türkçe kalır.
+
 ## Kurallar ve tuzaklar
 
 - Hesap ve geometri bileşenin dışında, saf ve testli fonksiyonlarda (`wires.ts`, `screen.ts`,

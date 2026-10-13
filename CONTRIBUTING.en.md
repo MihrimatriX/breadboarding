@@ -91,7 +91,10 @@ of the microcode, the experiment guides).
 
 ### Code style
 
-- Language: docs, comments, UI text and commit messages are in Turkish. In new code the identifiers are
+- Language: comments and commit messages are in Turkish. UI text is bilingual: `t("Durdur", "Stop")`
+  (`src/ui/ceviri.ts`, details in `src/CLAUDE.md`). Docs are written in Turkish first, with the English
+  version next to them (`spec.md` → `spec.en.md`); when you change a Turkish doc, update the English one
+  too. In new code the identifiers are
   mostly Turkish too (`kurulumPlani`, `b.block = "Adres çözme"` in `buildKybCard`, `HesapSim`,
   `sinyalSinifi`); older parts (the 6502 side, the emulator core) are in English. Match the language of
   the file you change, and don't mix languages within one file.
