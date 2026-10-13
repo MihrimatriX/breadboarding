@@ -9,7 +9,8 @@ import { aktifKart, aktifKartiSec, hesapKarti, kartDegisince, kartUclari, kartYe
 import { levelOf } from "../../src/board3d/levels.ts";
 import { dipAnahtarlari, etkinNet, segmentKarakteri, segmentNetleri } from "../../src/board3d/pasif-analiz.ts";
 import { boardLayoutData, boardModel, findPart, liveNets, netDegerleri, netEnds, useKart } from "../../src/board3d/store.ts";
-import { ILK_GIRIS, basilabilir, blokDegerleri, girisBiti, hesapSim, ikili, useHesap } from "../../src/board3d/hesap.ts";
+import { GRUP_BASLIGI, ILK_GIRIS, ISLEM_ADI, basilabilir, blokDegerleri, girisBiti, hesapSim, ikili, useHesap } from "../../src/board3d/hesap.ts";
+import { ISLEMLER } from "../../hesap8/kart.ts";
 
 const kart = hesapKarti();
 const seviye = (n: number) => levelOf(liveNets.values, n);
@@ -194,6 +195,25 @@ describe("hesap makinesi: anahtarlar, göstergeler, bloklar", () => {
     // her blok yerleşimde var (kamera oraya gider)
     const bloklar = new Set(kartYerlesimi("hesap").blocks.map((b) => b.name));
     for (const x of blokDegerleri(hesapSim()!, 1)) expect(bloklar.has(x.blok), x.blok).toBe(true);
+  });
+
+  it("bloklar şu an İngilizce: başlık ve açıklamalar çevrilir, blok, net adı ve değerler aynı kalır", () => {
+    useHesap.getState().ayarla(255, 7, 3);
+    const tr = blokDegerleri(hesapSim()!, 3);
+    const en = blokDegerleri(hesapSim()!, 3, "en");
+    expect(en.map((x) => x.blok)).toEqual(tr.map((x) => x.blok));
+    expect(en.map((x) => x.degerler.map((d) => [d.ad, d.deger, d.metin]))).toEqual(tr.map((x) => x.degerler.map((d) => [d.ad, d.deger, d.metin])));
+    const r = Object.fromEntries(en.map((x) => [x.blok, x]));
+    expect(r["Bölme"].baslik).toBe("Divide");
+    expect(r["Bölme"].degerler.find((d) => d.ad === "K")?.ne).toBe("remainder");
+    expect(r["Sonuç seçici"].degerler[0].ne).toBe(`selected: ${ISLEM_ADI[3].en}`);
+    expect(r["Toplama ve çıkarma"].degerler[0].ne).toContain("subtract");
+    expect(tr.find((x) => x.blok === "Sonuç seçici")!.degerler[0].ne).toBe("seçilen: bölme");
+    // İngilizce metinde Türkçe harf kalmadı
+    for (const x of en) for (const s of [x.baslik, ...x.degerler.map((d) => d.ne)]) expect(s, s).not.toMatch(/[çğıöşüÇĞİÖŞÜ]/);
+    // gösterge gruplarının ve işlemlerin Türkçe adları hesap8/kart.ts ile aynı
+    for (const g of kart.gruplar) expect(GRUP_BASLIGI[g.ad].tr).toBe(g.baslik);
+    for (const x of ISLEMLER) expect(ISLEM_ADI[x.kod].tr).toBe(x.ad);
   });
 
   it("anahtarlar değişmeyince (seçili işleme yeniden tıklamak) devre ve sahne yeniden yayınlanmaz", () => {

@@ -32,6 +32,8 @@ import { cipGovdeRengi, useBolum, useBolumVurgusu, useEtiketlerAcik } from "./bo
 import { Bolumler3D } from "./Bolumler3D";
 import { BolumKatmani } from "./BolumKatmani";
 import { azHareket, ucusAdimi, useSahneRengi } from "../ui/ayarlar";
+import { useDil } from "../ui/ceviri";
+import { blokAdi, kartBasligi } from "./adlar";
 import { allWires, busRouter, netWires, partWires, wireGeometry, type Endpoint, type WireEdge } from "./wires";
 
 /** 1 dünya birimi = 10 mm */
@@ -67,6 +69,8 @@ function Cards() {
   const backplane = useMemo(() => lay.passives.some((p) => p.edge), [lay]);
   // bölüm etiketleri açıkken blokların çerçevesi ve başlığı bölüm katmanında (Bolumler3D)
   const etiketler = useEtiketlerAcik();
+  // başlıklar dokuya çizilir: dil değişince yeniden çizilir
+  const dil = useDil();
   const outline = useMemo(() => {
     const pos: number[] = [];
     for (const b of lay.blocks) {
@@ -82,13 +86,13 @@ function Cards() {
   const titles = useMemo<TextItem[]>(() => [
     ...(etiketler ? [] : lay.blocks).map((b) => {
       const [x, z] = w(b.x + 1, b.y + 0.5);
-      return { text: b.name, x, z, w: Math.min(b.w - 2, 60) * S, d: 5 * S, y: 0.003, color: "#d8e6dc", align: "left" as const };
+      return { text: blokAdi(b.name, dil), x, z, w: Math.min(b.w - 2, 60) * S, d: 5 * S, y: 0.003, color: "#d8e6dc", align: "left" as const };
     }),
     ...lay.cards.map((c) => {
       const [x, z] = w(c.x + 6, c.y + 2);
-      return { text: c.title, x, z, w: 90 * S, d: 7 * S, y: 0.003, color: "#ffffff", align: "left" as const };
+      return { text: kartBasligi(c.name, c.title, dil), x, z, w: 90 * S, d: 7 * S, y: 0.003, color: "#ffffff", align: "left" as const };
     }),
-  ], [lay, w, etiketler]);
+  ], [lay, w, etiketler, dil]);
   return (
     <group>
       {lay.cards.map((c) => {

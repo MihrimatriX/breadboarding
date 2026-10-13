@@ -4,6 +4,7 @@
 import { useMemo, type KeyboardEvent } from "react";
 import { chipInside, type InsideGate } from "../../cpu16/board/inside";
 import type { Gate } from "../../cpu16/chips/logic";
+import { useT, type Cevir } from "../ui/ceviri";
 import { LEVEL_VAR, levelOf } from "./levels";
 import { boardModel, liveNets, useKart } from "./store";
 
@@ -24,7 +25,7 @@ export function svgDugme(ad: string, tikla: () => void) {
   };
 }
 
-function shape(g: InsideGate): { d: string; bubble: boolean; label?: string } {
+function shape(g: InsideGate, t: Cevir): { d: string; bubble: boolean; label?: string } {
   const { x, y, w, h } = g;
   const inv = g.kind === "NAND" || g.kind === "NOR" || g.kind === "XNOR" || g.kind === "NOT";
   const bw = inv ? w - 2 * BUBBLE : w;
@@ -50,13 +51,14 @@ function shape(g: InsideGate): { d: string; bubble: boolean; label?: string } {
     case "DFF":
       return { d: `M${x} ${y}h${w}v${h}h${-w}Z`, bubble: false, label: "D-FF" };
     case "LATCH":
-      return { d: `M${x} ${y}h${w}v${h}h${-w}Z`, bubble: false, label: "mandal" };
+      return { d: `M${x} ${y}h${w}v${h}h${-w}Z`, bubble: false, label: t("mandal", "latch") };
     default:
-      return { d: `M${x} ${y}h${w}v${h}h${-w}Z`, bubble: false, label: "bellek" };
+      return { d: `M${x} ${y}h${w}v${h}h${-w}Z`, bubble: false, label: t("bellek", "memory") };
   }
 }
 
 export function InsideDiagram({ refName }: { refName: string }) {
+  const t = useT();
   useKart((s) => s.tick);
   const selectedGate = useKart((s) => s.gate);
   const selectedNet = useKart((s) => s.net);
@@ -66,7 +68,7 @@ export function InsideDiagram({ refName }: { refName: string }) {
   const name = (n: number) => board.netName(n);
 
   return (
-    <svg className="inside-svg" viewBox={`0 0 ${ins.width} ${ins.height}`} width={ins.width} height={ins.height} role="group" aria-label={`${refName} çipinin kapı seviyesi şeması`}>
+    <svg className="inside-svg" viewBox={`0 0 ${ins.width} ${ins.height}`} width={ins.width} height={ins.height} role="group" aria-label={t(`${refName} çipinin kapı seviyesi şeması`, `Gate-level diagram of ${refName}`)}>
       {ins.wires.map((w, i) => {
         const lv = levelOf(v, w.net);
         return (
@@ -87,18 +89,19 @@ export function InsideDiagram({ refName }: { refName: string }) {
         <text key={i} x={t.x} y={t.y + 3} className="tie" textAnchor="end">{t.v}</text>
       ))}
       {ins.gates.map((g) => {
-        const s = shape(g);
+        const s = shape(g, t);
         const out = levelOf(v, g.outputs[0]);
         const sel = selectedGate === g.gate;
         const behav = g.kind === "BEHAV";
         const cikis = g.outputs.map((o) => `${name(o)} = ${"01ZX"[levelOf(v, o)]}`).join(", ");
+        const dugme = t(`${g.kind} kapısı, çıkış ${cikis}: transistörlerini göster`, `${g.kind} gate, output ${cikis}: show its transistors`);
         return (
           <g
             key={g.gate}
             className={`gate${sel ? " sel" : ""}${behav ? " behav" : ""}`}
-            {...(behav ? {} : { ...svgDugme(`${g.kind} kapısı, çıkış ${cikis}: transistörlerini göster`, () => useKart.getState().selectGate(g.gate)), "aria-pressed": sel })}
+            {...(behav ? {} : { ...svgDugme(dugme, () => useKart.getState().selectGate(g.gate)), "aria-pressed": sel })}
           >
-            <title>{`${g.kind} · çıkış ${g.outputs.map((o) => `${name(o)}=${"01ZX"[levelOf(v, o)]}`).join(", ")}`}</title>
+            <title>{`${g.kind} · ${t("çıkış", "output")} ${g.outputs.map((o) => `${name(o)}=${"01ZX"[levelOf(v, o)]}`).join(", ")}`}</title>
             <path d={s.d} className={`sema-govde${out === 1 ? " on" : ""}${sel ? " sel" : ""}`} strokeWidth={sel ? 1.8 : 1.1} />
             {s.bubble && <circle cx={g.x + g.w - BUBBLE} cy={g.y + g.h / 2} r={BUBBLE} className={`sema-govde${sel ? " sel" : ""}`} strokeWidth={1.1} />}
             {s.label && <text x={g.x + g.w / 2} y={g.y + g.h / 2 + 3} textAnchor="middle" className="glabel">{s.label}</text>}
@@ -109,7 +112,7 @@ export function InsideDiagram({ refName }: { refName: string }) {
         const lv = levelOf(v, p.net);
         const left = p.side === "left";
         return (
-          <g key={p.name} className="ipin" {...svgDugme(`${p.name} pini = ${"01ZX"[lv]}: netini seç`, () => useKart.getState().selectNet(p.net))}>
+          <g key={p.name} className="ipin" {...svgDugme(t(`${p.name} pini = ${"01ZX"[lv]}: netini seç`, `${p.name} pin = ${"01ZX"[lv]}: select its net`), () => useKart.getState().selectNet(p.net))}>
             <rect x={p.x - 4} y={p.y - 4} width={8} height={8} style={{ fill: LEVEL_VAR[lv] }} />
             <text x={left ? p.x - 8 : p.x + 8} y={p.y + 4} textAnchor={left ? "end" : "start"} className={selectedNet === p.net ? "sel" : ""}>
               {p.name}
