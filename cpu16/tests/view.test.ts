@@ -1,11 +1,12 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
+import { BLOK_EN, blokAdi, kartBasligi } from "../../src/board3d/adlar.ts";
 import { findVgaOutput, dacVolts, resistance } from "../../src/board3d/beam.ts";
 import { colWindow, memGeometry, rowWindow } from "../../src/board3d/memview.ts";
 import { BANK0_END, compileProgram, detectLanguage, flashImage, FLASH_SIZE } from "../../src/board3d/program.ts";
 import { findScreenSource } from "../../src/board3d/screen-source.ts";
-import { PALETTE, paintFrame, renderTextScreen, screenText, textFrame } from "../../src/board3d/screen.ts";
+import { PALETTE, ekranBilgisi, paintFrame, renderTextScreen, screenText, textFrame } from "../../src/board3d/screen.ts";
 import { Ps2Sender, UartSender, type LineIo } from "../../src/board3d/serial-in.ts";
 import {
   allWires, arcHeight, arcPoints, arcSegments, busRouter, mstEdges, netEndpoints, netTree, netWires, partLinks, partWires, ROUTE_Y,
@@ -14,7 +15,8 @@ import {
 import { assemble } from "../asm/assembler.ts";
 import { loadLib } from "../cc/node.ts";
 import { buildComputerBoard } from "../board/computer.ts";
-import { chipInside, GateProbe } from "../board/inside.ts";
+import { chipInside, etiketDili, gateCmos, GateProbe, nodeLabel } from "../board/inside.ts";
+import { buildHesapBoard } from "../../hesap8/kart.ts";
 import { boardLayout, cardTitle, type BoardLayout } from "../board/layout.ts";
 import { buildFullMachineBoard, FULL_MACHINE_CARDS, GateMachine } from "../board/machine-board.ts";
 import { PASSIVES } from "../board/passives.ts";
@@ -62,6 +64,18 @@ describe("Faz 5: 3D görünüm verisi", () => {
         });
       }
     }
+  });
+
+  it("transistör şemasının iç etiketleri İngilizcede: sabit-1 hücresi tie-hi, net adları aynı", () => {
+    const g = board.c.gates.find((x) => x.kind !== "BEHAV" && x.inputs.includes(1));
+    expect(g).toBeDefined();
+    const cm = gateCmos(g!, (n) => board.netName(n));
+    const sabit = cm.nodes.find((n) => n.label === "sabit1");
+    expect(sabit).toBeDefined();
+    expect(nodeLabel(cm, sabit!.node)).toBe("sabit1");
+    expect(nodeLabel(cm, sabit!.node, "en")).toBe("tie-hi");
+    expect(etiketDili("sabit1", "en")).toBe("tie-hi");
+    expect(etiketDili("A0", "en")).toBe("A0");
   });
 
   // her kapı türünden ve giriş sayısından bir örnek
@@ -120,6 +134,21 @@ describe("3D görünüm: bütün bilgisayar tek sahnede", () => {
     for (const c of fullLay.cards) expect(c.title).toBe(cardTitle(c.name));
     expect(cardTitle("ram574")).toBe("Ram574 kartı");
     expect(cardTitle("gc")).toBe("G/Ç kartı");
+  });
+
+  it("İngilizce arayüz: her kartın ve her bloğun (bilgisayar ve hesap makinesi) İngilizce adı var", () => {
+    for (const c of fullLay.cards) {
+      expect(kartBasligi(c.name, c.title)).toBe(c.title);
+      expect(kartBasligi(c.name, c.title, "en"), c.name).toMatch(/board$/);
+    }
+    expect(kartBasligi("gc", "G/Ç kartı", "en")).toBe("I/O board");
+    expect(kartBasligi("hesap", "8 bit hesap makinesi", "en")).toBe("8-bit calculator");
+    expect(kartBasligi("ram574", "Ram574 kartı", "en")).toBe("Ram574 board");
+    const hesapLay = boardLayout(buildHesapBoard().board);
+    for (const b of [...fullLay.blocks, ...hesapLay.blocks]) expect(BLOK_EN[b.name], `"${b.name}" İngilizce adı yok (src/board3d/adlar.ts)`).toBeDefined();
+    expect(blokAdi("Register dosyası", "en")).toBe("Register file");
+    expect(blokAdi("Register dosyası")).toBe("Register dosyası");
+    expect(blokAdi("tabloda olmayan blok", "en")).toBe("tabloda olmayan blok");
   });
 
   it("çipler ve pasifler kartlarının içinde, gövdeler çakışmıyor, pinler doğru netlerde", () => {
@@ -363,7 +392,10 @@ describe("3D görünüm: VGA ekranı", () => {
     // imleç hücresi (5, 0): 14. ve 15. tarama satırları yazı renginde dolu
     for (const r of [14, 15]) for (let b = 0; b < 8; b++) expect(px[r * 640 + 40 + b]).toBe(0xe);
     const f = textFrame({ cols, rows, chars, attrs, font: FONT_8X16, cursor: 2 * cols + 3 });
-    expect(f.info).toContain("imleç (3, 2)");
+    expect(f.imlec).toEqual([3, 2]);
+    expect(ekranBilgisi(f)).toBe("80 × 30 metin · imleç (3, 2)");
+    expect(ekranBilgisi(f, "en")).toBe("80 × 30 text · cursor (3, 2)");
+    expect(ekranBilgisi(textFrame({ cols, rows, chars, attrs, font: FONT_8X16, cursor: -1 }), "en")).toBe("80 × 30 text");
     const rgba = new Uint8ClampedArray(f.pixels.length * 4);
     paintFrame(f.pixels, rgba);
     expect([rgba[0], rgba[1], rgba[2], rgba[3]]).toEqual([(PALETTE[1] >> 16) & 255, (PALETTE[1] >> 8) & 255, PALETTE[1] & 255, 255]);
@@ -522,6 +554,17 @@ describe("3D görünüm: program düzenleyicisi", () => {
     const c = compileProgram("int main(void) {\n  int x = 1;\n  return y;\n}\n", "c", lib);
     expect(c.flash).toBeNull();
     expect(c.errors.some((e) => e.line === 3 && !e.file)).toBe(true);
+  });
+
+  it("İngilizce arayüzde özet, sütun bilgisi ve bank 0 hatası İngilizce (sayılar 1,234 biçiminde)", () => {
+    const c = compileProgram(cExample, "c", lib, "en");
+    expect(c.info).toMatch(/^C · [\d,]+ bytes of code \(ROM\), [\d,]+ bytes of data \(RAM\)$/);
+    expect(compileProgram(cExample, "c", lib).info).toMatch(/^C · [\d.]+ bayt kod \(ROM\), [\d.]+ bayt veri \(RAM\)$/);
+    const a = compileProgram(readFileSync(new URL("../programs/hello.s", import.meta.url), "utf8"), "asm", lib, "en");
+    expect(a.info).toMatch(/^assembly · [\d,]+ bytes$/);
+    const e = compileProgram("int main(void) {\n  return y;\n}\n", "c", lib, "en");
+    expect(e.errors.some((x) => /^column \d+: /.test(x.message))).toBe(true);
+    expect(() => flashImage(new Uint8Array(0x10000), [[0x3ff0, BANK0_END + 1]], FLASH_SIZE, "en")).toThrow(/does not fit in bank 0/);
   });
 
   it("assembly ile assemble() aynı imaj (ör. merhaba programı)", () => {

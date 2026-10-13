@@ -4,10 +4,11 @@
 // Kart 3D sahnedekiyle aynı nesnedir (aktif.ts); net değerleri store.ts'teki canlı değerlere yazılır.
 
 import { create } from "zustand";
-import { ISLEMLER, type HesapKarti } from "../../hesap8/kart";
+import { ISLEMLER, type GrupAdi, type HesapKarti } from "../../hesap8/kart";
 import { beklenen, type Gorunum, type IslemKodu } from "../../hesap8/model";
 import { HesapSim } from "../../hesap8/sim";
 import { L1 } from "../../cpu16/chips/logic";
+import type { Dil, IkiDil } from "../ui/ceviri";
 import { aktifKart, hesapKarti, hesapPlani, kartYerlesimi, type HesapGorunumu } from "./aktif";
 import { bbSeciliTel, telKimligi, telTarifi, useBbKurulum } from "./bbKurulum";
 import { netDegerleri, useKart } from "./store";
@@ -28,6 +29,22 @@ export function girisBiti(k: Pick<HesapKarti, "a" | "b" | "op">, net: number): {
 
 /** İşlemin simgesi (+ − × ÷) */
 export const islemSimgesi = (op: IslemKodu): string => ISLEMLER[op].simge;
+
+/** İşlemin adı iki dilde (Türkçesi hesap8/kart.ts'teki ISLEMLER ile aynı) */
+export const ISLEM_ADI: Record<IslemKodu, IkiDil> = {
+  0: { tr: "toplama", en: "addition" },
+  1: { tr: "çıkarma", en: "subtraction" },
+  2: { tr: "çarpma", en: "multiplication" },
+  3: { tr: "bölme", en: "division" },
+};
+
+/** Gösterge gruplarının başlığı iki dilde (Türkçesi hesap8/kart.ts'teki baslik ile aynı) */
+export const GRUP_BASLIGI: Record<GrupAdi, IkiDil> = {
+  a: { tr: "A", en: "A" },
+  b: { tr: "B", en: "B" },
+  sonuc: { tr: "Sonuç", en: "Result" },
+  kalan: { tr: "Kalan", en: "Remainder" },
+};
 
 /** İkili yazım, 4'lü öbekler: 0001 0101 1001 1111 */
 export function ikili(deger: number, bit: number): string {
@@ -63,9 +80,11 @@ type Okuyucu = Pick<HesapSim, "sayi"> & { sim: Pick<HesapSim["sim"], "get">; kar
 
 /**
  * Her bloğun çıkışı şu an: bütün bloklar aynı anda hesaplar (devre birleşimsel), işlem anahtarı yalnız
- * sonuç seçicide hangisinin göstergeye gideceğini seçer.
+ * sonuç seçicide hangisinin göstergeye gideceğini seçer. Başlıklar ve açıklamalar seçili dilde; blok
+ * (kameranın gittiği yer) ve net adları dilden bağımsız.
  */
-export function blokDegerleri(s: Okuyucu, op: IslemKodu): BlokSatiri[] {
+export function blokDegerleri(s: Okuyucu, op: IslemKodu, dil: Dil = "tr"): BlokSatiri[] {
+  const t = (tr: string, en: string) => (dil === "en" ? en : tr);
   const { kart } = s;
   const ad = (n: string) => (kart.board.has(n) ? kart.board.n(n) : -1);
   const bir = (n: number) => (n >= 0 && s.sim.get(n) === L1 ? 1 : 0);
@@ -77,42 +96,46 @@ export function blokDegerleri(s: Okuyucu, op: IslemKodu): BlokSatiri[] {
   return [
     {
       blok: "Toplama ve çıkarma",
-      baslik: "Toplama / çıkarma",
+      baslik: t("Toplama / çıkarma", "Add / subtract"),
       secili: op <= 1,
       degerler: [
-        { ad: "S_C8 S", ne: cikarma ? "A + ~B + 1 (OP0 = 1: çıkarma)" : "A + B (OP0 = 0: toplama)", deger: s.sayi(S) + 256 * bir(c8), bit: 9 },
-        { ad: "NEG", ne: "çıkarmada sonuç eksi (A < B)", deger: bir(ic.negatif), bit: 1 },
-        { ad: "M", ne: "|A ± B|, sonuç seçiciye (9. bit T8)", deger: s.sayi(ic.toplamFark) + 256 * bir(ic.toplamElde), bit: 9 },
+        {
+          ad: "S_C8 S",
+          ne: cikarma ? t("A + ~B + 1 (OP0 = 1: çıkarma)", "A + ~B + 1 (OP0 = 1: subtract)") : t("A + B (OP0 = 0: toplama)", "A + B (OP0 = 0: add)"),
+          deger: s.sayi(S) + 256 * bir(c8), bit: 9,
+        },
+        { ad: "NEG", ne: t("çıkarmada sonuç eksi (A < B)", "negative result when subtracting (A < B)"), deger: bir(ic.negatif), bit: 1 },
+        { ad: "M", ne: t("|A ± B|, sonuç seçiciye (9. bit T8)", "|A ± B|, to the result selector (9th bit T8)"), deger: s.sayi(ic.toplamFark) + 256 * bir(ic.toplamElde), bit: 9 },
       ],
     },
     {
       blok: "Çarpma",
-      baslik: "Çarpma",
+      baslik: t("Çarpma", "Multiply"),
       secili: op === 2,
       degerler: [{ ad: "P", ne: "A × B, 16 bit", deger: s.sayi(ic.carpim), bit: 16 }],
     },
     {
       blok: "Bölme",
-      baslik: "Bölme",
+      baslik: t("Bölme", "Divide"),
       secili: op === 3,
       degerler: [
-        { ad: "Q", ne: "bölüm A ÷ B", deger: s.sayi(ic.bolum), bit: 8 },
-        { ad: "K", ne: "kalan", deger: s.sayi(ic.kalan), bit: 8 },
-        { ad: "HATA", ne: "sıfıra bölme (÷ ve B = 0)", deger: bir(ic.hata), bit: 1 },
+        { ad: "Q", ne: t("bölüm A ÷ B", "quotient A ÷ B"), deger: s.sayi(ic.bolum), bit: 8 },
+        { ad: "K", ne: t("kalan", "remainder"), deger: s.sayi(ic.kalan), bit: 8 },
+        { ad: "HATA", ne: t("sıfıra bölme (÷ ve B = 0)", "division by zero (÷ and B = 0)"), deger: bir(ic.hata), bit: 1 },
       ],
     },
     {
       blok: "Sonuç seçici",
-      baslik: "Sonuç seçici",
+      baslik: t("Sonuç seçici", "Result selector"),
       secili: false,
-      degerler: [{ ad: "SONUC", ne: `seçilen: ${ISLEMLER[op].ad}`, deger: s.sayi(ic.sonuc), bit: 16 }],
+      degerler: [{ ad: "SONUC", ne: `${t("seçilen", "selected")}: ${ISLEM_ADI[op][dil]}`, deger: s.sayi(ic.sonuc), bit: 16 }],
     },
     {
       blok: "Onluğa çevirme: sonuç",
-      baslik: "Onluğa çevirme",
+      baslik: t("Onluğa çevirme", "Decimal conversion"),
       secili: false,
       degerler: [{
-        ad: "BCD", ne: "sonucun onluk haneleri (3 ekle ve kaydır)",
+        ad: "BCD", ne: t("sonucun onluk haneleri (3 ekle ve kaydır)", "decimal digits of the result (add 3 and shift)"),
         deger: bcd.reduceRight((v, d) => v * 16 + d, 0), bit: 4 * bcd.length, metin: [...bcd].reverse().join(" "),
       }],
     },

@@ -17,6 +17,7 @@ import {
 import type { PassivePlace } from "../../cpu16/board/layout";
 import { LED_RENKLERI } from "../../cpu16/board/passives";
 import { direncBantlari, faradMetni, frekansMetni, pasifDegeri, ucHaneliKod } from "../../cpu16/board/pasif-bilgi";
+import { ceviri } from "../ui/ceviri";
 import { basilabilir, butonBas, useHesap } from "./hesap";
 import { cubukSegmentleri, cubukSegmentYanik, dipAnahtarlari, etkinNet, ledDevresi, ledYanik, segmentNetleri, type CubukSegmenti, type SegmentAdi } from "./pasif-analiz";
 import {
@@ -442,7 +443,7 @@ function PressCaps({ list, w, geometry, material }: { list: PassivePlace[]; w: W
       onPointerMove={(e: ThreeEvent<PointerEvent>) => {
         e.stopPropagation();
         const p = list[e.instanceId ?? -1];
-        if (p) useKart.setState({ hover: { ref: p.ref, x: e.nativeEvent.clientX, y: e.nativeEvent.clientY, ek: "Basılı tut: bütün segmentler yanar" } });
+        if (p) useKart.setState({ hover: { ref: p.ref, x: e.nativeEvent.clientX, y: e.nativeEvent.clientY, ek: ceviri("Basılı tut: bütün segmentler yanar", "Hold: all segments light up") } });
       }}
       onPointerOver={() => imlec(true)}
       onPointerOut={() => {
@@ -562,7 +563,9 @@ function DipSwitches({ list, w }: { list: PassivePlace[]; w: W }) {
   useEffect(() => () => imlec(false), []);
   const surguBilgisi = (s: Surgu) => {
     const a = dipAnahtarlari(s.p, (n) => level(liveNets.values, n))[s.no - 1];
-    return a ? `${s.no}. anahtar · ${boardModel().board.netName(a.net)} = ${a.acik ? "1 (ON)" : "0 (OFF)"} · tıkla: değiştir` : "";
+    if (!a) return "";
+    const deger = `${boardModel().board.netName(a.net)} = ${a.acik ? "1 (ON)" : "0 (OFF)"}`;
+    return ceviri(`${s.no}. anahtar · ${deger} · tıkla: değiştir`, `Switch ${s.no} · ${deger} · click: flip`);
   };
   return (
     <>

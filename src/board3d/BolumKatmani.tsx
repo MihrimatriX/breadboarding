@@ -8,6 +8,7 @@
 
 import { useEffect, type CSSProperties } from "react";
 import { kisayolAlani } from "../ui/ayarlar";
+import { useT } from "../ui/ceviri";
 import { bolumu, useBolum } from "./bolum";
 import { girisNoktasi } from "./bolumSahne";
 import { useKenar, type KenarEtiketi } from "./Bolumler3D";
@@ -35,6 +36,7 @@ function Cizgi({ e, kalin }: { e: KenarEtiketi; kalin: boolean }) {
 
 /** Plakanın ya da kenar etiketinin üstüne gelince: bölümün başlığı ve görevi */
 function BolumIpucu() {
+  const t = useT();
   const u = useBolum((s) => s.ustunde);
   const b = bolumu(u?.id ?? null);
   if (!u || !b) return null;
@@ -45,7 +47,7 @@ function BolumIpucu() {
         <span>{b.baslik}</span>
       </div>
       <p>{b.gorev}</p>
-      <div className="bi-alt">Tıkla: nasıl çalıştığı ve çipleri yan panelde</div>
+      <div className="bi-alt">{t("Tıkla: nasıl çalıştığı ve çipleri yan panelde", "Click: how it works and its chips, in the side panel")}</div>
     </div>
   );
 }
