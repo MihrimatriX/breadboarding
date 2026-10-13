@@ -2,6 +2,7 @@
 
 import type { SerialLink } from "../../cpu16/bios/uploader";
 import { CODEPAGE } from "../../cpu16/video/font";
+import { ceviri } from "../ui/ceviri";
 
 /** UART bayt akışını basit bir terminal gibi metne çevirir: CR yok sayılır, BS bir karakter siler,
  * 0x80 üstü CP857 olarak çözülür, diğer kontrol karakterleri atılır. */
@@ -61,7 +62,7 @@ export class WebSerialLink implements SerialLink {
 
   static async open(baudRate = 115200): Promise<WebSerialLink> {
     const serial = webSerial();
-    if (!serial) throw new Error("Bu tarayıcıda Web Serial yok");
+    if (!serial) throw new Error(ceviri("Bu tarayıcıda Web Serial yok", "This browser has no Web Serial"));
     const port = await serial.requestPort();
     await port.open({ baudRate });
     const link = new WebSerialLink(port);
@@ -70,7 +71,7 @@ export class WebSerialLink implements SerialLink {
   }
 
   private start(): void {
-    if (!this.port.readable || !this.port.writable) throw new Error("Seri port açılamadı");
+    if (!this.port.readable || !this.port.writable) throw new Error(ceviri("Seri port açılamadı", "Could not open the serial port"));
     this.reader = this.port.readable.getReader();
     this.writer = this.port.writable.getWriter();
     void (async () => {
