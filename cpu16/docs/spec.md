@@ -57,7 +57,7 @@ Kaba toplam: **60–90 entegre** (cache ve MMU hariç).
 ```
 
 **Cache**: 1–2 KB, direct-mapped, write-through. Hızlı SRAM (IS61C256, 15 ns) + tag SRAM + 74HC688 karşılaştırıcı + hit/miss mantığı (~10–15 çip).
-- Dürüst not: 74HC hızlarında RAM zaten CPU kadar hızlı, cache kendiliğinden fark yaratmaz. Cache'in anlamlı olması için ana bellek **bekleme durumlu (wait state)** yavaş bir veriyolunda olur (ör. 2 bekleme durumu). Böylece hit = 1 döngü, miss = 3 döngü; sayaçla hit oranı ölçülüp videoda gösterilir.
+- Not: 74HC hızlarında RAM zaten CPU kadar hızlı, cache kendiliğinden fark yaratmaz. Cache'in anlamlı olması için ana bellek **bekleme durumlu (wait state)** yavaş bir veriyolunda olur (ör. 2 bekleme durumu). Böylece hit = 1 döngü, miss = 3 döngü; sayaçla hit oranı ölçülüp videoda gösterilir.
 
 **Ana bellek**: 128 KB RAM (4 × 62256) + 32 KB EEPROM (28C256); CPU 64 KB görür, 16 KB'lık 4 pencere **bank register'larıyla** fiziksel 1 MB alana eşlenir (basit MMU). Alanın geri kalanı boştur (`0xFF` okunur).
 
@@ -108,7 +108,7 @@ ABI: argümanlar r0–r3, dönüş r0 (32 bit: r0:r1), r4–r5 callee-saved, r6 
 
 ## 2d. Eğitim ve deney seti (AFU, 09:36)
 
-✅ Proje aynı zamanda kapsamlı bir **tutorial + deney seti**. Her deney = bir video + simülatörde bir sahne + gerçek kartta bir modül:
+✅ Proje aynı zamanda bir **tutorial + deney seti**. Her deney = bir video + simülatörde bir sahne + gerçek kartta bir modül:
 
 | # | Deney | Çıktı |
 |---|---|---|
