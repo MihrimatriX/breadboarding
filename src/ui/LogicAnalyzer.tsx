@@ -5,19 +5,21 @@ import { disassemble } from "../sim/asm6502";
 import { flags, h2, h4 } from "./format";
 import { Tabs, type TabDef } from "./Shell";
 import { useAyar } from "./ayarlar";
+import { useT } from "./ceviri";
 
 type AnalyzerTab = "wave" | "trace";
 const TABS: TabDef<AnalyzerTab>[] = [
-  { id: "wave", label: "Dalga formu" },
-  { id: "trace", label: "İz tablosu" },
+  { id: "wave", label: { tr: "Dalga formu", en: "Waveform" } },
+  { id: "trace", label: { tr: "İz tablosu", en: "Trace table" } },
 ];
 
 /** visual6502 expert'teki iz tablosu + seçilen sinyallerin dalga formu */
 export function LogicAnalyzer() {
   const [tab, setTab] = useState<AnalyzerTab>("wave");
+  const t = useT();
   return (
     <div className="analyzer">
-      <Tabs tabs={TABS} value={tab} onChange={setTab} label="Mantık analizörü" actions={<Watched />} />
+      <Tabs tabs={TABS} value={tab} onChange={setTab} label={t("Mantık analizörü", "Logic analyzer")} actions={<Watched />} />
       <div className="analyzer-body" role="tabpanel">{tab === "wave" ? <Waveforms /> : <TraceTable />}</div>
     </div>
   );
@@ -27,14 +29,15 @@ export function LogicAnalyzer() {
 function Watched() {
   const watch = useApp((s) => s.watch);
   const index = useApp((s) => s.index);
-  if (watch.length === 0) return <span className="hint-text">Ölçtüğün sinyali "Analizöre ekle" ile buraya al.</span>;
+  const t = useT();
+  if (watch.length === 0) return <span className="hint-text">{t('Ölçtüğün sinyali "Analizöre ekle" ile buraya al.', 'Probe a signal and press "Add to analyzer" to bring it here.')}</span>;
   return (
-    <div className="row chips" role="group" aria-label="İzlenen sinyaller">
-      <span className="hint-text">İzlenen</span>
+    <div className="row chips" role="group" aria-label={t("İzlenen sinyaller", "Watched signals")}>
+      <span className="hint-text">{t("İzlenen", "Watching")}</span>
       {watch.map((w) => {
         const ad = index?.namesByNode.get(w.node)?.[0] ?? `#${w.node}`;
         return (
-          <button key={w.node} className="chip" onClick={() => { useApp.getState().toggleWatch(w.node); sim.syncWatch(); }} title="Analizörden çıkar" aria-label={`${ad}: analizörden çıkar`}>
+          <button key={w.node} className="chip" onClick={() => { useApp.getState().toggleWatch(w.node); sim.syncWatch(); }} title={t("Analizörden çıkar", "Remove from analyzer")} aria-label={t(`${ad}: analizörden çıkar`, `${ad}: remove from analyzer`)}>
             {ad} <span aria-hidden="true">×</span>
           </button>
         );
@@ -46,6 +49,7 @@ function Watched() {
 function TraceTable() {
   const rows = useApp((s) => s.rows);
   const snap = useApp((s) => s.snapshot);
+  const t = useT();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = ref.current;
@@ -56,7 +60,7 @@ function TraceTable() {
     <div className="trace" ref={ref}>
       <table>
         <thead>
-          <tr><th>½ çevrim</th><th>Adres</th><th>Veri</th><th>R/W</th><th>Sync</th><th>PC</th><th>A</th><th>X</th><th>Y</th><th>SP</th><th>P</th><th>Komut</th></tr>
+          <tr><th>{t("½ çevrim", "½ cycle")}</th><th>{t("Adres", "Address")}</th><th>{t("Veri", "Data")}</th><th>R/W</th><th>Sync</th><th>PC</th><th>A</th><th>X</th><th>Y</th><th>SP</th><th>P</th><th>{t("Komut", "Instruction")}</th></tr>
         </thead>
         <tbody>
           {rows.slice(-120).map((r) => (
@@ -68,7 +72,7 @@ function TraceTable() {
           ))}
         </tbody>
       </table>
-      {rows.length === 0 && <p className="muted pad">Çalıştır ya da adım at; her yarım çevrim burada bir satır olur.</p>}
+      {rows.length === 0 && <p className="muted pad">{t("Çalıştır ya da adım at; her yarım çevrim burada bir satır olur.", "Run or step; each half cycle adds a row here.")}</p>}
     </div>
   );
 }
@@ -81,6 +85,7 @@ function Waveforms() {
   const index = useApp((s) => s.index);
   const tema = useAyar((s) => s.tema);
   const boyut = useAyar((s) => s.boyut);
+  const t = useT();
   const canvas = useRef<HTMLCanvasElement>(null);
   // panel genişliği değişince (yan panel açılıp kapanınca) yeniden çiz
   const [width, setWidth] = useState(0);
@@ -146,9 +151,9 @@ function Waveforms() {
     if (watch.length === 0) {
       g.font = `400 ${font}px ${css.getPropertyValue("--sans")}`;
       g.fillStyle = css.getPropertyValue("--text-muted");
-      g.fillText("İzlenen sinyal yok: die üzerinde bir düğüm seç, \"Analizöre ekle\"ye bas.", 4, 20 * k);
+      g.fillText(t('İzlenen sinyal yok: die üzerinde bir düğüm seç, "Analizöre ekle"ye bas.', 'No signals watched: select a node on the die and press "Add to analyzer".'), 4, 20 * k);
     }
-  }, [watch, index, width, tema, boyut, k, lane]);
+  }, [watch, index, width, tema, boyut, k, lane, t]);
 
   return (
     <div className="wave">

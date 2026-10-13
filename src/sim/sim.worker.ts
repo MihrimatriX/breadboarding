@@ -91,7 +91,8 @@ self.onmessage = async (ev: MessageEvent<ToWorker>) => {
     switch (msg.type) {
       case "load": {
         const res = await fetch(msg.chipUrl);
-        if (!res.ok) throw new Error(`Çip verisi yüklenemedi (HTTP ${res.status})`);
+        // dile bağlı değil (worker arayüz dilini bilmez); başlığı "Die verisi yüklenemedi" App.tsx'te
+        if (!res.ok) throw new Error(`HTTP ${res.status} · ${msg.chipUrl}`);
         const chip = (await res.json()) as ChipData;
         machine = new Mos6502Machine(chip);
         machine.loadProgram(msg.program);

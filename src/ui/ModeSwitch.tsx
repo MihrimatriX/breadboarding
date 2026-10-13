@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { onYukle } from "../bolumler";
+import { sec, useDil, useT, type IkiDil } from "./ceviri";
 
 export type Mode = "6502" | "cpu16" | "kart" | "hesap" | "mimari" | "belgeler";
 
@@ -12,15 +13,15 @@ export function modeFromHash(): Mode {
   return "6502";
 }
 
-/** Bir bölümün adı, üst çubuktaki ipucu ve Başlangıç panelindeki tanıtımı */
+/** Bir bölümün adı, üst çubuktaki ipucu ve Başlangıç panelindeki tanıtımı (iki dilde) */
 export interface Bolum {
   mode: Mode;
   hash: string;
-  ad: string;
+  ad: IkiDil;
   /** üst çubuk ipucu: tek satır */
-  ipucu: string;
-  /** Başlangıç panelinde: ne olduğu, nasıl kullanılır */
-  tanitim: string;
+  ipucu: IkiDil;
+  /** Başlangıç panelinde: ne olduğu (ilk adımlar Baslangic.tsx'te) */
+  tanitim: IkiDil;
   simge: ReactNode;
 }
 
@@ -34,10 +35,12 @@ export const BOLUMLER: Bolum[] = [
   {
     mode: "6502",
     hash: "#6502",
-    ad: "6502 die",
-    ipucu: "MOS 6502'nin kalıbı: 3.510 transistör, 3D ve canlı",
-    tanitim:
-      "Gerçek MOS 6502 işlemcisinin kalıbı, transistör seviyesinde çalışıyor. Die üzerinde bir tele tıklayıp sinyali ölç, mantık analizörüne ekle; Program sekmesinden kendi 6502 kodunu yükle.",
+    ad: { tr: "6502 die", en: "6502 die" },
+    ipucu: { tr: "MOS 6502'nin kalıbı: 3.510 transistör, 3D ve canlı", en: "The MOS 6502 die: 3,510 transistors, live in 3D" },
+    tanitim: {
+      tr: "Gerçek MOS 6502 işlemcisinin kalıbı, transistör seviyesinde çalışıyor. Veri visual6502'den: 3.510 transistör, katman katman 3D'de.",
+      en: "The die of a real MOS 6502 processor, simulated at the transistor level. The data comes from visual6502: 3,510 transistors, shown layer by layer in 3D.",
+    },
     simge: svg(
       <>
         <rect x="3.5" y="3.5" width="13" height="13" rx="1.5" />
@@ -48,10 +51,12 @@ export const BOLUMLER: Bolum[] = [
   {
     mode: "cpu16",
     hash: "#cpu16",
-    ad: "CPU16 tezgâhı",
-    ipucu: "Kendi 16 bit işlemcimiz: assembly / C yaz, derle, çalıştır",
-    tanitim:
-      "Kendi 16 bit işlemcimiz için assembly ya da C yaz, derle ve BIOS'lu makinede çalıştır. VGA ekranı, PS/2 klavye ve UART terminali tezgâhta; Web Serial ile gerçek karta da gönderebilirsin.",
+    ad: { tr: "CPU16 tezgâhı", en: "CPU16 workbench" },
+    ipucu: { tr: "Kendi 16 bit işlemcimiz: assembly / C yaz, derle, çalıştır", en: "Our own 16-bit processor: write assembly or C, compile, run" },
+    tanitim: {
+      tr: "Kendi 16 bit işlemcimiz CPU16'nın emülatörü, BIOS'lu bilgisayarıyla birlikte. VGA ekranı, PS/2 klavye ve UART terminali tezgâhta; Web Serial ile programı gerçek karta da gönderebilirsin.",
+      en: "An emulator of CPU16, our own 16-bit processor, together with its BIOS-based computer. The VGA screen, PS/2 keyboard and UART terminal sit on the workbench, and Web Serial can send your program to a real board.",
+    },
     simge: svg(
       <>
         <rect x="2.5" y="3.5" width="15" height="11" rx="1.5" />
@@ -62,10 +67,12 @@ export const BOLUMLER: Bolum[] = [
   {
     mode: "kart",
     hash: "#kart",
-    ad: "CPU16 kartı 3D",
-    ipucu: "Aynı bilgisayar kartlarıyla 3D'de, kapı seviyesinde",
-    tanitim:
-      "Aynı bilgisayarın bütün kartları ve entegreleri 3D'de, kapı seviyesinde. Bir çipe tıkla: telleri, bağlantıları ve içindeki kapılar açılır. Kurulum sekmesi kartı tel tel kurdurur.",
+    ad: { tr: "CPU16 kartı 3D", en: "CPU16 board 3D" },
+    ipucu: { tr: "Aynı bilgisayar kartlarıyla 3D'de, kapı seviyesinde", en: "The same computer and its boards in 3D, at the gate level" },
+    tanitim: {
+      tr: "Aynı bilgisayar, bütün kartları ve entegreleriyle 3D'de, kapı seviyesinde çalışıyor. Kartları PCB ya da breadboard olarak görebilirsin; Kurulum sekmesi kartı tel tel kurdurur.",
+      en: "The same computer in 3D with all its boards and chips, simulated at the gate level. You can view the boards as PCBs or as breadboards, and the Build tab takes you through the build wire by wire.",
+    },
     simge: svg(
       <>
         <rect x="2.5" y="4.5" width="15" height="11" rx="1.5" />
@@ -78,10 +85,12 @@ export const BOLUMLER: Bolum[] = [
   {
     mode: "hesap",
     hash: "#hesap",
-    ad: "8 bit hesap 3D",
-    ipucu: "DIP anahtarlı, 7 segment göstergeli hesap makinesi kartı",
-    tanitim:
-      "İki 8 bitlik sayıyı DIP anahtarlarla gir; toplama, çıkarma, çarpma ve bölme tamamen kapılarla yapılır, sonuç 7 segment göstergelerde. Anahtarlara 3D'de ya da Hesap sekmesinden tıkla.",
+    ad: { tr: "8 bit hesap 3D", en: "8-bit calculator 3D" },
+    ipucu: { tr: "DIP anahtarlı, 7 segment göstergeli hesap makinesi kartı", en: "Calculator board with DIP switches and 7-segment displays" },
+    tanitim: {
+      tr: "74HC entegrelerinden kurulan 8 bit dört işlem hesap makinesi. İki sayıyı DIP anahtarlarla girersin; toplama, çıkarma, çarpma ve bölme tamamen kapılarla yapılır, sonuç 7 segment göstergelerde.",
+      en: "An 8-bit, four-function calculator built from 74HC chips. You enter two numbers on DIP switches; addition, subtraction, multiplication and division are done entirely in gates, and the result shows on 7-segment displays.",
+    },
     simge: svg(
       <>
         <rect x="4" y="2.5" width="12" height="15" rx="1.5" />
@@ -93,10 +102,12 @@ export const BOLUMLER: Bolum[] = [
   {
     mode: "mimari",
     hash: "#mimari",
-    ad: "Mimari",
-    ipucu: "Blok diyagramları: kartlar, yollar ve görevleri",
-    tanitim:
-      "Bilgisayarın ve hesap makinesinin blok diyagramları: her kutu bir işlev bloğu (görevi ve entegreleri), çizgiler veri, adres ve kontrol yolları. Bir kutuya tıkla: parçaları ve yolları açılır, 3D'de yerine git.",
+    ad: { tr: "Mimari", en: "Architecture" },
+    ipucu: { tr: "Blok diyagramları: kartlar, yollar ve görevleri", en: "Block diagrams: boards, buses and what they do" },
+    tanitim: {
+      tr: "Bilgisayarın ve hesap makinesinin blok diyagramları. Her kutu bir işlev bloğu (görevi ve entegreleri), çizgiler veri, adres ve kontrol yolları.",
+      en: "Block diagrams of the computer and the calculator. Each box is a functional block (its job and its chips), and the lines are the data, address and control buses.",
+    },
     simge: svg(
       <>
         <rect x="2.5" y="3" width="6" height="5" rx="1" />
@@ -109,10 +120,12 @@ export const BOLUMLER: Bolum[] = [
   {
     mode: "belgeler",
     hash: "#belgeler",
-    ad: "Belgeler",
-    ipucu: "CPU16 ve hesap8 belgeleri: spec, komut seti, kartlar, deneyler",
-    tanitim:
-      "Depodaki bütün belgeler uygulamanın içinde: okuma yolu, CPU16'nın spec'i ve komut seti, kartlar, BIOS ve C derleyicisi, deney rehberleri, hesap makinesi. Soldan bir belge seç ya da başlık ve metinlerde ara.",
+    ad: { tr: "Belgeler", en: "Docs" },
+    ipucu: { tr: "CPU16 ve hesap8 belgeleri: spec, komut seti, kartlar, deneyler", en: "CPU16 and hesap8 docs: spec, instruction set, boards, experiments" },
+    tanitim: {
+      tr: "Depodaki bütün belgeler uygulamanın içinde: okuma yolu, CPU16'nın spec'i ve komut seti, kartlar, BIOS ve C derleyicisi, deney rehberleri, hesap makinesi.",
+      en: "Every document in the repository, inside the app: the reading path, the CPU16 spec and instruction set, the boards, the BIOS and C compiler, the experiment guides and the calculator.",
+    },
     simge: svg(
       <>
         <path d="M10 5.5c-1.6-1.2-3.8-1.7-6.5-1.5v11c2.7-.2 4.9.3 6.5 1.5 1.6-1.2 3.8-1.7 6.5-1.5V4c-2.7-.2-4.9.3-6.5 1.5z" />
@@ -126,19 +139,21 @@ export const bolum = (mode: Mode): Bolum => BOLUMLER.find((b) => b.mode === mode
 
 /** Uygulamanın bölümleri arasında geçiş: 6502 die görünümü, CPU16 tezgâhı, CPU16 kartı (3D), 8 bit hesap makinesi (3D), mimari diyagramları ve belgeler. */
 export function ModeSwitch({ mode }: { mode: Mode }) {
+  const dil = useDil();
+  const t = useT();
   return (
-    <nav className="modes" aria-label="Bölüm">
+    <nav className="modes" aria-label={t("Bölüm", "Section")}>
       {BOLUMLER.map((b) => (
         <a
           key={b.mode}
           href={b.hash}
           aria-current={mode === b.mode ? "page" : undefined}
-          data-tip={b.ipucu}
+          data-tip={sec(b.ipucu, dil)}
           onPointerEnter={() => onYukle(b.mode)}
           onFocus={() => onYukle(b.mode)}
         >
           {b.simge}
-          <span className="modes-ad">{b.ad}</span>
+          <span className="modes-ad">{sec(b.ad, dil)}</span>
         </a>
       ))}
     </nav>
