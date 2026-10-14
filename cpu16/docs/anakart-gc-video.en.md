@@ -54,8 +54,8 @@ edge of TCLK is visible to a read in cycle k ≥ E (data taken at k + 1) and on 
   exactly at edge k + 347 (Machine: `txBusyUntil = C + 347`). Writing while busy restarts the frame.
 - UART RX: the line is synchronized with two flip-flops. When the start bit is seen the divider counts
   from 19, then a sample is taken every 35 cycles (start, 8 data, stop). The sample points deviate from the
-  ideal bit centers by −1.4 … +2.2 cycles; in the test a ±2% baud error is received without trouble. If the
-  start bit falls in cycle t, the byte moves to UART_DATA at the stop bit sample (edge t + 334) and
+  ideal bit centers by −1.4 … +2.2 cycles; in the test, bytes with a ±2% baud error are received correctly.
+  If the start bit falls in cycle t, the byte moves to UART_DATA at the stop bit sample (edge t + 334) and
   `RX_READY` is set. `RX_READY` = RTS# → the CH340's CTS#: the bridge does not send the next byte until this
   one is read (no overflow). In Machine a byte becomes ready only ≥ 347 cycles after the read; on this
   board CTS# falls in the cycle after the read and the frame lasts 334 cycles, so the board can reach every
@@ -74,7 +74,7 @@ edge of TCLK is visible to a read in cycle k ≥ E (data taken at k + 1) and on 
   while EN = 0, u ← ¬RELOAD is loaded on every edge (the counter is always ready with RELOAD, so writing
   EN 0 → 1 needs no extra load). On a tick edge with EN set the counter decrements by one; when c = 1
   (u = 0xFFFE, two 74HC688s) RELOAD is loaded on the same edge instead, and EXPIRED is set (Machine:
-  1 → 0 → RELOAD; the load takes priority over counting through the 74HC161's ~PE). The counter cannot be
+  1 → 0 → RELOAD; through the 74HC161's ~PE the load takes priority over counting). The counter cannot be
   read from outside, so a RELOAD write in the same cycle affects the next period, as in Machine. EXPIRED:
   writing bit0 = 1 to TIMER_STAT clears it for the duration of the strobe.
 - Interrupt: IRQ_PEND = {EXPIRED ∧ IRQ_EN, keyboard READY, RX_READY, VSYNC_REQ}; each is ANDed with
@@ -109,8 +109,8 @@ edge of TCLK is visible to a read in cycle k ≥ E (data taken at k + 1) and on 
 - Two clock domains: only the phase counter (74AC161), the H2 / LD7 register (74AC74) and the pixel shifter
   (74HC166) run on the pixel clock (VID_OSC, 39.7 ns). The phase counter counts 9..15, 0 (9..15 = p0..p6,
   0 = p7); at 0, Q3 = 0, so it loads 9 again through its own ~PE and needs no decoding gate. Q3 (~LD7) is
-  low at p7: it is the shifter's load enable and the clock of the output registers, which rises on the
-  p7 → p0 edge. H2 = Q2 delayed by one pixel (p4..p7), LD7 = TC delayed by one pixel (p7). Everything else
+  low at p7: it is the shifter's load enable and the clock of the output registers (it rises on the
+  p7 → p0 edge). H2 = Q2 delayed by one pixel (p4..p7), LD7 = TC delayed by one pixel (p7). Everything else
   runs on the **character clock** (H2 = pixel / 8, 318 ns): the character counter (bits 9..3 of hc), the
   vertical counter, MA, row start and the CPU requests on the rising edge of H2 (p4); VBQ and the request
   synchronizers on its falling edge (p0).
