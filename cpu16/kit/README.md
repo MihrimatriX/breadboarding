@@ -18,13 +18,13 @@ PCB montajı, wire-wrap).
 
 ## İki yol: PCB ya da breadboard panoları
 
-Deneyler bitince bilgisayarın kartları iki yoldan kalıcı hale gelir:
+Deneyler bitince bilgisayarın kartları iki yoldan kalıcı hâle gelir:
 
-- **PCB**: kartlar KiCad şemalarından üretilir, çipler soketlere; kurulum belgelerindeki tel listesi
-  bip testi listesidir ([docs/kurulum.md](../docs/kurulum.md)).
+- **PCB**: kartlar KiCad şemalarından üretilir, çipler soketlere takılır; kurulum belgelerindeki tel
+  listesi bip testi listesidir ([docs/kurulum.md](../docs/kurulum.md)).
 - **Breadboard panoları**: her kart kendi panosunda (bir taban plakasında bir grup BB830; saat kartı
   5, CPU 55, bellek ve önbellek 12'şer, G/Ç 18, video 21, kendin yap bellek 6 board), kartlar arası
-  bütün bağlantılar 64 damarlı bir şerit kablodan (arka panel). Her panonun belgesi delikten deliğe
+  bütün bağlantılar 64 damarlı bir şerit kablodan geçer (arka panel). Her panonun belgesi delikten deliğe
   yazılmıştır: board board yerleşim çizimleri, aşama aşama numaralı tel listesi (her aşama bir
   deneyin bloğu, sonunda testi), kesim listesi, malzeme
   (`npm run cpu16 -- breadboard-belge hepsi`, [docs/breadboard.md](../docs/breadboard.md)).
@@ -74,7 +74,7 @@ kartıdır: bilgisayarın çalışması için gerekmez, 13 deneyin bilgisayarın
 | Yardımcı modül: 16 bit anahtar girişi | 2 × 8'li DIP anahtar + 16 × 2,2 kΩ: veriyolunu "zayıf" sürer, çıkışlar ezer |
 
 LED'leri veriyoluna doğrudan bağlama: hattı yükler, seviye 1 sayılmayabilir. Gösterge modülünün
-74HC541'i hattı yüklemeden LED'i sürer. Anahtar girişi 2,2 kΩ ile sürdüğü için bir register veriyolunu
+74HC541'i hattı yüklemeden LED'i sürer. Anahtar girişi 2,2 kΩ ile sürdüğü için, bir register veriyolunu
 sürdüğünde onu ezmez (veriyolundaki 10 kΩ çekme direnciyle birlikte 1 seviyesi ≈ 4 V). CPU kartının
 kendi veriyolu çubuk göstergeleri (DS1, DS2, 1 kΩ'luk segmentler) takılıyken anahtar girişi hattı
 1'e çıkaramaz (≈ 2,7 V): anahtarla sürerken RN3 ve RN4'ü yuvasından çıkar ([LED ve direnç](led-ve-direnc.md#cpu-kartının-hata-ayıklama-ledleri)).
@@ -102,5 +102,5 @@ kendi veriyolu çubuk göstergeleri (DS1, DS2, 1 kΩ'luk segmentler) takılıyke
 | Davranış dokunmayla değişiyor | boşta kalmış giriş; tablodaki GND/VCC satırlarını kontrol et ([çekme dirençleri](led-ve-direnc.md#çekme-dirençleri-pull-up-pull-down)) |
 | LED yanmıyor, sönük ya da çip ısınıyor | LED'in kutbu, seri direncin değeri ([LED ve seri direnç](led-ve-direnc.md#seri-direnç-ledi-her-zaman-bir-dirençle-sür)) |
 | Saat hızlanınca bozuluyor | dekuplaj eksik, uzun saat kabloları; ADIM kipinde doğru çalışıyorsa zamanlama sorunu |
-| EEPROM'dan yanlış veri | çip doğru soketde mi (etiket), programlayıcıda SUM doğrulaması |
+| EEPROM'dan yanlış veri | çip doğru sokette mi (etiket), programlayıcıda SUM doğrulaması |
 | Simülatörle farklı | aynı programı simülatörde ADIM kipinde yürüt, ilk farklı netin sürücüsünü bul |

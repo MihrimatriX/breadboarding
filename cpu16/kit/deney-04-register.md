@@ -6,10 +6,10 @@
 
 ## Ne öğreneceksin
 
-- Ortak bir veriyolunu birçok kaynağın paylaşması: üç durumlu (tri-state) çıkışlar ve "aynı anda tek sürücü" kuralı.
-- 74HC574 ile register: saatin yükselen kenarında veriyolunu yakalar; 74HC541 tampon onu `~OE` ile veriyoluna geri verir.
-- 74HC138 kod çözücüyle 8 register'dan birini seçmek; komut kelimesinin alanlarından (rd, rs1, rs2) register numarası üretmek.
-- Kapılı saat: yalnızca seçili register'ın saati çalışır (74HC02 NOR).
+- Ortak bir veriyolunu birçok kaynağın paylaşmasını: üç durumlu (tri-state) çıkışlar ve "aynı anda tek sürücü" kuralı.
+- 74HC574 ile register kurmayı: saatin yükselen kenarında veriyolunu yakalar; 74HC541 tampon onu `~OE` ile veriyoluna geri verir.
+- 74HC138 kod çözücüyle 8 register'dan birini seçmeyi; komut kelimesinin alanlarından (rd, rs1, rs2) register numarası üretmeyi.
+- Kapılı saati: yalnızca seçili register'ın saati çalışır (74HC02 NOR).
 
 ## Nasıl çalışır
 
@@ -32,7 +32,7 @@ Veriyolunu register'ın kendisi değil, bu tamponlar sürer.
 
 1. Yardımcı modüller: 16 bit anahtar girişi `BUS0..15`'e (2,2 kΩ ile), 16 LED gösterge `BUS0..15`'e.
    Kartın kendi veriyolu çubuk göstergeleri (DS1, DS2) de veriyolunu gösterir, ama anahtar girişi
-   bağlıyken önlerindeki dizileri (RN3, RN4) yuvasına takma: 2,2 kΩ'luk zayıf sürücü ile 1 kΩ'luk
+   bağlıyken önlerindeki dizileri (RN3, RN4) yuvalarına takma: 2,2 kΩ'luk zayıf sürücü ile 1 kΩ'luk
    segmentler arasında hat ≈ 2,7 V'ta kalır, 74HC girişi onu 1 saymayabilir.
 2. U14–U16 (74HC151), U17–U18 (74HC138), U133–U134 (74HC02; kapı numaraları aşağıda), RN1–RN2.
    Register LED'leri (D3–D18, her biri 1 kΩ ile): `~ROE` ve `~WSEL` aktif düşüktür, LED'in uzun
@@ -43,8 +43,8 @@ Veriyolunu register'ın kendisi değil, bu tamponlar sürer.
    Register içeriği çubuk göstergeleri (DS11–DS26, önlerinde RN13–RN28): 574'lerin çıkışlarına bağlı
    olduğu için veriyolunu yüklemez, anahtar girişi bağlıyken de takılı kalabilir.
 4. Elle sürülecek girişler (tablonun sonunda): `CW3..CW5` ve `CW16`, `IR3..IR11` anahtarlara; `~SRC_REG`
-   bir anahtara (10 kΩ ile 1'e çekili); `~CLKR` için Deney 1'in saat kartı ADIM kipinde, CLK'yi bir
-   74HC04 ile ters çevirip `~CLKR`'ye ver (geçici saat sürücüsü; Deney 7'de kontrol bloğu üretir).
+   bir anahtara (10 kΩ ile 1'e çekili); `~CLKR` için Deney 1'in saat kartını ADIM kipinde kullan, CLK'yi
+   bir 74HC04 ile ters çevirip `~CLKR`'ye ver (geçici saat sürücüsü; Deney 7'de kontrol bloğu üretir).
 
 ## Test: beklenen sonuç
 

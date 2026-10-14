@@ -22,19 +22,19 @@ chip, and the edge connector; alongside it come a PDF of the KiCad schematic and
 
 Once the experiments are done, the computer's boards become permanent in one of two ways:
 
-- PCB: the boards are made from the KiCad schematics and the chips go into sockets; the wire list in
+- **PCB**: the boards are made from the KiCad schematics and the chips go into sockets; the wire list in
   the build guides is a beep test list ([docs/kurulum.md](../docs/kurulum.en.md)).
-- Breadboards: each board sits on its own breadboard panel (a group of BB830s on a base plate: 5 for
-  the clock board, 55 for the CPU, 12 each for memory and cache, 18 for I/O, 21 for video, 6 for build
-  your own memory), and all the connections between boards run on a 64-conductor ribbon cable (the
-  backplane). Each assembly's document is written hole to hole: layout drawings for each breadboard, a
+- **Breadboard panels**: each board sits on its own breadboard panel (a group of BB830s on a base plate:
+  5 for the clock board, 55 for the CPU, 12 each for memory and cache, 18 for I/O, 21 for video, 6 for
+  build your own memory), and all the connections between boards run on a 64-conductor ribbon cable
+  (the backplane). Each panel's document is written hole to hole: layout drawings for each breadboard, a
   numbered wire list stage by stage (each stage is one experiment's block, with its test at the end),
-  a cut list, parts (`npm run cpu16 -- breadboard-belge hepsi`, [docs/breadboard.md](../docs/breadboard.en.md)).
+  a cut list and the parts (`npm run cpu16 -- breadboard-belge hepsi`, [docs/breadboard.md](../docs/breadboard.en.md)).
   The same wires in the app: Silikon3D → CPU16 board 3D → View: Breadboard → Build.
 
 The "Malzeme ve bağlantılar" tables in the experiments are the same for both routes (which pin goes to
-which net); for the breadboard panels, which hole each of these connections goes into is in that
-assembly's document.
+which net); on the breadboard panels, the panel's document gives the holes each of these connections
+runs between.
 
 ## Experiments
 
@@ -64,7 +64,7 @@ The order follows the hardware dependencies: the clock and the programmer come b
 (the programs and the character ROM are written to the 28C256), the CPU is built block by block, and
 then the motherboard boards are added. The CPU board has no ROM: the microcode and the ALU decoding are
 built from 74HC gates (Experiments 5 and 7). Experiment 14 is a teaching board: the computer doesn't
-need it to run, and it plugs into the computer from the first 13 experiments afterwards.
+need it to run, and it plugs in afterwards to the computer built in the first 13 experiments.
 
 ## Tools you need
 
@@ -98,8 +98,8 @@ sockets while you drive with the switches ([LEDs and resistors](led-ve-direnc.en
   simulator and compare the levels.
 - Boards connect to each other through the backplane signals (see the backplane section of
   `cpu16/docs/kartlar.md`). On the breadboard panels this is the 64-conductor ribbon cable that runs
-  along the aisle: on each assembly a ribbon cable adapter takes the place of the board's edge
-  connector, and the cable has an IDC socket for each assembly
+  along the aisle: on each panel a ribbon cable adapter takes the place of the board's edge
+  connector, and the cable has an IDC socket for each panel
   ([docs/breadboard.md](../docs/breadboard.en.md#backplane-ribbon-cable)). In the experiments, while a
   board doesn't exist yet, the signals that will come from it are driven by hand ("▶ elle sür" in the tables).
 

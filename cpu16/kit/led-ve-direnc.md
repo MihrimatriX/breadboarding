@@ -94,11 +94,11 @@ Kural bu sırayla uygulanır; görevi hiçbirine uymayan LED kırmızıdır. Kı
 ![Sinyal, direnç, LED ve GND: düğüm gerilimleri ve akım](gorseller/seri-direnc.svg)
 
 LED'in ileri gerilimi (Vf) aşılınca akımı neredeyse yalnız devredeki direnç belirler. Direnç
-olmazsa 74HC çıkışı ile LED, çıkış transistörünün kaldırabileceğinden çok akım çeker: çıkış
+olmazsa LED 74HC çıkışından, çıkış transistörünün kaldırabileceğinden çok akım çeker: çıkış
 gerilimi çöker, çip ısınır, LED ölebilir. Hesap dört adımdır:
 
 1. Dirençteki gerilim: V_R = 5 V − Vf.
-2. İstenen akım için direnç: R = V_R / I. 3 mm LED'e 5–10 mA yeterince parlaktır (en çok 20 mA).
+2. İstenen akım için direnç: R = V_R / I. 3 mm LED 5–10 mA'de yeterince parlaktır (en çok 20 mA).
 3. Bir üst standart değeri seç (E12: … 220, 270, **330**, 390, 470 …).
 4. Dirençteki güç: P = I² · R. ¼ W'lık direnç için birkaç mW hiçtir.
 
@@ -112,10 +112,10 @@ P   = (5,8 mA)² · 330 Ω ≈ 11 mW
 
 Aynı 330 Ω kırmızı LED'de (D2, Vf ≈ 1,9 V) ≈ 9,4 mA verir. Mavi biraz daha az akım alır ama mavi
 LED'ler zaten parlaktır; parlaklıkları göz kararı eşittir. 74HC çıkışı bu akımda 0,2–0,4 V düşer,
-gerçek akım hesaptakinden biraz azdır. Bir 74HC çıkışından en çok ± 25 mA çekilir.
+bu yüzden gerçek akım hesaptakinden biraz azdır. Bir 74HC çıkışından en çok ± 25 mA çekilir.
 
 **LED'i yukarı çekilen bir hatta doğrudan bağlama:** 10 kΩ çekme direnciyle 1 tutulan hat (ör.
-bellek veri yolu `MD0`–`MD7`, `DE`, `DO`) LED'in akımını veremez, gerilimi 2–3 V'a düşer ve
+bellek veriyolu `MD0`–`MD7`, `DE`, `DO`) LED'in akımını veremez, gerilimi 2–3 V'a düşer ve
 girişler onu 1 saymayabilir. Böyle bir hattı izlemek için gösterge modülünü (74HC541 + LED +
 direnç, bkz. [README](README.md)) kullan. CPU kartının iç veriyolu (`BUS0`–`BUS15`) ise aşağı
 çekilidir: sürülmezken zaten 0'dır, onu bir 74HC541 ya da 74HC245 sürünce 1 kΩ'luk segment ≈ 3 mA
@@ -164,7 +164,7 @@ yüzden sekiz register'ın değeri her an görünür ve anahtar girişiyle süre
 ![Yüzen giriş, yukarı ve aşağı çekme, direnç dizisi](gorseller/cekme-direnci.svg)
 
 Bir CMOS girişi hiçbir yere bağlı değilse (**yüzen giriş**) seviyesi belirsizdir: parmağın, komşu
-tel, parazit onu 0 ile 1 arasında gezdirir. Giriş katının iki transistörü birden yarı iletimde
+tel ya da parazit onu 0 ile 1 arasında gezdirir. Giriş katının iki transistörü birden yarı iletimde
 kalır, çip akım çeker ve ısınır (Deney 2'nin 5. adımında bunu kendin görürsün).
 
 Çekme direnci girişe bir **varsayılan seviye** verir:
@@ -182,7 +182,7 @@ Bu bilgisayarda:
 | R202 | `STEP_RC` | yukarı | ADIM butonu (SW202) bırakılınca 1; basınca GND |
 | R601 | `UART_RXD` | yukarı | USB-UART modülü takılı değilken alıcı rastgele bayt almasın |
 | R602, R603 | `PS2_CLK`, `PS2_DAT` | yukarı | PS/2 hatları açık kollektördür: iki taraf da yalnız 0'a çeker |
-| RN401–RN403 | bellek veri yolu, `DE`, `DO` | yukarı | boş adres bölgesi 0xFF okunur |
+| RN401–RN403 | bellek veriyolu, `DE`, `DO` | yukarı | boş adres bölgesi 0xFF okunur |
 | RN1, RN2 | CPU iç veriyolu | aşağı | hiçbir register sürmezken veriyolu 0 |
 
 **Neden 10 kΩ?** Daha küçüğü (1 kΩ) hat 0'a sürülünce 5 mA boşa akıtır ve sürücüyü zorlar. Daha
@@ -236,7 +236,7 @@ onun karşısındaki köşe (7, 8, 10). 28 bacaklı bellekler (62256, 28C256) de
 | 102 | 10 × 10² pF | 1 nF | — |
 | 220 | 22 × 10⁰ pF | 22 pF | — |
 
-Seramiklerin yönü yoktur. Trimpotun üstündeki kod da aynı kuraldır ama birimi ohm'dur:
+Seramiklerin yönü yoktur. Trimpotun üstündeki kod da aynı kurala uyar ama birimi ohm'dur:
 RV201'deki 104 = 100 kΩ.
 
 **Elektrolitik:** değer ve gerilim açıkça yazar ("100µF 16V"). **Kutupludur:** gövdedeki açık renk
@@ -254,7 +254,7 @@ yavaş osilatörün frekansını belirler: f ≈ 1 / (R · C) ≈ 10 Hz … 1 kH
 
 ![LED + seri direnç, dekuplaj, çekme direnci ve buton breadboard'da](gorseller/breadboard-yerlesim.svg)
 
-Breadboard'un ortadaki kanalın iki yanında **dikey beşli sütunlar** içeride bağlıdır; kenardaki
+Breadboard'da ortadaki kanalın iki yanında **dikey beşli sütunlar** içeride bağlıdır; kenardaki
 uzun raylar (+ ve −) yatay bağlıdır. Bir elemanın iki bacağı aynı sütuna takılırsa kısa devre olur.
 
 1. **LED + seri direnç:** sinyal teli bir sütuna, direnç o sütundan boş bir sütuna, LED'in uzun
@@ -273,7 +273,7 @@ Silikon3D → "CPU16 kartı 3D":
   karttaki görevi, hesapları (LED akımı, çekme akımı, τ) ve bacaklarının canlı seviyesi açılır.
   İlgili elemanlara (LED'in direnci, dekuplaj kondansatörünün çipi) tıklayıp geçebilirsin.
 - **Üstüne gel:** ipucunda tek satır özet, ör. "mavi LED · CLK · ≈ 5,8 mA · yanıyor".
-- **LED'ler canlıdır:** sürdükleri sinyal 1 olunca (aktif düşüklerde 0 olunca) parlar, halesi ve
+- **LED'ler canlıdır:** izledikleri sinyal 1 olunca (aktif düşüklerde 0 olunca) parlar, halesi ve
   karttaki ışık lekesi görünür. Çubuk göstergelerin segmentleri de canlıdır; göstergeye tıklayınca
   panel değeri ikili, onaltılı ve onlu yazar.
   `kart.yakinlas("D201")` kamerayı CLK LED'ine yaklaştırır; `kart.hiz(2)` ile saati yavaşlatıp
