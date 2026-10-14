@@ -281,9 +281,10 @@ const MASA = -BOARD_KALINLIK - PLAKA_KALINLIK + 0.6;
 const SERIT_DIRSEK = 7;
 
 /**
- * Panolar arası 64 damarlı şerit kablo: masada koridor boyunca uzanır; her sokete koridordan dik açıyla
- * ayrılır, panonun kenarında yükselip soketin kapağının altına girer (kesim boyu cpu16/breadboard/plan.ts
- * seritKablolari ile aynı yoldan). Damarlar canlı; bir damara tıklayınca sinyali seçilir (Serit3D.tsx).
+ * Panolar arası 64 damarlı şerit kablo: masada koridor boyunca uzanır; her sokete koridordan 45° katlanarak
+ * dik açıyla ayrılır, panonun kenarında yükselip soketin kapağının altına girer (kesim boyu
+ * cpu16/breadboard/plan.ts seritKablolari ile aynı yoldan). Damarlar canlı; bir damara tıklayınca sinyali
+ * seçilir, o damar koridor boyunca ve her sokete parlayan bir izle çizilir (Serit3D.tsx).
  */
 function SeritKablo({ sahne }: { sahne: BbSahnesi }) {
   const { w } = useDunya();
@@ -311,16 +312,17 @@ function SeritKablo({ sahne }: { sahne: BbSahnesi }) {
       const kenar = (p ? (dz > 0 ? p.y + p.h : p.y) : k.y) + dz * 9;
       const yk = SOKET_TABAN + IDC_KABLO_Y;
       const yol = yuvarlakYol([k.x, yk, k.y - dz * 2.8, k.x, yk, kenar, k.x, MASA + 0.5, kenar, k.x, MASA + 0.5, s.koridorY], SERIT_DIRSEK);
-      parcalar.push({ yol: dunya(yol), en: [1, 0, 0], g: SERIT_GEN * S });
+      // koridorda 45° katlanır: koldaki k. damar koridordaki k. damarın üstünde biter
+      parcalar.push({ yol: dunya(yol), en: [1, 0, 0], g: SERIT_GEN * S, uc: dz });
       const [x, z] = w(k.x, k.y);
-      soketler.push({ x, y: SOKET_TABAN * S, z, etiket: p ? `${panoAdlari(p, dil).kisa} · ${k.ref}` : k.ref });
+      soketler.push({ x, y: SOKET_TABAN * S, z, kart: p?.kart ?? "", ref: k.ref, etiket: p ? `${panoAdlari(p, dil).kisa} · ${k.ref}` : k.ref });
     }
     return { parcalar, soketler };
   }, [s, w, sahne, dil]);
   return (
     <group>
       <DamarSeritleri parcalar={parcalar} palet="kablo" netler={netler} />
-      <IdcSoketleri soketler={soketler} />
+      <IdcSoketleri soketler={soketler} netler={netler} />
     </group>
   );
 }

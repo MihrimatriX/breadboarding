@@ -12,11 +12,21 @@ export const DAMAR_ADIM = 1.27;
 
 type Vec = readonly [number, number, number];
 
+/** Son parçanın birim yönü */
+function sonYon(yol: readonly number[]): [number, number, number] {
+  const n = yol.length;
+  const t = [yol[n - 3] - yol[n - 6], yol[n - 2] - yol[n - 5], yol[n - 1] - yol[n - 4]];
+  const l = Math.hypot(t[0], t[1], t[2]) || 1;
+  return [t[0] / l, t[1] / l, t[2] / l];
+}
+
 /**
  * Düz şerit: eksen yolu (dünya, [x, y, z, …]) boyunca, genişlik yönü `en` (birim vektör, yola dik), genişlik
  * g. Yüzü ilk noktada yukarı bakar; çift yüzlü malzemeyle çizilir. uv: u enine (−en kenarı 0), v sabit.
+ * uc ≠ 0: son kenar eğik (45° katlama): enine e'deki nokta boyuna uc·e kayar; kablo dik açıyla dönerken
+ * koldaki k. damar koridordaki k. damarın tam üstünde biter.
  */
-export function seritGeometrisi(yol: readonly number[], en: Vec, g: number): BufferGeometry {
+export function seritGeometrisi(yol: readonly number[], en: Vec, g: number, uc = 0): BufferGeometry {
   const n = yol.length / 3;
   const pos = new Float32Array(n * 6);
   const nor = new Float32Array(n * 6);
@@ -37,6 +47,14 @@ export function seritGeometrisi(yol: readonly number[], en: Vec, g: number): Buf
     nor.set([nx, ny, nz, nx, ny, nz], 6 * i);
     uv.set([0, 0.5, 1, 0.5], 4 * i);
   }
+  if (uc && n > 1) {
+    const t = sonYon(yol);
+    const o = 6 * (n - 1);
+    for (let e = 0; e < 3; e++) {
+      pos[o + e] -= t[e] * h * uc;
+      pos[o + 3 + e] += t[e] * h * uc;
+    }
+  }
   const idx: number[] = [];
   for (let i = 0; i + 1 < n; i++) {
     const [a0, a1, b0, b1] = [2 * i, 2 * i + 1, 2 * i + 2, 2 * i + 3];
@@ -55,11 +73,13 @@ export function seritGeometrisi(yol: readonly number[], en: Vec, g: number): Buf
 
 /**
  * Işın (o + t·d, d birim) şeride değiyor mu: en yakın değme noktasının ışın boyunca uzaklığı ve enine yeri
- * u (0 … 1; damar = floor(u · DAMAR)). Şeridin her parçası düz bir dörtgen (yolun iki noktası ± en·g/2).
+ * u (0 … 1; damar = floor(u · DAMAR)). Şeridin her parçası düz bir dörtgen (yolun iki noktası ± en·g/2);
+ * uc ≠ 0 ise sonuncusu eğik kenarlı (seritGeometrisi).
  */
-export function seritIsini(o: Vec, d: Vec, yol: readonly number[], en: Vec, g: number): { t: number; u: number } | null {
+export function seritIsini(o: Vec, d: Vec, yol: readonly number[], en: Vec, g: number, uc = 0): { t: number; u: number } | null {
   let bulunan: { t: number; u: number } | null = null;
   for (let j = 0; j + 5 < yol.length; j += 3) {
+    const son = j + 6 === yol.length;
     const sx = yol[j + 3] - yol[j], sy = yol[j + 4] - yol[j + 1], sz = yol[j + 5] - yol[j + 2];
     const boy2 = sx * sx + sy * sy + sz * sz;
     if (!boy2) continue;
@@ -70,13 +90,31 @@ export function seritIsini(o: Vec, d: Vec, yol: readonly number[], en: Vec, g: n
     const t = ((yol[j] - o[0]) * nx + (yol[j + 1] - o[1]) * ny + (yol[j + 2] - o[2]) * nz) / dn;
     if (t < 0 || (bulunan && t >= bulunan.t)) continue;
     const hx = o[0] + t * d[0] - yol[j], hy = o[1] + t * d[1] - yol[j + 1], hz = o[2] + t * d[2] - yol[j + 2];
-    const boyuna = (hx * sx + hy * sy + hz * sz) / boy2;
+    const boy = Math.sqrt(boy2);
+    const boyuna = (hx * sx + hy * sy + hz * sz) / boy;
     const enine = hx * en[0] + hy * en[1] + hz * en[2];
-    if (boyuna < 0 || boyuna > 1 || Math.abs(enine) > g / 2) continue;
+    if (boyuna < 0 || boyuna > boy + (son ? uc * enine : 0) || Math.abs(enine) > g / 2) continue;
     bulunan = { t, u: enine / g + 0.5 };
   }
   return bulunan;
 }
+
+/**
+ * Bir damarın şerit boyunca yolu (dünya, [x, y, z, …]): eksenden enine (u − 0,5)·g kaymış; eğik uçta
+ * (uc) son nokta da kayar. Seçili damarın parlayan izi için.
+ */
+export function damarYolu(yol: readonly number[], en: Vec, g: number, uc: number, u: number): number[] {
+  const e = (u - 0.5) * g;
+  const out = yol.map((v, i) => v + en[i % 3] * e);
+  if (uc && yol.length > 3) {
+    const t = sonYon(yol);
+    for (let k = 0; k < 3; k++) out[out.length - 3 + k] += t[k] * uc * e;
+  }
+  return out;
+}
+
+/** Damarın enine yeri: ortası (0 … 1) */
+export const damarU = (k: number): number => (k + 0.5) / DAMAR;
 
 /** Damar (0'dan) → enine yer u'dan: 0 … DAMAR − 1 */
 export const damarNo = (u: number): number => Math.min(DAMAR - 1, Math.max(0, Math.floor(u * DAMAR)));
