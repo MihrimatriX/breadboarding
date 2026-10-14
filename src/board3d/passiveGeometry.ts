@@ -424,6 +424,37 @@ export function boxAt(w: number, h: number, d: number, y = h / 2, x = 0, z = 0):
   return at(new BoxGeometry(w, h, d), x, y, z);
 }
 
+/** IDC soketinde kablonun sıkıldığı yükseklik (soketin altından, mm): gövdeyle kapağın arası */
+export const IDC_KABLO_Y = 6.3;
+/** IDC soketinin boyu (gövde + kapak, mm) */
+export const IDC_BOY = 8.6;
+
+/**
+ * 2 × n dişi IDC soketi (şerit kablonun ucu); alt yüzü y = taban, pinler x boyunca. Pin yuvalı gövde (ön
+ * yüzde her sütunun kontak penceresi), üstte kablonun sıkıldığı kapak (kablo IDC_KABLO_Y'de altından
+ * çıkar), ön yüzde kilit çıkıntısı, iki uçta kulak, kapağın 1. pin ucunda üçgen işaret. taban > 0 ise
+ * altında o boyda erkek başlığın siyah gövdesi de (arka panelin konnektörü).
+ */
+export function idcSoketi(n: number, taban = 0): BufferGeometry {
+  const L = n * 2.54 + 5.1;
+  const D = 6.2;
+  const y = (h: number) => taban + h;
+  const parcalar: { g: BufferGeometry; color: string }[] = [
+    { g: boxAt(L, 6, D, y(3)), color: "#1b1c20" },
+    { g: boxAt(L + 0.6, IDC_BOY - 6, D + 0.6, y((6 + IDC_BOY) / 2)), color: "#2c2e34" },
+    { g: boxAt(4.6, 4, 1, y(2.4), 0, D / 2 + 0.5), color: "#1b1c20" },
+    ...[-1, 1].map((s) => ({ g: boxAt(1.6, 5, D + 1.2, y(3.3), s * (L / 2 + 0.6), 0), color: "#1b1c20" })),
+    { g: at(new ShapeGeometry(new Shape([new Vector2(-1, 0), new Vector2(0.9, 0.95), new Vector2(0.9, -0.95)])).rotateX(-Math.PI / 2), -L / 2 + 2, y(IDC_BOY + 0.02), 0), color: "#e8e2d2" },
+  ];
+  // ön yüzde kontak pencereleri (kilit çıkıntısının arkası hariç)
+  for (let c = 0; c < n; c++) {
+    const x = (c - (n - 1) / 2) * 2.54;
+    if (Math.abs(x) > 2.9) parcalar.push({ g: boxAt(1.1, 1.5, 0.12, y(1.6), x, D / 2 + 0.05), color: "#3b3e46" });
+  }
+  if (taban > 0) parcalar.push({ g: boxAt(n * 2.54, taban, 5.08), color: "#18191c" });
+  return merge(parcalar);
+}
+
 export function ps2Body(w: number, d: number): BufferGeometry {
   return merge([
     { g: at(new BoxGeometry(w, 12, d), 0, 6, 0), color: "#6b44a6" },
