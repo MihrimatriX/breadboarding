@@ -45,7 +45,7 @@ altın modelle karşılaştırılır ("altın modelle aynı"). Docker'da: `docke
 ## Dosyalar
 
 Fiziksel kurulum iki yoldan: **breadboard** (60 tam boy breadboard, 5 × 12; her tel delikten deliğe,
-düz, dik açılı, renk kodlu ve kesim boyuyla; 2.784 atlama teli) ya da **PCB**. Breadboard yerleşimi ve
+düz, dik açılı, renk kodlu ve kesim boyuyla; 2 784 atlama teli) ya da **PCB**. Breadboard yerleşimi ve
 telleri `breadboard/`'dadır; bağlantısı yalnız fiziksel modelden (şeritler, raylar, teller)
 birleşim-bul ile kurulup netlistle karşılaştırılır. Silikon3D → 8 bit hesap 3D varsayılan olarak
 breadboard'u gösterir (PCB'ye geçilebilir); Kurulum modu teli 3D'de vurgulayıp delikten deliğe yazar.
@@ -71,7 +71,7 @@ kısmı da onlardan.
 | `mimari.ts` | Mimari (blok) diyagramının yerleşimi: kutular, yollar (içerik devreden; `cpu16/mimari/`). Silikon3D → Mimari |
 | `docs/tasarim.md` | Bloklar (blok diyagramı `docs/img/mimari-hesap.svg`), hız, besleme, malzeme |
 | `docs/kurulum-rehberi.md` | Fiziksel kurulum: aşamalar, testler, sorun giderme |
-| `tests/` | 74HC4511, yapı, uç durumlar, lamba testi, KiCad netlist'i, breadboard bağlantısı ve 3D görünümü |
+| `tests/` | 74HC4511, yapı, uç durumlar, lamba testi, KiCad netlisti, breadboard bağlantısı ve 3D görünümü |
 
 Kullanılan çipler CPU16'nın parça kütüphanesinden gelir (`cpu16/chips/`; 74HC4511 bu proje için
 eklendi), 7 segment gösterge ve öteki pasifler `cpu16/board/passives.ts`'te. Devre değişince `npm run cpu16 -- board kicad` ile KiCad dosyalarını

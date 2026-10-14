@@ -21,7 +21,7 @@ kurulum modunu açar (aşağıda).
 
 | | |
 |---|---|
-| Panolar | 7 (kart başına bir), iki sıra halinde ortadaki koridora bakar; masa ≈ 1 720 × 1 560 mm |
+| Panolar | 7 (kart başına bir), iki sıra hâlinde ortadaki koridora bakar; masa ≈ 1 720 × 1 560 mm |
 | Breadboard | 149 tam boy BB830 (63 sütun, a–e / f–j, üstte ve altta ikişer ray, raylar kesintisiz); bir modülün board'ları bitişik, modüller arasında ≈ 20 mm boşluk (her modül bir ada) |
 | Parçalar | 460 entegre, 678 pasif eleman ve modül (PCB'deki 641 pasif + 37 yalnız breadboard'a özgü besleme girişi ve 100 µF); CPU kartında 39 hata ayıklama LED'i ve 26 çubuk gösterge |
 | Teller | 7 868 atlama teli (602'si ray köprüsü), delikten deliğe 852 m, kesim boyu 983 m, ortalama 108 mm |
@@ -75,7 +75,7 @@ Yaklaşınca her board'un kendi etiketi görünür ("R0", "TOPLAYICI", "R0 GÖST
 board'da etiket LED'lerin ve çubukların yanına yazılır, onları örtmez). Hangi board'un ne olduğu
 `cpu16/breadboard/panolar.ts`'teki `duzen` tablosunda yazılı; kurulum belgelerinde (harita, board
 çizimleri) aynı adlarla. Tek işli board'da çipler referans sırasıyla dizilir (düşük bitler solda); aynı
-çipten oluşan diziler (mantık birimi, sonuç seçici, sabit birimi) board'larına sırayla paylaşılır.
+çipten oluşan diziler (mantık birimi, sonuç seçici, sabit birimi) board'larına sırayla paylaştırılır.
 
 ```
         1                  2                  3                  4                  5
@@ -109,7 +109,7 @@ Bedeli teldir: modül modül dizilimde 16 hatlık veriyolu her register board'un
 arasında da A, B ve sonuç hatları board'dan board'a gider; göstergeler (26 çubuk, her biri 8 tel ve bir
 direnç dizisi) ve modüller arasındaki boşluklar da tel ister. CPU panosu 75 board, 3 914 tel, delikten
 deliğe 494 m; 343 teli 300 mm'den uzun (en uzunu `BUS5`, 1 534 mm: register dosyasından ön kenara).
-1 MHz hedefinde uzun teller zamanlamaya sorun değildir ("Sınırlar ve riskler").
+1 MHz hedefinde uzun teller zamanlama için sorun değildir ("Sınırlar ve riskler").
 
 ### Hata ayıklama LED'leri ve çubuk göstergeler
 
@@ -118,7 +118,7 @@ bellek ne zaman okunuyor ya da yazılıyor; veriyolunda, register'larda, PC'de, 
 sonucunda hangi değer var. Hepsi 74HC çıkışlarından doğrudan sürülür (1 kΩ ile ≈ 3 mA); karmaşık çip
 yok. 39 tek LED (aktif düşük sinyallerde LED VCC'den sinyale bağlı, çıkış 0 iken yanar), 26 on
 segmentli çubuk gösterge (her biri bir bayt, bit 0 sağda) ve her çubuğun yanında 8'li 1 kΩ direnç
-dizisi. Her göstergenin board'u gösterdiği modülün hemen yanında (`duzen`'de `grup+`):
+dizisi var. Her göstergenin board'u gösterdiği modülün hemen yanında (`duzen`'de `grup+`):
 
 | Gösterge | Board | Renk |
 |---|---|---|
@@ -137,8 +137,8 @@ Register'ların değeri her an görünsün diye her register'ın iki 74HC574'ün
 değişmedi: [uretim.md](uretim.md)). 3D görünümde LED'ler ve çubukların segmentleri simülasyondan yanar.
 Akım en kötü durumda (bütün segmentler yanık) CPU panosunda ≈ 969 mA'dir, gerçekte yaklaşık yarısı;
 bu yüzden CPU panosunun en arka sırasında da birer besleme girişi var (aşağıda). Deney 4'te veriyolunu
-2,2 kΩ'luk anahtar modülüyle sürerken veriyolu çubuklarının dizilerini (RN3, RN4) çıkar: hat ancak
-≈ 2,7 V'a çıkar ([kit/led-ve-direnc.md](../kit/led-ve-direnc.md)).
+2,2 kΩ'luk anahtar modülüyle sürerken veriyolu çubuklarının dizilerini (RN3, RN4) çıkar: diziler
+takılıyken hat ancak ≈ 2,7 V'a yükselir ([kit/led-ve-direnc.md](../kit/led-ve-direnc.md)).
 
 ## Arka panel: şerit kablo
 
@@ -173,7 +173,8 @@ Bedeli zamanlamadadır: kablo arka panel hatlarına ≈ 15–20 ns gecikme ve da
 (CLK 5. damarda, iki yanında VCC ve WR_WIN; araya GND damarı girmez). İlk hedef olan 1 MHz CPU
 saatinde ([uretim.md](uretim.md): şemadan en kötü durum 1,21 MHz) bu pay önemsizdir. Kabloyu
 katlamadan, gergin olmadan döşe; her sokette kırmızı çizgili 1. damar uyarlayıcının 1. pinine (▲)
-gelmeli. 1., 2., 62. ve 64. damarlar GND, 3., 4. ve 63. damarlar VCC: sıkınca uçtan uca bip testi.
+gelmeli. 1., 2., 62. ve 64. damarlar GND, 3., 4. ve 63. damarlar VCC: sıkınca uçtan uca bip
+testi yap.
 
 ## Pano içi: kurallar
 
@@ -214,8 +215,8 @@ makinesiyle aynı motor, aynı kurallar):
 
 ## Besleme
 
-Tek bir 5 V regüleli kaynak (en az 2 A, tercihen 3 A) bir dağıtım bloğuna; her panonun her besleme
-girişine oradan ayrı bir kablo çifti (yıldız bağlantı). Girişler uyarlayıcının board sırasında, her
+Tek bir 5 V regüleli kaynak (en az 2 A, tercihen 3 A) bir dağıtım bloğunu besler; oradan her panonun her
+besleme girişine ayrı bir kablo çifti gider (yıldız bağlantı). Girişler uyarlayıcının board sırasında, her
 board sütununa birer tane (2 pinli başlık ya da klemens, + ve − rayına), yanında 100 µF: kartın kendi
 100 µF'ı (C1, C204 …) ilk girişte, öteki girişlerdekiler yalnız breadboard'a özgü ek parça (CB…).
 CPU panosu uzun (15 sıra) ve LED'leri çok akım çeker: en arka sırasında da beş giriş var (JB6–JB10,
@@ -225,9 +226,9 @@ pano tanımında `ekBesleme`), her board en yakın girişten beslenir.
 Akım parçaların veri sayfası değerleriyle hesaplanır (PCB kurulum belgelerindeki bütçeyle aynı tablo,
 `kurulum/plan.ts` `akim`): girişten uzaklaşan her board'un akımı aradaki ray ve köprülerden geçer
 (köprü başına ≈ 50 mΩ: ray şeridi, iki temas ve 22 AWG köprü; + ve − rayında ayrı ayrı) ve düşüm
-verir. En kötü pano önbellek kartı: iki girişin yüklüsü
-≈ 139 mA, en uzak board'da ≈ 59 mV düşüm (74HC için 4,5–5,5 V aralığında rahat). CPU panosunun akımı
-LED'lerin en kötü durumudur (bütün segmentler yanık).
+verir. En kötü pano önbellek kartı: iki girişinden yüklü olanı ≈ 139 mA taşır, en uzak board'da
+düşüm ≈ 59 mV (74HC için 4,5–5,5 V aralığında rahat). CPU panosunun akımı LED'lerin en kötü durumuyla
+hesaplanır (bütün segmentler yanık).
 
 | Pano | Giriş | Akım | En yüklü giriş | En uzak board'da düşüm |
 |---|---|---|---|---|
