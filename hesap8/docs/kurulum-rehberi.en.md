@@ -33,14 +33,14 @@ two rails each at the top and bottom) and routes all the wires. The result:
   part or the end of another wire, and a hole never holds two wire ends, or a wire end and a pin. So you
   can insert the wires in any order; the order in the list only splits them into stages and keeps your
   hands in free space.
-- Length: 187 m hole to hole, 233 m as cut (8 mm extra at each end); 67 mm on average, the longest
+- **Length**: 187 m hole to hole, 233 m as cut (8 mm extra at each end); 67 mm on average, the longest
   1.4 m. Cut lengths: 65 wires 10–20 mm, 1,058 wires 20–40 mm, 809 wires 40–80 mm, 571 wires 80–160 mm,
   178 wires 160–320 mm, 103 wires longer than 320 mm.
-- Verification: `npm run hesap8 -- breadboard` builds the connectivity from the physical model alone
+- **Verification**: `npm run hesap8 -- breadboard` builds the connectivity from the physical model alone
   (strips, rails, rail bridges, wires) with union-find and compares it with the netlist: 1,116 nets,
   4,177 pins; no open circuits, no shorts. The same check also runs for the end of every stage (tests).
 
-Compared with the pin-to-pin list for the PCB: there it is 1,682 signal wires (power runs on the board's
+Compared with the pin-to-pin list for the PCB: there are 1,682 signal wires (power runs on the board's
 rails), 137 m as straight lines from pin to pin, 82 mm on average, and the wires pass over the chips. On
 the breadboard there are 1,658 signal wires (pins sitting in the same strip need no wire), but since
 every wire follows its right-angle path, the total signal path is 166 m (100 mm on average); on top of
@@ -90,24 +90,24 @@ document's blocks and wire numbers.
 
 ## General rules
 
-- Power: 5 V, at least 1 A (a 5 V 2 A adapter is recommended). J1: pin 1 +5 V, pin 2 GND. On the
+- **Power:** 5 V, at least 1 A (a 5 V 2 A adapter is recommended). J1: pin 1 +5 V, pin 2 GND. On the
   breadboard, the rail bridges are at the start of the wire list (stage 1); for breadboards with split
   rails, see the rail assumption above.
 - **100 nF at every chip**, between VCC and GND, as close to the chip as possible. One 100 µF at the input (+ lead to VCC).
 - **74HC inputs are never left floating.** Unused gate inputs are tied to GND in the schematic; they are
   in the wire list too, so don't skip them. A floating input settles at a random 0 / 1, and the chip can heat up.
-- Chip orientation: notch on the left, pin 1 at the bottom left (the same as the layout in the build guide).
-- Wire colors: follow the build guide's color code (number bits, operation signals and segments in
+- **Chip orientation:** notch on the left, pin 1 at the bottom left (the same as the layout in the build guide).
+- **Wire colors:** follow the build guide's color code (number bits, operation signals and segments in
   different colors); it helps a lot when you hunt for faults.
-- Breadboard wires: cut them to the "cut" length in the document, strip 6 mm at the ends, bend them
+- **Breadboard wires:** cut them to the "cut" length in the document, strip 6 mm at the ends, bend them
   90°, and press them fully into the hole; the wire should lie flat on the breadboard. First cut all the
   wires of one color following the cut list, and sort them by length.
 - **Test after each stage**, then move on to the next one. The test tables are below.
 
 ## Stage 1: power, switches, operation LEDs
 
-Breadboard: glue the 60 breadboards to the base (BB01 in the back left corner), then the parts on BB57
-and BB58; wires **T0001–T0302** (the 246 rail bridges first). Before testing, check for 5 V on both + rails of every breadboard.
+Breadboard: glue the 60 breadboards to the base (BB01 in the back left corner), then insert the parts on
+BB57 and BB58; wires **T0001–T0302** (the 246 rail bridges first). Before testing, check for 5 V on both + rails of every breadboard.
 PCB document: block 0 (Power) and block 1 (Switches), wires **T0001–T0037**.
 Parts: J1, C1; SW1, SW2 (8-way DIP), SW3 (2-way DIP), SW4 (button); RN1–RN3 (10 kΩ SIP-9, dot
 = common lead = GND); U1–U3 (74HC04, 74HC02, 74HC08: operation decoding); D1–D4 green LEDs, R2–R5 330 Ω.
