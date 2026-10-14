@@ -27,7 +27,7 @@ import { boardLayoutData, boardModel, findPart, liveNets, netEnds, useKart } fro
 import { KurulumSahne } from "./KurulumSahne";
 import { AtlamaTelleri, BbKurulumSahne, BreadboardTabani, breadboardGenelBakis, breadboardSahnede } from "./Breadboard3D";
 import { IDC_KABLO_Y } from "./passiveGeometry";
-import { DAMAR, DAMAR_ADIM } from "./serit";
+import { DAMAR, DAMAR_ADIM, damarU } from "./serit";
 import { DamarSeritleri, IdcSoketleri, useDamarNetleri, type SeritParcasi, type Soket } from "./Serit3D";
 import { yuvarlakYol } from "./telYolu";
 import { TextQuads, type TextItem } from "./TextQuads";
@@ -140,7 +140,7 @@ function ArkaPanel() {
   const { lay, w } = useLayoutWorld();
   const dil = useDil();
   const netler = useDamarNetleri();
-  const { yollar, kablolar, kartSoketleri, panelSoketleri } = useMemo(() => {
+  const { yollar, kablolar, kartSoketleri, panelSoketleri, inis } = useMemo(() => {
     const dunya = (p: readonly number[]) => {
       const out: number[] = [];
       for (let i = 0; i < p.length; i += 3) {
@@ -160,6 +160,8 @@ function ArkaPanel() {
     });
     const kartSoketleri: Soket[] = [];
     const panelSoketleri: Soket[] = [];
+    // seçili damarın arka paneldeki soketten yola inişi: kablonun ucu (dünya), yolun ortası ve genişliği
+    const inisler: { son: number[]; zc: number; g: number }[] = [];
     for (const p of lay.passives) {
       if (!p.edge) continue;
       const xs = p.pins.map((q) => q.x);
@@ -176,20 +178,27 @@ function ArkaPanel() {
       const yol = zb - 9 - kenar > 6
         ? [cx, yk, cz - 2.8, cx, yk, kenar, cx, 0.4, kenar, cx, 0.4, zb - 9, cx, yk, zb - 9, cx, yk, zb + 2.8]
         : [cx, yk, cz - 2.8, cx, yk, cz + 4.2, cx, yk + 3.5, (cz + zb) / 2, cx, yk, zb - 4.2, cx, yk, zb + 2.8];
-      kablolar.push({ yol: dunya(yuvarlakYol(yol, 2.6)), en: [1, 0, 0], g: DAMAR * DAMAR_ADIM * S });
+      const kablo = dunya(yuvarlakYol(yol, 2.6));
+      kablolar.push({ yol: kablo, en: [1, 0, 0], g: DAMAR * DAMAR_ADIM * S });
       const [x, z] = w(cx, cz);
-      kartSoketleri.push({ x, y: BASLIK_TABAN * S, z, etiket: `${kartBasligi(p.card, kart?.title ?? p.card, dil)} · ${p.ref}` });
+      kartSoketleri.push({ x, y: BASLIK_TABAN * S, z, kart: p.card, ref: p.ref, etiket: `${kartBasligi(p.card, kart?.title ?? p.card, dil)} · ${p.ref}` });
       const [xb, zb2] = w(cx, zb);
-      panelSoketleri.push({ x: xb, y: 0, z: zb2, etiket: dil === "en" ? "backplane" : "arka panel" });
+      panelSoketleri.push({ x: xb, y: 0, z: zb2, kart: p.card, ref: p.ref, etiket: dil === "en" ? "backplane" : "arka panel" });
+      inisler.push({ son: kablo.slice(-3), zc: zb2, g: (r.backplaneH - 3) * S });
     }
-    return { yollar, kablolar, kartSoketleri, panelSoketleri };
+    // seçili damar (k): kablodaki yerinden arka paneldeki k. yola iner (konnektörün k. pini)
+    const inis = (k: number) => inisler.map(({ son, zc, g }) => {
+      const e = damarU(k) - 0.5;
+      return [son[0] + e * DAMAR * DAMAR_ADIM * S, son[1], son[2], son[0] + e * DAMAR * DAMAR_ADIM * S, 0.012, zc + e * g];
+    });
+    return { yollar, kablolar, kartSoketleri, panelSoketleri, inis };
   }, [lay, w, dil]);
   return (
     <group>
       <DamarSeritleri parcalar={yollar} palet="bakir" netler={netler} />
-      <DamarSeritleri parcalar={kablolar} palet="kablo" netler={netler} />
-      <IdcSoketleri soketler={kartSoketleri} />
-      <IdcSoketleri soketler={panelSoketleri} taban={BASLIK_TABAN} />
+      <DamarSeritleri parcalar={kablolar} palet="kablo" netler={netler} ekIz={inis} />
+      <IdcSoketleri soketler={kartSoketleri} netler={netler} />
+      <IdcSoketleri soketler={panelSoketleri} netler={netler} taban={BASLIK_TABAN} />
     </group>
   );
 }

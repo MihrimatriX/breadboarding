@@ -10,7 +10,7 @@ import { kartBasligi } from "../../src/board3d/adlar.ts";
 import { aktifGorunum, aktifKart, bbSahnesi, cpuBbHazir, cpuBbYukle, gorunumHazir, gorunumSec, kartYerlesimi } from "../../src/board3d/aktif.ts";
 import { bbPano, bbSeciliTel, telKimligi, useBbKurulum } from "../../src/board3d/bbKurulum.ts";
 import { boardLayoutData, boardModel, findPart, useKart } from "../../src/board3d/store.ts";
-import { DAMAR, damarNo, damarSinyalleri, seritGeometrisi, seritIsini, sinyalinDamarlari } from "../../src/board3d/serit.ts";
+import { DAMAR, damarNo, damarSinyalleri, damarU, damarYolu, seritGeometrisi, seritIsini, sinyalinDamarlari } from "../../src/board3d/serit.ts";
 import { kartlaraGore } from "../../src/board3d/wires.ts";
 import { DIRSEK, isinTeli, yuvarlakYol } from "../../src/board3d/telYolu.ts";
 
@@ -243,6 +243,26 @@ describe("şerit kablo ve arka panel damarları (serit.ts)", () => {
     expect(seritIsini([0, 5, g], asagi, yol, [0, 0, 1], g)).toBeNull();
     expect(seritIsini([11, 5, 0], asagi, yol, [0, 0, 1], g)).toBeNull();
     expect(seritIsini([0, 5, 0], [1, 0, 0], yol, [0, 0, 1], g)).toBeNull();
+  });
+
+  it("45° katlama: koldaki her damar koridordaki aynı damarın üstünde biter (iki yönde); katlamanın ötesi koridorun", () => {
+    const g = DAMAR * 0.127;
+    const koridor = [-30, 0, 0, 30, 0, 0];
+    for (const dz of [1, -1]) {
+      // kol z boyunca koridorun ortasına gelir; genişliği x boyunca
+      const kol = [0, 0.05, -20 * dz, 0, 0.05, 0];
+      for (const k of [0, 17, 40, DAMAR - 1]) {
+        const uc = damarYolu(kol, [1, 0, 0], g, dz, damarU(k)).slice(-3);
+        const ki = damarYolu(koridor, [0, 0, 1], g, 0, damarU(k));
+        // koldaki damarın ucu koridordaki aynı damarın çizgisinde; enine yeri kolun damarınınki
+        expect(uc[2], `dz ${dz} damar ${k}`).toBeCloseTo(ki[2]);
+        expect(uc[0], `dz ${dz} damar ${k}`).toBeCloseTo((damarU(k) - 0.5) * g);
+      }
+      // eğik kenarın öbür yanına (katlamanın ötesine) değen ışın kola değmez; katlamasız kolun içinde kalırdı
+      const disari = [-dz * (g / 2 - 0.05), 5, -dz * 0.2] as const;
+      expect(seritIsini(disari, [0, -1, 0], kol, [1, 0, 0], g, dz), `dz ${dz}`).toBeNull();
+      expect(seritIsini(disari, [0, -1, 0], kol, [1, 0, 0], g, 0), `dz ${dz} katlamasız`).not.toBeNull();
+    }
   });
 
   it("damar k = arka panelin k. pini: her kartın konnektöründe k. pin BACKPLANE[k] sinyalinde", () => {
