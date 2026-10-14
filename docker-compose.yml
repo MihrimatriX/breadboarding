@@ -41,7 +41,9 @@ services:
       context: .
       target: web
       args:
-        SITE_URL: ${SITE_URL:-}
+        # Sitenin herkese açık adresi: kanonik bağlantı, og:url ve sitemap.xml (src/seo.ts). Başka bir
+        # adreste yayınlarken: SITE_URL=https://… docker compose up -d --build
+        SITE_URL: ${SITE_URL:-https://breadboard.ahmetfuzunkaya.com}
     image: breadboarding-web:latest
     ports:
       - "${WEB_PORT:-3347}:8080"
