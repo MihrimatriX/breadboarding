@@ -42,7 +42,7 @@ services:
       target: web
     image: breadboarding-web:latest
     ports:
-      - "${WEB_PORT:-8080}:8080"
+      - "${WEB_PORT:-3347}:8080"
     read_only: true
     tmpfs:
       - /tmp
