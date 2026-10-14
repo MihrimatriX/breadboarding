@@ -1,5 +1,5 @@
-// Şerit kablo ve arka panel yolları için saf geometri: bir eksen yolu boyunca düz şerit (enine doku
-// koordinatı u: 0'da 1. damar, 1'de sonuncusu), şeride değen ışının hangi damara değdiği, arka panel
+// Şerit kablo ve arka panel yolları için saf geometri: bir eksen yolu boyunca şerit (enine doku
+// koordinatı u: 0'da 1. damar, 1'de sonuncusu; yol yatayda dönerse şerit de kendi düzleminde döner), şeride değen ışının hangi damara değdiği, arka panel
 // pinlerinin sinyalleri. Damarlar ayrı çizgiler değil, şeridin dokusu (Serit3D.tsx): yakından keskin,
 // uzaktan mipmap ile harelenmeden okunur. React'ten bağımsız; testleri cpu16/tests/breadboard-3d.test.ts.
 
@@ -12,6 +12,35 @@ export const DAMAR_ADIM = 1.27;
 
 type Vec = readonly [number, number, number];
 
+/**
+ * Her noktada şeridin genişlik yönü: yola dik yatay birim vektör, bir öncekiyle aynı yanda (ilk noktada ref
+ * yanında); yolun dikey parçalarında bir öncekinin aynısı. Düz yolda hep ref; yol yatayda dönünce şerit de
+ * döner, her damar kendi yerinde kalır. [x, y, z, …]
+ */
+export function enYonleri(yol: readonly number[], ref: Vec): number[] {
+  const n = yol.length / 3;
+  const out = new Array<number>(3 * n);
+  let px = ref[0], pz = ref[2];
+  for (let i = 0; i < n; i++) {
+    const a = Math.max(0, i - 1), b = Math.min(n - 1, i + 1);
+    const tx = yol[3 * b] - yol[3 * a], ty = yol[3 * b + 1] - yol[3 * a + 1], tz = yol[3 * b + 2] - yol[3 * a + 2];
+    const l = Math.hypot(tx, tz);
+    if (l > 1e-6 * Math.hypot(tx, ty, tz) && l > 0) {
+      let ex = -tz / l, ez = tx / l;
+      if (ex * px + ez * pz < 0) {
+        ex = -ex;
+        ez = -ez;
+      }
+      px = ex;
+      pz = ez;
+    }
+    out[3 * i] = px;
+    out[3 * i + 1] = 0;
+    out[3 * i + 2] = pz;
+  }
+  return out;
+}
+
 /** İlk ya da son parçanın birim yönü (ilerleme yönünde) */
 function uctakiYon(yol: readonly number[], son: boolean): [number, number, number] {
   const a = son ? yol.length - 6 : 0;
@@ -21,8 +50,8 @@ function uctakiYon(yol: readonly number[], son: boolean): [number, number, numbe
 }
 
 /**
- * Düz şerit: eksen yolu (dünya, [x, y, z, …]) boyunca, genişlik yönü `en` (birim vektör, yola dik), genişlik
- * g. Yüzü ilk noktada yukarı bakar; çift yüzlü malzemeyle çizilir. uv: u enine (−en kenarı 0), v sabit.
+ * Şerit: eksen yolu (dünya, [x, y, z, …]) boyunca, genişlik g; genişlik yönü her noktada enYonleri (ilk
+ * noktada `en` yanında). Yüzü ilk noktada yukarı bakar; çift yüzlü malzemeyle çizilir. uv: u enine (−en kenarı 0), v sabit.
  * uc ≠ 0: son kenar eğik (45° katlama): enine e'deki nokta boyuna uc·e kayar; kablo dik açıyla dönerken
  * koldaki k. damar koridordaki k. damarın tam üstünde biter. bas: ilk kenar için aynısı (koridorun başı).
  */
@@ -32,8 +61,10 @@ export function seritGeometrisi(yol: readonly number[], en: Vec, g: number, uc =
   const nor = new Float32Array(n * 6);
   const uv = new Float32Array(n * 4);
   const h = g / 2;
+  const E = enYonleri(yol, en);
   let isaret = 0;
   for (let i = 0; i < n; i++) {
+    const en = [E[3 * i], E[3 * i + 1], E[3 * i + 2]];
     const a = Math.max(0, i - 1);
     const b = Math.min(n - 1, i + 1);
     const tx = yol[3 * b] - yol[3 * a], ty = yol[3 * b + 1] - yol[3 * a + 1], tz = yol[3 * b + 2] - yol[3 * a + 2];
@@ -74,12 +105,17 @@ export function seritGeometrisi(yol: readonly number[], en: Vec, g: number, uc =
 
 /**
  * Işın (o + t·d, d birim) şeride değiyor mu: en yakın değme noktasının ışın boyunca uzaklığı ve enine yeri
- * u (0 … 1; damar = floor(u · DAMAR)). Şeridin her parçası düz bir dörtgen (yolun iki noktası ± en·g/2);
+ * u (0 … 1; damar = floor(u · DAMAR)). Şeridin her parçası düz bir dörtgen (yolun iki noktası ± en·g/2, en
+ * parçanın iki ucundakilerin ortalaması);
  * uc ya da bas ≠ 0 ise son ya da ilk parça eğik kenarlı (seritGeometrisi).
  */
-export function seritIsini(o: Vec, d: Vec, yol: readonly number[], en: Vec, g: number, uc = 0, bas = 0): { t: number; u: number } | null {
+export function seritIsini(o: Vec, d: Vec, yol: readonly number[], en0: Vec, g: number, uc = 0, bas = 0): { t: number; u: number } | null {
   let bulunan: { t: number; u: number } | null = null;
+  const E = enYonleri(yol, en0);
   for (let j = 0; j + 5 < yol.length; j += 3) {
+    const ex = E[j] + E[j + 3], ez = E[j + 2] + E[j + 5];
+    const el = Math.hypot(ex, ez) || 1;
+    const en = [ex / el, 0, ez / el];
     const son = j + 6 === yol.length;
     const ilk = j === 0;
     const sx = yol[j + 3] - yol[j], sy = yol[j + 4] - yol[j + 1], sz = yol[j + 5] - yol[j + 2];
@@ -107,7 +143,8 @@ export function seritIsini(o: Vec, d: Vec, yol: readonly number[], en: Vec, g: n
  */
 export function damarYolu(yol: readonly number[], en: Vec, g: number, uc: number, u: number, bas = 0): number[] {
   const e = (u - 0.5) * g;
-  const out = yol.map((v, i) => v + en[i % 3] * e);
+  const E = enYonleri(yol, en);
+  const out = yol.map((v, i) => v + E[i] * e);
   if (yol.length > 3) {
     for (const [k, o] of [[uc, out.length - 3], [bas, 0]] as const) {
       if (!k) continue;

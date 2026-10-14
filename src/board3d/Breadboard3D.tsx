@@ -37,7 +37,7 @@ import { sahneBolumleri, useEtiketlerAcik } from "./bolum";
 import { LEVEL_COLOR } from "./levels";
 import { boardLayoutData, findPart, liveNets, useKart } from "./store";
 import { IDC_KABLO_Y } from "./passiveGeometry";
-import { DAMAR, DAMAR_ADIM } from "./serit";
+import { DAMAR, DAMAR_ADIM, enYonleri } from "./serit";
 import { DamarSeritleri, IdcSoketleri, useDamarNetleri, type SeritParcasi, type Soket } from "./Serit3D";
 import { TextQuads, type TextItem } from "./TextQuads";
 import { isinTeli, yuvarlakYol } from "./telYolu";
@@ -277,14 +277,17 @@ export function BreadboardTabani() {
 const SERIT_GEN = DAMAR * DAMAR_ADIM;
 const SOKET_TABAN = 8.5;
 const MASA = -BOARD_KALINLIK - PLAKA_KALINLIK + 0.6;
-/** kablonun kıvrımlarının köşeden uzaklığı (mm) */
+/** kablonun dikey kıvrımlarının (soketten masaya iniş) ve koridordaki dönüşlerinin köşeden uzaklığı (mm) */
 const SERIT_DIRSEK = 7;
+const SERIT_DONUS = 45;
 
 /**
- * Panolar arası 64 damarlı şerit kablo: masada koridor boyunca uzanır; her sokete koridordan 45° katlanarak
- * dik açıyla ayrılır, panonun kenarında yükselip soketin kapağının altına girer (kesim boyu
- * cpu16/breadboard/plan.ts seritKablolari ile aynı yoldan). Damarlar canlı; bir damara tıklayınca sinyali
- * seçilir, o damar koridor boyunca ve her sokete parlayan bir izle çizilir (Serit3D.tsx).
+ * Panolar arası 64 damarlı şerit kablo, zincir hâlinde (kurulum planındaki gibi tek kablo, IDC soketleri
+ * üstüne sıkılı): soketler koridor boyunca sırayla; kablo her soketin kapağının altından çıkar, panonun
+ * kenarında masaya iner, koridorda kendi düzleminde yumuşakça dönüp bir sonraki sokete gider ve onun
+ * kapağının altına girer. Dallanma ve katlama dikişi yok: her damar baştan sona kesintisiz (bir sokete inip
+ * çıkan iki kol üst üste). Kesim boyu cpu16/breadboard/plan.ts seritKablolari. Damarlara tıklayınca sinyali
+ * seçilir, o damar soketten sokete parlayan bir izle çizilir (Serit3D.tsx).
  */
 function SeritKablo({ sahne }: { sahne: BbSahnesi }) {
   const { w } = useDunya();
@@ -301,29 +304,48 @@ function SeritKablo({ sahne }: { sahne: BbSahnesi }) {
       return out;
     };
     const sirali = [...s.soketler].sort((a, b) => a.x - b.x);
-    const dzOf = (k: { y: number }) => Math.sign(s.koridorY - k.y) || 1;
-    // 45° katlamanın yönü (σ: kırım x − kx = σ·(z − koridorY)); kablo ilk ve son sokette biter: uçlarda kol
-    // ile koridor kırımın iki yanında, temiz bir köşe; aradaki soketlerde koridor altından sürer
-    const sigma = (i: number) => (i === 0 ? -dzOf(sirali[0]) : i === sirali.length - 1 ? dzOf(sirali[i]) : 1);
-    const ilk = sirali[0];
-    const son = sirali[sirali.length - 1];
-    const parcalar: SeritParcasi[] = [
-      { yol: dunya([ilk.x, MASA, s.koridorY, son.x, MASA, s.koridorY]), en: [0, 0, 1], g: SERIT_GEN * S, bas: sigma(0), uc: sigma(sirali.length - 1) },
-    ];
-    const soketler: Soket[] = [];
-    sirali.forEach((k, i) => {
+    const yerler = sirali.map((k) => {
       const p = sahne.panolar.find((q) => k.x >= q.x && k.x <= q.x + q.w && k.y >= q.y && k.y <= q.y + q.h);
-      // koridora doğru: soketin kapağının altından çıkar, panonun kenarını geçince masaya iner
-      const dz = dzOf(k);
-      const kenar = (p ? (dz > 0 ? p.y + p.h : p.y) : k.y) + dz * 9;
-      const yk = SOKET_TABAN + IDC_KABLO_Y;
-      const yol = yuvarlakYol([k.x, yk, k.y - dz * 2.8, k.x, yk, kenar, k.x, MASA + 0.5, kenar, k.x, MASA + 0.5, s.koridorY], SERIT_DIRSEK);
-      // koridorda 45° katlanır: koldaki k. damar koridordaki k. damarın üstünde biter (σ = −1'de kablo
-      // ters yüzüyle döner: 1. damar +x'te, soket de 180° dönük)
-      const sg = sigma(i);
-      parcalar.push({ yol: dunya(yol), en: [sg, 0, 0], g: SERIT_GEN * S, uc: dz });
+      // koridora doğru; kablo panonun kenarını geçince masaya iner
+      const dz = Math.sign(s.koridorY - k.y) || 1;
+      return { k, p, dz, kenar: (p ? (dz > 0 ? p.y + p.h : p.y) : k.y) + dz * 9 };
+    });
+    const parcalar: SeritParcasi[] = [];
+    // genişlik yönü zincir boyunca sürer: bir sokete inen kolun sonu, oradan çıkan kolun başı
+    let ref: [number, number, number] = [1, 0, 0];
+    const soketEn: number[] = [];
+    for (let i = 0; i + 1 < yerler.length; i++) {
+      const a = yerler[i], b = yerler[i + 1];
+      // üst üste binen kollar titremesin: tek parçalar biraz yukarıda
+      const dy = (i % 2) * 0.6;
+      const yk = SOKET_TABAN + IDC_KABLO_Y + dy;
+      const m = MASA + 0.5 + dy;
+      // karşı panoya: koridoru hafif bir çaprazla geçer; aynı yandaki panoya: koridorun ortasında U çizer
+      // (iniş dirseği ile koridordaki dönüş ayrı köşelerde: kablo burulmaz)
+      const capraz = a.dz !== b.dz;
+      const orta = capraz
+        ? [a.k.x, m, a.kenar + a.dz * 20, b.k.x, m, b.kenar + b.dz * 20]
+        : [a.k.x, m, s.koridorY, b.k.x, m, s.koridorY];
+      const yolMm = yuvarlakYol([
+        a.k.x, yk, a.k.y - a.dz * 2.8,
+        a.k.x, yk, a.kenar,
+        a.k.x, m, a.kenar,
+        ...orta,
+        b.k.x, m, b.kenar,
+        b.k.x, yk, b.kenar,
+        b.k.x, yk, b.k.y - b.dz * 2.8,
+      ], [0, SERIT_DIRSEK, SERIT_DIRSEK, SERIT_DONUS, SERIT_DONUS, SERIT_DIRSEK, SERIT_DIRSEK, 0]);
+      const yol = dunya(yolMm);
+      const E = enYonleri(yol, ref);
+      if (i === 0) soketEn.push(E[0]);
+      soketEn.push(E[E.length - 3]);
+      parcalar.push({ yol, en: ref, g: SERIT_GEN * S });
+      ref = [E[E.length - 3], 0, E[E.length - 1]];
+    }
+    const soketler: Soket[] = yerler.map(({ k, p, dz }, i) => {
       const [x, z] = w(k.x, k.y);
-      soketler.push({ x, y: SOKET_TABAN * S, z, kart: p?.kart ?? "", ref: k.ref, etiket: p ? `${panoAdlari(p, dil).kisa} · ${k.ref}` : k.ref, yon: -dz, ters: sg < 0 });
+      // 1. damar (u = 0) genişlik yönünün eksi yanında: kablo −x'ten +x'e uzanıyorsa soket düz, değilse dönük
+      return { x, y: SOKET_TABAN * S, z, kart: p?.kart ?? "", ref: k.ref, etiket: p ? `${panoAdlari(p, dil).kisa} · ${k.ref}` : k.ref, yon: -dz, ters: (soketEn[i] ?? 1) < 0 };
     });
     return { parcalar, soketler };
   }, [s, w, sahne, dil]);

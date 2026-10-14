@@ -1,5 +1,5 @@
 // Atlama telinin borusunun ekseni: köşe noktalarından yuvarlak dirsekli, sık noktalı bir yol. Her iç
-// köşede tel küçük bir yayla (kuadratik Bézier) kıvrılır; noktalar yalnız dirseklerde sıklaşır, düz
+// köşede tel küçük bir çember yayıyla kıvrılır; noktalar yalnız dirseklerde sıklaşır, düz
 // parçalar tek aralık kalır. Bir de tıklanan teli bulan ışın testi (isinTeli). Saf fonksiyonlar (three'den
 // ve React'ten bağımsız); 3D sahne ve testler kullanır.
 
@@ -8,9 +8,10 @@ export const DIRSEK = 1.2;
 
 /**
  * Köşe noktaları [x, y, z, …] (mm) → yuvarlak dirsekli yol. İlk ve son nokta korunur; her iç köşenin
- * yerine köşeden dᵢ önce başlayıp dᵢ sonra biten bir yay gelir (açıya göre 2-8 aralık). Doğrusal köşe atlanır.
+ * yerine köşeden dᵢ önce başlayıp dᵢ sonra biten bir yay gelir (açıya ve yayın boyuna göre aralık). Doğrusal
+ * köşe atlanır. d: bütün köşelerde aynı ya da köşe başına (i. nokta için d[i]).
  */
-export function yuvarlakYol(p: readonly number[], d: number = DIRSEK): number[] {
+export function yuvarlakYol(p: readonly number[], d: number | readonly number[] = DIRSEK): number[] {
   const k = p.length / 3;
   const out = p.slice(0, 3);
   /** j. parçanın (j → j+1) boyu */
@@ -25,20 +26,25 @@ export function yuvarlakYol(p: readonly number[], d: number = DIRSEK): number[] 
     const wx = (p[3 * i + 3] - vx) / lv, wy = (p[3 * i + 4] - vy) / lv, wz = (p[3 * i + 5] - vz) / lv;
     const aci = Math.acos(Math.min(1, Math.max(-1, ux * wx + uy * wy + uz * wz)));
     if (aci < 1e-3) continue;
-    // dirsek komşu parçanın yarısını aşmaz (parçanın öbür ucunda da dirsek olabilir); yolun ucuna giden
-    // parçada (deliğe inen kısa bacak) dirsek yok: neredeyse tamamı, sıfır boylu adım kalmasın
-    const pay = (l: number, uc: boolean) => (uc ? 0.9 : 0.5) * l;
-    const di = Math.min(d, pay(lu, i === 1), pay(lv, i === k - 2));
-    const m = Math.max(2, Math.ceil(aci / (Math.PI / 8)));
+    // dirsek komşu parçayı öbür ucundaki dirsekle istedikleri uzaklıklar oranında paylaşır (eşitse yarı yarıya);
+    // yolun ucuna giden parçada (deliğe inen kısa bacak) dirsek yok: neredeyse tamamı, sıfır boylu adım kalmasın
+    const dd = (j: number) => (typeof d === "number" ? d : d[j]);
+    const pay = (l: number, j: number) => (j === 0 || j === k - 1 ? 0.9 * l : (l * dd(i)) / (dd(i) + dd(j)));
+    const di = Math.min(dd(i), pay(lu, i - 1), pay(lv, i + 1));
+    // geniş yaylar daha sık örneklenir (yayın boyu boyunca ~4 birimde bir)
+    const m = Math.max(2, Math.ceil(aci / (Math.PI / 8)), Math.ceil((aci * di) / 4));
+    // çember yayı: köşeden di önce (A = V − u·di) başlar, di sonra biter; yarıçap r = di / tan(açı / 2),
+    // merkez A'dan dönüş yanına (n: w'nin u'ya dik bileşeni) r uzakta
+    const r = di / Math.tan(aci / 2);
+    const dot = ux * wx + uy * wy + uz * wz;
+    let nx = wx - dot * ux, ny = wy - dot * uy, nz = wz - dot * uz;
+    const nl = Math.hypot(nx, ny, nz) || 1;
+    nx /= nl; ny /= nl; nz /= nl;
+    const ax = vx - ux * di, ay = vy - uy * di, az = vz - uz * di;
     for (let s = 0; s <= m; s++) {
-      const t = s / m;
-      // B(t) = (1-t)²·A + 2t(1-t)·V + t²·B; A = V − u·di, B = V + w·di
-      const a = (1 - t) * (1 - t), b = 2 * t * (1 - t), c = t * t;
-      out.push(
-        a * (vx - ux * di) + b * vx + c * (vx + wx * di),
-        a * (vy - uy * di) + b * vy + c * (vy + wy * di),
-        a * (vz - uz * di) + b * vz + c * (vz + wz * di),
-      );
+      const f = (aci * s) / m;
+      const cu = Math.sin(f) * r, cn = (1 - Math.cos(f)) * r;
+      out.push(ax + ux * cu + nx * cn, ay + uy * cu + ny * cn, az + uz * cu + nz * cn);
     }
   }
   out.push(p[3 * k - 3], p[3 * k - 2], p[3 * k - 1]);

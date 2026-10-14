@@ -26,11 +26,12 @@ const S = 0.1;
 const PIKSEL = 4;
 
 /** kablo: gri yalıtım (1. damar kırmızı çizgili); bakır: arka panelin koyu zemininde maskeli bakır yollar */
-export type Palet = "kablo" | "bakir";
-const TABAN: Record<Palet, Color> = { kablo: new Color("#a3a8b0"), bakir: new Color("#13261d") };
-const OLUK: Record<Palet, Color> = { kablo: new Color("#80858d"), bakir: new Color("#13261d") };
+/** iz: bakır gibi, ama yolların arası saydam (yuvadan arka panelin hatlarına inen yollar hatların üstünde) */
+export type Palet = "kablo" | "bakir" | "iz";
+const TABAN: Record<Palet, Color> = { kablo: new Color("#a3a8b0"), bakir: new Color("#13261d"), iz: new Color("#13261d") };
+const OLUK: Record<Palet, Color> = { kablo: new Color("#80858d"), bakir: new Color("#13261d"), iz: new Color("#13261d") };
 /** bir sinyal seçiliyken öbür damarların soluklaşması (arka panelde yollar seçilebilsin diye az) */
-const SOLUK: Record<Palet, number> = { kablo: 0.85, bakir: 0.55 };
+const SOLUK: Record<Palet, number> = { kablo: 0.85, bakir: 0.55, iz: 0.55 };
 const MAVI = new Color("#2f6fd6");
 const KIRMIZI_CIZGI = new Color("#c23030");
 const BILINMEYEN = new Color("#7d838c");
@@ -103,15 +104,19 @@ function useDamarDokusu(netler: Int32Array, palet: Palet): DataTexture {
     surum.current = anahtar;
     const vurgu = net !== null && netler.includes(net) ? net : null;
     const data = doku.image.data as Uint8Array;
-    const yaz = (i: number, c: Color) => {
+    const yaz = (i: number, c: Color, a = 255) => {
       const h = c.getHex();
-      data.set([h >> 16, (h >> 8) & 255, h & 255, 255], 4 * i);
+      data.set([h >> 16, (h >> 8) & 255, h & 255, a], 4 * i);
     };
     for (let k = 0; k < DAMAR; k++) {
       damarRengi(tmpC, netler[k], k, liveNets.values, palet, vurgu, canli);
       // kabloda damar 3 piksel, oluk 1; arka panelde bakır yol 2 piksel, arası 2 (yollar ince)
       const dolu = palet === "kablo" ? PIKSEL - 1 : PIKSEL / 2;
-      for (let p = 0; p < PIKSEL; p++) yaz(k * PIKSEL + p, p < dolu ? tmpC : OLUK[palet]);
+      // izde boşluklar ve bağlantısız pinlerin yolu saydam
+      const bos = palet === "iz" ? 0 : 255;
+      // kablonun son oluğu kenarda: koyu kalırsa üst üste binen iki parçanın kenarı siyah bir kırılma gibi görünür
+      const oluk = palet === "kablo" && k === DAMAR - 1 ? TABAN.kablo : OLUK[palet];
+      for (let p = 0; p < PIKSEL; p++) yaz(k * PIKSEL + p, p < dolu ? tmpC : oluk, p < dolu && !(palet === "iz" && netler[k] < 0) ? 255 : bos);
     }
     doku.needsUpdate = true;
   });
@@ -174,7 +179,7 @@ export function DamarSeritleri({ parcalar, palet, netler, ekIz }: { parcalar: Se
   const doku = useDamarDokusu(netler, palet);
   const secili = useSeciliDamar(netler);
   const obj = useMemo(() => {
-    const mat = new MeshStandardMaterial({ map: doku, roughness: palet === "kablo" ? 0.8 : 0.4, metalness: palet === "bakir" ? 0.35 : 0, side: DoubleSide });
+    const mat = new MeshStandardMaterial({ map: doku, roughness: palet === "kablo" ? 0.8 : 0.4, metalness: palet === "kablo" ? 0 : 0.35, side: DoubleSide, alphaTest: palet === "iz" ? 0.5 : 0 });
     const meshes = parcalar.map((p) => {
       const m = new Mesh(seritGeometrisi(p.yol, p.en, p.g, p.uc, p.bas), mat);
       m.raycast = (rc, hits) => {
