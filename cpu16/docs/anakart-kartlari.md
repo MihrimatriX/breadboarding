@@ -11,7 +11,7 @@
 | `board/mem-card.ts` | Bellek kartı (`bellek`): G/Ç çözümü, bank register'ları, EEPROM + RAM, bayt sıralayıcı |
 | `board/cache-card.ts` | Önbellek kartı (`onbellek`): etiket/veri belleği, bekleme üreteci, sayaçlar, CACHE_CTRL |
 | `board/machine-board.ts` | `buildMachineBoard({ cards })`: CPU + saat + bellek + önbellek (+ ek kartlar); `GateMachine` |
-| `board/bus-master.ts` | `BusMaster`: CPU kartı yerine arka paneli süren düzenek (veri yolu izini oynatmak için) |
+| `board/bus-master.ts` | `BusMaster`: CPU kartı yerine arka paneli süren düzenek (veriyolu izini oynatmak için) |
 | `chips/parts/bellek-ek.ts` | Yeni parça: 74HC273 |
 | `kicad/bellek/`, `kicad/onbellek/` | KiCad şemaları ve kart BOM'ları (`npm run cpu16 -- board kicad`) |
 | `tests/anakart-bellek.test.ts`, `tests/anakart-sistem.test.ts` | Doğrulama (aşağıda) |
@@ -42,7 +42,7 @@ DE/DO çekme dirençleri bellek kartındadır: sürülmeyen adres (boş bölge, 
 
 ## Saat kartı: bekleme durumu
 
-Johnson sayacı her CPU döngüsünde s0..s7'yi dolaşır (bkz. `clock-card.ts` başındaki tablo).
+Johnson sayacı her CPU döngüsünde s0..s7'yi dolaşır (bkz. `clock-card.ts`'in başındaki tablo).
 W flip-flop'u (74HC74'ün boş yarısı) ~WAIT'i **s7'nin ortasında** (osilatörün düşen kenarı)
 örnekler. W = 1 iken CLK ve WR_WIN bir AND ile kapalı tutulur; sayaç bir tur daha (8 osilatör
 periyodu = tam bir CPU saati) döner. W yalnızca s7'nin ortasında değişir; o anda CLK de WR_WIN de
@@ -60,8 +60,8 @@ yazma penceresi döngü başına bir kez açılır.
 ## Bekleme durumlu bir erişim
 
 Ana belleğe giden her erişim (okuma ıskalaması, önbellek kapalıyken okuma, her bellek yazması) tam
-**2 bekleme turu** alır (`MEM_WAIT`). İsabet ve G/Ç beklemesizdir. Çizim: kelime erişimi, t = CLK'nin
-düşen kenarından (F) itibaren osilatör periyodu; R = CLK↑ (register'lar yüklenir).
+**2 bekleme turu** alır (`MEM_WAIT`). İsabet ve G/Ç beklemesizdir. Çizim bir kelime erişimini gösterir;
+t = CLK'nin düşen kenarından (F) itibaren osilatör periyodu, R = CLK↑ (register'lar yüklenir).
 
 ```
 t (OSC)       -4      0       4       8       12      16      20      24      28
@@ -91,7 +91,7 @@ DE/DO sür     ____________________________/‾‾‾‾‾‾‾‾‾‾‾‾
    Saat kartı ~WAIT'i t = 3,5 ve 11,5'te düşük, 19,5'te yüksek görür: **tam iki tur**, R' = 20.
 2. **Bayt sırası** (bellek kartı, ~WAIT ve TCLK'den kendi kendine): SA ← bekleme (t = 6),
    BSEL ← SA (TCLK↓, t = 10). Çift bayt t = 6'da 74HC574'e alınır (BSEL = 0); BSEL = 1 iken tek
-   bayt 74HC245 ile doğrudan DO'ya gider. Kart DE/DO'yu [10, 22) sürer; CPU R' = 20'de örnekler.
+   bayt 74HC245 ile doğrudan DO'ya gider. Kart DE/DO'yu [10, 22) aralığında sürer; CPU R' = 20'de örnekler.
 3. **Yazma**: CPU'nun yazma darbesi bellek çiplerine gitmez, yalnızca WEL_E/WEL_O bayraklarını kurar.
    Çift bayt [2, 6) (BSEL = 0), tek bayt [14, 18) (BSEL = 1) penceresinde yazılır. A0'ı (BSEL)
    değiştiren kenar ile bir yazma darbesini bitiren kenar arasında en az 4 OSC vardır; veri darbeden
@@ -137,19 +137,20 @@ olmadığı için yerlerini 4 × 62256 ve 28C256 aldı (AFU kararı, [spec.md](s
 | Yapıştırıcı | 74HC08 × 6, 74HC32 × 2, 74HC02 × 2, 74HC00, 74HC04 × 2 |
 
 - **Sayım**: CLK↑'de (R) bir kez: isabet = okuma ∧ EN ∧ HIT ∧ ¬CA, ıskalama = okuma ∧ EN ∧ CA.
-  Bir veri yolu döngüsü = bir kelime erişimi = bir sayım; önbellek kapalıyken sayılmaz. Dört 74HC161
+  Bir veriyolu döngüsü = bir kelime erişimi = bir sayım; önbellek kapalıyken sayılmaz. Dört 74HC161
   ortak saatle zincirlenir: her birinin CEP'i sayım izni, CET'i bir öncekinin TC'si (eşzamanlı
-  zincir; dalgalı sayaç yok). Geri okuma 74HC541'lerle doğrudan sayıcıdan: sayaçlar yalnız bellek
+  zincir; dalgalı sayaç yok). Geri okuma 74HC541'lerle doğrudan sayıcıdan yapılır: sayaçlar yalnız bellek
   okumalarının sonunda değişir, FF30–FF33 okuması (G/Ç) sırasında sabittir; bu yüzden 74HC590'daki
   çıkış register'ına gerek yok. FF30'a çift bayt yazması ve ~RESET iki sayacı da sıfırlar (~MR).
 - **Neden 74HC161 + 74HC541**: önceki 74HC590 sayaç ve çıkış register'ını tek çipte birleştiriyordu
-  ama yaygın değil. 74HC161 her yerde bulunur; üç durumlu çıkışı olmadığı için veri yoluna 74HC541
+  ama yaygın değil. 74HC161 her yerde bulunur; üç durumlu çıkışı olmadığı için veriyoluna 74HC541
   ile bağlanır (kart 37'den 46 entegreye çıktı).
 - **Reset**: ~RESET düşükken CLRS = 1: etiket adresi 74HC157'lerle temizleme sayacına geçer ve OSC'nin
   her düşük yarısında bir satıra "geçersiz" yazılır; karşılaştırıcı kapalıdır. ~RESET kalkınca CLRS
   OSC↑ ile düşer (son yazma darbesi adres değişmeden kapanır). **~RESET en az 1025 OSC periyodu**
   düşük kalmalıdır; gerçek kartta reset RC'si milisaniyeler sürer, `GateMachine` 1100 periyot tutar.
-- **Sinyal adlarında** kart önekleri: bellek kartının iç netleri `M_`, önbellek kartınınkiler `C_`.
+- **Sinyal adlarında** kart öneki vardır: bellek kartının iç netleri `M_`, önbellek kartınınkiler `C_`
+  ile başlar.
 
 ## Doğrulama zinciri
 
@@ -161,14 +162,14 @@ olmadığı için yerlerini 4 × 62256 ve 28C256 aldı (AFU kararı, [spec.md](s
    yalnızca osilatörün yükselen kenarında; ardışık CLK↑ arası 8·(1 + bekleme). Kenarlar ayrıca
    74HC161 sayaçlarıyla sayılır (dalga içinde bir parazit olsaydı sayaç fazla sayardı). ADIM kipinde
    12 basış: her basış tam bir döngü, bekleme turları dahil; basışlar arasında saat durur.
-3. **Bellek + önbellek kartları ↔ Machine, veri yolu izi** (`anakart-bellek.test.ts`): `Machine`'in
-   `onAccess` izi kelime/bayt veri yolu döngülerine gruplanır ve `BusMaster` ile gerçek saat, bellek ve
+3. **Bellek + önbellek kartları ↔ Machine, veriyolu izi** (`anakart-bellek.test.ts`): `Machine`'in
+   `onAccess` izi kelime/bayt veriyolu döngülerine gruplanır ve `BusMaster` ile gerçek saat, bellek ve
    önbellek kartlarında oynatılır. Her erişimde okunan değer, bekleme turu sayısı, bank register'ları,
    sayaçlar ve CACHE_CTRL; sonda EEPROM (iç durumu dahil), 128 KB RAM, 1024 etiket ve geçerli
    satırların verisi karşılaştırılır. Senaryolar: BIOS açılışı ("> " istemine kadar, ≈ 59 000 erişim),
    monitör komutları (C, C 0 / C 1, W, D, B ve EEPROM yazma korumasını sınayan I), F komutuyla Intel HEX → EEPROM
    (korumalı sayfa yazması, DATA yoklaması), 64 bank + bank register'ları + RAM/EEPROM/boş bölge
-   gözetleme + önbellek kapalı/açık + sayaç taşması + EEPROM yazması, 1 MB fiziksel harita: EEPROM,
+   gözetleme + önbellek kapalı/açık + sayaç taşması + EEPROM yazması ve 1 MB fiziksel harita: EEPROM,
    boş alan 0xFF, RAM (önbellek açık ve kapalı). EEPROM'un zamanı kartı süren düzeneğin saatidir;
    yazma döngüsü (≈ 10 ms) iki modelde de aynı anda biter.
 4. **Tam sistem ↔ Machine, komut komut** (`anakart-sistem.test.ts`): `GateMachine` (CPU + saat +
@@ -180,7 +181,7 @@ olmadığı için yerlerini 4 × 62256 ve 28C256 aldı (AFU kararı, [spec.md](s
    reset'ten başka bir kartın G/Ç adresinden ilk okumaya kadar (≈ 58 200 döngü: bank register'ları,
    önbellek açma, değişkenleri sıfırlama, EEPROM yazma rutinlerini RAM'e kopyalama, ekran temizleme).
 5. **KiCad**: `kicad-cli` bellek ve önbellek şemalarından netlist çıkarır; her netin pin kümesi
-   kartın netleriyle aynı (`board.test.ts`, kurulu değilse atlanır). ERC: `buildMachineBoard()`'da
+   kartın netleriyle aynı (`board.test.ts`; `kicad-cli` kurulu değilse atlanır). ERC: `buildMachineBoard()`'da
    çakışan çıkış ve boşta giriş yok.
 
 Hız (tarayıcı dışında): `BusMaster` saniyede ≈ 18 000, `GateMachine` ≈ 9 000 CPU döngüsü (G/Ç, video
@@ -188,9 +189,9 @@ ve kendin yap bellek kartları da takılıyken ≈ 7 000).
 
 ## Bilinen farklar ve kısıtlar
 
-- **Ardışık veri yolu adımı yok varsayımı**: bellek kartının sıralayıcısı bir erişimden sonra t = 26'ya
+- **Ardışık veriyolu adımı yok varsayımı**: bellek kartının sıralayıcısı bir erişimden sonra t = 26'ya
   kadar (bir sonraki adımın ilk 2 OSC'si) sürer. Mikrokodda iki bellek adımı hiç art arda gelmez
-  (her `MEM` adımının önünde ve arkasında veri yolu kullanmayan bir adım vardır; getirmenin 0. adımı
+  (her `MEM` adımının önünde ve arkasında veriyolu kullanmayan bir adım vardır; getirmenin 0. adımı
   `PC -> MAR` dahil); mikrokod değişirse bu korunmalıdır.
 - **Bekleme üreteci önbellek kartındadır**: isabet/ıskalamayı yalnızca o bilir. Bellek kartı tek
   başına (önbellek kartı olmadan) bekleme istemez ve çalışmaz.
@@ -225,4 +226,4 @@ const { board } = buildMachineBoard();      // şema, BOM, KiCad, ERC
 
 G/Ç kartı takılı değilse `GateMachine` IRQ'yu 0'da tutar ve 0xFF00'a yapılan çift bayt yazmalarını
 `output`'a ekler (yalnız test için UART izleyicisi; UART_STAT okuyan programlar bu düzenekte
-`Machine` ile aynı gitmez, onlar için G/Ç kartı gerekir).
+`Machine` ile aynı davranmaz, onlar için G/Ç kartı gerekir).
