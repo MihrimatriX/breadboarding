@@ -20,7 +20,7 @@
 
 - **Çıkarmada C = "borç yok"** (ARM tarzı): `SUB a, b` sonrası `C = 1` ⇔ `a ≥ b` (işaretsiz). `SBC`: `a − b − (1 − C)`. Böylece 32 bit çıkarma `SUB` + `SBC` ile yapılır.
 - `ROL`/`ROR` **elde üzerinden** döner (17 bit): 32 bit kaydırma = `SHL düşük` + `ROL yüksek`.
-- `ADDI` bayrak günceller: `ADDI r, r, -1` + `BNE` döngü kalıbı.
+- `ADDI` bayrakları günceller; `ADDI r, r, -1` + `BNE` döngü kalıbı buna dayanır.
 
 ## Bellek erişimi
 
@@ -52,7 +52,7 @@
 - Yığın **aşağı doğru büyür**, `sp` son yazılan kelimeyi gösterir: `PUSH` = `sp −= 2; [sp] = r`, `POP` = `r = [sp]; sp += 2`.
 - Vektörler: `0x0000` reset, `0x0002` IRQ, `0x0004` SWI. Her biri tek bir `B`/`JAL` komutudur.
 - **Kesmeye giriş** (IRQ, komut sınırında `I = 1` ise; SWI her zaman): `PUSH PC`, `PUSH bayraklar`, `I = 0`, `PC = vektör`.
-- `RETI`: bayrakları, sonra PC'yi yığından alır (I eski haline döner).
+- `RETI`: bayrakları, sonra PC'yi yığından alır (I eski hâline döner).
 - IRQ hattı **seviye tetiklemeli**: cihaz, işleyici onu onaylayana kadar hattı tutar.
 - `HALT` işlemciyi durdurur; `I = 1` iken gelen IRQ onu uyandırır (klavye beklerken güç ve döngü harcamaz).
 

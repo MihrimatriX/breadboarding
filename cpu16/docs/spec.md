@@ -1,16 +1,16 @@
 # CPU16 — Tasarım Spesifikasyonu v1.0
 
-> Durum: **dondurulmuş (v1.0, 2026-10-11)**. Tüm kararlar AFU tarafından onaylandı.
+> Durum: **dondurulmuş (v1.0, 2026-10-11)**. Tüm kararları AFU onayladı.
 > Bu belgeyi değiştirmek = yol haritasında "Spec değişikliği" kuralı (bkz. `roadmap.md`).
 > Çalışma adı: **CPU16** (kalıcı isim sonra seçilecek).
 
 ## 0. Vizyon (AFU, 2026-10-11)
 
-✅ Tamamen **entegrelerden (74HC serisi)** kurulan, kendimize ait bir 16 bit bilgisayar.
-✅ Simülasyonda **bir entegreye tıklayınca içi görünür**: kart → çip → kapı → transistör (Silikon3D'nin 3D görüntüleyicisiyle).
-✅ **Klavye ve ekran** dahil.
-✅ **Şeması çizilecek** (devre şeması, sonra istenirse PCB).
-✅ **Yeniden programlanabilir** (program bellek değiştirilebilir).
+✅ Tamamen entegrelerden (74HC serisi) kurulan, kendimize ait bir 16 bit bilgisayar.
+✅ Simülasyonda bir entegreye tıklayınca içi görünür: kart → çip → kapı → transistör (Silikon3D'nin 3D görüntüleyicisiyle).
+✅ Klavye ve ekran dahil.
+✅ Şeması çizilecek (devre şeması, sonra istenirse PCB).
+✅ Yeniden programlanabilir (program belleği değiştirilebilir).
 
 Bu, Ben Eater 8-bit / Gigatron / Magic-1 ailesinden bir proje; fark 16 bit olması ve her katmanın 3D'de açılabilmesi.
 
@@ -21,7 +21,7 @@ Ayrık mantıkta her özellik = çip sayısı. Bu yüzden v0.1'den değişenler:
 | Konu | v0.1 | v0.2 | Neden |
 |---|---|---|---|
 | Barrel shifter | var | **yok**, 1 bit kaydırma (SHL/SHR/SAR/ROL/ROR ×1) | 16 bit barrel shifter ≈ 8–12 adet 74HC153 |
-| MUL/DIV | donanım (ops.) | **yazılım** (ROM'da kütüphane rutini) | çarpıcı onlarca çip |
+| MUL/DIV | donanım (ops.) | **yazılım** (ROM'da kütüphane rutini) | donanım çarpıcısı onlarca çip |
 | Kontrol birimi | sabit FSM | **mikrokod, 74HC kapılarıyla** (ilk planda Flash'taydı) | Ben Eater yöntemi; mikrokod tablosu `micro/cpu16.ucode`'da, kapı devresi ondan üretilir (`npm run cpu16 -- kontrol`). CPU'da ROM yok (AFU kararı) |
 | Saat | — | ~1–4 MHz, adım adım tek saat butonu | 74HC ile güvenli; videoda adım adım izlenir. İlk gerçek kart 1 MHz (8 MHz osilatör / 8): şemadan zamanlama analizi, [uretim.md](uretim.md) |
 
@@ -32,7 +32,7 @@ Kalanlar aynı: load/store, sabit 16 bit komut, 8 register, NZCV, byte adresli 6
 | Blok | Çipler (tahmini) | Not |
 |---|---|---|
 | Register dosyası 8×16 | 74HC574 ×16 + 74HC138 + 3-state buffer'lar (veya 74HC670 ×8) | 670 daha az çip ama nadir |
-| ALU 16 bit | 74HC283 ×4 (toplayıcı) + 74HC86/08/32 (XOR/AND/OR) + 74HC157 mux | 74181 artık bulunmuyor; kapıdan kurmak hem öğretici hem bulunabilir |
+| ALU 16 bit | 74HC283 ×4 (toplayıcı) + 74HC86/08/32 (XOR/AND/OR) + 74HC157 mux | 74181 artık bulunmuyor; kapılardan kurmak öğretici, parçaları da bulunabilir |
 | Bayraklar | 74HC74 / 74HC175 | |
 | PC, MAR, IR | 74HC161 ×4 (PC), 74HC574 ×2+2 | |
 | Mikrokod | 74HC138 kod çözücüler + 74HC151 + VEYA ağı (`board/kontrol.ts`, tablodan üretilir) + mikro-adım sayacı 74HC161 | 32 kontrol sinyali; ilk planda 3–4 adet Flash'tı |
@@ -83,8 +83,8 @@ Vektör tablosu (ARM tarzı, her biri bir `JAL`): `0x0000` reset, `0x0002` IRQ, 
 
 ## 2c. Programlama ve yükleme (AFU, 09:36)
 
-✅ Program **iki yoldan** yüklenir:
-- **Web**: tarayıcıdaki IDE'de yaz → derle → simülatöre yükle. Gerçek kart bağlıysa **Web Serial API** ile USB-UART üzerinden karttaki bootloader'a gönder (çip sökmeden).
+✅ Program iki yoldan yüklenir:
+- **Web**: tarayıcıdaki IDE'de yaz → derle → simülatöre yükle. Gerçek kart bağlıysa Web Serial API ile USB-UART üzerinden karttaki bootloader'a gönder (çip sökmeden).
 - **Fiziksel**: aynı .bin / Intel HEX dosyası EEPROM programlayıcıyla 28C256'ya yazılır. Deney setine kendi programlayıcımız dahil (Arduino Nano + 2×74HC595 ile, Ben Eater tarzı); hazır TL866/T48 de çalışır.
 
 ✅ **C ile programlanacak, derleyiciyi kendimiz yazacağız.**
@@ -97,8 +97,8 @@ Vektör tablosu (ARM tarzı, her biri bir `JAL`): `0x0000` reset, `0x0002` IRQ, 
                        web: simülatör / Web Serial    fiziksel: EEPROM programlayıcı
 ```
 
-Araç zinciri **TypeScript** ile yazılır: hem tarayıcıda (web IDE) hem Node CLI'da aynı kod çalışır.
-Derleyici: chibicc tarzı, el yazımı recursive-descent parser + AST → basit IR → CPU16 assembly. Sürümler:
+Araç zinciri TypeScript ile yazılır: hem tarayıcıda (web IDE) hem Node CLI'da aynı kod çalışır.
+Derleyici: chibicc tarzı, elle yazılmış recursive-descent parser + AST → basit IR → CPU16 assembly. Sürümler:
   1. C alt kümesi: int/char/pointer/dizi/if/while/for/fonksiyon (ilk C programı ekranda "Merhaba")
   2. struct/union/enum, global değişken, string, switch
   3. typedef, önişlemci (#include/#define), çoklu dosya + linker
@@ -108,7 +108,7 @@ ABI: argümanlar r0–r3, dönüş r0 (32 bit: r0:r1), r4–r5 callee-saved, r6 
 
 ## 2d. Eğitim ve deney seti (AFU, 09:36)
 
-✅ Proje aynı zamanda bir **tutorial + deney seti**. Her deney = bir video + simülatörde bir sahne + gerçek kartta bir modül:
+✅ Proje aynı zamanda bir tutorial + deney seti. Her deney = bir video + simülatörde bir sahne + gerçek kartta bir modül:
 
 | # | Deney | Çıktı |
 |---|---|---|
@@ -129,10 +129,10 @@ ABI: argümanlar r0–r3, dönüş r0 (32 bit: r0:r1), r4–r5 callee-saved, r6 
 ## 3. Katmanlı model (simülasyon ↔ 3D)
 
 1. **Kart**: KiCad şeması → netlist → 3D kart (çipler, kablolar, LED'ler).
-2. **Çip**: her 74HC parçası kendi kapı seviyesi modeline sahip (ör. 74HC283 = 4 tam toplayıcı).
+2. **Çip**: her 74HC parçasının kendi kapı seviyesi modeli var (ör. 74HC283 = 4 tam toplayıcı).
 3. **Kapı → transistör**: her kapı CMOS transistörlerine açılır (Silikon3D motoru zaten CMOS anahtar seviyesini destekliyor).
 
-Tek kaynak: **KiCad şeması**. Simülatör ve 3D görünüm şemadan üretilir; şema değişirse hepsi güncellenir.
+Tek kaynak: KiCad şeması. Simülatör ve 3D görünüm şemadan üretilir; şema değişirse hepsi güncellenir.
 
 ## 4. Komut formatları
 
