@@ -5,14 +5,14 @@
 ## Ne öğreneceksin
 
 - Bir 74HC entegresinin içinde ne olduğunu: her kapı P ve N kanallı MOSFET çiftlerinden oluşur.
-- NAND'ın evrenselliği: NOT, AND, OR ve XOR'u yalnızca NAND'dan kurmayı.
+- NAND'ın evrenselliğini: NOT, AND, OR ve XOR'u yalnızca NAND'dan kurmayı.
 - CMOS girişinin neden asla boşta bırakılmadığını (yüzen giriş, çift iletim, ısınma).
 
 ## Nasıl çalışır
 
 CMOS NAND: çıkışla VCC arasında **paralel** iki P-MOSFET, çıkışla GND arasında **seri** iki N-MOSFET.
 Girişlerden biri 0 ise P'lerden biri iletir, çıkış 1 olur; ikisi de 1 ise yalnızca seri N'ler iletir,
-çıkış 0 olur. Bir an bile hem yukarı hem aşağı yol açık olmadığı için CMOS durağan halde neredeyse
+çıkış 0 olur. Bir an bile hem yukarı hem aşağı yol açık olmadığı için CMOS durağan hâlde neredeyse
 akım çekmez. 74HC00 dört NAND = 16 transistördür (aşağıdaki tablo kütüphanedeki modelden üretilmiştir).
 
 ## Kurulum adımları
@@ -24,7 +24,8 @@ akım çekmez. 74HC00 dört NAND = 16 transistördür (aşağıdaki tablo kütü
 3. Kalan üç kapıyla NOT (iki girişi birleştir), AND (NAND + NOT) ve OR (girişleri ters çevrilmiş NAND)
    kur. Kullanmadığın girişleri GND'ye bağla.
 4. İsteğe bağlı, transistörle NAND: 2 × BS250 (P-MOSFET) paralel VCC'den çıkışa, 2 × 2N7000
-   (N-MOSFET) seri çıkıştan GND'ye; kapılar girişlere, çıkışa 100 kΩ yük ve LED sürmek için 74HC04.
+   (N-MOSFET) seri çıkıştan GND'ye; MOSFET'lerin kapıları girişlere, çıkışa 100 kΩ yük ve LED
+   sürmek için 74HC04.
 5. Yüzen giriş deneyi: 1A'yı boşta bırak, parmağını yaklaştır; çıkışın rastgele değiştiğini ve
    entegrenin akımının arttığını multimetreyle gör. Sonra girişi bağla
    ([neden olur](led-ve-direnc.md#çekme-dirençleri-pull-up-pull-down)).
