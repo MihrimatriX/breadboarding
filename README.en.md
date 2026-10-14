@@ -67,7 +67,7 @@ A project in the family of Ben Eater's 8-bit computer and the Gigatron; the diff
 
 - Processor: 8 registers, fixed 16-bit instructions, NZCV flags, 64 KB address space, memory-mapped
   I/O at `0xFF00`. Instructions run on microcode, and the microcode is built from 74HC gates instead of
-  stored in a ROM (the CPU board has 210 chips). An instruction takes 5 clock cycles on average. For
+  being stored in a ROM (the CPU board has 210 chips). An instruction takes 5 clock cycles on average. For
   debugging, the CPU board has 39 LEDs (which register is being read, which one is being written, who
   drives the data bus, the flags, the micro-step) and 26 bar graph displays (data bus, PC, address,
   instruction, ALU result and the contents of all eight registers); they light up live in 3D.

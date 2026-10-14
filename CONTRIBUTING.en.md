@@ -77,7 +77,8 @@ behavior. The microcode model (`cpu16/micro/`), the gate-level boards (`cpu16/bo
 boards must run the same programs and produce the same results as the emulator in lockstep.
 
 - A change in behavior goes into the emulator and [isa-ayrintilari.md](cpu16/docs/isa-ayrintilari.en.md)
-  first, and the lower layers are then made to match. If the two disagree, fix both together.
+  first, and the lower layers are then made to match. If the emulator and the doc disagree, fix both
+  together.
 - When you find a bug, look in the layer where the difference first appears: the lockstep tests tell you which one.
 - In hesap8 the golden model is `hesap8/model.ts`; the circuit must match it in every case
   (`npm run hesap8 -- dogrula --hepsi`).
