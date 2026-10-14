@@ -50,7 +50,11 @@ function damarRengi(c: Color, net: number, k: number, v: Uint8Array | null, pale
     c.copy(lv === 1 ? SEVIYE[1] : lv === 0 ? MAVI : k === 0 ? KIRMIZI_CIZGI : BILINMEYEN);
     if (vurgu === null) c.lerp(TABAN.kablo, k === 0 && lv < 0 ? 0 : 0.45);
   } else if (lv < 0) c.copy(TABAN.bakir);
-  else c.copy(lv === 1 ? SEVIYE[1] : lv === 0 ? BAKIR : SEVIYE[lv]);
+  else {
+    c.copy(lv === 1 ? SEVIYE[1] : lv === 0 ? BAKIR : SEVIYE[lv]);
+    // seçim yokken yollar maskenin altında soluk: arka panel kartlardan öne çıkmasın
+    if (vurgu === null) c.lerp(TABAN.bakir, 0.4);
+  }
   if (vurgu !== null && net !== vurgu) c.lerp(TABAN[palet], SOLUK[palet]);
   return c;
 }
@@ -95,8 +99,9 @@ function useDamarDokusu(netler: Int32Array, palet: Palet): DataTexture {
     };
     for (let k = 0; k < DAMAR; k++) {
       damarRengi(tmpC, netler[k], k, liveNets.values, palet, vurgu);
-      for (let p = 0; p < PIKSEL - 1; p++) yaz(k * PIKSEL + p, tmpC);
-      yaz(k * PIKSEL + PIKSEL - 1, OLUK[palet]);
+      // kabloda damar 3 piksel, oluk 1; arka panelde bakır yol 2 piksel, arası 2 (yollar ince)
+      const dolu = palet === "kablo" ? PIKSEL - 1 : PIKSEL / 2;
+      for (let p = 0; p < PIKSEL; p++) yaz(k * PIKSEL + p, p < dolu ? tmpC : OLUK[palet]);
     }
     doku.needsUpdate = true;
   });
