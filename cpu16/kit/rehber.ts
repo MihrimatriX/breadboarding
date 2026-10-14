@@ -180,7 +180,7 @@ function malzeme(mine: Elem[], all: Elem[]): string[] {
       const here = us.filter((u) => units.includes(u)).map((u) => `${u.unit}. kapı (${u.role})`);
       const other = us.filter((u) => !units.includes(u)).map((u) => `${u.unit}. kapı → Deney ${u.deney}`);
       const placed = all.find((e) => e.ref === ref && e.shell)!.deney;
-      const where = placed === mine[0]?.deney ? "bu deneyde takılır" : `Deney ${placed}'de takıldı`;
+      const where = placed === mine[0]?.deney ? "bu deneyde takılır" : `${placed}. deneyde takıldı`;
       out.push(`- **${ref}** (${us[0].part}, ${where}): ${here.join("; ")}${other.length ? `. Diğerleri: ${other.join(", ")}` : ""}`);
     }
     out.push("");
