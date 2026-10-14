@@ -273,11 +273,12 @@ function pinHaritasiCiz(g: CanvasRenderingContext2D, secili: number | null, netl
 
 /**
  * 2 × 32 IDC soketleri; taban > 0 (mm): altlarında erkek başlığın gövdesi de (arka paneldeki konnektör).
- * Kafalarında pin haritası (hangi damar hangi pinde, hangi sinyal). Seçili sinyalin uçları olan kartların
+ * Kafalarında pin haritası (hangi damar hangi pinde, hangi sinyal). duz: soket yok, yalnız karta basılı pin
+ * haritası (PCB'de kenar konnektörünün altında). Seçili sinyalin uçları olan kartların
  * soketleri çerçevelenir, etiketlerine o karttaki uç sayısı yazılır (konnektörün kendi pini sayılmaz):
  * sinyal kartlar arasında nereden nereye gidiyor.
  */
-export function IdcSoketleri({ soketler, netler, taban = 0 }: { soketler: Soket[]; netler: Int32Array; taban?: number }) {
+export function IdcSoketleri({ soketler, netler, taban = 0, duz = false }: { soketler: Soket[]; netler: Int32Array; taban?: number; duz?: boolean }) {
   const dil = useDil();
   const net = useKart((s) => s.net);
   const [geo, mat, cerceve, harita, haritaMat, haritaGeo] = useMemo(() => {
@@ -324,16 +325,16 @@ export function IdcSoketleri({ soketler, netler, taban = 0 }: { soketler: Soket[
     <group>
       {soketler.map((k, i) => (
         <group key={i} position={[k.x, k.y, k.z]} rotation={[0, k.ters ? Math.PI : 0, 0]} scale={[S, S, S]}>
-          <mesh geometry={geo} material={mat} raycast={() => null} />
-          <mesh geometry={haritaGeo} material={haritaMat} position={[0, taban + IDC_BOY + 0.04, 0]} raycast={() => null} />
-          {(uclar?.[i] ?? 0) > 0 && (
+          {!duz && <mesh geometry={geo} material={mat} raycast={() => null} />}
+          <mesh geometry={haritaGeo} material={haritaMat} position={[0, duz ? 0.1 : taban + IDC_BOY + 0.04, 0]} raycast={() => null} />
+          {!duz && (uclar?.[i] ?? 0) > 0 && (
             <mesh material={cerceve} position={[0, taban + IDC_BOY / 2, 0]} raycast={() => null}>
               <boxGeometry args={[L + 3, IDC_BOY + 1.6, 9.6]} />
             </mesh>
           )}
         </group>
       ))}
-      <TextQuads items={etiketler} cellW={512} cellH={56} font={34} />
+      {!duz && <TextQuads items={etiketler} cellW={512} cellH={56} font={34} />}
     </group>
   );
 }
