@@ -4,6 +4,8 @@
 
 [![CI](https://github.com/MihrimatriX/breadboarding/actions/workflows/ci.yml/badge.svg)](https://github.com/MihrimatriX/breadboarding/actions/workflows/ci.yml)
 
+**Live:** [breadboard.ahmetfuzunkaya.com](https://breadboard.ahmetfuzunkaya.com)
+
 This repository shows the inside of a computer from the bottom layer to the top. **Silikon3D** is a 3D
 simulator that runs in the browser: it runs the die of a real MOS 6502 transistor by transistor and
 shows the signals live. The same app holds two circuit projects of ours. **CPU16** is a 16-bit computer
@@ -170,15 +172,16 @@ JSON-LD, and opens the app in its section. nginx serves them at addresses such a
 Next to them are `robots.txt`, `site.webmanifest` and the icons (`favicon.svg`, `icon-192.png`,
 `icon-512.png`, `apple-touch-icon.png`). All the text lives in one place: [src/seo.ts](src/seo.ts).
 
-Give the build the site's public address. It is used for the canonical link, `og:url`, absolute
-image URLs and `sitemap.xml`:
+The site's public address (`SITE_URL`) is used for the canonical link, `og:url`, absolute image URLs
+and `sitemap.xml`. `docker compose` uses the live address (https://breadboard.ahmetfuzunkaya.com) by
+default; for another address:
 
 ```bash
 SITE_URL=https://silikon3d.example npm run build
 SITE_URL=https://silikon3d.example docker compose up -d --build
 ```
 
-Without it, the tags use relative URLs and no sitemap is written. Some sites (Facebook, LinkedIn)
+Without an address, `npm run build` writes the tags with relative URLs and no sitemap. Some sites (Facebook, LinkedIn)
 only show a preview image when its URL is absolute.
 
 ## Commands
