@@ -119,9 +119,9 @@ directly).
 ### The problem the analysis found and fixed
 
 In the first schematic the gated clock of the C and V flags came from the `SETSCV` output of the ALU decode
-ROM. The ROM's address includes `CFLAG`, and CFLAG changes exactly on the edge where the flags are loaded;
-a glitch on the ROM output at that moment would send a second pulse to the flag clock and load the C flag
-wrongly. The simulation cannot see this (the gate model produces no glitches); on a real board it would
+ROM. The ROM's address included `CFLAG`, and CFLAG changes exactly on the edge where the flags are loaded;
+a glitch on the ROM output at that moment would have sent a second pulse to the flag clock and loaded the
+C flag wrongly. The simulation cannot see this (the gate model produces no glitches); on a real board it would
 have shown up as an ADC/SBC that goes wrong now and then, a very hard bug to find. The fix: all four flags
 load with the same gated clock, and while `SETSCV = 0` a 74HC157 writes the old C and V back. Today's
 gate-level decoder can produce the same glitch on its C-dependent bits: the rule still holds, and no output

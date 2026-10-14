@@ -1,6 +1,6 @@
 # C örnekleri: CPU16'da C ile programlama
 
-CPU16 için yazılmış C programlarının rehberli turu. Örnekler kolaydan zengine sıralıdır; her biri hem
+CPU16 için yazılmış C programlarının rehberli turu. Örnekler basitten karmaşığa sıralıdır; her biri hem
 C'nin bir konusunu hem de CPU16'nın bir özelliğini (16 bitlik int, yazılımla çarpma / bölme, bellek
 eşlemeli G/Ç, VGA, kesmeler) öğretir. Her dosyanın başındaki açıklama ne gösterdiğini, nasıl
 çalıştırıldığını ve beklenen çıktıyı yazar; satır içi yorumlar da CPU16'da neler olduğunu anlatır.
@@ -41,7 +41,7 @@ npm run cpu16 -- cc cpu16/programs/c/fib.c --run                         # düz 
 
 - `--run` ile BIOS örneği: BIOS açılır, program RAM'e konur, `G 4000` gönderilir; UART çıktısı
   terminale akar, program monitöre dönünce (en çok `--max` döngü, varsayılan 50 milyon = 12,5 s)
-  VGA ekranının son hali yazılır. stdin bir boru ya da dosyaysa içeriği programa UART'tan klavye
+  VGA ekranının son hâli yazılır. stdin bir boru ya da dosyaysa içeriği programa UART'tan klavye
   girdisi gibi gider; terminalden çalıştırırken beklememesi için `< /dev/null` verilebilir.
 - `machine dosya.c` programı derler, önyükleyiciyle yükler ve çalıştırır; makine 4 MHz'te gerçek
   zamanlı çalışır, terminal UART'a bağlıdır. Toplu kip: `--cycles N --screen`.
@@ -78,7 +78,7 @@ köşesine `ekran_yaz` ile bir yıldız. `selam.c` renkleri (`bios_setattr(RENK(
 
 ### sayilar.c: sayılar ve tabanlar
 
-`printf` kullanmadan sayı yazmak: onluk (`% 10` ve `/ 10`), onaltılık (4 bitlik kaydır ve maskele) ve
+`printf` kullanmadan sayı yazmak: onluk (`% 10` ve `/ 10`), onaltılık (4 bit kaydır ve maskele) ve
 ikilik (en üst biti sına, 1 sola kaydır). Aynı 16 bitin `int` ve `unsigned` olarak iki okunuşu yan
 yana; ardından taşmalar:
 
@@ -118,7 +118,7 @@ en büyük terimi (`fib(24) = 46368`, `fib(47) = 2971215073`) ve C'de taşmayı 
 (Değerler `volatile` değişkenlerin bellekten okunup yazılmasını da içerir.) Çarpma süresi çarpanın bit
 sayısına bağlıdır: `__mul16` çarpan sıfırlanınca durur. Sabitle çarpmayı derleyici kaydırma ve
 toplamaya çevirir (`a * 10` = `(a << 1) + (a << 3)`), sabit solda olsa da (`10 * a`). Ölçüm
-`0xF820`'deki BIOS tık sayacını doğrudan okur: kesmenin değiştirdiği bir değişken, `volatile`.
+`0xF820`'deki BIOS tık sayacını doğrudan okur: kesmenin değiştirdiği bir değişken, bu yüzden `volatile`.
 
 Dene: `b16`'yı 1 ya da 0x7FFF yap, çarpma süresi nasıl değişiyor? `a32`'yi 65535'ten küçük yap: 32
 bitlik bölme 16 bitlik hızlı yola girer.
@@ -237,8 +237,8 @@ salınıcı; renk hücrenin yaşı. Saniyede 10 nesil, 100 nesil sonra biter. R 
 Q çıkar.
 
 Öğrenilecek: 4 MHz'te algoritma seçimi. Her hücrenin 8 komşusunu her nesilde saymak bu makinede nesil
-başına 0,3 s sürer; burada her hücre baytı kendi komşu sayısını taşır ve sayılar yalnız bir hücre doğup
-ölünce güncellenir (boş hücre tek karşılaştırmayla geçilir). Satır uzunluğu 128 seçildi: indeks
+başına 0,3 s sürer; burada her hücre baytı kendi komşu sayısını taşır ve sayılar yalnız bir hücre doğunca
+ya da ölünce güncellenir (boş hücre tek karşılaştırmayla geçilir). Satır uzunluğu 128 seçildi: indeks
 `y * 128 + x` bir kaydırmadır, 82 olsaydı her seferinde `__mul16`. Ekrana yalnız değişen hücreler
 yazılır; durum satırı `printf` yerine `sprintf` + VRAM (UART'a gitmesin). Nesiller arasında `halt()`.
 
@@ -354,7 +354,7 @@ global yap (`.bss`'e gider).
 - G/Ç register'ları ve kesmeyle paylaşılan değişkenler `volatile` olmalı.
 - BIOS kesmeleri açık bırakır (zamanlayıcı ve klavye). UART RX ve vsync için `bios_setirqhook` ile
   bir C fonksiyonu bağlanır; kanca kısa olmalı, kaynağı onaylamalı, `printf` gibi yeniden girilemez
-  fonksiyonları çağırmamalıdır. `IRQ_MASK`'ı oku-değiştir-yaz `di()` / `ei()` arasında yapılır.
+  fonksiyonları çağırmamalıdır. `IRQ_MASK` üzerindeki oku-değiştir-yaz `di()` / `ei()` arasında yapılır.
 - `halt()` CPU'yu bir sonraki kesmeye kadar uyutur (bekleme döngüleri için).
 
 ### libc16 ve BIOS çağrıları
@@ -379,12 +379,13 @@ Ayrıntılar: [cc16.md](cc16.md#çalışma-zamanı-kütüphanesi), [bios.md](bio
 
 ### Ekran ve metin
 
-- `printf` BIOS'un `PUTC`'si üzerinden hem VGA'ya hem UART'a yazar; VGA 80 sütunda satır kaydırır,
+- `printf` BIOS'un `PUTC`'si üzerinden hem VGA'ya hem UART'a yazar; VGA 80 sütunda alt satıra geçer,
   ekranın sonunda bütün ekranı bir satır yukarı kaydırır.
 - Ekranın kod sayfası CP857'dir: ASCII'nin üstünde çerçeve karakterleri (`0xC9` ╔, `0xCD` ═, `0xDB` █)
   ve Türkçe harfler (`0x87` ç, `0xA7` ğ, `0x8D` ı, `0x94` ö, `0x9F` ş, `0x81` ü, büyükleri `0x80`
-  `0xA6` `0x98` `0x99` `0x9E` `0x9A`). Kaynak dosya UTF-8 olduğundan string'lere Türkçe harf yazmak
-  ekranda bozuk görünür; ya ASCII yaz ya `"\x87"` gibi kaçışlar ya da `ekran.c`'deki çevirici.
+  `0xA6` `0x98` `0x99` `0x9E` `0x9A`). Kaynak dosya UTF-8 olduğundan string'lere yazılan Türkçe
+  harfler ekranda bozuk görünür; ASCII yaz ya da `"\x87"` gibi kaçışları veya `ekran.c`'deki
+  çeviriciyi kullan.
 - Ekrana çizen bir program bitmeden imleci en alt satırın başına koymalı (`bios_setcursor(0, 29)`):
   monitör `> ` istemini oraya yazar, ekran kaymaz.
 
@@ -399,8 +400,8 @@ dosya derler; birden çok `.c` dosyası komut satırında bağlanır. Tam liste:
 
 - `-o program.s` ile üretilen assembly'ye bak: hangi satır hangi komutlara dönüştü, nerede
   `__mul16` / `__udiv16` çağrılıyor. `--map` sembollerin adreslerini yazar.
-- Uygulamanın yan panelinde register'lar, komut izi ve bellek görünümü var; program çalışırken
-  monitöre dönülmüşse `D A000` ile verilerine bakılabilir.
+- Uygulamanın yan panelinde register'lar, komut izi ve bellek görünümü var; program çalışıp
+  monitöre döndüyse `D A000` ile verilerine bakılabilir.
 - Kodun içine `__asm` konamaz ama assembly ile yazılmış bir `SWI` fonksiyonu bağlanabilir: BIOS
   `SWI @ adres` yazar ve monitöre döner ([bios.md](bios.md#kesmeler)).
 
@@ -410,8 +411,8 @@ dosya derler; birden çok `.c` dosyası komut satırında bağlanır. Tam liste:
 çalıştırır ve çıktısını denetler: UART metni, VRAM'deki karakter ve renkler. Mümkün olan yerde
 sonuç JavaScript'te bağımsız olarak hesaplanır: kalburun bütün sayıları, sıralama algoritmalarının
 karşılaştırma ve taşıma sayıları (aynı `rand` ile), kelime sayımı, sinüs eğrisinin her sütunu, Hayat
-Oyunu'nun her hücresi. `hesap.c` gerçek UART önyükleyicisiyle yüklenir ve hem UART'tan hem PS/2
-klavyeden yazılır. Düz bellek örnekleri `cc.test.ts`'te, `selam.c` ve `yilan.c` `cc-bios.test.ts`'te.
+Oyunu'nun her hücresi. `hesap.c` gerçek UART önyükleyicisiyle yüklenir; girdisi hem UART'tan hem
+PS/2 klavyeden yazılır. Düz bellek örnekleri `cc.test.ts`'te, `selam.c` ve `yilan.c` `cc-bios.test.ts`'te.
 
 ```sh
 npx vitest run cpu16/tests/c-ornekleri.test.ts
