@@ -4,7 +4,7 @@
 >
 > **Breadboard panosu** (bilgisayarın kalıcı breadboard yolu, [docs/breadboard.md](../docs/breadboard.md)): `gc-breadboard.pdf` (G/Ç kartı), 2–5. aşamalar (önce 1. aşama: taban, besleme, uyarlayıcı).
 
-Bu deneyin sonunda bilgisayar ilk kez dışarıyla konuşur: bilgisayarındaki terminale yazı yollar,
+Bu deneyin sonunda bilgisayar ilk kez dışarıyla konuşur: senin bilgisayarındaki terminale yazı yollar,
 yazdıklarını geri yankılar, saniyede bir zamanlayıcı kesmesiyle nokta koyar ve PS/2 klavyenin
 tuşlarını tarama kodu olarak gösterir. CPU bu sırada `HALT` ile uyur; her şey kesmeyle olur.
 
@@ -18,7 +18,7 @@ tuşlarını tarama kodu olarak gösterir. CPU bu sırada `HALT` ile uyur; her �
 - **Zamanlayıcı**: ön bölücü (TCLK / 4000) ve 74HC161 sayıcılarla programlanabilir kesme. Sayıcılar
   yalnız yukarı sayar; aşağı saymak için sayacın tersi tutulur (`c − 1` = `¬(¬c + 1)`).
 - **Kesme denetleyicisi**: kapılarla kurulmuş öncelik kodlayıcı, maske register'ı ve "en öncelikli kaynak"
-  (`IRQ_SRC`) register'ı; kesme işleyicinin kaynakları döngüyle boşaltması.
+  (`IRQ_SRC`) register'ı; kesme işleyicisinin kaynakları döngüyle boşaltması.
 - **PS/2**: klavyenin kendi saatiyle gelen 11 bitlik çerçeve; açık akaç (74HC05) ile klavyeyi bekletmek.
 
 ## Nasıl çalışır
@@ -32,10 +32,10 @@ tuşlarını tarama kodu olarak gösterir. CPU bu sırada `HALT` ile uyur; her �
   veriyi aldığı saat kenarında bir flip-flop'a yakalanır ve bir sonraki döngüde yapılır; böylece
   okuma sırasında hazır biti değişmez.
 - Kesme: `IRQ_PEND` bitleri `IRQ_MASK` ile VE'lenip öncelik kodlayıcısına girer (3 VEYA, 1 VE, 1 DEĞİL:
-  `SRC1 = P3 ∨ P2`, `SRC0 = P3 ∨ (P1 ∧ ¬P2)`). Herhangi biri 1 ise IRQ hattı
-  CPU'ya gider; CPU `0x0002`'ye atlar. İşleyici `IRQ_SRC`'yi okur, kaynağı onaylar (ör. `EXPIRED`'a
+  `SRC1 = P3 ∨ P2`, `SRC0 = P3 ∨ (P1 ∧ ¬P2)`). Herhangi biri 1 ise IRQ hattından
+  CPU'ya istek gider; CPU `0x0002`'ye atlar. İşleyici `IRQ_SRC`'yi okur, kaynağı onaylar (ör. `EXPIRED`'a
   1 yazar ya da `UART_DATA`'yı okur) ve `IRQ_SRC` `0xFF` olana kadar tekrarlar.
-- Kartın tasarım notları ve zamanlama ayrıntıları: `cpu16/board/io-card.ts` (baştaki açıklamalar),
+- Kartın tasarım notları ve zamanlama ayrıntıları: `cpu16/board/io-card.ts` (baştaki açıklamalar);
   zamanlama sonuçları: `cpu16/docs/uretim.md`.
 
 ## Kurulum adımları
