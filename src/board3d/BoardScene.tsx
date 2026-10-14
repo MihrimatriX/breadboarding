@@ -27,6 +27,7 @@ import { boardLayoutData, boardModel, findPart, liveNets, netEnds, useKart } fro
 import { KurulumSahne } from "./KurulumSahne";
 import { AtlamaTelleri, BbKurulumSahne, BreadboardTabani, breadboardGenelBakis, breadboardSahnede } from "./Breadboard3D";
 import { DAMAR, DAMAR_ADIM } from "./serit";
+import { yuvarlakYol } from "./telYolu";
 import { DamarSeritleri, IdcSoketleri, useDamarNetleri, type SeritParcasi, type Soket } from "./Serit3D";
 import { TextQuads, type TextItem } from "./TextQuads";
 import { cipGovdeRengi, useBolum, useBolumVurgusu, useEtiketlerAcik } from "./bolum";
@@ -62,6 +63,10 @@ function useLayoutWorld() {
   const cz = lay.height / 2;
   return useMemo(() => ({ lay, w: (x: number, y: number): [number, number] => [(x - cx) * S, (y - cz) * S] }), [lay, cx, cz]);
 }
+
+/** kartların yeşili ve arka panelin koyu grisi (gümüş yollarıyla kartlardan ayrışır) */
+const KART_RENGI = "#16503a";
+const ARKA_PANEL_RENGI = "#25282d";
 
 const level = (v: Uint8Array | null, net: number) => (net < 0 ? 2 : net <= 1 ? net : v ? (v[net] ?? 3) : 3);
 
@@ -104,7 +109,7 @@ function Cards() {
         return (
           <mesh key={c.name} position={[x, -0.08, z]} raycast={noRaycast}>
             <boxGeometry args={[c.w * S, 0.16, c.h * S]} />
-            <meshStandardMaterial color="#0f3d2c" roughness={0.55} metalness={0.1} />
+            <meshStandardMaterial color={KART_RENGI} roughness={0.55} metalness={0.1} />
           </mesh>
         );
       })}
@@ -113,7 +118,7 @@ function Cards() {
         return (
           <mesh key={i} position={[x, -0.08, z]} raycast={noRaycast}>
             <boxGeometry args={[(r.w + 20) * S, 0.16, r.backplaneH * S]} />
-            <meshStandardMaterial color="#13261d" roughness={0.6} />
+            <meshStandardMaterial color={ARKA_PANEL_RENGI} roughness={0.5} metalness={0.15} />
           </mesh>
         );
       })}
@@ -133,14 +138,15 @@ function Cards() {
  * sırasının altında 64 hatlı arka panel şeridi. Her kartın kenarından bir dil uzanır; dilin üstünde kartın
  * konnektöründen (J1, J201, …) 64 yol iner, ucundaki altın parmaklar arka paneldeki siyah yuvaya girer.
  * Yuvanın üstünde pin haritası (hangi pin hangi sinyal). Yuvanın altından 64 yol merdiven gibi iner, k. yol
- * k. hatta biter (bir nokta): sinyal o hattan bütün kartlara gider. Sıralar arasında soldaki şerit kablo.
+ * k. hatta biter (bir nokta): sinyal o hattan bütün kartlara gider. Sıralar soldan bir U ile bağlı
+ * (U şeridi ters çevirir: tek sıralarda hatların sırası ters, k. hat kesintisiz).
  * Bir yola tıklayınca sinyali seçilir: yolu baştan sona parlar, bütün kartlarda o netin bakırı yanar, yan
  * panelde hangi kartlara gittiği yazar (Serit3D.tsx).
  */
 function ArkaPanel() {
   const { lay, w } = useLayoutWorld();
   const netler = useDamarNetleri();
-  const { hatlar, izler, kablolar, haritalar, diller, yuvalar, parmaklar, noktalar } = useMemo(() => {
+  const { hatlar, izler, haritalar, diller, yuvalar, parmaklar, noktalar } = useMemo(() => {
     const dunya = (p: readonly number[]) => {
       const out: number[] = [];
       for (let i = 0; i < p.length; i += 3) {
@@ -157,14 +163,25 @@ function ArkaPanel() {
     const gs = DAMAR * DAMAR_ADIM;
     // hatlar şeridin alt kısmında (üstü yuvalara kalır)
     const bant = (r: (typeof lay.rows)[number]) => ({ ust: r.backplaneY + 5, alt: r.backplaneY + r.backplaneH - 1.5 });
+    // sıralar soldan bir U ile birbirine bağlı: U şeridi ters çevirir, bu yüzden tek sıralarda hatların sırası
+    // ters (1. hat altta); k. hat sıradan sıraya kesintisiz
+    const ters = (r: (typeof lay.rows)[number]) => lay.rows.indexOf(r) % 2 === 1;
+    const hatZ = (r: (typeof lay.rows)[number], k: number) => {
+      const b = bant(r);
+      const u = (k + 0.5) / DAMAR;
+      return ters(r) ? b.alt - u * (b.alt - b.ust) : b.ust + u * (b.alt - b.ust);
+    };
+    const orta = (r: (typeof lay.rows)[number]) => (bant(r).ust + bant(r).alt) / 2;
     const hatlar: SeritParcasi[] = lay.rows.map((r) => {
       const b = bant(r);
-      return { yol: dunya([r.x - 6, 0.12, (b.ust + b.alt) / 2, r.x + r.w + 6, 0.12, (b.ust + b.alt) / 2]), en: [0, 0, 1], g: (b.alt - b.ust) * S };
+      return { yol: dunya([r.x - 6, 0.12, orta(r), r.x + r.w + 6, 0.12, orta(r)]), en: [0, 0, ters(r) ? -1 : 1], g: (b.alt - b.ust) * S };
     });
-    // sıralar arasında soldaki kablo
-    const kablolar: SeritParcasi[] = lay.rows.slice(1).map((r, i) => {
+    lay.rows.slice(1).forEach((r, i) => {
       const ust = lay.rows[i];
-      return { yol: dunya([r.x - 8, 0.3, ust.backplaneY + ust.backplaneH / 2, r.x - 8, 0.3, r.backplaneY + r.backplaneH / 2]), en: [1, 0, 0], g: 6 * S };
+      const g = bant(ust).alt - bant(ust).ust;
+      const xs = Math.min(ust.x, r.x) - 6 - g;
+      const yol = yuvarlakYol([ust.x - 6, 0.12, orta(ust), xs, 0.12, orta(ust), xs, 0.12, orta(r), r.x - 6, 0.12, orta(r)], [0, g * 0.75, g * 0.75, 0]);
+      hatlar.push({ yol: dunya(yol), en: [0, 0, ters(ust) ? -1 : 1], g: g * S });
     });
     const izler: SeritParcasi[] = [];
     const haritalar: Soket[] = [];
@@ -191,22 +208,21 @@ function ArkaPanel() {
         const x = cx + (k - (DAMAR - 1) / 2) * DAMAR_ADIM;
         parmaklar.push(kutu(x, parmak + 3, 0, 0.8, 0.05, 6));
         // k. yolun k. hatta değdiği yer
-        if (netler[k] >= 0) noktalar.push(kutu(x, b.ust + ((k + 0.5) / DAMAR) * (b.alt - b.ust), 0.16, 0.9, 0.05, 0.9));
+        if (netler[k] >= 0) noktalar.push(kutu(x, hatZ(r, k), 0.16, 0.9, 0.05, 0.9));
       }
       // dilde konnektörden parmaklara; yuvanın altından hatlara, eğik ucunda k. yol k. hatta biter
       if (parmak - (cz + 2.54) > 0.5) izler.push({ yol: dunya([cx, 0.05, cz + 2.54, cx, 0.05, parmak]), en: [1, 0, 0], g: gs * S });
-      izler.push({ yol: dunya([cx, 0.15, zs + 3.5, cx, 0.15, (b.ust + b.alt) / 2]), en: [1, 0, 0], g: gs * S, uc: (b.alt - b.ust) / gs });
+      izler.push({ yol: dunya([cx, 0.15, zs + 3.5, cx, 0.15, (b.ust + b.alt) / 2]), en: [1, 0, 0], g: gs * S, uc: ((ters(r) ? -1 : 1) * (b.alt - b.ust)) / gs });
       const [x, z] = w(cx, zs);
       haritalar.push({ x, y: YUVA_H * S, z, kart: p.card, ref: p.ref, etiket: "", yon: 1 });
     }
-    return { hatlar, izler, kablolar, haritalar, diller, yuvalar, parmaklar, noktalar };
+    return { hatlar, izler, haritalar, diller, yuvalar, parmaklar, noktalar };
   }, [lay, w, netler]);
   return (
     <group>
       <DamarSeritleri parcalar={hatlar} palet="bakir" netler={netler} />
       <DamarSeritleri parcalar={izler} palet="iz" netler={netler} />
-      <DamarSeritleri parcalar={kablolar} palet="kablo" netler={netler} />
-      <Kutular kutular={diller} renk="#0f3d2c" />
+      <Kutular kutular={diller} renk={KART_RENGI} />
       <Kutular kutular={yuvalar} renk="#1b1c20" />
       <Kutular kutular={parmaklar} renk="#d9b44a" metal />
       <Kutular kutular={noktalar} renk="#b9a35a" metal />
@@ -264,7 +280,7 @@ function Chips() {
   const hover = useKart((s) => s.hover?.ref ?? null);
   // seçili bölümün çipleri bölümün rengine çalar, ötekiler soluklaşır
   const vurgu = useBolumVurgusu();
-  const zemin = breadboardSahnede() ? "#f2eee3" : "#0f3d2c";
+  const zemin = breadboardSahnede() ? "#f2eee3" : KART_RENGI;
   const flatPins = useMemo(() => chips.flatMap((c) => c.pins.map((p) => ({ chip: c, pin: p }))), [chips]);
   const version = useRef(-1);
 
@@ -467,16 +483,20 @@ function Wires() {
   const power = useKart((s) => s.power);
   const chip = useKart((s) => s.chip);
   const net = useKart((s) => s.net);
-  // kart içi bağlantılar kartın bakırında (KaziliYollar); burada yalnız kartlar arası ve besleme: çizgi
-  const all = useMemo(() => (mode === "hepsi" ? allWires(netEnds(), { power }).filter((e) => !kartIci(e)) : []), [mode, power]);
+  const { lay } = useLayoutWorld();
+  // kart içi bağlantılar kartın bakırında (KaziliYollar), kartlar arası arka panelin hatlarında (ArkaPanel,
+  // gerçek hatları yanar); burada yalnız besleme ve (arka paneli olmayan yerleşimde) kartlar arası: çizgi
+  const arkaPanel = useMemo(() => lay.passives.some((p) => p.edge), [lay]);
+  const cizgi = (e: WireEdge) => !kartIci(e) && !(arkaPanel && e.a.card !== e.b.card);
+  const all = useMemo(() => (mode === "hepsi" ? allWires(netEnds(), { power }).filter(cizgi) : []), [mode, power, arkaPanel]);
   // seçili çipin netlerinin ağaçları: kartlar arası kısım konnektörden konnektöre, arka panel boyunca
   const mine = useMemo(() => {
     if (mode === "yok" || !chip) return [];
     const out: WireEdge[] = [];
-    for (const [n, list] of netEnds()) if ((power || n > 1) && list.some((e) => e.ref === chip)) out.push(...netTree(n, list).filter((e) => !kartIci(e)));
+    for (const [n, list] of netEnds()) if ((power || n > 1) && list.some((e) => e.ref === chip)) out.push(...netTree(n, list).filter(cizgi));
     return out;
-  }, [mode, chip, power]);
-  const sel = useMemo(() => (net !== null ? netWires(net, netEnds()).filter((e) => !kartIci(e)) : []), [net]);
+  }, [mode, chip, power, arkaPanel]);
+  const sel = useMemo(() => (net !== null ? netWires(net, netEnds()).filter(cizgi) : []), [net, arkaPanel]);
   return (
     <group>
       <KaziliYollar />
@@ -535,8 +555,8 @@ const YOL_W = 0.45;
 const YANAN_W = 0.8;
 const VIA_R = 0.42;
 const KAT_Y = { alt: 0.0005, ust: 0.0012, via: 0.0019, yanan: 0.0025 };
-/** lehim maskesinin altındaki bakır (kart #0f3d2c): üst katman bir ton açık, alt katman kartın içinden zor seçilir, via halkası biraz parlak */
-const BAKIR_RENK = { ust: new Color("#1f5d3d"), alt: new Color("#154530"), via: new Color("#3f7552") };
+/** lehim maskesinin altındaki bakır (kart KART_RENGI): üst katman belirgin açık, alt katman soluk, via kalay */
+const BAKIR_RENK = { ust: new Color("#3b8a5c"), alt: new Color("#1f5c3f"), via: new Color("#b3a46a") };
 
 /** Kazıntıların üçgenleri ve köşe başına netin numarası ve türü (0 üst, 1 alt, 2 via) */
 interface KaziAgi {

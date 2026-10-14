@@ -25,19 +25,18 @@ const S = 0.1;
 /** damar başına doku pikseli: 3 damar, 1 oluk (64 × 4 = 256, mipmap için 2'nin kuvveti) */
 const PIKSEL = 4;
 
-/** kablo: gri yalıtım (1. damar kırmızı çizgili); bakır: arka panelin koyu zemininde maskeli bakır yollar */
+/** kablo: gri yalıtım (1. damar kırmızı çizgili); bakır: arka panelin koyu gri zemininde gümüş yollar */
 /** iz: bakır gibi, ama yolların arası saydam (yuvadan arka panelin hatlarına inen yollar hatların üstünde) */
 export type Palet = "kablo" | "bakir" | "iz";
-const TABAN: Record<Palet, Color> = { kablo: new Color("#a3a8b0"), bakir: new Color("#13261d"), iz: new Color("#13261d") };
-const OLUK: Record<Palet, Color> = { kablo: new Color("#80858d"), bakir: new Color("#13261d"), iz: new Color("#13261d") };
+const TABAN: Record<Palet, Color> = { kablo: new Color("#a3a8b0"), bakir: new Color("#25282d"), iz: new Color("#25282d") };
+const OLUK: Record<Palet, Color> = { kablo: new Color("#80858d"), bakir: new Color("#25282d"), iz: new Color("#25282d") };
 /** bir sinyal seçiliyken öbür damarların soluklaşması (arka panelde yollar seçilebilsin diye az) */
 const SOLUK: Record<Palet, number> = { kablo: 0.85, bakir: 0.55, iz: 0.55 };
 const MAVI = new Color("#2f6fd6");
 const KIRMIZI_CIZGI = new Color("#c23030");
 const BILINMEYEN = new Color("#7d838c");
-const BAKIR = new Color("#a07a3a");
-/** arka panelin bakırı lehim maskesinin altında (zemin #13261d) */
-const MASKE_BAKIR = new Color("#2c6143");
+/** arka panelin kalaylı yolları: koyu gri zeminde gümüş (seçili sinyalin kırmızısı ve mavisi üstünde okunur) */
+const MASKE_BAKIR = new Color("#8d97a5");
 const SEVIYE = LEVEL_COLOR.map((c) => new Color(c));
 /** sinyalin uçları olan kartların soketlerinin çerçevesi ve etiketi */
 const VURGU = "#ffd34d";
@@ -51,16 +50,16 @@ const seviye = (net: number, v: Uint8Array | null) => (net < 0 ? -1 : net <= 1 ?
  * altında yeşil bakır. Canlı renk (seviyesi: 0, 1, Z, X) "hepsi" kipinde bütün damarlarda, seçili sinyalde
  * yalnız onda; seçili sinyal varken öbürleri soluk.
  */
-function damarRengi(c: Color, net: number, k: number, v: Uint8Array | null, palet: Palet, vurgu: number | null, canli: boolean): Color {
+function damarRengi(c: Color, net: number, k: number, v: Uint8Array | null, palet: Palet, vurgu: ReadonlySet<number> | null, canli: boolean): Color {
   const lv = seviye(net, v);
-  const secili = vurgu !== null && net === vurgu;
+  const secili = vurgu !== null && vurgu.has(net);
   if (secili || canli) {
     if (palet === "kablo") {
       c.copy(lv === 1 ? SEVIYE[1] : lv === 0 ? MAVI : k === 0 ? KIRMIZI_CIZGI : BILINMEYEN);
       if (!secili) c.lerp(TABAN.kablo, k === 0 && lv < 0 ? 0 : 0.45);
     } else if (lv < 0) c.copy(TABAN.bakir);
     else {
-      c.copy(lv === 1 ? SEVIYE[1] : lv === 0 ? BAKIR : SEVIYE[lv]);
+      c.copy(lv === 1 ? SEVIYE[1] : lv === 0 ? MAVI : SEVIYE[lv]);
       if (!secili) c.lerp(TABAN.bakir, 0.4);
     }
   } else if (palet === "kablo") c.copy(k === 0 ? KIRMIZI_CIZGI : TABAN.kablo);
@@ -77,13 +76,28 @@ export function useDamarNetleri(): Int32Array {
   }, []);
 }
 
-/** Seçili sinyalin damarı (yoksa −1; GND / VCC seçilmez) */
-function useSeciliDamar(netler: Int32Array): number {
+/**
+ * Yanan damarlar: seçili net ve seçili çipin netleri (tel kipi "yok" değilse), arka panelde olanlar; GND / VCC
+ * yanmaz (her yerde ucu var). Damarların sırası ve netleri; anahtar: değişince yeniden boyamak için.
+ */
+function useYananDamarlar(netler: Int32Array): { damarlar: number[]; netler: ReadonlySet<number> | null; anahtar: string } {
   const net = useKart((s) => s.net);
-  return net !== null && net > 1 ? netler.indexOf(net) : -1;
+  const chip = useKart((s) => s.chip);
+  const mode = useKart((s) => s.wires);
+  return useMemo(() => {
+    const yanan = new Set<number>();
+    if (net !== null) yanan.add(net);
+    if (chip && mode !== "yok") for (const [n, list] of netEnds()) if (list.some((e) => e.ref === chip)) yanan.add(n);
+    const damarlar: number[] = [];
+    netler.forEach((n, k) => {
+      if (n > 1 && yanan.has(n)) damarlar.push(k);
+    });
+    const ns = new Set(damarlar.map((k) => netler[k]));
+    return { damarlar, netler: ns.size ? ns : null, anahtar: damarlar.join(",") };
+  }, [net, chip, mode, netler]);
 }
 
-/** Damar dokusu: canlı değerler, seçili net ya da tel kipi değişince yeniden boyanır */
+/** Damar dokusu: canlı değerler, yanan damarlar ya da tel kipi değişince yeniden boyanır */
 function useDamarDokusu(netler: Int32Array, palet: Palet): DataTexture {
   const doku = useMemo(() => {
     const t = new DataTexture(new Uint8Array(DAMAR * PIKSEL * 4), DAMAR * PIKSEL, 1, RGBAFormat);
@@ -95,14 +109,14 @@ function useDamarDokusu(netler: Int32Array, palet: Palet): DataTexture {
     return t;
   }, []);
   useEffect(() => () => doku.dispose(), [doku]);
-  const net = useKart((s) => s.net);
+  const yanan = useYananDamarlar(netler);
   const canli = useKart((s) => s.wires) === "hepsi";
   const surum = useRef("");
   useFrame(() => {
-    const anahtar = `${liveNets.version}|${net}|${canli}`;
+    const anahtar = `${liveNets.version}|${yanan.anahtar}|${canli}`;
     if (surum.current === anahtar) return;
     surum.current = anahtar;
-    const vurgu = net !== null && netler.includes(net) ? net : null;
+    const vurgu = yanan.netler;
     const data = doku.image.data as Uint8Array;
     const yaz = (i: number, c: Color, a = 255) => {
       const h = c.getHex();
@@ -171,13 +185,13 @@ function DamarIzi({ yollar, net }: { yollar: number[][]; net: number }) {
 }
 
 /**
- * Şeritler (aynı 64 damar, aynı doku): tıklanan damarın sinyali seçilir, seçili damar parlayan bir izle
- * çizilir. Işın testi analitik (seritIsini): ışın her basışta ve tekerlekte de atılır, üçgen taranmaz.
+ * Şeritler (aynı 64 damar, aynı doku): tıklanan damarın sinyali seçilir; seçili netin ve seçili çipin
+ * arka paneldeki damarları parlayan bir izle çizilir. Işın testi analitik (seritIsini): ışın her basışta ve tekerlekte de atılır, üçgen taranmaz.
  * GND / VCC damarı seçilmez (her yerde ucu var). ekIz: seçili damarın şeritler dışındaki yolu (dünya).
  */
 export function DamarSeritleri({ parcalar, palet, netler, ekIz }: { parcalar: SeritParcasi[]; palet: Palet; netler: Int32Array; ekIz?: (k: number) => number[][] }) {
   const doku = useDamarDokusu(netler, palet);
-  const secili = useSeciliDamar(netler);
+  const { damarlar } = useYananDamarlar(netler);
   const obj = useMemo(() => {
     const mat = new MeshStandardMaterial({ map: doku, roughness: palet === "kablo" ? 0.8 : 0.4, metalness: palet === "kablo" ? 0 : 0.35, side: DoubleSide, alphaTest: palet === "iz" ? 0.5 : 0 });
     const meshes = parcalar.map((p) => {
@@ -195,9 +209,9 @@ export function DamarSeritleri({ parcalar, palet, netler, ekIz }: { parcalar: Se
     obj.mat.dispose();
     for (const m of obj.meshes) m.geometry.dispose();
   }, [obj]);
-  const iz = useMemo(
-    () => (secili < 0 ? null : [...parcalar.map((p) => damarYolu(p.yol, p.en, p.g, p.uc ?? 0, damarU(secili), p.bas)), ...(ekIz?.(secili) ?? [])]),
-    [secili, parcalar, ekIz],
+  const izler = useMemo(
+    () => damarlar.map((k) => ({ k, yollar: [...parcalar.map((p) => damarYolu(p.yol, p.en, p.g, p.uc ?? 0, damarU(k), p.bas)), ...(ekIz?.(k) ?? [])] })),
+    [damarlar, parcalar, ekIz],
   );
   const tikla = (e: ThreeEvent<MouseEvent>) => {
     if (e.index === undefined) return;
@@ -210,7 +224,9 @@ export function DamarSeritleri({ parcalar, palet, netler, ekIz }: { parcalar: Se
       {obj.meshes.map((m, i) => (
         <primitive key={i} object={m} />
       ))}
-      {iz && <DamarIzi yollar={iz} net={netler[secili]} />}
+      {izler.map(({ k, yollar }) => (
+        <DamarIzi key={k} yollar={yollar} net={netler[k]} />
+      ))}
     </group>
   );
 }
