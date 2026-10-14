@@ -12,10 +12,12 @@ inilir ve her seviyede sinyaller canlıdır. Kartlar elle yazılmış bir listed
 
 | Seviye | Nerede | Ne gösterir |
 |---|---|---|
-| Bilgisayar | 3D sahne (açılış) | Kartlar sıralar hâlinde. Her sıranın altında arka panel şeridi var, şeritteki bakır yollar canlı. Sıralar soldaki kabloyla birbirine bağlı. Arkada VGA monitörü, ekranında programın görüntüsü. |
+| Bilgisayar | 3D sahne (açılış) | Kartlar sıralar hâlinde. Her sıranın altında arka panel şeridi var, şeritteki 64 bakır yol canlı. Her kartın kenar konnektörüne bir IDC soketi takılı, kısa bir şerit kablo onu arka paneldeki soketine bağlar; soketlerin üstünde kartın adı yazar. Sıralar soldaki şerit kabloyla birbirine bağlı. Arkada VGA monitörü, ekranında programın görüntüsü. |
 | Kart | 3D sahne | Entegreler işlev bloklarına göre (ALU, Register dosyası, VRAM, Piksel yolu…) yerleşir. Çok çipli bloklar kareye yakın ızgara olur. Dekuplaj kondansatörleri çiplerinin yanında durur, kenar konnektörü kartın alt kenarında. Öteki pasifler bloklarının altında sıralanır. |
 | Pasifler | 3D sahne | Direnç, kondansatör, elektrolitik, LED, direnç dizisi, konnektör, osilatör, buton, anahtar, pot, modül ve CPU kartının 10 segmentli çubuk göstergeleri. Biçimlerini KiCad ayak izi belirler. LED'ler sürüldükleri net 1 olunca yanar; aktif düşük LED'ler (VCC → direnç → LED → sinyal, ör. `~ROE0`) net 0 olunca. Çubuk göstergenin her segmenti dizinin öbür ucundaki sinyal 1 iken yanar: bir bayt soldan sağa bit 0 … 7. Pasiflerin pinleri de tellere katılır. |
 | Teller | Araç çubuğu: **Teller** | Pinden pine atlama telleri. Renkleri canlı: mavi 0, kırmızı 1, mor Z, sarı X. Kipler aşağıda. |
+| Tel | Breadboard'da bir tele tıkla | Tel baştan sona kalın ve parlak çizilir, uçlarında nabız halkası; öbür teller soluklaşır. Yan panelde telin numarası, rengi, boyu, neti ve **nereden → nereye** (board, delik, o şeritteki bacaklar). Kurulum modunda tıklanan tel odağa gelir. Esc ya da boşluğa tıklamak bırakır. |
+| Damar | Şerit kablonun ya da arka panelin bir damarına tıkla | O damarın sinyali seçilir: bütün kartlarda o netin telleri canlı renkte, kabloda o damar parlak, öbürleri soluk. Yan panelde arka panelin kaçıncı damarı olduğu, sinyalin hangi kartta kaç uca gittiği ve bütün uçlar. GND ve VCC damarları seçilmez. |
 | Çip | Çipe tıkla | Kamera çip ile tellerinin öbür uçlarını birlikte görecek şekilde uçar. Çipin üstünde **kalıbı** (die) açılır. Yan panelde **Bağlantılar**: pin no + ad → net → öbür uçlar (çip.pin). Alt panelde **Çipin içi**: kapı seviyesi şema ya da bellek dizisi. |
 | Kapı | Kalıpta ya da şemada bir kapıya tıkla | O kapının CMOS transistör şeması. İletimdeki transistörler yeşil. |
 | Net | Bir pine, bir uca ya da bir net adına tıkla | Netin bütün uçları kalın bir telle, öteki her şeyin üstünde birleşir. Yan panelde netin uçları listelenir. |
@@ -30,9 +32,11 @@ düzenleyicisi ikisinde de aynıdır; değişen yalnız yerleşimdir.
 - **PCB**: yukarıdaki kartlar, arka panel şeritleri, tel kipleri.
 - **Breadboard**: yedi pano masada (kart başına bir taban plakası, 149 BB830; her modül ayrı bir ada), aradaki koridorda
   64 damarlı şerit kablo ve IDC soketleri. Her parça bacaklarıyla deliklerine oturur; 7 868 atlama
-  teli kurulumdaki yollarıyla (düz, dik açılı) ve yalıtımının renginde (renk kodu) çizilir; seçili
-  çipin ya da netin telleri, **hepsi** kipinde bütün teller ve şerit kablonun damarları canlı seviyenin
-  renginde. Breadboard verisi ayrı bir parçadır: yalnız bu görünüm ilk açılınca yüklenir.
+  teli kurulumdaki yollarıyla (düz, dik açılı, köşelerde yuvarlak dirsekli tek parça boru) ve
+  yalıtımının renginde (renk kodu) çizilir; seçili çipin ya da netin telleri, **hepsi** kipinde bütün
+  teller ve şerit kablonun damarları canlı seviyenin renginde. Şerit kablo her sokete koridordan dik
+  açıyla ayrılır, panonun kenarında yükselip soketin kapağının altına girer. Breadboard verisi ayrı bir
+  parçadır: yalnız bu görünüm ilk açılınca yüklenir.
 - **Kurulum** (breadboard görünümünde): pano ve aşama seçilir, teller numara sırasıyla gezilir;
   sıradaki tel 3D'de vurgulanır ve tarifi yazılır (`CPU · BB07 c14 → BB08 h3, 42 mm, sarı`).
   İşaretlenenler pano başına hatırlanır. Ayrıntı: [breadboard.md](breadboard.md).
@@ -197,7 +201,9 @@ Saat seçicisinden 1 Hz ile 1 kHz arası sabit hızlar da seçilebilir.
     `program.ts`, `memview.ts`.
 - `src/board3d/ornekler/`: düzenleyicinin kendi örnekleri (`merhaba-vga.c`).
 - Breadboard görünümü: `src/board3d/aktif.ts` (görünüm seçimi, panolar), `Breadboard3D.tsx`
-  (board'lar, teller, şerit kablo), `bbKurulum.ts` ve `BbKurulumPanel.tsx` (kurulum modu); plan
+  (board'lar, teller, şerit kablo), `telYolu.ts` (tel borusunun ekseni, tıklanan tel), `Serit3D.tsx`
+  ve `serit.ts` (şerit kablo, arka panel yolları, IDC soketleri, tıklanan damar), `bbKurulum.ts` ve
+  `BbKurulumPanel.tsx` (kurulum modu); plan
   `cpu16/breadboard/` ([breadboard.md](breadboard.md)). Testler: `cpu16/tests/breadboard-3d.test.ts`.
 - Testler: `cpu16/tests/view.test.ts`. Kapsadığı yerler:
   - bütün bilgisayarın yerleşimi ve pin-net eşleşmesi;

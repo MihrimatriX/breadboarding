@@ -13,10 +13,12 @@ shows up by itself.
 
 | Level | Where | What it shows |
 |---|---|---|
-| Computer | 3D scene (opening view) | The boards stand in rows. Under each row is a backplane strip whose copper traces are live. The rows are connected by the cable on the left. At the back is a VGA monitor showing the program's picture. |
+| Computer | 3D scene (opening view) | The boards stand in rows. Under each row is a backplane strip whose 64 copper traces are live. An IDC socket is plugged onto each board's edge connector, and a short ribbon cable links it to its socket on the backplane; the board's name is printed on top of the sockets. The rows are connected by the ribbon cable on the left. At the back is a VGA monitor showing the program's picture. |
 | Board | 3D scene | Chips are placed by function block (ALU, Register file, VRAM, Pixel path…). Blocks with many chips become near-square grids. Decoupling capacitors sit next to their chips, and the edge connector is on the bottom edge of the board. The other passives are lined up under their blocks. |
 | Passives | 3D scene | Resistors, capacitors, electrolytics, LEDs, resistor networks, connectors, oscillators, buttons, switches, pots, modules and the CPU board's 10-segment bar graphs. Their shapes come from the KiCad footprint. An LED lights when the net driving it is 1; active-low LEDs (VCC → resistor → LED → signal, e.g. `~ROE0`) light when the net is 0. Each segment of a bar graph lights while the signal at the other end of the network is 1: a byte reads bit 0 … 7 from left to right. Passive pins take part in the wiring too. |
 | Wires | Toolbar: **Wires** | Pin-to-pin jumper wires. Their colors are live: blue 0, red 1, purple Z, yellow X. Modes below. |
+| Wire | Click a wire in the breadboard view | The wire is drawn thick and bright from end to end, with a pulsing ring at each end; the other wires fade. The side panel shows the wire's number, color, length, net and **from → to** (breadboard, hole, the legs on that strip). In build mode the clicked wire becomes the focus. Esc or a click on empty space releases it. |
+| Conductor | Click a conductor of the ribbon cable or the backplane | That conductor's signal is selected: on every board the wires of that net take the live color, the conductor glows in the cable and the others fade. The side panel shows which backplane conductor it is, how many ends the signal has on each board, and every end. GND and VCC conductors are not selectable. |
 | Chip | Click a chip | The camera flies to a spot where it sees the chip and the far ends of its wires together. The chip's **die** opens on top of it. Side panel **Connections**: pin no. + name → net → far ends (chip.pin). Bottom panel **Inside the chip**: gate-level schematic or memory array. |
 | Gate | Click a gate on the die or in the schematic | The CMOS transistor schematic of that gate. Conducting transistors are green. |
 | Net | Click a pin, an endpoint or a net name | All endpoints of the net are joined by a thick wire drawn above everything else. The side panel lists the endpoints of the net. |
@@ -32,9 +34,11 @@ and the program editor are the same in both; only the physical layout changes.
 - **Breadboard**: seven panels on the table (one base plate per board, 149 BB830s; each module is a
   separate island), with a 64-conductor ribbon cable and IDC sockets in the aisle between them. Every part
   sits in its holes on its own legs; the 7,868 jumper wires are drawn along their build routes (flat,
-  right-angled) in the color of their insulation (color code); the wires of the selected chip or net, all
-  wires in **all** mode, and the conductors of the ribbon cable take the color of the live level. The
-  breadboard data is a separate chunk: it loads only the first time this view is opened.
+  right-angled, one continuous tube with rounded bends at the corners) in the color of their insulation
+  (color code); the wires of the selected chip or net, all wires in **all** mode, and the conductors of the
+  ribbon cable take the color of the live level. The ribbon cable leaves the aisle at a right angle for each
+  socket, rises at the panel's edge and goes under the socket's cover. The breadboard data is a separate
+  chunk: it loads only the first time this view is opened.
 - **Build** (in the breadboard view): pick a panel and a stage, then step through the wires in numbered
   order; the next wire is highlighted in 3D and its description is shown
   (`CPU · BB07 c14 → BB08 h3, 42 mm, sarı`). Checked-off wires are remembered per panel. Details:
@@ -197,7 +201,8 @@ The clock selector also offers fixed speeds from 1 Hz to 1 kHz.
     `program.ts`, `memview.ts`.
 - `src/board3d/ornekler/`: the editor's own examples (`merhaba-vga.c`).
 - Breadboard view: `src/board3d/aktif.ts` (view choice, panels), `Breadboard3D.tsx` (breadboards, wires,
-  ribbon cable), `bbKurulum.ts` and `BbKurulumPanel.tsx` (build mode); the plan is in `cpu16/breadboard/`
+  ribbon cable), `telYolu.ts` (the wire tube's axis, the clicked wire), `Serit3D.tsx` and `serit.ts` (ribbon
+  cable, backplane traces, IDC sockets, the clicked conductor), `bbKurulum.ts` and `BbKurulumPanel.tsx` (build mode); the plan is in `cpu16/breadboard/`
   ([breadboard.en.md](breadboard.en.md)). Tests: `cpu16/tests/breadboard-3d.test.ts`.
 - Tests: `cpu16/tests/view.test.ts`. It covers:
   - the layout of the whole computer and the pin-to-net mapping;

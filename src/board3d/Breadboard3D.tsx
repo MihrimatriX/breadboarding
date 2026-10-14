@@ -2,8 +2,9 @@
 // bilgisayarı (cpu16/breadboard: her kart kendi panosunda, 7 pano, 149 board; panolar arası 64 damarlı
 // şerit kablo). Her panonun taban plakası, board'ları (krem gövde; delik deseni, kırmızı / mavi ray
 // çizgileri, sütun numaraları ve satır harfleri tek bir dokudan), board adları ve atlama telleri.
-// Teller gerçek atlama telleri gibi: renkli yalıtım düz yatar, uçlarda deliğe iner, deliğin ağzında
-// çıplak bakır görünür; önce takılan tel altta kalır (kesişmede üstteki tel kamburlaşır).
+// Teller gerçek atlama telleri gibi: renkli yalıtım düz yatar, köşelerde yuvarlak dirsekle kıvrılan tek
+// parça bir boru (telYolu.ts), uçlarda deliğe iner, deliğin ağzında çıplak bakır görünür; önce takılan tel
+// altta kalır (kesişmede üstteki tel kamburlaşır).
 //
 // Başarım: teller parça parça (pano başına board sırası) birleştirilmiş ağlarda. Uzaktan her parça
 // yassı şeritlerden tek çizim (hepsi baştan kurulur, ucuz); yakından borular ve çıplak uçlar (iki
@@ -15,12 +16,13 @@
 // netlerin telleri canlı seviyenin renginde (0 mavi, 1 kırmızı) parlar, ötekiler soluklaşır. "hepsi"
 // kipinde bütün teller canlı seviyede; "yok" kipinde teller gizli. Kurulum modu açıkken panonun
 // takılan telleri kendi renginde, takılmayanlar ve öbür panolarınkiler soluk; odaktaki tel ayrıca
-// kalın ve uçları nabız gibi atar.
+// kalın ve uçları nabız gibi atar. Bir tele tıklanınca da öyle: o tel baştan sona kalın ve parlak, öbürleri
+// soluk (kurulum modunda tıklanan tel odağa gelir).
 
-import { useFrame, useThree } from "@react-three/fiber";
+import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import {
-  BoxGeometry, BufferAttribute, BufferGeometry, CanvasTexture, Color, CylinderGeometry, DoubleSide, Group, InstancedMesh, MeshLambertMaterial, MeshStandardMaterial, Mesh, Object3D, PlaneGeometry, Quaternion, SRGBColorSpace, Uint16BufferAttribute, Uint32BufferAttribute, Vector3,
+  BoxGeometry, BufferAttribute, BufferGeometry, CanvasTexture, Color, DoubleSide, Group, InstancedMesh, MeshLambertMaterial, MeshStandardMaterial, Mesh, Object3D, PlaneGeometry, SRGBColorSpace, Uint16BufferAttribute, Uint32BufferAttribute, Vector3,
   type Camera,
 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
@@ -30,11 +32,15 @@ import { ucusAdimi } from "../ui/ayarlar";
 import { useDil } from "../ui/ceviri";
 import { kartBasligi } from "./adlar";
 import { aktifGorunum, bbSahnesi, panodakiBoard, type BbPanosu, type BbSahnesi } from "./aktif";
-import { bbPano, bbSeciliTel, useBbKurulum } from "./bbKurulum";
+import { bbPano, bbSeciliTel, panoAdlari, useBbKurulum } from "./bbKurulum";
 import { sahneBolumleri, useEtiketlerAcik } from "./bolum";
 import { LEVEL_COLOR } from "./levels";
 import { boardLayoutData, findPart, liveNets, useKart } from "./store";
+import { IDC_KABLO_Y } from "./passiveGeometry";
+import { DAMAR, DAMAR_ADIM } from "./serit";
+import { DamarSeritleri, IdcSoketleri, useDamarNetleri, type SeritParcasi, type Soket } from "./Serit3D";
 import { TextQuads, type TextItem } from "./TextQuads";
+import { isinTeli, yuvarlakYol } from "./telYolu";
 
 /** 1 dünya birimi = 10 mm (BoardScene ile aynı) */
 const S = 0.1;
@@ -267,90 +273,54 @@ export function BreadboardTabani() {
 
 // ---------------------------------------------------------------- şerit kablo (bilgisayarda)
 
-/** Şerit kablo: 64 damar × 1,27 mm; IDC soketi uyarlayıcının başlığının üstünde */
-const SERIT_GEN = 64 * 1.27;
-const SOKET_UST = 17.5;
+/** Şerit kablo: 64 damar × 1,27 mm; IDC soketi uyarlayıcının başlığının üstünde (altı SOKET_TABAN, mm) */
+const SERIT_GEN = DAMAR * DAMAR_ADIM;
+const SOKET_TABAN = 8.5;
 const MASA = -BOARD_KALINLIK - PLAKA_KALINLIK + 0.6;
-const SERIT_GRI = new Color("#a3a8b0");
+/** kablonun kıvrımlarının köşeden uzaklığı (mm) */
+const SERIT_DIRSEK = 7;
 
 /**
- * Panolar arası 64 damarlı şerit kablo: koridor boyunca uzanır, her sokete çıkıp geri döner (kesim boyu
- * cpu16/breadboard/plan.ts seritKablolari ile aynı yoldan). Damarlar canlı seviyenin renginde.
+ * Panolar arası 64 damarlı şerit kablo: masada koridor boyunca uzanır; her sokete koridordan dik açıyla
+ * ayrılır, panonun kenarında yükselip soketin kapağının altına girer (kesim boyu cpu16/breadboard/plan.ts
+ * seritKablolari ile aynı yoldan). Damarlar canlı; bir damara tıklayınca sinyali seçilir (Serit3D.tsx).
  */
 function SeritKablo({ sahne }: { sahne: BbSahnesi }) {
   const { w } = useDunya();
+  const dil = useDil();
+  const netler = useDamarNetleri();
   const s = sahne.serit!;
-  // damar → net: uyarlayıcıların k. pini (kartta kullanılmayan pin bağlantısızdır: ilk bağlı olanı)
-  const netler = useMemo(() => {
-    const n = new Int32Array(64).fill(-1);
-    for (const k of s.soketler) {
-      const pins = findPart(k.ref)?.passive?.pins ?? [];
-      for (const q of pins) if (q.num >= 1 && q.num <= 64 && n[q.num - 1] < 0 && q.net >= 0) n[q.num - 1] = q.net;
-    }
-    return n;
-  }, [s]);
-  const { govdeler, cizgiler } = useMemo(() => {
-    const govdeler: { p: [number, number, number]; q: Quaternion; s: [number, number, number]; renk: string }[] = [];
-    const pos: number[] = [];
-    const damar: number[] = [];
-    const bant = (ax: number, ay: number, az: number, bx: number, by: number, bz: number, enX: boolean) => {
-      const [x0, z0] = w(ax, az);
-      const [x1, z1] = w(bx, bz);
-      const a = new Vector3(x0, ay * S, z0);
-      const b = new Vector3(x1, by * S, z1);
-      const d = new Vector3().subVectors(b, a);
-      const len = d.length();
-      // kutunun z ekseni bandın ekseni (d), x ekseni genişliği: sokete inen kolda dünyanın x'i, koridorda z'si
-      const q = new Quaternion().setFromUnitVectors(new Vector3(0, 0, 1), d.clone().normalize());
-      govdeler.push({ p: [(a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2], q, s: [SERIT_GEN * S, 1.2 * S, len], renk: "#a3a8b0" });
-      for (let k = 0; k < 64; k++) {
-        const o = (-SERIT_GEN / 2 + (k + 0.5) * 1.27) * S;
-        const ust = 0.9 * S;
-        if (enX) pos.push(a.x + o, a.y + ust, a.z, b.x + o, b.y + ust, b.z);
-        else pos.push(a.x, a.y + ust, a.z + o, b.x, b.y + ust, b.z + o);
-        damar.push(k);
+  const { parcalar, soketler } = useMemo(() => {
+    const dunya = (p: readonly number[]) => {
+      const out: number[] = [];
+      for (let i = 0; i < p.length; i += 3) {
+        const [x, z] = w(p[i], p[i + 2]);
+        out.push(x, p[i + 1] * S, z);
       }
+      return out;
     };
     const xs = s.soketler.map((k) => k.x);
-    bant(Math.min(...xs) - SERIT_GEN / 2, MASA, s.koridorY, Math.max(...xs) + SERIT_GEN / 2, MASA, s.koridorY, false);
+    const parcalar: SeritParcasi[] = [
+      { yol: dunya([Math.min(...xs) - SERIT_GEN / 2 - 15, MASA, s.koridorY, Math.max(...xs) + SERIT_GEN / 2 + 15, MASA, s.koridorY]), en: [0, 0, 1], g: SERIT_GEN * S },
+    ];
+    const soketler: Soket[] = [];
     for (const k of s.soketler) {
-      bant(k.x, SOKET_UST, k.y, k.x, MASA, s.koridorY, true);
+      const p = sahne.panolar.find((q) => k.x >= q.x && k.x <= q.x + q.w && k.y >= q.y && k.y <= q.y + q.h);
+      // koridora doğru: soketin kapağının altından çıkar, panonun kenarını geçince masaya iner
+      const dz = Math.sign(s.koridorY - k.y) || 1;
+      const kenar = (p ? (dz > 0 ? p.y + p.h : p.y) : k.y) + dz * 9;
+      const yk = SOKET_TABAN + IDC_KABLO_Y;
+      const yol = yuvarlakYol([k.x, yk, k.y - dz * 2.8, k.x, yk, kenar, k.x, MASA + 0.5, kenar, k.x, MASA + 0.5, s.koridorY], SERIT_DIRSEK);
+      parcalar.push({ yol: dunya(yol), en: [1, 0, 0], g: SERIT_GEN * S });
       const [x, z] = w(k.x, k.y);
-      govdeler.push({ p: [x, ((SOKET_UST + 8.5) / 2) * S, z], q: new Quaternion(), s: [86 * S, (SOKET_UST - 8.5) * S, 10 * S], renk: "#2a2c30" });
+      soketler.push({ x, y: SOKET_TABAN * S, z, etiket: p ? `${panoAdlari(p, dil).kisa} · ${k.ref}` : k.ref });
     }
-    const g = new BufferGeometry();
-    g.setAttribute("position", new BufferAttribute(new Float32Array(pos), 3));
-    g.setAttribute("color", new BufferAttribute(new Float32Array(pos.length), 3));
-    return { govdeler, cizgiler: { g, damar } };
-  }, [s, w]);
-  useEffect(() => () => cizgiler.g.dispose(), [cizgiler]);
-  const surum = useRef(-1);
-  useFrame(() => {
-    if (surum.current === liveNets.version) return;
-    surum.current = liveNets.version;
-    const col = cizgiler.g.getAttribute("color") as BufferAttribute;
-    const v = liveNets.values;
-    cizgiler.damar.forEach((k, i) => {
-      const n = netler[k];
-      const lv = n < 0 ? 2 : n <= 1 ? n : v ? (v[n] ?? 3) : 3;
-      // 1. damar kırmızı çizgili (bağlantısız ya da bilinmiyorsa)
-      const c = (lv === 1 ? tmpC.copy(SEVIYE[1]) : lv === 0 ? tmpC.copy(SEVIYE[0]) : k === 0 ? tmpC.set("#c23030") : tmpC.set("#7d838c")).lerp(SERIT_GRI, k === 0 ? 0 : 0.45);
-      col.setXYZ(2 * i, c.r, c.g, c.b);
-      col.setXYZ(2 * i + 1, c.r, c.g, c.b);
-    });
-    col.needsUpdate = true;
-  });
+    return { parcalar, soketler };
+  }, [s, w, sahne, dil]);
   return (
     <group>
-      {govdeler.map((x, i) => (
-        <mesh key={i} position={x.p} quaternion={x.q} scale={x.s} raycast={noRaycast}>
-          <boxGeometry />
-          <meshStandardMaterial color={x.renk} roughness={0.7} />
-        </mesh>
-      ))}
-      <lineSegments geometry={cizgiler.g} raycast={noRaycast}>
-        <lineBasicMaterial vertexColors />
-      </lineSegments>
+      <DamarSeritleri parcalar={parcalar} palet="kablo" netler={netler} />
+      <IdcSoketleri soketler={soketler} />
     </group>
   );
 }
@@ -367,17 +337,73 @@ function telNoktalari(p3: number[], ox: number, oy: number): number[] {
   return out;
 }
 
+/**
+ * Telin borusunun ekseni dünyada: delikteki uçtan (yükseklik `alt`, mm) kalkar, köşelerde yuvarlak
+ * dirseklerle kıvrılır, öbür deliğe iner. [x, y, z, …] dünya birimi.
+ */
+function boruYolu(n: readonly number[], alt: number, w: Dunya): number[] {
+  const k = n.length;
+  const mm = yuvarlakYol([n[0], alt, n[2], ...n, n[k - 3], alt, n[k - 1]]);
+  const out: number[] = [];
+  for (let i = 0; i < mm.length; i += 3) {
+    const [x, z] = w(mm[i], mm[i + 2]);
+    out.push(x, mm[i + 1] * S, z);
+  }
+  return out;
+}
+
 const tmpX = new Vector3();
 const tmpZ = new Vector3();
 const tmpA = new Vector3();
 const tmpB = new Vector3();
+const BIR_X = new Vector3(1, 0, 0);
 
-/** Boru (uçları açık silindir) geometrisi: a → b, yarıçap r (dünya birimi), k köşe */
+/** Boru geometrisi: tek parça (yol) ya da uçları açık silindirler (ekle); yarıçap r (dünya birimi), k köşe */
 class Borular {
   pos: number[] = [];
   nor: number[] = [];
   idx: number[] = [];
   constructor(readonly k: number) {}
+  /**
+   * Noktalardan ([x, y, z, …] dünya birimi) geçen tek parça boru: ardışık halkalar paylaşılır, köşede
+   * dikiş ya da boşluk kalmaz. Halka sayısını döndürür (her halka k köşe).
+   */
+  yol(p: readonly number[], r: number): number {
+    const n = p.length / 3;
+    const o = this.pos.length / 3;
+    const k = this.k;
+    for (let i = 0; i < n; i++) {
+      // halkanın yönü: iki komşu kirişin açıortayı (uçlarda tek kiriş)
+      const a = Math.max(0, i - 1);
+      const b = Math.min(n - 1, i + 1);
+      tmpA.set(p[3 * i] - p[3 * a], p[3 * i + 1] - p[3 * a + 1], p[3 * i + 2] - p[3 * a + 2]);
+      tmpB.set(p[3 * b] - p[3 * i], p[3 * b + 1] - p[3 * i + 1], p[3 * b + 2] - p[3 * i + 2]);
+      if (tmpA.lengthSq() > 0) tmpA.normalize();
+      if (tmpB.lengthSq() > 0) tmpB.normalize();
+      tmpV.addVectors(tmpA, tmpB).normalize();
+      // halkanın eksenleri bir öncekinden taşınır (paralel taşıma): boru dirseklerde burulmaz
+      if (i === 0) tmpX.copy(Math.abs(tmpV.y) < 0.999 ? YUKARI : BIR_X).cross(tmpV);
+      else tmpX.addScaledVector(tmpV, -tmpX.dot(tmpV));
+      tmpX.normalize();
+      tmpZ.crossVectors(tmpV, tmpX);
+      for (let q = 0; q < k; q++) {
+        const t = (2 * Math.PI * q) / k;
+        const nx = Math.cos(t) * tmpX.x + Math.sin(t) * tmpZ.x;
+        const ny = Math.cos(t) * tmpX.y + Math.sin(t) * tmpZ.y;
+        const nz = Math.cos(t) * tmpX.z + Math.sin(t) * tmpZ.z;
+        this.pos.push(p[3 * i] + nx * r, p[3 * i + 1] + ny * r, p[3 * i + 2] + nz * r);
+        this.nor.push(nx, ny, nz);
+      }
+      if (i === 0) continue;
+      const u = o + (i - 1) * k;
+      const v = o + i * k;
+      for (let q = 0; q < k; q++) {
+        const j = (q + 1) % k;
+        this.idx.push(u + q, u + j, v + q, u + j, v + j, v + q);
+      }
+    }
+    return n;
+  }
   ekle(a: Vector3, b: Vector3, r: number): void {
     tmpV.subVectors(b, a);
     // boruya dik iki eksen
@@ -482,6 +508,23 @@ class TelAgi {
   readonly bakMat = new MeshStandardMaterial({ color: "#d9d4c8", roughness: 0.3, metalness: 0.9 });
 
   constructor(readonly v: TelVerisi, readonly w: Dunya) {
+    // tıklama: ağların üçgenleri değil, tellerin eksenleri (kapsül) taranır; r3f tekerlekte ve her
+    // basışta da ışın attığından üçgen taraması kasardı. Delikten deliğe, dünya biriminde.
+    const eksenler = v.noktalar.map((n) => {
+      const k = n.length;
+      const e: number[] = [];
+      for (const [x, y, z] of [[n[0], YALITIM_UCU, n[2]], ...Array.from({ length: k / 3 }, (_, j) => [n[3 * j], n[3 * j + 1], n[3 * j + 2]]), [n[k - 3], YALITIM_UCU, n[k - 1]]]) {
+        this.nokta(tmpA, x, y, z);
+        e.push(tmpA.x, tmpA.y, tmpA.z);
+      }
+      return e;
+    });
+    this.grup.raycast = (rc, hits) => {
+      if (!this.grup.visible) return;
+      const { origin: o, direction: d } = rc.ray;
+      const h = isinTeli([o.x, o.y, o.z], [d.x, d.y, d.z], eksenler, TEL_R * 1.6 * S);
+      if (h) hits.push({ distance: h.t, point: rc.ray.at(h.t, new Vector3()), object: this.grup, index: h.tel });
+    };
     this.parcalar = v.parcalar.map((teller) => {
       const ser = new Seritler();
       const serTel: number[] = [];
@@ -516,25 +559,13 @@ class TelAgi {
     for (const gi of q.teller) {
       const n = this.v.noktalar[gi];
       const k = n.length / 3;
-      for (let j = 0; j + 1 < k; j++) {
-        let [ax, ay, az] = [n[3 * j], n[3 * j + 1], n[3 * j + 2]];
-        let [bx, by, bz] = [n[3 * j + 3], n[3 * j + 4], n[3 * j + 5]];
-        // yatay parçalar köşelerde yarıçap kadar uzar: dirsekler kapalı görünür
-        if (ay === by) {
-          const dx = Math.sign(bx - ax);
-          const dz = Math.sign(bz - az);
-          ax -= dx * TEL_R; az -= dz * TEL_R;
-          bx += dx * TEL_R; bz += dz * TEL_R;
-        }
-        yal.ekle(this.nokta(tmpA, ax, ay, az), this.nokta(tmpB, bx, by, bz), TEL_R * S);
-        yalTel.push(gi);
-      }
-      // uçlar: yalıtım deliğe iner, çıplak bakır deliğin ağzından içeri
+      // yalıtım tek parça boru: deliğin ağzından kalkar, köşelerde kıvrılır, öbür deliğe iner
+      const halka = yal.yol(boruYolu(n, YALITIM_UCU, this.w), TEL_R * S);
+      for (let h = 0; h < halka; h++) yalTel.push(gi);
+      // çıplak bakır deliğin ağzından içeri
       for (const j of [0, k - 1]) {
         const x = n[3 * j];
         const z = n[3 * j + 2];
-        yal.ekle(this.nokta(tmpA, x, n[3 * j + 1], z), this.nokta(tmpB, x, YALITIM_UCU, z), TEL_R * S);
-        yalTel.push(gi);
         bak.ekle(this.nokta(tmpA, x, YALITIM_UCU + 0.1, z), this.nokta(tmpB, x, -0.6, z), BAKIR_R * S);
       }
     }
@@ -573,6 +604,7 @@ class TelAgi {
     }
   }
 
+  /** şerit başına 4 köşe; boruda halka başına BORU_KOSE köşe (yalitimTel halka başına) */
   boya(q: AgParcasi, renkler: Float32Array): void {
     boya(q.serit.geometry, q.seritTel, 4, renkler);
     if (q.yalitim) boya(q.yalitim.geometry, q.yalitimTel!, 2 * BORU_KOSE, renkler);
@@ -641,7 +673,10 @@ export function AtlamaTelleri() {
   const yapilan = useBbKurulum((s) => s.yapilan);
   const kurPano = useBbKurulum((s) => s.pano);
   const kurAsama = useBbKurulum((s) => s.asama);
+  const tel = useKart((s) => s.tel);
   const secili = useMemo(() => seciliNetler(chip, net, power), [chip, net, power]);
+  /** seçili telin sahnedeki sırası (yoksa -1) */
+  const seciliTel = useMemo(() => (tel ? teller.findIndex((t, i) => t.no === tel.no && sahne.panolar[veri.pano[i]].kart === tel.kart) : -1), [tel, teller, sahne, veri]);
   const durum = useRef({ anahtar: "", surum: -1, agi });
   const renkler = useMemo(() => new Float32Array(teller.length * 3), [teller]);
   useFrame(({ camera, controls }) => {
@@ -652,7 +687,7 @@ export function AtlamaTelleri() {
     const canli = mode === "hepsi" || (!kurulumAcik && secili.size > 0);
     // uzaktan (seçim yokken) teller soluk: çipler, LED'ler ve modüllerin tabanları öne çıkar
     const soluk = uzak && !canli && !kurulumAcik;
-    const anahtar = `${mode}|${chip}|${net}|${power}|${kurulumAcik}|${yapilan.size}|${kurPano}|${kurAsama}|${soluk}`;
+    const anahtar = `${mode}|${chip}|${net}|${power}|${kurulumAcik}|${yapilan.size}|${kurPano}|${kurAsama}|${soluk}|${seciliTel}`;
     const d = durum.current;
     if (d.agi === agi && anahtar === d.anahtar && (!canli || d.surum === liveNets.version)) {
       for (const q of kurulan) agi.boya(q, renkler);
@@ -671,6 +706,9 @@ export function AtlamaTelleri() {
         tmpC.copy(yalitimRengi[i]);
         if (veri.pano[i] !== kp || (kurAsama !== null && t.asama !== kurAsama)) tmpC.lerp(KARTON, 0.9);
         else if (!yapilan.has(t.no)) tmpC.lerp(KARTON, 0.82);
+      } else if (seciliTel >= 0) {
+        tmpC.copy(yalitimRengi[i]);
+        if (i !== seciliTel) tmpC.lerp(KARTON, 0.72);
       } else if (mode === "hepsi") {
         tmpC.copy(seviye());
         if (secili.size && !secili.has(t.net)) tmpC.lerp(KARTON, 0.7);
@@ -688,24 +726,46 @@ export function AtlamaTelleri() {
     for (const q of agi.parcalar) agi.boya(q, renkler);
   });
   const gorunur = mode !== "yok" || kurulumAcik;
-  return <primitive object={agi.grup} visible={gorunur} />;
+  // tele tıklayınca: kurulum modunda (o panodaysa) odağa gelir, değilse seçilir (baştan sona vurgu)
+  const tikla = (e: ThreeEvent<MouseEvent>) => {
+    // grubun ışın testi telin sırasını index'e yazar (TelAgi)
+    const gi = e.index;
+    if (gi === undefined) return;
+    e.stopPropagation();
+    const kart = sahne.panolar[veri.pano[gi]].kart;
+    const k = useBbKurulum.getState();
+    if (k.acik) {
+      if (k.pano === kart) k.sec(teller[gi].no);
+    } else useKart.getState().selectTel({ kart, no: teller[gi].no });
+  };
+  return <primitive object={agi.grup} visible={gorunur} onClick={tikla} />;
 }
 
 // ---------------------------------------------------------------- kurulum modu: odaktaki tel
 
-/** Odaktaki tel kalın ve parlak, uçlarında nabız gibi atan halkalar; kamera iki ucu çerçeveler */
+/**
+ * Odaktaki tel kalın ve parlak, uçlarında nabız gibi atan halkalar. Kurulum modunda sıradaki tel (kamera
+ * iki ucu çerçeveler); kurulum kapalıyken tıklanıp seçilen tel (useKart.tel; kamera yerinde kalır).
+ */
 export function BbKurulumSahne() {
   const acik = useBbKurulum((s) => s.acik);
-  const tel = useBbKurulum(bbSeciliTel);
+  const kurTel = useBbKurulum(bbSeciliTel);
   const pano = useBbKurulum((s) => s.pano);
-  if (!acik || !tel) return null;
-  const p = bbPano(pano);
-  return (
-    <group>
-      <SeciliTel tel={tel} p={p} />
-      <KurulumKamera tel={tel} p={p} />
-    </group>
-  );
+  const secim = useKart((s) => s.tel);
+  if (acik) {
+    if (!kurTel) return null;
+    const p = bbPano(pano);
+    return (
+      <group>
+        <SeciliTel tel={kurTel} p={p} />
+        <KurulumKamera tel={kurTel} p={p} />
+      </group>
+    );
+  }
+  const p = secim && bbSahnesi().panolar.find((x) => x.kart === secim.kart);
+  // tellerin no'su kurulum sırası: no = sıra + 1 (bbSeciliTel gibi)
+  const tel = p && p.plan.teller[secim.no - 1];
+  return tel ? <SeciliTel tel={tel} p={p} /> : null;
 }
 
 function SeciliTel({ tel, p }: { tel: BbTel; p: BbPanosu }) {
@@ -716,21 +776,13 @@ function SeciliTel({ tel, p }: { tel: BbTel; p: BbPanosu }) {
     const hex = p.renk(tel.renk).hex;
     const renk = new Color(hex);
     const mat = new MeshStandardMaterial({ color: renk, emissive: renk, emissiveIntensity: 0.55, roughness: 0.4, depthTest: false, transparent: true });
-    const geo = new CylinderGeometry(1, 1, 1, 10, 1, false);
-    const parcalar: { p: [number, number, number]; q: Quaternion; s: [number, number, number] }[] = [];
-    const ekle = (ax: number, ay: number, az: number, bx: number, by: number, bz: number) => {
-      const [x0, z0] = w(ax, az);
-      const [x1, z1] = w(bx, bz);
-      tmpV.set(x1 - x0, (by - ay) * S, z1 - z0);
-      const len = tmpV.length();
-      if (len < 1e-6) return;
-      parcalar.push({ p: [(x0 + x1) / 2, ((ay + by) / 2) * S, (z0 + z1) / 2], q: new Quaternion().setFromUnitVectors(YUKARI, tmpV.normalize()), s: [TEL_R * 1.5 * S, len + TEL_R * 1.5 * S, TEL_R * 1.5 * S] });
-    };
+    // kalın tek parça boru; uçları board'un yüzüne iner
+    const b = new Borular(BORU_KOSE);
+    b.yol(boruYolu(n, 0, w), TEL_R * 1.5 * S);
+    const geo = b.geometri(false);
     const k = n.length / 3;
-    for (let j = 0; j + 1 < k; j++) ekle(n[3 * j], n[3 * j + 1], n[3 * j + 2], n[3 * j + 3], n[3 * j + 4], n[3 * j + 5]);
-    for (const j of [0, k - 1]) ekle(n[3 * j], n[3 * j + 1], n[3 * j + 2], n[3 * j], 0, n[3 * j + 2]);
     const uclar = [0, k - 1].map((j) => w(n[3 * j], n[3 * j + 2]));
-    return { mat, geo, parcalar, uclar, halka: tel.renk === "beyaz" || tel.renk === "siyah" ? "#ffffff" : hex };
+    return { mat, geo, uclar, halka: tel.renk === "beyaz" || tel.renk === "siyah" ? "#ffffff" : hex };
   }, [tel, p, w]);
   useEffect(() => () => {
     obj.mat.dispose();
@@ -743,9 +795,7 @@ function SeciliTel({ tel, p }: { tel: BbTel; p: BbPanosu }) {
   });
   return (
     <group renderOrder={20}>
-      {obj.parcalar.map((x, i) => (
-        <mesh key={i} geometry={obj.geo} material={obj.mat} position={x.p} quaternion={x.q} scale={x.s} renderOrder={20} raycast={noRaycast} />
-      ))}
+      <mesh geometry={obj.geo} material={obj.mat} renderOrder={20} raycast={noRaycast} />
       {obj.uclar.map(([x, z], i) => (
         <mesh key={`h${i}`} ref={(m) => (halkalar.current[i] = m)} position={[x, 0.03, z]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={21} raycast={noRaycast}>
           <ringGeometry args={[0.14, 0.22, 28]} />

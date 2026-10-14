@@ -17,7 +17,6 @@ import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeome
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { chipInside, type ChipInside } from "../../cpu16/board/inside";
 import type { ChipPlace } from "../../cpu16/board/layout";
-import { BACKPLANE } from "../../cpu16/board/passives";
 import type { Gate } from "../../cpu16/chips/logic";
 import { aktifKart, type KartTuru } from "./aktif";
 import { LEVEL_COLOR } from "./levels";
@@ -27,6 +26,10 @@ import { updateScreenCanvas, screenCanvas } from "./screenCanvas";
 import { boardLayoutData, boardModel, findPart, liveNets, netEnds, useKart } from "./store";
 import { KurulumSahne } from "./KurulumSahne";
 import { AtlamaTelleri, BbKurulumSahne, BreadboardTabani, breadboardGenelBakis, breadboardSahnede } from "./Breadboard3D";
+import { IDC_KABLO_Y } from "./passiveGeometry";
+import { DAMAR, DAMAR_ADIM } from "./serit";
+import { DamarSeritleri, IdcSoketleri, useDamarNetleri, type SeritParcasi, type Soket } from "./Serit3D";
+import { yuvarlakYol } from "./telYolu";
 import { TextQuads, type TextItem } from "./TextQuads";
 import { cipGovdeRengi, useBolum, useBolumVurgusu, useEtiketlerAcik } from "./bolum";
 import { Bolumler3D } from "./Bolumler3D";
@@ -113,69 +116,81 @@ function Cards() {
           </mesh>
         );
       })}
-      {lay.rows.slice(1).map((r, i) => {
-        // sıralar arasında arka panel kablosu (sol kenarda)
-        const top = lay.rows[i];
-        const [x, z0] = w(r.x - 8, top.backplaneY + top.backplaneH / 2);
-        const [, z1] = w(r.x - 8, r.backplaneY + r.backplaneH / 2);
-        return (
-          <mesh key={`k${i}`} position={[x, 0.02, (z0 + z1) / 2]} raycast={noRaycast}>
-            <boxGeometry args={[6 * S, 0.06, z1 - z0]} />
-            <meshStandardMaterial color="#8a8f99" roughness={0.7} />
-          </mesh>
-        );
-      })}
       {!etiketler && (
         <lineSegments geometry={outline} raycast={noRaycast}>
           <lineBasicMaterial color="#cfe3d6" transparent opacity={0.35} />
         </lineSegments>
       )}
       <TextQuads items={titles} cellW={512} cellH={48} font={30} />
-      {backplane && <BackplaneTraces />}
+      {backplane && <ArkaPanel />}
     </group>
   );
 }
 
-/** Arka paneldeki bakır yollar: her biri bir arka panel sinyali, canlı renkte (her kart sırasında) */
-function BackplaneTraces() {
+/** kenar konnektörünün plastik gövdesi (mm): IDC soketi bunun üstüne oturur */
+const BASLIK_TABAN = 2.5;
+
+/**
+ * Arka panel: her kart sırasının altında 64 yollu bakır şerit (canlı renkte; 1. pin kartlara yakın kenarda),
+ * her kartın kenar konnektörüne (J1, J201, …) takılı IDC soketi ve arka paneldeki eşine giden kısa şerit
+ * kablo, sıralar arasında soldaki şerit kablo. Bir yola ya da damara tıklayınca sinyali seçilir: bütün
+ * kartlarda o netin uçları ve teller öne çıkar, yan panelde hangi kartlara gittiği yazar (Serit3D.tsx).
+ */
+function ArkaPanel() {
   const { lay, w } = useLayoutWorld();
-  const { board } = boardModel();
-  const signals = useMemo(() => [...new Set(Object.values(BACKPLANE))].filter((n) => n !== "GND" && n !== "VCC" && board.has(n)), [board]);
-  const ref = useRef<LineSegments>(null);
-  const version = useRef(-1);
-  const geo = useMemo(() => {
-    const pos: number[] = [];
-    for (const r of lay.rows) {
-      signals.forEach((_, i) => {
-        const y = r.backplaneY + 1.5 + (i * (r.backplaneH - 3)) / signals.length;
-        const [a, z] = w(r.x - 6, y);
-        const [b] = w(r.x + r.w + 6, y);
-        pos.push(a, 0.004, z, b, 0.004, z);
-      });
+  const dil = useDil();
+  const netler = useDamarNetleri();
+  const { yollar, kablolar, kartSoketleri, panelSoketleri } = useMemo(() => {
+    const dunya = (p: readonly number[]) => {
+      const out: number[] = [];
+      for (let i = 0; i < p.length; i += 3) {
+        const [x, z] = w(p[i], p[i + 2]);
+        out.push(x, p[i + 1] * S, z);
+      }
+      return out;
+    };
+    const yollar: SeritParcasi[] = lay.rows.map((r) => {
+      const zc = r.backplaneY + r.backplaneH / 2;
+      return { yol: dunya([r.x - 6, 0.12, zc, r.x + r.w + 6, 0.12, zc]), en: [0, 0, 1], g: (r.backplaneH - 3) * S };
+    });
+    // sıralar arasında soldaki kablo
+    const kablolar: SeritParcasi[] = lay.rows.slice(1).map((r, i) => {
+      const ust = lay.rows[i];
+      return { yol: dunya([r.x - 8, 0.3, ust.backplaneY + ust.backplaneH / 2, r.x - 8, 0.3, r.backplaneY + r.backplaneH / 2]), en: [1, 0, 0], g: 6 * S };
+    });
+    const kartSoketleri: Soket[] = [];
+    const panelSoketleri: Soket[] = [];
+    for (const p of lay.passives) {
+      if (!p.edge) continue;
+      const xs = p.pins.map((q) => q.x);
+      const ys = p.pins.map((q) => q.y);
+      const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+      const cz = (Math.min(...ys) + Math.max(...ys)) / 2;
+      const r = lay.rows.find((q) => cz >= q.y && cz <= q.backplaneY + q.backplaneH) ?? lay.rows[0];
+      const zb = r.backplaneY + r.backplaneH / 2;
+      // kart soketinin kapağının altından çıkar, arka paneldeki soketin kapağına girer: yakınsa hafif bir
+      // kavisle, kart sıranın en kısasıysa kartın kenarında yere iner, boşlukta yatar, sokete yükselir
+      const kart = lay.cards.find((c) => c.name === p.card);
+      const yk = BASLIK_TABAN + IDC_KABLO_Y;
+      const kenar = (kart ? kart.y + kart.h : cz) + 3;
+      const yol = zb - 9 - kenar > 6
+        ? [cx, yk, cz - 2.8, cx, yk, kenar, cx, 0.4, kenar, cx, 0.4, zb - 9, cx, yk, zb - 9, cx, yk, zb + 2.8]
+        : [cx, yk, cz - 2.8, cx, yk, cz + 4.2, cx, yk + 3.5, (cz + zb) / 2, cx, yk, zb - 4.2, cx, yk, zb + 2.8];
+      kablolar.push({ yol: dunya(yuvarlakYol(yol, 2.6)), en: [1, 0, 0], g: DAMAR * DAMAR_ADIM * S });
+      const [x, z] = w(cx, cz);
+      kartSoketleri.push({ x, y: BASLIK_TABAN * S, z, etiket: `${kartBasligi(p.card, kart?.title ?? p.card, dil)} · ${p.ref}` });
+      const [xb, zb2] = w(cx, zb);
+      panelSoketleri.push({ x: xb, y: 0, z: zb2, etiket: dil === "en" ? "backplane" : "arka panel" });
     }
-    const g = new BufferGeometry();
-    g.setAttribute("position", new BufferAttribute(new Float32Array(pos), 3));
-    g.setAttribute("color", new BufferAttribute(new Float32Array(pos.length), 3));
-    return g;
-  }, [lay, w, signals]);
-  const nets = useMemo(() => signals.map((s) => board.n(s)), [signals, board]);
-  useFrame(() => {
-    if (version.current === liveNets.version || !ref.current) return;
-    version.current = liveNets.version;
-    const col = geo.getAttribute("color") as BufferAttribute;
-    const per = nets.length;
-    for (let k = 0; k < col.count / 2; k++) {
-      const lv = liveNets.values?.[nets[k % per]] ?? 3;
-      const c = lv === 1 ? levelColors[1] : lv === 0 ? tmpC.set("#a07a3a") : levelColors[lv];
-      col.setXYZ(2 * k, c.r, c.g, c.b);
-      col.setXYZ(2 * k + 1, c.r, c.g, c.b);
-    }
-    col.needsUpdate = true;
-  });
+    return { yollar, kablolar, kartSoketleri, panelSoketleri };
+  }, [lay, w, dil]);
   return (
-    <lineSegments ref={ref} geometry={geo} raycast={noRaycast}>
-      <lineBasicMaterial vertexColors />
-    </lineSegments>
+    <group>
+      <DamarSeritleri parcalar={yollar} palet="bakir" netler={netler} />
+      <DamarSeritleri parcalar={kablolar} palet="kablo" netler={netler} />
+      <IdcSoketleri soketler={kartSoketleri} />
+      <IdcSoketleri soketler={panelSoketleri} taban={BASLIK_TABAN} />
+    </group>
   );
 }
 
@@ -711,6 +726,7 @@ export function BoardScene() {
         onPointerMissed={() => {
           const s = useKart.getState();
           if (s.gate !== null) s.selectGate(null);
+          else if (s.tel !== null) s.selectTel(null);
           else if (s.chip !== null || !useBolum.getState().secili) s.selectChip(null);
           else useBolum.getState().sec(null);
         }}
