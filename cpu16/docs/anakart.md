@@ -140,12 +140,12 @@ giriş 8 döngü sürer (PC ve bayraklar yığına, I = 0, `0x0002` vektörü), 
 
 ## Zamanlayıcı
 
-4 MHz'ten 74HC161 ×3 ile 4000'e bölünmüş **1 kHz tık** (1 ms) 16 bitlik sayacı azaltır. Sayaç
+4 MHz'den 74HC161 ×3 ile 4000'e bölünmüş **1 kHz tık** (1 ms) 16 bitlik sayacı azaltır. Sayaç
 dört eşzamanlı 74HC161'dir ve kalan tık sayısının tersini tutar: aşağı saymak tersini yukarı
 saymaktır (`c − 1 = ¬(¬c + 1)`); RELOAD sayıcılara eviricilerden geçerek yüklenir. Sayaç 0 olunca RELOAD'dan yeniden yüklenir ve EXPIRED kurulur; IRQ_EN
 açıksa kesme ister. Periyot = RELOAD ms (RELOAD = 0 → 65 536 ms). BIOS 10 yükler: 100 Hz
 (`TICKS` sayacı, bkz. bios.md).
-Tık TCLK / 4000'dir (TCLK = CPU saati, bekleme turlarında da sayar): 4 MHz'te 1 kHz, 1 MHz'lik
+Tık TCLK / 4000'dir (TCLK = CPU saati, bekleme turlarında da sayar): 4 MHz'de 1 kHz, 1 MHz'lik
 ilk kartta 250 Hz. BIOS'un 100 Hz'i de aynı oranda yavaşlar; gerçek zaman gereken programlar
 RELOAD'ı CPU hızına göre seçmelidir.
 
