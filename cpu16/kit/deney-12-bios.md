@@ -3,9 +3,8 @@
 > **Video:** "Kendi BIOS'umuz: ilk açılış ve kablosuz program yükleme" · **Önce:** Deney 8–11 (bellek, önbellek, G/Ç, video) · **Kart:** yeni donanım yok; BIOS EEPROM'a yazılır, USB-UART bağlanır
 
 Bu deneyin sonunda bilgisayar kendi başına açılır, ekranda ve terminalde monitörün istemi `> `
-görünür; programlar artık çip sökmeden, USB kablosundan yüklenir. Deneyin sonunda kartı
-simülatörle karşılaştıran **kart testi** 4/4 geçer: bu, gerçek bilgisayarın simülatörle aynı
-davrandığının kanıtıdır.
+görünür; programlar artık çip sökmeden, USB kablosundan yüklenir. Kartı simülatörle karşılaştıran
+**kart testi** de 4/4 geçer: gerçek bilgisayar simülatörle aynı davranır.
 
 ## Ne öğreneceksin
 
@@ -17,7 +16,7 @@ davrandığının kanıtıdır.
 
 ## Nasıl çalışır
 
-- BIOS (`cpu16/bios/bios.s`) EEPROM bank 0'dadır ve CPU adresinde `0x0000–0x3FFF` penceresinde görünür.
+- BIOS (`cpu16/bios/bios.s`) EEPROM bank 0'dadır ve CPU'ya `0x0000–0x3FFF` penceresinden görünür.
   Reset vektörü açılış koduna gider; açılış RAM'i, bank register'larını, kesme maskesini, ekranı
   hazırlar ve monitöre geçer. Ayrıntılar: `cpu16/docs/bios.md`.
 - Monitör komutları: `D` bellek dökümü, `W` yaz, `G` çalıştır, `B` bank, `L` HEX → RAM, `F` HEX →

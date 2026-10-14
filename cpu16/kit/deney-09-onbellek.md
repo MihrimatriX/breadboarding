@@ -12,7 +12,7 @@ Bu deneyin sonunda 2 KB'lık doğrudan eşlemeli önbellek çalışır. LED'lerd
 - **Doğrudan eşlemeli önbellek**: 1024 satır × 1 kelime. Satır = adresin `A10..A1` bitleri, etiket =
   `A11..A13` + `PA14..PA19` + geçerli biti; etiket 74HC688'lerle karşılaştırılır.
 - **İsabet ve ıskalama**: isabette veri SRAM'i veriyolunu doğrudan sürer, bekleme yoktur; ıskalamada
-  iki bekleme turu, satır aynı erişimde veriyolundan doldurulur.
+  iki bekleme turu olur, satır aynı erişimde veriyolundan doldurulur.
 - **Write-through**: her yazma ana belleğe gider (iki bekleme); RAM'e yazma isabetinde satır
   güncellenir, EEPROM ya da boş bölgeye (`PA19 = 0`) yazma isabetinde satır geçersiz kılınır.
 - **Reset'te temizleme**: 1024 satırın geçerli bitini bir sayaç (74HC161 × 3) osilatör hızında siler.
@@ -23,7 +23,7 @@ Bu deneyin sonunda 2 KB'lık doğrudan eşlemeli önbellek çalışır. LED'lerd
 ## Nasıl çalışır
 
 - Okumada etiket SRAM'i (U513, U514) satırın etiketini verir, U517/U518 bunu o anki adresle
-  karşılaştırır: eşitse ve geçerliyse `C_HIT`. `C_EN` ∧ `C_HIT` ise veri SRAM'leri (U519 çift,
+  karşılaştırır: eşitse ve geçerliyse `C_HIT` 1 olur. `C_EN` ∧ `C_HIT` ise veri SRAM'leri (U519 çift,
   U520 tek bayt) `~MRD` ile birlikte `DE`/`DO`'yu sürer ve `~WAIT` hiç düşmez.
 - Iskalamada (ya da önbellek kapalıyken) Deney 8'deki iki bekleme turu olur; ikinci turun
   `TAGPH` evresinde bellek kartının sürdüğü veri satıra, yeni etiket (U515, U516 üzerinden) etiket
@@ -69,13 +69,13 @@ Bir tur kronometreyle: açıkken ≈ 1,15 s, kapalıyken ≈ 1,6 s. Mantık anal
 
 ## Simülatörde
 
-- `npm run cpu16 -- machine cpu16/kit/programlar/onbellek-deneme.s --rom --led`: LED satırları 1 MHz
-  zamanıyla; adımlar arasındaki süre farkı doğrudan okunur.
+- `npm run cpu16 -- machine cpu16/kit/programlar/onbellek-deneme.s --rom --led`: LED satırlarını 1 MHz
+  zamanıyla basar; adımlar arasındaki süre farkı doğrudan okunur.
 - Kapı seviyesi: `cpu16/tests/anakart-bellek.test.ts` önbellek kartını her erişimde `Machine`'in
   önbellek modeliyle karşılaştırır (etiketler, satır verisi, isabet ve ıskalama sayaçları);
   `cpu16/tests/anakart-sistem.test.ts` CPU ile bütün kartları birlikte çalıştırır.
 - Deney 12'den sonra BIOS monitöründe `C` komutu sayaçları ve isabet oranını yazar;
-  `cpu16/bios/ornekler/onbellek.s` aynı döngüyü önbellek açık ve kapalı ölçer.
+  `cpu16/bios/ornekler/onbellek.s` aynı döngüyü önbellek açıkken ve kapalıyken ölçer.
 
 ## Sorun giderme
 

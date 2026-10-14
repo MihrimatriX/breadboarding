@@ -45,7 +45,7 @@ programla sınar.
 
 ## Sonra: diğer C örnekleri
 
-Aynı listede kolaydan zengine on C örneği daha var: `sayilar.c` (16 bitlik taşma, onluk / hex /
+Aynı listede kolaydan zora on C örneği daha var: `sayilar.c` (16 bitlik taşma, onluk / hex /
 ikilik), `uzun.c` (32 bitlik `long` ve her işlemin kaç döngü sürdüğü), `kalbur.c` (65535'e kadar
 asallar), `siralama.c`, `liste.c` (`malloc`), `hesap.c` (klavyeden satır okuyan hesap makinesi),
 `sabit.c` (`float` olmadan sinüs), `ekran.c` (VRAM'e doğrudan), `kesme.c` (vsync kesmesine C
@@ -53,7 +53,7 @@ fonksiyonu) ve `hayat.c` (Hayat Oyunu). Hepsi karta bu deneydeki gibi yüklenir.
 CPU16'da C yazarken bilinmesi gerekenler (bellek haritası, G/Ç adresleri, çarpma / bölmenin
 maliyeti): [`cpu16/docs/c-ornekleri.md`](../docs/c-ornekleri.md).
 
-Örneklerin yazdığı süreler 4 MHz içindir. Kart 1 MHz'te çalışırken (`uretim.md`, bölüm 2) her şey
+Örneklerin yazdığı süreler 4 MHz içindir. Kart 1 MHz'de çalışırken (`uretim.md`, bölüm 2) her şey
 gerçek zamanda 4 kat uzun sürer; BIOS tıkı da CPU saatinden türediği için tık sayıları aynı kalır.
 Video kartının saati ise ayrıdır, vsync hep 60 Hz: `kesme.c`'nin "kanca / tık" oranı 0.60 yerine
 2.40 çıkar, `ekran.c`'nin 300 karelik animasyonu yine 5 saniye sürer. Hesap sonuçları (sayılar,
