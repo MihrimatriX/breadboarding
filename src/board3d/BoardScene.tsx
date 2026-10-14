@@ -8,7 +8,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from "rea
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import {
-  BufferAttribute, BufferGeometry, CanvasTexture, Color, InstancedMesh, LineBasicMaterial, LineSegments, Mesh, MeshBasicMaterial, Object3D, SRGBColorSpace, Vector3,
+  BufferAttribute, BufferGeometry, CanvasTexture, Color, Group, InstancedMesh, LineBasicMaterial, LineSegments, Mesh, MeshStandardMaterial, Object3D, SRGBColorSpace, Uint16BufferAttribute, Uint32BufferAttribute, Vector3,
   type InterleavedBufferAttribute, type PerspectiveCamera,
 } from "three";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
@@ -16,7 +16,7 @@ import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { chipInside, type ChipInside } from "../../cpu16/board/inside";
-import type { ChipPlace } from "../../cpu16/board/layout";
+import type { BoardLayout, ChipPlace } from "../../cpu16/board/layout";
 import type { Gate } from "../../cpu16/chips/logic";
 import { aktifKart, type KartTuru } from "./aktif";
 import { LEVEL_COLOR } from "./levels";
@@ -26,10 +26,8 @@ import { updateScreenCanvas, screenCanvas } from "./screenCanvas";
 import { boardLayoutData, boardModel, findPart, liveNets, netEnds, useKart } from "./store";
 import { KurulumSahne } from "./KurulumSahne";
 import { AtlamaTelleri, BbKurulumSahne, BreadboardTabani, breadboardGenelBakis, breadboardSahnede } from "./Breadboard3D";
-import { IDC_KABLO_Y } from "./passiveGeometry";
-import { DAMAR, DAMAR_ADIM, damarU } from "./serit";
+import { DAMAR, DAMAR_ADIM } from "./serit";
 import { DamarSeritleri, IdcSoketleri, useDamarNetleri, type SeritParcasi, type Soket } from "./Serit3D";
-import { yuvarlakYol } from "./telYolu";
 import { TextQuads, type TextItem } from "./TextQuads";
 import { cipGovdeRengi, useBolum, useBolumVurgusu, useEtiketlerAcik } from "./bolum";
 import { Bolumler3D } from "./Bolumler3D";
@@ -38,7 +36,8 @@ import { azHareket, ucusAdimi, useSahneRengi } from "../ui/ayarlar";
 import { useDil } from "../ui/ceviri";
 import { blokAdi, kartBasligi } from "./adlar";
 import { allWires, busRouter, netTree, netWires, partWires, wireGeometry, type Endpoint, type WireEdge } from "./wires";
-import { bakirYollariSirayla, yolSeridi, type BakirYol } from "./pcbYol";
+import type { Kazinti } from "./pcbYol";
+import type { KaziIstegi, KaziYaniti } from "./pcbYol.worker";
 
 /** 1 dünya birimi = 10 mm */
 const S = 0.1;
@@ -50,7 +49,6 @@ const PIN_TOP = 0.24;
 const levelColors = LEVEL_COLOR.map((c) => new Color(c));
 const PIN_COLORS = [new Color("#56606c"), new Color("#ff2a55"), new Color("#9d8cff"), new Color("#e6e600")];
 /** tellerde 0 koyu kartın üstünde görünsün diye açık mavi; 1, Z, X her yerdeki gibi */
-const BEYAZ = new Color("#ffffff");
 const WIRE_COLORS = [new Color("#5f8fd6"), new Color("#ff2a55"), new Color("#9d8cff"), new Color("#e6e600")];
 const tmpC = new Color();
 const DIE_LOW = new Color("#5d7390");
@@ -129,20 +127,18 @@ function Cards() {
   );
 }
 
-/** kenar konnektörünün plastik gövdesi (mm): IDC soketi bunun üstüne oturur */
-const BASLIK_TABAN = 2.5;
-
 /**
- * Arka panel: her kart sırasının altında 64 yollu bakır şerit (canlı renkte; 1. pin kartlara yakın kenarda),
- * her kartın kenar konnektörüne (J1, J201, …) takılı IDC soketi ve arka paneldeki eşine giden kısa şerit
- * kablo, sıralar arasında soldaki şerit kablo. Bir yola ya da damara tıklayınca sinyali seçilir: bütün
- * kartlarda o netin uçları ve teller öne çıkar, yan panelde hangi kartlara gittiği yazar (Serit3D.tsx).
+ * Arka panel: her kart sırasının altında 64 yollu bakır şerit (canlı renkte; 1. pin kartlara yakın kenarda).
+ * Her kartın kenar konnektörünün (J1, J201, …) altından arka panelin bir dili şeride iner: konnektörün 64
+ * pininden 64 bakır yol, eğik ucunda her yol kendi şeridine bağlanır (serit.ts uc). Konnektörün altında
+ * pin haritası (hangi pin hangi sinyal). Sıralar arasında soldaki şerit kablo. Bir yola tıklayınca sinyali
+ * seçilir: yolu baştan sona parlar, bütün kartlarda o netin bakırı yanar, yan panelde hangi kartlara gittiği
+ * yazar (Serit3D.tsx).
  */
 function ArkaPanel() {
   const { lay, w } = useLayoutWorld();
-  const dil = useDil();
   const netler = useDamarNetleri();
-  const { yollar, kablolar, kartSoketleri, panelSoketleri, inis } = useMemo(() => {
+  const { yollar, kablolar, haritalar } = useMemo(() => {
     const dunya = (p: readonly number[]) => {
       const out: number[] = [];
       for (let i = 0; i < p.length; i += 3) {
@@ -160,10 +156,8 @@ function ArkaPanel() {
       const ust = lay.rows[i];
       return { yol: dunya([r.x - 8, 0.3, ust.backplaneY + ust.backplaneH / 2, r.x - 8, 0.3, r.backplaneY + r.backplaneH / 2]), en: [1, 0, 0], g: 6 * S };
     });
-    const kartSoketleri: Soket[] = [];
-    const panelSoketleri: Soket[] = [];
-    // seçili damarın arka paneldeki soketten yola inişi: kablonun ucu (dünya), yolun ortası ve genişliği
-    const inisler: { son: number[]; zc: number; g: number }[] = [];
+    const haritalar: Soket[] = [];
+    const gs = DAMAR * DAMAR_ADIM;
     for (const p of lay.passives) {
       if (!p.edge) continue;
       const xs = p.pins.map((q) => q.x);
@@ -172,35 +166,20 @@ function ArkaPanel() {
       const cz = (Math.min(...ys) + Math.max(...ys)) / 2;
       const r = lay.rows.find((q) => cz >= q.y && cz <= q.backplaneY + q.backplaneH) ?? lay.rows[0];
       const zb = r.backplaneY + r.backplaneH / 2;
-      // kart soketinin kapağının altından çıkar, arka paneldeki soketin kapağına girer: yakınsa hafif bir
-      // kavisle, kart sıranın en kısasıysa kartın kenarında yere iner, boşlukta yatar, sokete yükselir
-      const kart = lay.cards.find((c) => c.name === p.card);
-      const yk = BASLIK_TABAN + IDC_KABLO_Y;
-      const kenar = (kart ? kart.y + kart.h : cz) + 3;
-      const yol = zb - 9 - kenar > 6
-        ? [cx, yk, cz - 2.8, cx, yk, kenar, cx, 0.4, kenar, cx, 0.4, zb - 9, cx, yk, zb - 9, cx, yk, zb + 2.8]
-        : [cx, yk, cz - 2.8, cx, yk, cz + 4.2, cx, yk + 3.5, (cz + zb) / 2, cx, yk, zb - 4.2, cx, yk, zb + 2.8];
-      const kablo = dunya(yuvarlakYol(yol, 2.6));
-      kablolar.push({ yol: kablo, en: [1, 0, 0], g: DAMAR * DAMAR_ADIM * S });
-      const [x, z] = w(cx, cz);
-      kartSoketleri.push({ x, y: BASLIK_TABAN * S, z, kart: p.card, ref: p.ref, etiket: `${kartBasligi(p.card, kart?.title ?? p.card, dil)} · ${p.ref}`, yon: -1 });
-      const [xb, zb2] = w(cx, zb);
-      panelSoketleri.push({ x: xb, y: 0, z: zb2, kart: p.card, ref: p.ref, etiket: dil === "en" ? "backplane" : "arka panel", yon: 1 });
-      inisler.push({ son: kablo.slice(-3), zc: zb2, g: (r.backplaneH - 3) * S });
+      const gk = r.backplaneH - 3;
+      // dil konnektörün alt kenarından şeridin ortasına iner, şeridin biraz altında (şeritler üstte kesintisiz);
+      // eğik ucunda k. yol şeridin k. yoluna değer: enine e'deki uç boyuna (gk / gs)·e kayar
+      yollar.push({ yol: dunya([cx, 0.1, cz + 2.54, cx, 0.1, zb]), en: [1, 0, 0], g: gs * S, uc: gk / gs });
+      const [x, z] = w(cx, cz + 5.9);
+      haritalar.push({ x, y: 0.1 * S, z, kart: p.card, ref: p.ref, etiket: "", yon: 1 });
     }
-    // seçili damar (k): kablodaki yerinden arka paneldeki k. yola iner (konnektörün k. pini)
-    const inis = (k: number) => inisler.map(({ son, zc, g }) => {
-      const e = damarU(k) - 0.5;
-      return [son[0] + e * DAMAR * DAMAR_ADIM * S, son[1], son[2], son[0] + e * DAMAR * DAMAR_ADIM * S, 0.012, zc + e * g];
-    });
-    return { yollar, kablolar, kartSoketleri, panelSoketleri, inis };
-  }, [lay, w, dil]);
+    return { yollar, kablolar, haritalar };
+  }, [lay, w]);
   return (
     <group>
       <DamarSeritleri parcalar={yollar} palet="bakir" netler={netler} />
-      <DamarSeritleri parcalar={kablolar} palet="kablo" netler={netler} ekIz={inis} />
-      <IdcSoketleri soketler={kartSoketleri} netler={netler} />
-      <IdcSoketleri soketler={panelSoketleri} netler={netler} taban={BASLIK_TABAN} />
+      <DamarSeritleri parcalar={kablolar} palet="kablo" netler={netler} />
+      <IdcSoketleri soketler={haritalar} netler={netler} duz />
     </group>
   );
 }
@@ -412,7 +391,7 @@ function WireLayer({ edges, width, opacity = 1, onTop = false, order = 0 }: { ed
   return obj ? <primitive object={obj.line} /> : null;
 }
 
-/** kartın içindeki (bakır yol olarak döşenen) kenar mı: aynı kart, besleme değil (besleme gerçek kartta düzlem) */
+/** kartın içindeki (bakır yol olarak kazınan) kenar mı: aynı kart, besleme değil (besleme gerçek kartta düzlem) */
 const kartIci = (e: WireEdge) => e.a.card === e.b.card && e.net > 1;
 
 function Wires() {
@@ -420,108 +399,197 @@ function Wires() {
   const power = useKart((s) => s.power);
   const chip = useKart((s) => s.chip);
   const net = useKart((s) => s.net);
-  const all = useMemo(() => (mode === "hepsi" ? allWires(netEnds(), { power }) : []), [mode, power]);
-  // seçili çipin her netinin bütün uçları (kart içinde ağaç, kartlar arası konnektörden konnektöre)
+  // kart içi bağlantılar kartın bakırında (KaziliYollar); burada yalnız kartlar arası ve besleme: çizgi
+  const all = useMemo(() => (mode === "hepsi" ? allWires(netEnds(), { power }).filter((e) => !kartIci(e)) : []), [mode, power]);
+  // seçili çipin netlerinin ağaçları: kartlar arası kısım konnektörden konnektöre, arka panel boyunca
   const mine = useMemo(() => {
     if (mode === "yok" || !chip) return [];
     const out: WireEdge[] = [];
-    for (const [n, list] of netEnds()) if ((power || n > 1) && list.some((e) => e.ref === chip)) out.push(...netTree(n, list));
+    for (const [n, list] of netEnds()) if ((power || n > 1) && list.some((e) => e.ref === chip)) out.push(...netTree(n, list).filter((e) => !kartIci(e)));
     return out;
   }, [mode, chip, power]);
-  const sel = useMemo(() => (net !== null ? netWires(net, netEnds()) : []), [net]);
-  const gruplar = useMemo(() => [{ edges: mine.filter(kartIci), etiket: false }, { edges: sel.filter(kartIci), etiket: true }], [mine, sel]);
-  const mineCizgi = useMemo(() => mine.filter((e) => !kartIci(e)), [mine]);
-  const selCizgi = useMemo(() => sel.filter((e) => !kartIci(e)), [sel]);
+  const sel = useMemo(() => (net !== null ? netWires(net, netEnds()).filter((e) => !kartIci(e)) : []), [net]);
   return (
     <group>
-      {/* bütün bilgisayar: binlerce tel, ince çizgi (ucuz) */}
+      <KaziliYollar />
       <WireLayer edges={all} width={1} opacity={chip ? 0.35 : 0.85} />
-      {/* seçili çipin ve netin kart içindeki bağlantıları bakır yol; kartlar arası arka panel boyunca çizgi */}
-      <BakirYollar gruplar={gruplar} />
-      <WireLayer edges={mineCizgi} width={2.2} order={5} />
-      <WireLayer edges={selCizgi} width={3.2} onTop order={10} />
+      <WireLayer edges={mine} width={2.2} order={5} />
+      <WireLayer edges={sel} width={3.2} onTop order={10} />
     </group>
   );
 }
 
-/** bakır yolun genişliği (mm) ve karttan yüksekliği (dünya): seçili netinki daha kalın ve üstte */
-const YOL_GENISLIK = { cip: 0.9, net: 1.3 };
-const YOL_Y = { cip: 0.003, net: 0.0035 };
-/** kare başına yol döşemeye ayrılan süre (ms) */
-const YOL_SURE = 6;
+// ---------------------------------------------------------------- kazınmış bakır yollar
+
+/** Bir yerleşimin kazıması: worker'dan parti parti gelen yollar (yerleşim başına bir kez, görünüm değişse de kalır) */
+interface Kazima {
+  partiler: Kazinti[][];
+  bitti: boolean;
+}
+const kazimalar = new WeakMap<object, Kazima>();
+
+/** Yerleşimin yollarını kazımaya başlar (başlamışsa durumunu verir); kart içi kenarlar, besleme hariç */
+function kazimaBaslat(lay: BoardLayout): Kazima {
+  const var_ = kazimalar.get(lay);
+  if (var_) return var_;
+  const d: Kazima = { partiler: [], bitti: false };
+  kazimalar.set(lay, d);
+  const istek: KaziIstegi = { lay: { cards: lay.cards, chips: lay.chips, passives: lay.passives }, edges: allWires(netEnds()).filter(kartIci) };
+  const wk = new Worker(new URL("./pcbYol.worker.ts", import.meta.url), { type: "module" });
+  wk.onmessage = (e: MessageEvent<KaziYaniti>) => {
+    if (e.data.tip === "parti") d.partiler.push(e.data.kazintilar);
+    else {
+      d.bitti = true;
+      wk.terminate();
+    }
+  };
+  wk.postMessage(istek);
+  return d;
+}
+
+/** yolun genişliği (mm), katmanların yüksekliği (dünya): alt katman en altta, üstte yanan yollar; pedler 0,008'e kadar */
+const YOL_W = 0.55;
+const YANAN_W = 0.9;
+const VIA_R = 0.5;
+const KAT_Y = { alt: 0.0005, ust: 0.0012, via: 0.0019, yanan: 0.0025 };
+/** lehim maskesinin altındaki bakır: üst katman açık yeşil, alt katman kartın içinden soluk, via kalay */
+const BAKIR_RENK = { ust: new Color("#2e7a50"), alt: new Color("#174a33"), via: new Color("#b9a35a") };
+
+/** Kazıntıların dörtgenleri ve köşe başına netin numarası ve türü (0 üst, 1 alt, 2 via) */
+interface KaziAgi {
+  geo: BufferGeometry;
+  net: Int32Array;
+  tur: Uint8Array;
+}
+
+/** Her parça kare uçlu bir dörtgen (köşelerde parçalar birleşir), her via küçük bir kare */
+function kaziGeometrisi(list: readonly Kazinti[], w: (x: number, y: number) => [number, number], genislik: number, yanan: boolean): KaziAgi {
+  const pos: number[] = [];
+  const nets: number[] = [];
+  const tur: number[] = [];
+  const h = genislik / 2;
+  const dortgen = (x0: number, y0: number, x1: number, y1: number, y: number, n: number, t: number) => {
+    const l = Math.hypot(x1 - x0, y1 - y0) || 1;
+    const ux = ((x1 - x0) / l) * h, uy = ((y1 - y0) / l) * h;
+    for (const [px, py] of [[x0 - ux - uy, y0 - uy + ux], [x0 - ux + uy, y0 - uy - ux], [x1 + ux + uy, y1 + uy - ux], [x1 + ux - uy, y1 + uy + ux]]) {
+      const [wx, wz] = w(px, py);
+      pos.push(wx, y, wz);
+      nets.push(n);
+      tur.push(t);
+    }
+  };
+  list.forEach((k, i) => {
+    // aynı çizgiyi paylaşan yollar titremesin: her yolun kendi küçük yükseklik farkı
+    const dy = (i % 4) * 0.00008;
+    for (const [p, t] of [[k.alt, 1], [k.ust, 0]] as const) {
+      for (let j = 0; j + 3 < p.length; j += 4) dortgen(p[j], p[j + 1], p[j + 2], p[j + 3], (yanan ? KAT_Y.yanan : t ? KAT_Y.alt : KAT_Y.ust) + dy, k.net, t);
+    }
+    for (let j = 0; j + 1 < k.via.length; j += 2) dortgen(k.via[j] - VIA_R + h, k.via[j + 1], k.via[j] + VIA_R - h, k.via[j + 1], (yanan ? KAT_Y.yanan : KAT_Y.via) + dy, k.net, 2);
+  });
+  const idx: number[] = [];
+  // yukarıdan bakınca saat yönünün tersi: yüz yukarı
+  for (let q = 0; q < pos.length / 12; q++) idx.push(4 * q, 4 * q + 2, 4 * q + 1, 4 * q, 4 * q + 3, 4 * q + 2);
+  const geo = new BufferGeometry();
+  geo.setAttribute("position", new BufferAttribute(new Float32Array(pos), 3));
+  geo.setAttribute("normal", new BufferAttribute(new Float32Array(pos.length).map((_, i) => (i % 3 === 1 ? 1 : 0)), 3));
+  geo.setAttribute("color", new BufferAttribute(new Float32Array(pos.length), 3));
+  geo.setIndex(pos.length / 3 > 65535 ? new Uint32BufferAttribute(idx, 1) : new Uint16BufferAttribute(idx, 1));
+  geo.computeBoundingSphere();
+  return { geo, net: Int32Array.from(nets), tur: Uint8Array.from(tur) };
+}
+
+/** Köşe renkleri: canlı (netin seviyesi) ya da kazınmış bakırın rengi (katmanına göre) */
+function kaziBoya(p: KaziAgi, canli: boolean): void {
+  const attr = p.geo.getAttribute("color") as BufferAttribute;
+  const arr = attr.array as Float32Array;
+  const v = liveNets.values;
+  for (let i = 0; i < p.net.length; i++) {
+    const t = p.tur[i];
+    if (canli) {
+      tmpC.copy(WIRE_COLORS[level(v, p.net[i])] ?? WIRE_COLORS[3]);
+      if (t === 1) tmpC.lerp(BAKIR_RENK.alt, 0.45);
+    } else tmpC.copy(t === 0 ? BAKIR_RENK.ust : t === 1 ? BAKIR_RENK.alt : BAKIR_RENK.via);
+    arr[3 * i] = tmpC.r;
+    arr[3 * i + 1] = tmpC.g;
+    arr[3 * i + 2] = tmpC.b;
+  }
+  attr.needsUpdate = true;
+}
+
+/** canlı renkler en çok bu sıklıkla yenilenir (ms): "hepsi" kipinde yüz binlerce köşe */
+const CANLI_ARALIK = 100;
 
 /**
- * Bakır yollar (pcbYol.ts): kartın yüzeyinde dik açılı, 45° pahlı, canlı seviyenin renginde (seçili netin
- * yolları daha kalın ve açık). Yollar kare başına birkaç milisaniyede döşenir, döşendikçe görünür.
+ * Kazınmış bakır yollar (pcbYol.ts, worker'da): kartın bütün kart içi bağlantıları iki katmanlı, kazındıkça
+ * görünür. Kazınmış bakır kendi renginde; "hepsi" kipinde canlı seviyenin renginde. Seçili çipin netleri ve
+ * seçili net üstte, kalın ve canlı renkte yanar.
  */
-function BakirYollar({ gruplar }: { gruplar: { edges: WireEdge[]; etiket: boolean }[] }) {
+function KaziliYollar() {
   const { lay, w } = useLayoutWorld();
-  const obj = useMemo(() => {
-    const geo = new BufferGeometry();
-    const mat = new MeshBasicMaterial({ vertexColors: true });
-    const mesh = new Mesh(geo, mat);
-    mesh.raycast = noRaycast;
-    mesh.frustumCulled = false;
-    return { geo, mat, mesh };
-  }, []);
+  const mode = useKart((s) => s.wires);
+  const chip = useKart((s) => s.chip);
+  const net = useKart((s) => s.net);
+  const kazima = useMemo(() => kazimaBaslat(lay), [lay]);
+  const grup = useMemo(() => new Group(), []);
+  const mat = useMemo(() => new MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.15 }), []);
+  /** yanan netler: seçili çipin netleri (kip "yok" değilse) ve seçili net */
+  const yanan = useMemo(() => {
+    const s = new Set<number>();
+    if (net !== null) s.add(net);
+    if (chip && mode !== "yok") for (const [n, list] of netEnds()) if (n > 1 && list.some((e) => e.ref === chip)) s.add(n);
+    return s;
+  }, [chip, net, mode]);
+  const durum = useRef<{ parcalar: KaziAgi[]; yanan: { agi: KaziAgi; mesh: Mesh } | null; anahtar: string; kip: string; zaman: number; surum: number }>({
+    parcalar: [], yanan: null, anahtar: "", kip: "", zaman: 0, surum: -1,
+  });
   useEffect(() => () => {
-    obj.geo.dispose();
-    obj.mat.dispose();
-  }, [obj]);
-  const durum = useRef<{ uretec: Generator<BakirYol<boolean>> | null; yollar: BakirYol<boolean>[]; kirli: boolean; surum: number }>({ uretec: null, yollar: [], kirli: true, surum: -1 });
-  useEffect(() => {
-    durum.current = { uretec: bakirYollariSirayla(lay, gruplar), yollar: [], kirli: true, surum: -1 };
-  }, [lay, gruplar]);
+    for (const p of durum.current.parcalar) p.geo.dispose();
+    durum.current.yanan?.agi.geo.dispose();
+    mat.dispose();
+  }, [mat]);
   useFrame(() => {
     const d = durum.current;
-    if (d.uretec) {
-      const t0 = performance.now();
-      while (performance.now() - t0 < YOL_SURE) {
-        const r = d.uretec.next();
-        if (r.done) {
-          d.uretec = null;
-          break;
-        }
-        d.yollar.push(r.value);
-        d.kirli = true;
+    const canli = mode === "hepsi";
+    // yeni partiler: her parti kendi ağı (eklenir, baştan kurulmaz)
+    while (d.parcalar.length < kazima.partiler.length) {
+      const p = kaziGeometrisi(kazima.partiler[d.parcalar.length], w, YOL_W, false);
+      kaziBoya(p, canli);
+      const m = new Mesh(p.geo, mat);
+      m.raycast = noRaycast;
+      grup.add(m);
+      d.parcalar.push(p);
+    }
+    // yanan yollar: seçim ya da kazılan yollar değişince yeniden
+    const anahtar = `${[...yanan].join(",")}|${d.parcalar.length}`;
+    if (anahtar !== d.anahtar) {
+      d.anahtar = anahtar;
+      if (d.yanan) {
+        grup.remove(d.yanan.mesh);
+        d.yanan.agi.geo.dispose();
+        d.yanan = null;
+      }
+      if (yanan.size) {
+        const agi = kaziGeometrisi(kazima.partiler.flat().filter((k) => yanan.has(k.net)), w, YANAN_W, true);
+        const mesh = new Mesh(agi.geo, mat);
+        mesh.raycast = noRaycast;
+        grup.add(mesh);
+        d.yanan = { agi, mesh };
+        kaziBoya(agi, true);
       }
     }
-    if (d.kirli) {
-      // yolların şeritleri tek geometride; her köşenin rengi yolunun netinden (aşağıda boyanır)
-      const pos: number[] = [];
-      const idx: number[] = [];
-      for (const y of d.yollar) {
-        const dunya: number[] = [];
-        for (let k = 0; k < y.yol.length; k += 2) dunya.push(...w(y.yol[k], y.yol[k + 1]));
-        const s = yolSeridi(dunya, (y.etiket ? YOL_GENISLIK.net : YOL_GENISLIK.cip) * S);
-        const yy = y.etiket ? YOL_Y.net : YOL_Y.cip;
-        const o = pos.length / 3;
-        for (let k = 0; k < s.length; k += 2) pos.push(s[k], yy, s[k + 1]);
-        for (let k = 0; k + 1 < s.length / 4; k++) {
-          const a = o + 2 * k;
-          idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
-        }
-      }
-      obj.geo.setAttribute("position", new BufferAttribute(new Float32Array(pos), 3));
-      obj.geo.setAttribute("color", new BufferAttribute(new Float32Array(pos.length), 3));
-      obj.geo.setIndex(idx);
-      d.kirli = false;
-      d.surum = -1;
+    // renkler: kip değişince hepsi; canlı değerler değişince canlı olanlar (en çok CANLI_ARALIK'ta bir)
+    if (d.kip !== mode) {
+      d.kip = mode;
+      for (const p of d.parcalar) kaziBoya(p, canli);
     }
-    if (d.surum === liveNets.version) return;
+    const simdi = performance.now();
+    if (d.surum === liveNets.version || simdi - d.zaman < CANLI_ARALIK) return;
+    d.zaman = simdi;
     d.surum = liveNets.version;
-    const col = obj.geo.getAttribute("color") as BufferAttribute | undefined;
-    if (!col) return;
-    const arr = col.array as Float32Array;
-    let o = 0;
-    for (const y of d.yollar) {
-      tmpC.copy(WIRE_COLORS[level(liveNets.values, y.net)] ?? WIRE_COLORS[3]);
-      if (y.etiket) tmpC.lerp(BEYAZ, 0.25);
-      for (let k = 0; k < y.yol.length; k++, o += 3) arr.set([tmpC.r, tmpC.g, tmpC.b], o);
-    }
-    col.needsUpdate = true;
+    if (canli) for (const p of d.parcalar) kaziBoya(p, true);
+    if (d.yanan) kaziBoya(d.yanan.agi, true);
   });
-  return <primitive object={obj.mesh} />;
+  return <primitive object={grup} />;
 }
 
 // ---------------------------------------------------------------- çipin kalıbı (die): kapılar havada

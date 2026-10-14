@@ -13,12 +13,12 @@ shows up by itself.
 
 | Level | Where | What it shows |
 |---|---|---|
-| Computer | 3D scene (opening view) | The boards stand in rows. Under each row is a backplane strip whose 64 copper traces are live. An IDC socket is plugged onto each board's edge connector, and a short ribbon cable links it to its socket on the backplane; the board's name is printed on top of the sockets. The rows are connected by the ribbon cable on the left. At the back is a VGA monitor showing the program's picture. |
+| Computer | 3D scene (opening view) | The boards stand in rows. Under each row is a backplane strip whose 64 copper traces are live. Below each board's edge connector a tongue of the backplane reaches down to the strip: 64 copper traces from the connector's 64 pins, each joining its own trace on the strip; a pin map (which pin carries which signal) is printed under the connector. The rows are connected by the ribbon cable on the left. At the back is a VGA monitor showing the program's picture. |
 | Board | 3D scene | Chips are placed by function block (ALU, Register file, VRAM, Pixel path…). Blocks with many chips become near-square grids. Decoupling capacitors sit next to their chips, and the edge connector is on the bottom edge of the board. The other passives are lined up under their blocks. |
 | Passives | 3D scene | Resistors, capacitors, electrolytics, LEDs, resistor networks, connectors, oscillators, buttons, switches, pots, modules and the CPU board's 10-segment bar graphs. Their shapes come from the KiCad footprint. An LED lights when the net driving it is 1; active-low LEDs (VCC → resistor → LED → signal, e.g. `~ROE0`) light when the net is 0. Each segment of a bar graph lights while the signal at the other end of the network is 1: a byte reads bit 0 … 7 from left to right. Passive pins take part in the wiring too. |
 | Wires | Toolbar: **Wires** | Pin-to-pin jumper wires. Their colors are live: blue 0, red 1, purple Z, yellow X. Modes below. |
 | Wire | Click a wire in the breadboard view | The wire is drawn thick and bright from end to end, with a pulsing ring at each end; the other wires fade. The side panel shows the wire's number, color, length, net and **from → to** (breadboard, hole, the legs on that strip). In build mode the clicked wire becomes the focus. Esc or a click on empty space releases it. |
-| Conductor | Click a conductor of the ribbon cable or the backplane | That conductor's signal is selected: the conductor is drawn from end to end as a glowing trace above everything else (the cable makes a 45° fold where it turns a right angle, so the trace turns without a break; on the PCB it drops from the cable onto the backplane trace), the other conductors fade, and on every board the wires of that net take the live color. The sockets of the boards where the signal has ends are framed, and their labels show the number of ends on that board. The side panel shows which backplane conductor it is, how many ends the signal has on each board, and every end. GND and VCC conductors are not selectable. |
+| Conductor | Click a conductor of the ribbon cable or the backplane | That conductor's signal is selected: the conductor is drawn from end to end as a glowing trace above everything else (the cable makes a 45° fold where it turns a right angle, so the trace turns without a break; on the PCB it runs from the connector down the backplane tongue onto its trace on the strip), the other conductors fade, and on every board the wires of that net take the live color. On the breadboard, the sockets of the panels where the signal has ends are framed, and their labels show the number of ends on that board. The side panel shows which backplane conductor it is, how many ends the signal has on each board, and every end. GND and VCC conductors are not selectable. |
 | Chip | Click a chip | The camera flies to a spot where it sees the chip and the far ends of its wires together. The chip's **die** opens on top of it. Side panel **Connections**: pin no. + name → net → far ends (chip.pin). Bottom panel **Inside the chip**: gate-level schematic or memory array. |
 | Gate | Click a gate on the die or in the schematic | The CMOS transistor schematic of that gate. Conducting transistors are green. |
 | Net | Click a pin, an endpoint or a net name | All endpoints of the net are joined by a thick wire drawn above everything else. The side panel lists the endpoints of the net. |
@@ -75,13 +75,10 @@ panel map in the breadboard build guides draws the same regions in the same colo
 ### Wires
 
 - **none**: no wires are drawn.
-- **selected chip** (default): the nets of the selected chip (or passive) are drawn on the board surface as
-  **copper traces**: right-angled, with 45° chamfered corners, going around bodies and other nets' pads,
-  in the color of the live level (`src/board3d/pcbYol.ts`: A* on the board's 2.54 mm grid; traces are laid
-  a few milliseconds per frame). The part between boards is a line from connector to connector along the
-  backplane. The traces of a selected net are thicker and lighter. GND and VCC are not laid as traces (on
-  a real board they are planes). **Connections** in the side panel lists the same endpoints. Clicking an
-  endpoint selects that component; clicking a net name selects the net.
+- **selected chip** (default): the copper traces of the selected chip's (or passive's) nets light up thick
+  and in the color of the live level; the part between boards is a line from connector to connector along
+  the backplane. **Connections** in the side panel lists the same endpoints. Clicking an endpoint selects
+  that component; clicking a net name selects the net.
 - **all**: the wiring of the whole computer. Inside a board each net is joined with a minimum spanning
   tree (like a real chain of jumper wires). Boards connect to each other only through their edge
   connectors: wires between boards run along the backplane strip, and between rows through the cable on
@@ -91,9 +88,16 @@ panel map in the breadboard build guides draws the same regions in the same colo
 - **GND/VCC**: power wires are not drawn by default (each board has hundreds of power endpoints). Checking
   the box draws them.
 
-The wires of **all** mode are thin lines: short wires arc low, long wires arc high (routing thousands of
-connections would stall every selection). The drawing geometry is a set of pure functions in
-`src/board3d/wires.ts` and `src/board3d/pcbYol.ts` (with tests).
+On the PCB every connection inside a board is permanently **etched copper**: like a two-layer board,
+horizontal traces on top, vertical traces underneath, with a via wherever a trace changes direction. The
+etched copper sits under the board's green mask; in **all** mode the traces take the color of the live
+level, and the wires between boards are thin lines (short wires arc low, long wires arc high). GND and
+VCC are not etched as traces (on a real board they are planes). The routing is in
+`src/board3d/pcbYol.ts`: A* on the board's 1.27 mm grid, another net's pad or copper is very expensive,
+copper of the same net is shared. The whole computer's ~4,700 traces are etched in a worker
+(`pcbYol.worker.ts`) in ~10 seconds and appear as they are etched. The boards are very dense: some
+traces share a line (a real board would need more layers). The drawing geometry is a set of pure
+functions in `src/board3d/wires.ts` and `src/board3d/pcbYol.ts` (with tests).
 
 ### VGA screen
 

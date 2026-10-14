@@ -1,24 +1,28 @@
-// PCB görünümünde bakır yollar: bir netin kartın içindeki bağlantıları (wires.ts netTree kenarları) kartın
-// yüzeyinde dik açılı, köşeleri 45° pahlı yollar olarak. Her kartın kendi ızgarası (1,27 mm): çip ve pasif
-// gövdelerinin üstü pahalı (yol mümkünse çevresinden dolanır), başka netlerin pedleri çok pahalı, aynı
-// hesapta daha önce döşenen yolların üstü pahalı (yollar üst üste binmek yerine yan yana gider). A* yönlü:
-// her kıvrımın bir maliyeti var, yollar az kıvrımlı. Saf fonksiyonlar (React'ten ve three'den bağımsız);
-// testleri cpu16/tests/pcb-yol.test.ts.
+// PCB görünümünün kazınmış bakır yolları: kartın bütün kart içi bağlantıları (wires.ts allWires kenarları)
+// iki katmanlı bir kartta gibi. Üst katmanda yollar yalnız yatay, alt katmanda yalnız dikey gider; yol
+// yön değiştirdiği yerde via ile katman değiştirir (eski otomatik yönlendirilmiş iki katmanlı kartlar gibi):
+// yatay ve dikey yollar birbirini serbestçe keser, yalnız aynı yöndeki yollar yer için yarışır. Her kartın
+// kendi ızgarası; başka netin pedinin üstü ve başka netin bakırı çok pahalı, aynı netin bakırı paylaşılır
+// (net bir ağaç olur), çip ve pasif gövdelerinin altı biraz pahalı. Pinler ızgaraya oturmaz: yol pinin en
+// yakın düğümünden başlar, pinle düğüm arası kısa bir uçla bağlanır. Saf fonksiyonlar (React'ten ve
+// three'den bağımsız; kazıma pcbYol.worker.ts'te koşar); testleri cpu16/tests/pcb-yol.test.ts.
 
 import type { BoardLayout } from "../../cpu16/board/layout";
 import type { WireEdge } from "./wires";
 
-/** Izgara adımı (mm): DIP pin aralığı (yollar pinlerin arasından geçmez; ince ızgara büyük kartta yavaş) */
-export const YOL_ADIM = 2.54;
-/** maliyetler (adım başına 1): gövde üstü, başka netin pedi, kıvrım, daha önce döşenmiş yol */
-const GOVDE = 20;
-const YABANCI_PED = 40;
-const KIVRIM = 4;
-const YUK = 3;
+/** Izgara adımı (mm): yarım DIP pin aralığı (pinle düğüm arası uç ≤ 0,9 mm, pedin altında kalır) */
+export const YOL_ADIM = 1.27;
+/** maliyetler (adım başına 1): gövde altı, başka netin pedi, başka netin bakırı, katman değiştirme */
+const GOVDE = 1;
+const YABANCI_PED = 200;
+const CAKISMA = 40;
+const VIA = 10;
 /** A* sezgisinin ağırlığı (1: en ucuz yol, büyüdükçe hızlı ama dolambaçlı) */
-const SEZGI = 2;
-/** bir yolun A*'ında açılabilecek en çok durum (bulunamazsa düz çizgi) */
-const EN_COK = 400_000;
+const SEZGI = 1.5;
+/** bir aramada açılabilecek en çok durum (bulunamazsa düz çizgi) */
+const EN_COK = 600_000;
+/** arama penceresi: uçların sınır kutusunun çevresinde bu kadar düğüm (bulunamazsa bütün kart) */
+const PENCERE = 30;
 
 export interface Dikdortgen {
   x: number;
@@ -33,30 +37,34 @@ export interface Ped {
   net: number;
 }
 
-/** Bir kartın ızgarası: düğüm (i, j) = (x0 + i·adim, y0 + j·adim) */
+/** Bir kartın ızgarası: düğüm (i, j) = (x0 + i·adim, y0 + j·adim); durum = düğüm·2 + katman (0 üst, 1 alt) */
 export interface Izgara {
   x0: number;
   y0: number;
   adim: number;
   nx: number;
   ny: number;
-  /** düğüm bir gövdenin üstünde mi */
+  /** düğüm bir gövdenin altında mı */
   govde: Uint8Array;
   /** düğümdeki pedin neti (yoksa −1; iki ped aynı düğümdeyse −2: herkese yabancı) */
   ped: Int32Array;
-  /** bu hesapta düğümden geçen yol sayısı */
-  yuk: Uint16Array;
-  /** A*'ın tamponları (düğüm × 4 yön) ve geçerli oldukları arama (kuşak) */
-  g?: Float32Array;
-  once?: Int32Array;
-  kusakDizi?: Uint32Array;
-  kusak?: number;
+  /** durumun (düğüm, katman) bakırının neti: −1 boş, −2 birden çok net */
+  sahip: Int32Array;
+  /** A*'ın tamponları ve geçerli oldukları arama (kuşak: tamponlar sıfırlanmaz) */
+  g: Float32Array;
+  once: Int32Array;
+  kusakDizi: Uint32Array;
+  kusak: number;
 }
 
 export function izgaraKur(alan: Dikdortgen, govdeler: readonly Dikdortgen[], pedler: readonly Ped[], adim = YOL_ADIM): Izgara {
   const nx = Math.max(2, Math.floor(alan.w / adim) + 1);
   const ny = Math.max(2, Math.floor(alan.h / adim) + 1);
-  const iz: Izgara = { x0: alan.x, y0: alan.y, adim, nx, ny, govde: new Uint8Array(nx * ny), ped: new Int32Array(nx * ny).fill(-1), yuk: new Uint16Array(nx * ny) };
+  const N = nx * ny;
+  const iz: Izgara = {
+    x0: alan.x, y0: alan.y, adim, nx, ny, govde: new Uint8Array(N), ped: new Int32Array(N).fill(-1), sahip: new Int32Array(2 * N).fill(-1),
+    g: new Float32Array(2 * N), once: new Int32Array(2 * N), kusakDizi: new Uint32Array(2 * N), kusak: 0,
+  };
   for (const g of govdeler) {
     const i0 = Math.max(0, Math.ceil((g.x - alan.x) / adim)), i1 = Math.min(nx - 1, Math.floor((g.x + g.w - alan.x) / adim));
     const j0 = Math.max(0, Math.ceil((g.y - alan.y) / adim)), j1 = Math.min(ny - 1, Math.floor((g.y + g.h - alan.y) / adim));
@@ -70,64 +78,33 @@ export function izgaraKur(alan: Dikdortgen, govdeler: readonly Dikdortgen[], ped
 }
 
 /** Bir noktanın en yakın düğümü */
-export function dugum(iz: Izgara, x: number, y: number): number {
+export function dugum(iz: Pick<Izgara, "x0" | "y0" | "adim" | "nx" | "ny">, x: number, y: number): number {
   const i = Math.min(iz.nx - 1, Math.max(0, Math.round((x - iz.x0) / iz.adim)));
   const j = Math.min(iz.ny - 1, Math.max(0, Math.round((y - iz.y0) / iz.adim)));
   return j * iz.nx + i;
 }
 
-const DI = [1, -1, 0, 0];
-const DJ = [0, 0, 1, -1];
-
-/**
- * a'dan b'ye bakır yol (net: kendi pedlerinin üstünden geçebilir): köşe noktaları [x, y, …] (mm), a ve b
- * dahil. Bulunamazsa (ya da çok pahalıysa) düz çizgi.
- */
-export function yolBul(iz: Izgara, a: { x: number; y: number }, b: { x: number; y: number }, net: number): number[] {
-  const { nx } = iz;
-  const s = dugum(iz, a.x, a.y);
-  const t = dugum(iz, b.x, b.y);
-  if (s === t) return [a.x, a.y, b.x, b.y];
-  // önce uçların çevresindeki pencerede (hızlı), bulunamazsa bütün kartta
-  const son = ara(iz, s, t, net, PENCERE) ?? ara(iz, s, t, net, Infinity);
-  if (son === null) return [a.x, a.y, b.x, b.y];
-  // geriye yürü, yalnız köşeleri tut
-  const hucreler: number[] = [];
-  for (let st = son; st >= 0; st = iz.once![st]) hucreler.push(st >> 2);
-  hucreler.reverse();
-  const nokta = (c: number) => [iz.x0 + (c % nx) * iz.adim, iz.y0 + ((c / nx) | 0) * iz.adim];
-  const out = [a.x, a.y];
-  for (let k = 0; k < hucreler.length; k++) {
-    const kose = k === 0 || k === hucreler.length - 1 || hucreler[k + 1] - hucreler[k] !== hucreler[k] - hucreler[k - 1];
-    if (kose) out.push(...nokta(hucreler[k]));
-  }
-  out.push(b.x, b.y);
-  return tekrarsiz(out);
+/** Bir bağlantının kazınmış bakırı: üst (yatay) ve alt (dikey) katmanın parçaları [x0, y0, x1, y1, …] ve vialar [x, y, …] (mm) */
+export interface Kazinti {
+  net: number;
+  ust: number[];
+  alt: number[];
+  via: number[];
 }
 
-/** Arama penceresi: uçların sınır kutusunun çevresinde bu kadar düğüm */
-const PENCERE = 24;
-
-/** A*: s'den t'ye en ucuz yolun son durumu (düğüm·4 + yön) ya da null; iz.once geri yürümek için */
+/** A*: s'den t'ye en ucuz yolun son durumu ya da null; iz.once geri yürümek için */
 function ara(iz: Izgara, s: number, t: number, net: number, pay: number): number | null {
-  const { nx, ny } = iz;
-  // tamponlar ızgarada saklanır; her aramanın bir kuşağı var, eski kuşağın değerleri geçersiz (sıfırlanmaz)
-  const N = nx * ny * 4;
-  iz.g ??= new Float32Array(N);
-  iz.once ??= new Int32Array(N);
-  iz.kusakDizi ??= new Uint32Array(N);
-  const kusak = (iz.kusak = (iz.kusak ?? 0) + 1);
-  const g = iz.g;
-  const once = iz.once;
-  const kd = iz.kusakDizi;
+  const { nx, ny, g, once, kusakDizi: kd, ped, govde, sahip } = iz;
+  const kusak = ++iz.kusak;
   const gOf = (st: number) => (kd[st] === kusak ? g[st] : Infinity);
   const si = s % nx, sj = (s / nx) | 0;
   const ti = t % nx, tj = (t / nx) | 0;
   const i0 = Math.min(si, ti) - pay, i1 = Math.max(si, ti) + pay;
   const j0 = Math.min(sj, tj) - pay, j1 = Math.max(sj, tj) + pay;
-  // ağırlıklı sezgi: gövdelerle dolu kartta yumuşak engeller aramayı genişletmesin (yol en ucuzdan az sapar)
-  const h = (d: number) => SEZGI * (Math.abs((d % nx) - ti) + Math.abs(((d / nx) | 0) - tj));
-  // ikili yığın: (öncelik, durum) çiftleri; eskimiş girişler açılınca atlanır
+  const h = (n: number) => SEZGI * (Math.abs((n % nx) - ti) + Math.abs(((n / nx) | 0) - tj));
+  const yabanci = (n: number) => (ped[n] !== -1 && ped[n] !== net ? YABANCI_PED : 0);
+  const cakisma = (st: number) => (sahip[st] !== -1 && sahip[st] !== net ? CAKISMA : 0);
+  // ikili yığın: (öncelik, durum); eskimiş girişler açılınca atlanır
   const hf: number[] = [];
   const hs: number[] = [];
   const it = (f: number, st: number) => {
@@ -163,155 +140,108 @@ function ara(iz: Izgara, s: number, t: number, net: number, pay: number): number
     }
     return st;
   };
-  for (let d = 0; d < 4; d++) {
-    kd[s * 4 + d] = kusak;
-    g[s * 4 + d] = 0;
-    once[s * 4 + d] = -1;
-    it(h(s), s * 4 + d);
+  const dene = (st: number, ns: number, m: number, n: number) => {
+    const ng = gOf(st) + m;
+    if (ng < gOf(ns)) {
+      kd[ns] = kusak;
+      g[ns] = ng;
+      once[ns] = st;
+      it(ng + h(n), ns);
+    }
+  };
+  // ped delikli: yol iki katmandan da başlayabilir
+  for (const L of [0, 1]) {
+    const st = 2 * s + L;
+    kd[st] = kusak;
+    g[st] = 0;
+    once[st] = -1;
+    it(h(s), st);
   }
   for (let acilan = 0; hf.length && acilan < EN_COK; acilan++) {
     const st = cek();
-    const c = st >> 2;
-    const d = st & 3;
-    if (c === t) return st;
-    const ci = c % nx, cj = (c / nx) | 0;
-    const gs = gOf(st);
-    for (let nd = 0; nd < 4; nd++) {
-      if (nd === (d ^ 1)) continue; // geri dönmez
-      const ni = ci + DI[nd], nj = cj + DJ[nd];
-      if (ni < 0 || nj < 0 || ni >= nx || nj >= ny || ni < i0 || ni > i1 || nj < j0 || nj > j1) continue;
-      const n = nj * nx + ni;
-      const p = iz.ped[n];
-      const m = 1 + (iz.govde[n] ? GOVDE : 0) + (p !== -1 && p !== net ? YABANCI_PED : 0) + iz.yuk[n] * YUK + (nd !== d ? KIVRIM : 0);
-      const ns = n * 4 + nd;
-      const ng = gs + m;
-      if (ng < gOf(ns)) {
-        kd[ns] = kusak;
-        g[ns] = ng;
-        once[ns] = st;
-        it(ng + h(n), ns);
-      }
+    const n = st >> 1;
+    const L = st & 1;
+    if (n === t) return st;
+    const ci = n % nx, cj = (n / nx) | 0;
+    // katmanın yönünde iki komşu: üstte ±x, altta ±y
+    for (const d of [-1, 1]) {
+      const ni = L ? ci : ci + d, nj = L ? cj + d : cj;
+      if (ni < i0 || ni > i1 || nj < j0 || nj > j1 || ni < 0 || nj < 0 || ni >= nx || nj >= ny) continue;
+      const m = nj * nx + ni;
+      dene(st, 2 * m + L, 1 + (govde[m] ? GOVDE : 0) + yabanci(m) + cakisma(2 * m + L), m);
     }
+    // via: aynı düğümde öbür katman
+    dene(st, st ^ 1, VIA + yabanci(n) + cakisma(st ^ 1), n);
   }
   return null;
 }
 
-/** Art arda aynı noktaları atar */
-function tekrarsiz(p: number[]): number[] {
-  const out = p.slice(0, 2);
-  for (let i = 2; i < p.length; i += 2) if (Math.abs(p[i] - out[out.length - 2]) > 1e-6 || Math.abs(p[i + 1] - out[out.length - 1]) > 1e-6) out.push(p[i], p[i + 1]);
+/**
+ * a'dan b'ye bakır (net: kendi pedlerinin ve bakırının üstünden geçebilir). Bulunursa yolun bakırı ızgarada
+ * netine yazılır (sonraki yollar çevresinden dolanır ya da aynı netse paylaşır). Bulunamazsa düz bir üst
+ * katman parçası.
+ */
+export function yolBul(iz: Izgara, a: { x: number; y: number }, b: { x: number; y: number }, net: number): Kazinti {
+  const out: Kazinti = { net, ust: [], alt: [], via: [] };
+  const s = dugum(iz, a.x, a.y);
+  const t = dugum(iz, b.x, b.y);
+  const son = s === t ? null : (ara(iz, s, t, net, PENCERE) ?? ara(iz, s, t, net, Infinity));
+  if (son === null) {
+    out.ust.push(a.x, a.y, b.x, b.y);
+    return out;
+  }
+  const durumlar: number[] = [];
+  for (let st = son; st >= 0; st = iz.once[st]) durumlar.push(st);
+  durumlar.reverse();
+  const x = (n: number) => iz.x0 + (n % iz.nx) * iz.adim;
+  const y = (n: number) => iz.y0 + ((n / iz.nx) | 0) * iz.adim;
+  const parca = (L: number, x0: number, y0: number, x1: number, y1: number) => (L ? out.alt : out.ust).push(x0, y0, x1, y1);
+  // pinden ilk düğüme ve son düğümden pine kısa uçlar: ilk ve son koşunun katmanında
+  parca(durumlar[0] & 1, a.x, a.y, x(s), y(s));
+  let bas = durumlar[0];
+  for (let k = 1; k <= durumlar.length; k++) {
+    const st = durumlar[k];
+    if (k < durumlar.length && (st & 1) === (bas & 1)) continue;
+    // bas … durumlar[k − 1] aynı katmanda bir koşu
+    const o = durumlar[k - 1];
+    if (o >> 1 !== bas >> 1) parca(bas & 1, x(bas >> 1), y(bas >> 1), x(o >> 1), y(o >> 1));
+    if (k < durumlar.length) out.via.push(x(st >> 1), y(st >> 1));
+    bas = st;
+  }
+  parca(durumlar[durumlar.length - 1] & 1, x(t), y(t), b.x, b.y);
+  // bakır ızgaraya: via düğümünde iki katmanın durumu da yolda (art arda)
+  for (const st of durumlar) iz.sahip[st] = iz.sahip[st] === -1 || iz.sahip[st] === net ? net : -2;
   return out;
 }
 
-/** Yolun düğümlerinin yükünü artırır (sonraki yollar yanından geçsin) */
-export function yukle(iz: Izgara, yol: readonly number[]): void {
-  for (let k = 0; k + 3 < yol.length; k += 2) {
-    const a = dugum(iz, yol[k], yol[k + 1]);
-    const b = dugum(iz, yol[k + 2], yol[k + 3]);
-    const ai = a % iz.nx, aj = (a / iz.nx) | 0, bi = b % iz.nx, bj = (b / iz.nx) | 0;
-    const n = Math.max(Math.abs(bi - ai), Math.abs(bj - aj));
-    for (let s = 0; s <= n; s++) {
-      const i = Math.round(ai + ((bi - ai) * s) / Math.max(1, n));
-      const j = Math.round(aj + ((bj - aj) * s) / Math.max(1, n));
-      iz.yuk[j * iz.nx + i]++;
-    }
-  }
-}
+/** Bir kartın ızgarası: gövdeler (kenar konnektörü hariç) ve bütün pedler */
 
-/** Köşeleri c kadar (komşu parçaların yarısını aşmadan) 45° pahlar; uçlar korunur */
-export function pahla(yol: readonly number[], c: number): number[] {
-  const n = yol.length / 2;
-  if (n < 3) return yol.slice();
-  const out = [yol[0], yol[1]];
-  for (let k = 1; k + 1 < n; k++) {
-    const [px, py] = [yol[2 * k], yol[2 * k + 1]];
-    const ux = px - yol[2 * k - 2], uy = py - yol[2 * k - 1];
-    const vx = yol[2 * k + 2] - px, vy = yol[2 * k + 3] - py;
-    const lu = Math.hypot(ux, uy), lv = Math.hypot(vx, vy);
-    const d = Math.min(c, lu / 2, lv / 2);
-    if (d < 1e-6) {
-      out.push(px, py);
-      continue;
-    }
-    out.push(px - (ux / lu) * d, py - (uy / lu) * d, px + (vx / lv) * d, py + (vy / lv) * d);
-  }
-  out.push(yol[2 * n - 2], yol[2 * n - 1]);
-  // komşu iki köşenin pahları parçanın ortasında buluşabilir: aynı nokta iki kez kalmasın
-  return tekrarsiz(out);
-}
-
-/** Bir yerleşimin kart ızgaraları (yerleşim başına bir kez kurulur) */
-const izgaraOnbellegi = new WeakMap<object, Map<string, Izgara>>();
-function kartIzgarasi(lay: Pick<BoardLayout, "cards" | "chips" | "passives">, kart: string): Izgara | null {
-  let m = izgaraOnbellegi.get(lay);
-  if (!m) izgaraOnbellegi.set(lay, (m = new Map()));
-  let iz = m.get(kart);
-  if (!iz) {
-    const c = lay.cards.find((x) => x.name === kart);
-    if (!c) return null;
-    const govdeler: Dikdortgen[] = [...lay.chips.filter((x) => x.card === kart), ...lay.passives.filter((x) => x.card === kart && !x.edge)];
-    const pedler: Ped[] = [...lay.chips, ...lay.passives].filter((x) => x.card === kart).flatMap((x) => x.pins.map((p) => ({ x: p.x, y: p.y, net: p.net })));
-    iz = izgaraKur(c, govdeler, pedler);
-    m.set(kart, iz);
-  }
-  return iz;
-}
-
-/** Bir bakır yol: neti, köşe noktaları [x, y, …] (mm, köşeleri pahlı) ve hangi seçime ait olduğu */
-export interface BakirYol<T = unknown> {
-  net: number;
-  yol: number[];
-  etiket: T;
+export function kartIzgarasi(lay: Pick<BoardLayout, "cards" | "chips" | "passives">, kart: string): Izgara | null {
+  const c = lay.cards.find((x) => x.name === kart);
+  if (!c) return null;
+  const govdeler: Dikdortgen[] = [...lay.chips.filter((x) => x.card === kart), ...lay.passives.filter((x) => x.card === kart && !x.edge)];
+  const pedler: Ped[] = [...lay.chips, ...lay.passives].filter((x) => x.card === kart).flatMap((x) => x.pins.map((p) => ({ x: p.x, y: p.y, net: p.net })));
+  return izgaraKur(c, govdeler, pedler);
 }
 
 /**
- * Kenarların kart içindekileri bakır yol olarak döşer, birer birer (görünüm kare başına birkaç milisaniye
- * harcar, büyük bir çipte takılmaz): kartlar arası kenarlar arka panelden gider, burada yoktur. Her yol
- * kendi kartının ızgarasında, uzunlar önce (kısalar araya sığsın), köşeleri pahlı. Aynı anda tek bir
- * döşeme sürer (ızgaraların yükü paylaşılır).
+ * Kart içi kenarları kart kart kazır, birer birer (worker sonuçları parti parti gönderir): her kartta kısa
+ * bağlantılar önce (yerel netler temiz kalır, uzunlar çevresinden dolanır). Kartlar arası kenarlar arka
+ * panelden gider, burada yoktur.
  */
-export function* bakirYollariSirayla<T>(lay: Pick<BoardLayout, "cards" | "chips" | "passives">, gruplar: readonly { edges: readonly WireEdge[]; etiket: T }[]): Generator<BakirYol<T>> {
-  const ic = gruplar.flatMap((g) => g.edges.filter((e) => e.a.card === e.b.card).map((e) => ({ e, etiket: g.etiket })));
-  for (const k of new Set(ic.map((x) => x.e.a.card))) kartIzgarasi(lay, k)?.yuk.fill(0);
+export function* kazi(lay: Pick<BoardLayout, "cards" | "chips" | "passives">, edges: readonly WireEdge[]): Generator<Kazinti> {
+  const kartlar = new Map<string, WireEdge[]>();
+  for (const e of edges) {
+    if (e.a.card !== e.b.card) continue;
+    let l = kartlar.get(e.a.card);
+    if (!l) kartlar.set(e.a.card, (l = []));
+    l.push(e);
+  }
   const boy = (e: WireEdge) => Math.abs(e.a.x - e.b.x) + Math.abs(e.a.y - e.b.y);
-  ic.sort((p, q) => boy(q.e) - boy(p.e));
-  for (const { e, etiket } of ic) {
-    const iz = kartIzgarasi(lay, e.a.card);
+  for (const [kart, l] of kartlar) {
+    const iz = kartIzgarasi(lay, kart);
     if (!iz) continue;
-    const yol = yolBul(iz, e.a, e.b, e.net);
-    yukle(iz, yol);
-    yield { net: e.net, yol: pahla(yol, YOL_ADIM * 0.6), etiket };
+    l.sort((p, q) => boy(p) - boy(q));
+    for (const e of l) yield yolBul(iz, e.a, e.b, e.net);
   }
-}
-
-/** Hepsi birden (testler): bakirYollariSirayla'nın sonucu */
-export const bakirYollari = (lay: Pick<BoardLayout, "cards" | "chips" | "passives">, edges: readonly WireEdge[]): BakirYol<null>[] =>
-  [...bakirYollariSirayla(lay, [{ edges, etiket: null }])];
-
-/**
- * Düz bir yolun şeridi (x, z düzleminde; noktalar [x, z, …]): her noktada iki köşe (sol, sağ), köşelerde
- * gönye (sivri açıda en çok 2 genişlik). Dönen dizi [xL, zL, xR, zR, …].
- */
-export function yolSeridi(p: readonly number[], w: number): number[] {
-  const n = p.length / 2;
-  const out: number[] = [];
-  const h = w / 2;
-  const birim = (x: number, z: number) => {
-    const l = Math.hypot(x, z) || 1;
-    return [x / l, z / l];
-  };
-  for (let i = 0; i < n; i++) {
-    const a = Math.max(0, i - 1), b = Math.min(n - 1, i + 1);
-    const [ux, uz] = birim(p[2 * i] - p[2 * a], p[2 * i + 1] - p[2 * a + 1]);
-    const [vx, vz] = birim(p[2 * b] - p[2 * i], p[2 * b + 1] - p[2 * i + 1]);
-    // gönye: iki parçanın sol normallerinin (−z, x) ortalaması; uçlarda tek parçanınki
-    const sx = -(uz + vz), sz = ux + vx;
-    let [mx, mz] = Math.hypot(sx, sz) > 1e-6 ? birim(sx, sz) : [-vz, vx];
-    if (i === 0) [mx, mz] = [-vz, vx];
-    if (i === n - 1) [mx, mz] = [-uz, ux];
-    const cos = i === 0 || i === n - 1 ? 1 : Math.max(0.5, mx * -uz + mz * ux);
-    const k = h / cos;
-    out.push(p[2 * i] + mx * k, p[2 * i + 1] + mz * k, p[2 * i] - mx * k, p[2 * i + 1] - mz * k);
-  }
-  return out;
 }
