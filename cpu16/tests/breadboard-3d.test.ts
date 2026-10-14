@@ -10,7 +10,7 @@ import { kartBasligi } from "../../src/board3d/adlar.ts";
 import { aktifGorunum, aktifKart, bbSahnesi, cpuBbHazir, cpuBbYukle, gorunumHazir, gorunumSec, kartYerlesimi } from "../../src/board3d/aktif.ts";
 import { bbPano, bbSeciliTel, telKimligi, useBbKurulum } from "../../src/board3d/bbKurulum.ts";
 import { boardLayoutData, boardModel, findPart, useKart } from "../../src/board3d/store.ts";
-import { DAMAR, damarGruplari, damarNo, damarSinyalleri, damarU, damarYolu, seritGeometrisi, seritIsini, sinyalinDamarlari } from "../../src/board3d/serit.ts";
+import { DAMAR, DAMAR_ADIM, damarGruplari, damarNo, damarSinyalleri, damarU, damarYolu, enYonleri, seritGeometrisi, seritIsini, sinyalinDamarlari } from "../../src/board3d/serit.ts";
 import { kartlaraGore } from "../../src/board3d/wires.ts";
 import { DIRSEK, isinTeli, yuvarlakYol } from "../../src/board3d/telYolu.ts";
 
@@ -294,6 +294,48 @@ describe("şerit kablo ve arka panel damarları (serit.ts)", () => {
     expect(gr).toContainEqual({ ad: "PA14–19", ilk: 50, son: 55 });
     // tek sinyaller ve GND / VCC çiftleri grup değil
     expect(gr.every((g) => g.son - g.ilk >= 2)).toBe(true);
+  });
+
+  it("yatayda dönen şerit: genişlik yönü yola dik ve yatay, sıçramaz; dikey parçada aynı kalır", () => {
+    // +x boyunca, sonra çember yayıyla +z'ye döner; sonda dikey bir iniş
+    const yol = [...yuvarlakYol([0, 0, 0, 100, 0, 0, 100, 0, 100], 45), 100, -20, 100];
+    const E = enYonleri(yol, [0, 0, 1]);
+    expect(E.slice(0, 3).map((v) => v + 0)).toEqual([0, 0, 1]);
+    for (let i = 3; i < E.length; i += 3) {
+      expect(Math.hypot(E[i], E[i + 1], E[i + 2])).toBeCloseTo(1);
+      expect(E[i + 1]).toBe(0);
+      // komşu noktalar arasında yön sıçramaz (aynı yanda)
+      expect(E[i] * E[i - 3] + E[i + 2] * E[i - 1]).toBeGreaterThan(0.8);
+    }
+    // +z yönünde giderken genişlik −x yanında (ilk yandan sürer), dikey inişte de öyle
+    expect(E[E.length - 3]).toBeCloseTo(-1);
+    expect(E[E.length - 6]).toBeCloseTo(-1);
+  });
+
+  it("dirsek uzaklığı köşe başına; yay gerçek bir çember (yarıçap = uzaklık / tan(açı/2))", () => {
+    const y = yuvarlakYol([0, 0, 0, 100, 0, 0, 100, 0, 100, 140, 0, 100], [0, 45, 10, 0]);
+    // ilk köşe (100, 0, 0): 45 önce başlar; 90°'lik yayın merkezi (55, 0, 45), yarıçap 45
+    const ilk: number[][] = [];
+    for (let i = 0; i < y.length; i += 3) if (y[i + 2] <= 45 + 1e-9 && y[i] >= 55 - 1e-9) ilk.push(y.slice(i, i + 3));
+    expect(ilk.length).toBeGreaterThan(4);
+    for (const [x, , z] of ilk) expect(Math.hypot(x - 55, z - 45)).toBeCloseTo(45);
+    // ikinci köşe (100, 0, 100) 10 önce başlar: (100, 0, 90) yolda
+    const var_ = (x: number, z: number) => { for (let i = 0; i < y.length; i += 3) if (Math.hypot(y[i] - x, y[i + 2] - z) < 1e-6) return true; return false; };
+    expect(var_(100, 90) && var_(110, 100)).toBe(true);
+  });
+
+  it("geniş şerit kıvrımda katlanmaz: yarıçap yarı genişlikten büyükse iç kenar hep ileri gider", () => {
+    const g = DAMAR * DAMAR_ADIM;
+    const yol = yuvarlakYol([0, 0, 0, 120, 0, 0, 120, 0, 120], 45);
+    const p = seritGeometrisi(yol, [0, 0, 1], g).getAttribute("position");
+    // iç kenar (dönüşün içi): ardışık noktalar arasında gidiş yönü yolun yönüyle aynı
+    for (let i = 1; i + 1 < yol.length / 3; i++) {
+      const tx = yol[3 * i + 3] - yol[3 * i - 3], tz = yol[3 * i + 5] - yol[3 * i - 1];
+      for (const kenar of [0, 1]) {
+        const a = 2 * (i - 1) + kenar, b = 2 * (i + 1) + kenar;
+        expect((p.getX(b) - p.getX(a)) * tx + (p.getZ(b) - p.getZ(a)) * tz, `nokta ${i} kenar ${kenar}`).toBeGreaterThan(0);
+      }
+    }
   });
 
   it("damar k = arka panelin k. pini: her kartın konnektöründe k. pin BACKPLANE[k] sinyalinde", () => {

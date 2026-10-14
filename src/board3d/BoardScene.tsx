@@ -129,17 +129,18 @@ function Cards() {
 }
 
 /**
- * Arka panel: her kart sırasının altında 64 yollu bakır şerit (canlı renkte; 1. pin kartlara yakın kenarda).
- * Her kartın kenar konnektörünün (J1, J201, …) altından arka panelin bir dili şeride iner: konnektörün 64
- * pininden 64 bakır yol, eğik ucunda her yol kendi şeridine bağlanır (serit.ts uc). Konnektörün altında
- * pin haritası (hangi pin hangi sinyal). Sıralar arasında soldaki şerit kablo. Bir yola tıklayınca sinyali
- * seçilir: yolu baştan sona parlar, bütün kartlarda o netin bakırı yanar, yan panelde hangi kartlara gittiği
- * yazar (Serit3D.tsx).
+ * Arka panel, genişleme yuvalarıyla (gerçek bir anakarttaki kart yuvaları gibi, kartlar yatık): her kart
+ * sırasının altında 64 hatlı arka panel şeridi. Her kartın kenarından bir dil uzanır; dilin üstünde kartın
+ * konnektöründen (J1, J201, …) 64 yol iner, ucundaki altın parmaklar arka paneldeki siyah yuvaya girer.
+ * Yuvanın üstünde pin haritası (hangi pin hangi sinyal). Yuvanın altından 64 yol merdiven gibi iner, k. yol
+ * k. hatta biter (bir nokta): sinyal o hattan bütün kartlara gider. Sıralar arasında soldaki şerit kablo.
+ * Bir yola tıklayınca sinyali seçilir: yolu baştan sona parlar, bütün kartlarda o netin bakırı yanar, yan
+ * panelde hangi kartlara gittiği yazar (Serit3D.tsx).
  */
 function ArkaPanel() {
   const { lay, w } = useLayoutWorld();
   const netler = useDamarNetleri();
-  const { yollar, kablolar, haritalar } = useMemo(() => {
+  const { hatlar, izler, kablolar, haritalar, diller, yuvalar, parmaklar, noktalar } = useMemo(() => {
     const dunya = (p: readonly number[]) => {
       const out: number[] = [];
       for (let i = 0; i < p.length; i += 3) {
@@ -148,40 +149,106 @@ function ArkaPanel() {
       }
       return out;
     };
-    const yollar: SeritParcasi[] = lay.rows.map((r) => {
-      const zc = r.backplaneY + r.backplaneH / 2;
-      return { yol: dunya([r.x - 6, 0.12, zc, r.x + r.w + 6, 0.12, zc]), en: [0, 0, 1], g: (r.backplaneH - 3) * S };
+    // kutu: merkezi (mm, yerleşimde) ve boyları (mm); yükseklik y alt yüzden
+    const kutu = (x: number, z: number, y: number, gx: number, gy: number, gz: number): Kutu => {
+      const [wx, wz] = w(x, z);
+      return { x: wx, y: (y + gy / 2) * S, z: wz, w: gx * S, h: gy * S, d: gz * S };
+    };
+    const gs = DAMAR * DAMAR_ADIM;
+    // hatlar şeridin alt kısmında (üstü yuvalara kalır)
+    const bant = (r: (typeof lay.rows)[number]) => ({ ust: r.backplaneY + 5, alt: r.backplaneY + r.backplaneH - 1.5 });
+    const hatlar: SeritParcasi[] = lay.rows.map((r) => {
+      const b = bant(r);
+      return { yol: dunya([r.x - 6, 0.12, (b.ust + b.alt) / 2, r.x + r.w + 6, 0.12, (b.ust + b.alt) / 2]), en: [0, 0, 1], g: (b.alt - b.ust) * S };
     });
     // sıralar arasında soldaki kablo
     const kablolar: SeritParcasi[] = lay.rows.slice(1).map((r, i) => {
       const ust = lay.rows[i];
       return { yol: dunya([r.x - 8, 0.3, ust.backplaneY + ust.backplaneH / 2, r.x - 8, 0.3, r.backplaneY + r.backplaneH / 2]), en: [1, 0, 0], g: 6 * S };
     });
+    const izler: SeritParcasi[] = [];
     const haritalar: Soket[] = [];
-    const gs = DAMAR * DAMAR_ADIM;
+    const diller: Kutu[] = [];
+    const yuvalar: Kutu[] = [];
+    const parmaklar: Kutu[] = [];
+    const noktalar: Kutu[] = [];
     for (const p of lay.passives) {
       if (!p.edge) continue;
       const xs = p.pins.map((q) => q.x);
       const ys = p.pins.map((q) => q.y);
       const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
       const cz = (Math.min(...ys) + Math.max(...ys)) / 2;
+      const kart = lay.cards.find((c) => c.name === p.card);
       const r = lay.rows.find((q) => cz >= q.y && cz <= q.backplaneY + q.backplaneH) ?? lay.rows[0];
-      const zb = r.backplaneY + r.backplaneH / 2;
-      const gk = r.backplaneH - 3;
-      // dil konnektörün alt kenarından şeridin ortasına iner, şeridin biraz altında (şeritler üstte kesintisiz);
-      // eğik ucunda k. yol şeridin k. yoluna değer: enine e'deki uç boyuna (gk / gs)·e kayar
-      yollar.push({ yol: dunya([cx, 0.1, cz + 2.54, cx, 0.1, zb]), en: [1, 0, 0], g: gs * S, uc: gk / gs });
-      const [x, z] = w(cx, cz + 5.9);
-      haritalar.push({ x, y: 0.1 * S, z, kart: p.card, ref: p.ref, etiket: "", yon: 1 });
+      const b = bant(r);
+      const kartAlt = kart ? kart.y + kart.h : cz + 5;
+      // yuva şeridin üst kenarında; dil kartın kenarından yuvanın ortasına uzanır (kartla aynı kalınlıkta)
+      const zs = r.backplaneY + 0.5;
+      const parmak = zs - 6;
+      diller.push(kutu(cx, (kartAlt - 1 + zs) / 2, -1.6, gs + 4, 1.6, zs - kartAlt + 1));
+      yuvalar.push(kutu(cx, zs, 0, 32 * 2.54 + 7, YUVA_H, 7));
+      for (let k = 0; k < DAMAR; k++) {
+        const x = cx + (k - (DAMAR - 1) / 2) * DAMAR_ADIM;
+        parmaklar.push(kutu(x, parmak + 3, 0, 0.8, 0.05, 6));
+        // k. yolun k. hatta değdiği yer
+        if (netler[k] >= 0) noktalar.push(kutu(x, b.ust + ((k + 0.5) / DAMAR) * (b.alt - b.ust), 0.16, 0.9, 0.05, 0.9));
+      }
+      // dilde konnektörden parmaklara; yuvanın altından hatlara, eğik ucunda k. yol k. hatta biter
+      if (parmak - (cz + 2.54) > 0.5) izler.push({ yol: dunya([cx, 0.05, cz + 2.54, cx, 0.05, parmak]), en: [1, 0, 0], g: gs * S });
+      izler.push({ yol: dunya([cx, 0.15, zs + 3.5, cx, 0.15, (b.ust + b.alt) / 2]), en: [1, 0, 0], g: gs * S, uc: (b.alt - b.ust) / gs });
+      const [x, z] = w(cx, zs);
+      haritalar.push({ x, y: YUVA_H * S, z, kart: p.card, ref: p.ref, etiket: "", yon: 1 });
     }
-    return { yollar, kablolar, haritalar };
-  }, [lay, w]);
+    return { hatlar, izler, kablolar, haritalar, diller, yuvalar, parmaklar, noktalar };
+  }, [lay, w, netler]);
   return (
     <group>
-      <DamarSeritleri parcalar={yollar} palet="bakir" netler={netler} />
+      <DamarSeritleri parcalar={hatlar} palet="bakir" netler={netler} />
+      <DamarSeritleri parcalar={izler} palet="iz" netler={netler} />
       <DamarSeritleri parcalar={kablolar} palet="kablo" netler={netler} />
+      <Kutular kutular={diller} renk="#0f3d2c" />
+      <Kutular kutular={yuvalar} renk="#1b1c20" />
+      <Kutular kutular={parmaklar} renk="#d9b44a" metal />
+      <Kutular kutular={noktalar} renk="#b9a35a" metal />
       <IdcSoketleri soketler={haritalar} netler={netler} duz />
     </group>
+  );
+}
+
+/** yuvanın yüksekliği (mm) */
+const YUVA_H = 4.5;
+
+/** Bir kutu (dünya): merkezi ve boyları */
+interface Kutu {
+  x: number;
+  y: number;
+  z: number;
+  w: number;
+  h: number;
+  d: number;
+}
+
+/** Aynı renkte kutular tek çizimde (yuvalar, diller, altın parmaklar, hat noktaları) */
+function Kutular({ kutular, renk, metal = false }: { kutular: Kutu[]; renk: string; metal?: boolean }) {
+  const ref = useRef<InstancedMesh>(null);
+  useLayoutEffect(() => {
+    const m = ref.current;
+    if (!m) return;
+    kutular.forEach((k, i) => {
+      tmpO.position.set(k.x, k.y, k.z);
+      tmpO.scale.set(k.w, k.h, k.d);
+      tmpO.updateMatrix();
+      m.setMatrixAt(i, tmpO.matrix);
+    });
+    m.instanceMatrix.needsUpdate = true;
+    m.computeBoundingSphere();
+  }, [kutular]);
+  if (!kutular.length) return null;
+  return (
+    <instancedMesh ref={ref} args={[undefined, undefined, kutular.length]} raycast={noRaycast}>
+      <boxGeometry />
+      <meshStandardMaterial color={renk} roughness={metal ? 0.3 : 0.6} metalness={metal ? 0.6 : 0.1} />
+    </instancedMesh>
   );
 }
 
