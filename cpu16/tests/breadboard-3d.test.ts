@@ -10,7 +10,7 @@ import { kartBasligi } from "../../src/board3d/adlar.ts";
 import { aktifGorunum, aktifKart, bbSahnesi, cpuBbHazir, cpuBbYukle, gorunumHazir, gorunumSec, kartYerlesimi } from "../../src/board3d/aktif.ts";
 import { bbPano, bbSeciliTel, telKimligi, useBbKurulum } from "../../src/board3d/bbKurulum.ts";
 import { boardLayoutData, boardModel, findPart, useKart } from "../../src/board3d/store.ts";
-import { DAMAR, damarNo, damarSinyalleri, damarU, damarYolu, seritGeometrisi, seritIsini, sinyalinDamarlari } from "../../src/board3d/serit.ts";
+import { DAMAR, damarGruplari, damarNo, damarSinyalleri, damarU, damarYolu, seritGeometrisi, seritIsini, sinyalinDamarlari } from "../../src/board3d/serit.ts";
 import { kartlaraGore } from "../../src/board3d/wires.ts";
 import { DIRSEK, isinTeli, yuvarlakYol } from "../../src/board3d/telYolu.ts";
 
@@ -263,6 +263,37 @@ describe("şerit kablo ve arka panel damarları (serit.ts)", () => {
       expect(seritIsini(disari, [0, -1, 0], kol, [1, 0, 0], g, dz), `dz ${dz}`).toBeNull();
       expect(seritIsini(disari, [0, -1, 0], kol, [1, 0, 0], g, 0), `dz ${dz} katlamasız`).not.toBeNull();
     }
+  });
+
+  it("kablo uçlarda biter: koridorun eğik başı ve sonu, uçtaki kolla aynı kırımda (iki σ için)", () => {
+    const g = DAMAR * 0.127;
+    for (const sg of [1, -1]) {
+      for (const dz of [1, -1]) {
+        // koridor x = 0'dan 30'a; ilk soket x = 0'da, kolu z boyunca koridora gelir, genişliği σ·x yönünde
+        const koridor = [0, 0, 0, 30, 0, 0];
+        const kol = [0, 0.05, -20 * dz, 0, 0.05, 0];
+        for (const k of [0, 21, DAMAR - 1]) {
+          const bas = damarYolu(koridor, [0, 0, 1], g, 0, damarU(k), sg).slice(0, 3);
+          const uc = damarYolu(kol, [sg, 0, 0], g, dz, damarU(k)).slice(-3);
+          expect(bas[0], `σ ${sg} dz ${dz} damar ${k}`).toBeCloseTo(uc[0]);
+          expect(bas[2], `σ ${sg} dz ${dz} damar ${k}`).toBeCloseTo(uc[2]);
+        }
+      }
+      // eğik başın öbür yanı (x < σ·z) koridorun değil; eğimsiz başta koridorun içinde kalırdı
+      const disari = [0.5, 5, sg * (g / 2 - 0.1)] as const;
+      expect(seritIsini(disari, [0, -1, 0], [0, 0, 0, 30, 0, 0], [0, 0, 1], g, 0, sg), `σ ${sg}`).toBeNull();
+      expect(seritIsini(disari, [0, -1, 0], [0, 0, 0, 30, 0, 0], [0, 0, 1], g, 0, 0), `σ ${sg} eğimsiz`).not.toBeNull();
+    }
+  });
+
+  it("soketin kafasındaki pin haritasının grupları: art arda giden aynı ön ekli sinyaller", () => {
+    const gr = damarGruplari();
+    expect(gr).toContainEqual({ ad: "A0–15", ilk: 9, son: 24 });
+    expect(gr).toContainEqual({ ad: "DE0–7", ilk: 25, son: 32 });
+    expect(gr).toContainEqual({ ad: "DO0–7", ilk: 33, son: 40 });
+    expect(gr).toContainEqual({ ad: "PA14–19", ilk: 50, son: 55 });
+    // tek sinyaller ve GND / VCC çiftleri grup değil
+    expect(gr.every((g) => g.son - g.ilk >= 2)).toBe(true);
   });
 
   it("damar k = arka panelin k. pini: her kartın konnektöründe k. pin BACKPLANE[k] sinyalinde", () => {

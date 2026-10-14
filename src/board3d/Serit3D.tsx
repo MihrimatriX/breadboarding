@@ -8,14 +8,14 @@
 
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
-import { Color, DataTexture, DoubleSide, LinearFilter, LinearMipmapLinearFilter, Mesh, MeshStandardMaterial, RGBAFormat, SRGBColorSpace, Vector3 } from "three";
+import { CanvasTexture, Color, DataTexture, DoubleSide, LinearFilter, LinearMipmapLinearFilter, Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry, RGBAFormat, SRGBColorSpace, Vector3 } from "three";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import { useDil } from "../ui/ceviri";
 import { LEVEL_COLOR } from "./levels";
 import { idcSoketi, IDC_BOY } from "./passiveGeometry";
-import { DAMAR, damarNo, damarSinyalleri, damarU, damarYolu, seritGeometrisi, seritIsini } from "./serit";
+import { DAMAR, damarGruplari, damarNo, damarSinyalleri, damarU, damarYolu, seritGeometrisi, seritIsini } from "./serit";
 import { boardModel, liveNets, netEnds, useKart } from "./store";
 import { TextQuads, type TextItem } from "./TextQuads";
 
@@ -104,14 +104,15 @@ function useDamarDokusu(netler: Int32Array, palet: Palet): DataTexture {
 }
 
 /**
- * Bir şerit: eksen yolu (dünya), genişlik yönü (birim), genişlik (dünya birimi); uc: son kenarın eğimi
- * (45° katlama, serit.ts seritGeometrisi)
+ * Bir şerit: eksen yolu (dünya), genişlik yönü (birim), genişlik (dünya birimi); uc, bas: son ve ilk kenarın
+ * eğimi (45° katlama, serit.ts seritGeometrisi)
  */
 export interface SeritParcasi {
   yol: number[];
   en: [number, number, number];
   g: number;
   uc?: number;
+  bas?: number;
 }
 
 /**
@@ -160,10 +161,10 @@ export function DamarSeritleri({ parcalar, palet, netler, ekIz }: { parcalar: Se
   const obj = useMemo(() => {
     const mat = new MeshStandardMaterial({ map: doku, roughness: palet === "kablo" ? 0.8 : 0.4, metalness: palet === "bakir" ? 0.35 : 0, side: DoubleSide });
     const meshes = parcalar.map((p) => {
-      const m = new Mesh(seritGeometrisi(p.yol, p.en, p.g, p.uc), mat);
+      const m = new Mesh(seritGeometrisi(p.yol, p.en, p.g, p.uc, p.bas), mat);
       m.raycast = (rc, hits) => {
         const { origin: o, direction: d } = rc.ray;
-        const h = seritIsini([o.x, o.y, o.z], [d.x, d.y, d.z], p.yol, p.en, p.g, p.uc);
+        const h = seritIsini([o.x, o.y, o.z], [d.x, d.y, d.z], p.yol, p.en, p.g, p.uc, p.bas);
         if (h) hits.push({ distance: h.t, point: rc.ray.at(h.t, new Vector3()), object: m, index: damarNo(h.u) });
       };
       return m;
@@ -175,7 +176,7 @@ export function DamarSeritleri({ parcalar, palet, netler, ekIz }: { parcalar: Se
     for (const m of obj.meshes) m.geometry.dispose();
   }, [obj]);
   const iz = useMemo(
-    () => (secili < 0 ? null : [...parcalar.map((p) => damarYolu(p.yol, p.en, p.g, p.uc ?? 0, damarU(secili))), ...(ekIz?.(secili) ?? [])]),
+    () => (secili < 0 ? null : [...parcalar.map((p) => damarYolu(p.yol, p.en, p.g, p.uc ?? 0, damarU(secili), p.bas)), ...(ekIz?.(secili) ?? [])]),
     [secili, parcalar, ekIz],
   );
   const tikla = (e: ThreeEvent<MouseEvent>) => {
@@ -194,7 +195,10 @@ export function DamarSeritleri({ parcalar, palet, netler, ekIz }: { parcalar: Se
   );
 }
 
-/** Bir IDC soketi: alt yüzünün ortası (dünya), takılı olduğu kart ve konnektörü, üstündeki etiket ("CPU · J1") */
+/**
+ * Bir IDC soketi: alt yüzünün ortası (dünya), takılı olduğu kart ve konnektörü, etiketi ("CPU · J1") ve
+ * etiketin hangi yanda durduğu (z yönünde ±1: kablonun çıkmadığı yan)
+ */
 export interface Soket {
   x: number;
   y: number;
@@ -202,42 +206,126 @@ export interface Soket {
   kart: string;
   ref: string;
   etiket: string;
+  yon: number;
+  /** 180° dönük (1. pin +x'te; kablo ters yüzüyle katlanınca) */
+  ters?: boolean;
+}
+
+/** pin haritası dokusu: 32 sütun × 64 piksel; üstte grup bandı, altta tek ve çift pinlerin satırları */
+const HARITA_W = 2048;
+const HARITA_H = 256;
+const GRUP_H = 96;
+const SATIR_H = (HARITA_H - GRUP_H) / 2;
+const SUTUN = DAMAR / 2;
+const GRUP_RENK = ["#5aa0ff", "#ff7a59", "#47c784", "#c58cff", "#e6c84f", "#4fd1d9"];
+
+/** Bir yazıyı genişliğe sığdırır (yazı boyunu küçülterek) */
+function sigdir(g: CanvasRenderingContext2D, metin: string, boy: number, genislik: number, kalin = false): void {
+  let b = boy;
+  do g.font = `${kalin ? 700 : 600} ${b}px "IBM Plex Sans", system-ui, sans-serif`;
+  while (g.measureText(metin).width > genislik && --b > 9);
+}
+
+/**
+ * Soketin kafasındaki pin haritası (kapağın üstü): her sütunda iki pin (üstte tek, altta çift numaralı;
+ * kablonun n. damarı n. pin), her pinin numarası ve sinyalinin adı; üstte sinyal grupları (A0–15, DE0–7,
+ * …) renkli bantlarla. Seçili sinyalin pinleri sarı.
+ */
+function pinHaritasiCiz(g: CanvasRenderingContext2D, secili: number | null, netler: Int32Array): void {
+  const ad = damarSinyalleri();
+  const w = HARITA_W / SUTUN;
+  g.fillStyle = "#2c2e34";
+  g.fillRect(0, 0, HARITA_W, HARITA_H);
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  damarGruplari().forEach((gr, i) => {
+    const x0 = Math.floor((gr.ilk - 1) / 2) * w;
+    const x1 = Math.ceil(gr.son / 2) * w;
+    g.fillStyle = GRUP_RENK[i % GRUP_RENK.length];
+    g.fillRect(x0 + 4, GRUP_H - 16, x1 - x0 - 8, 8);
+    g.fillStyle = "#e8e2d2";
+    sigdir(g, gr.ad, 54, x1 - x0 - 8, true);
+    g.fillText(gr.ad, (x0 + x1) / 2, GRUP_H / 2 - 6);
+  });
+  for (let p = 1; p <= DAMAR; p++) {
+    const x = Math.floor((p - 1) / 2) * w;
+    const y = GRUP_H + ((p - 1) % 2) * SATIR_H;
+    const isik = secili !== null && netler[p - 1] === secili;
+    if (isik) {
+      g.fillStyle = VURGU;
+      g.fillRect(x + 2, y + 2, w - 4, SATIR_H - 4);
+    }
+    g.strokeStyle = "#45484f";
+    g.strokeRect(x + 0.5, y + 0.5, w - 1, SATIR_H - 1);
+    g.fillStyle = isik ? "#1b1c20" : "#8a8f99";
+    g.font = `600 17px "IBM Plex Sans", system-ui, sans-serif`;
+    g.fillText(String(p), x + w / 2, y + 12);
+    const metin = ad[p - 1] || "·";
+    g.save();
+    g.translate(x + w / 2, y + 12 + (SATIR_H - 12) / 2);
+    g.rotate(-Math.PI / 2);
+    g.fillStyle = isik ? "#1b1c20" : "#e8e2d2";
+    sigdir(g, metin, 24, SATIR_H - 26);
+    g.fillText(metin, 0, 0);
+    g.restore();
+  }
 }
 
 /**
  * 2 × 32 IDC soketleri; taban > 0 (mm): altlarında erkek başlığın gövdesi de (arka paneldeki konnektör).
- * Seçili sinyalin uçları olan kartların soketleri çerçevelenir, etiketlerine o karttaki uç sayısı yazılır
- * (konnektörün kendi pini sayılmaz): sinyal kartlar arasında nereden nereye gidiyor.
+ * Kafalarında pin haritası (hangi damar hangi pinde, hangi sinyal). Seçili sinyalin uçları olan kartların
+ * soketleri çerçevelenir, etiketlerine o karttaki uç sayısı yazılır (konnektörün kendi pini sayılmaz):
+ * sinyal kartlar arasında nereden nereye gidiyor.
  */
 export function IdcSoketleri({ soketler, netler, taban = 0 }: { soketler: Soket[]; netler: Int32Array; taban?: number }) {
   const dil = useDil();
   const net = useKart((s) => s.net);
-  const [geo, mat, cerceve] = useMemo(
-    () => [idcSoketi(DAMAR / 2, taban), new MeshStandardMaterial({ vertexColors: true, roughness: 0.55 }), new MeshStandardMaterial({ color: VURGU, emissive: VURGU, emissiveIntensity: 0.6, transparent: true, opacity: 0.35, depthWrite: false })] as const,
-    [taban],
-  );
+  const [geo, mat, cerceve, harita, haritaMat, haritaGeo] = useMemo(() => {
+    const cv = document.createElement("canvas");
+    cv.width = HARITA_W;
+    cv.height = HARITA_H;
+    const t = new CanvasTexture(cv);
+    t.colorSpace = SRGBColorSpace;
+    t.anisotropy = 8;
+    return [
+      idcSoketi(DAMAR / 2, taban),
+      new MeshStandardMaterial({ vertexColors: true, roughness: 0.55 }),
+      new MeshStandardMaterial({ color: VURGU, emissive: VURGU, emissiveIntensity: 0.6, transparent: true, opacity: 0.35, depthWrite: false }),
+      t,
+      new MeshBasicMaterial({ map: t }),
+      new PlaneGeometry(SUTUN * 2.54, 6.2).rotateX(-Math.PI / 2),
+    ] as const;
+  }, [taban]);
   useEffect(() => () => {
-    geo.dispose();
-    mat.dispose();
-    cerceve.dispose();
-  }, [geo, mat, cerceve]);
+    for (const x of [geo, mat, cerceve, harita, haritaMat, haritaGeo]) x.dispose();
+  }, [geo, mat, cerceve, harita, haritaMat, haritaGeo]);
+  const vurgu = net !== null && net > 1 && netler.includes(net) ? net : null;
+  useEffect(() => {
+    pinHaritasiCiz((harita.image as HTMLCanvasElement).getContext("2d")!, vurgu, netler);
+    harita.needsUpdate = true;
+  }, [harita, vurgu, netler]);
   /** soket başına seçili sinyalin o karttaki uç sayısı (seçim yoksa ya da arka panel sinyali değilse null) */
   const uclar = useMemo(() => {
-    if (net === null || net <= 1 || !netler.includes(net)) return null;
-    const ends = netEnds().get(net) ?? [];
+    if (vurgu === null) return null;
+    const ends = netEnds().get(vurgu) ?? [];
     return soketler.map((k) => ends.filter((e) => e.card === k.kart && e.ref !== k.ref).length);
-  }, [net, netler, soketler]);
+  }, [vurgu, soketler]);
+  // kartın adı soketin yanında (kablonun çıkmadığı yan), kafası pin haritasına kalır
   const etiketler = useMemo<TextItem[]>(() => soketler.map((k, i) => {
     const n = uclar?.[i] ?? 0;
     const text = n > 0 ? `${k.etiket} · ${n} ${dil === "en" ? (n === 1 ? "end" : "ends") : "uç"}` : k.etiket;
-    return { text, x: k.x, z: k.z, y: k.y + (taban + IDC_BOY + 0.05) * S, w: 60 * S, d: 4.4 * S, color: n > 0 ? VURGU : uclar ? "#8a8f99" : "#e8e2d2", align: "center" as const };
+    return {
+      text, x: k.x, z: k.z + k.yon * 7.2 * S, y: k.y + (taban + IDC_BOY + 0.05) * S, w: 60 * S, d: 4.4 * S,
+      color: n > 0 ? VURGU : uclar ? "#8a8f99" : "#e8e2d2", align: "center" as const,
+    };
   }), [soketler, taban, uclar, dil]);
-  const L = (DAMAR / 2) * 2.54 + 5.1;
+  const L = SUTUN * 2.54 + 5.1;
   return (
     <group>
       {soketler.map((k, i) => (
-        <group key={i} position={[k.x, k.y, k.z]} scale={[S, S, S]}>
+        <group key={i} position={[k.x, k.y, k.z]} rotation={[0, k.ters ? Math.PI : 0, 0]} scale={[S, S, S]}>
           <mesh geometry={geo} material={mat} raycast={() => null} />
+          <mesh geometry={haritaGeo} material={haritaMat} position={[0, taban + IDC_BOY + 0.04, 0]} raycast={() => null} />
           {(uclar?.[i] ?? 0) > 0 && (
             <mesh material={cerceve} position={[0, taban + IDC_BOY / 2, 0]} raycast={() => null}>
               <boxGeometry args={[L + 3, IDC_BOY + 1.6, 9.6]} />

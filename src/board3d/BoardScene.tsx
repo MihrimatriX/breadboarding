@@ -181,9 +181,9 @@ function ArkaPanel() {
       const kablo = dunya(yuvarlakYol(yol, 2.6));
       kablolar.push({ yol: kablo, en: [1, 0, 0], g: DAMAR * DAMAR_ADIM * S });
       const [x, z] = w(cx, cz);
-      kartSoketleri.push({ x, y: BASLIK_TABAN * S, z, kart: p.card, ref: p.ref, etiket: `${kartBasligi(p.card, kart?.title ?? p.card, dil)} · ${p.ref}` });
+      kartSoketleri.push({ x, y: BASLIK_TABAN * S, z, kart: p.card, ref: p.ref, etiket: `${kartBasligi(p.card, kart?.title ?? p.card, dil)} · ${p.ref}`, yon: -1 });
       const [xb, zb2] = w(cx, zb);
-      panelSoketleri.push({ x: xb, y: 0, z: zb2, kart: p.card, ref: p.ref, etiket: dil === "en" ? "backplane" : "arka panel" });
+      panelSoketleri.push({ x: xb, y: 0, z: zb2, kart: p.card, ref: p.ref, etiket: dil === "en" ? "backplane" : "arka panel", yon: 1 });
       inisler.push({ son: kablo.slice(-3), zc: zb2, g: (r.backplaneH - 3) * S });
     }
     // seçili damar (k): kablodaki yerinden arka paneldeki k. yola iner (konnektörün k. pini)

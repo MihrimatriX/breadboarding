@@ -300,23 +300,31 @@ function SeritKablo({ sahne }: { sahne: BbSahnesi }) {
       }
       return out;
     };
-    const xs = s.soketler.map((k) => k.x);
+    const sirali = [...s.soketler].sort((a, b) => a.x - b.x);
+    const dzOf = (k: { y: number }) => Math.sign(s.koridorY - k.y) || 1;
+    // 45° katlamanın yönü (σ: kırım x − kx = σ·(z − koridorY)); kablo ilk ve son sokette biter: uçlarda kol
+    // ile koridor kırımın iki yanında, temiz bir köşe; aradaki soketlerde koridor altından sürer
+    const sigma = (i: number) => (i === 0 ? -dzOf(sirali[0]) : i === sirali.length - 1 ? dzOf(sirali[i]) : 1);
+    const ilk = sirali[0];
+    const son = sirali[sirali.length - 1];
     const parcalar: SeritParcasi[] = [
-      { yol: dunya([Math.min(...xs) - SERIT_GEN / 2 - 15, MASA, s.koridorY, Math.max(...xs) + SERIT_GEN / 2 + 15, MASA, s.koridorY]), en: [0, 0, 1], g: SERIT_GEN * S },
+      { yol: dunya([ilk.x, MASA, s.koridorY, son.x, MASA, s.koridorY]), en: [0, 0, 1], g: SERIT_GEN * S, bas: sigma(0), uc: sigma(sirali.length - 1) },
     ];
     const soketler: Soket[] = [];
-    for (const k of s.soketler) {
+    sirali.forEach((k, i) => {
       const p = sahne.panolar.find((q) => k.x >= q.x && k.x <= q.x + q.w && k.y >= q.y && k.y <= q.y + q.h);
       // koridora doğru: soketin kapağının altından çıkar, panonun kenarını geçince masaya iner
-      const dz = Math.sign(s.koridorY - k.y) || 1;
+      const dz = dzOf(k);
       const kenar = (p ? (dz > 0 ? p.y + p.h : p.y) : k.y) + dz * 9;
       const yk = SOKET_TABAN + IDC_KABLO_Y;
       const yol = yuvarlakYol([k.x, yk, k.y - dz * 2.8, k.x, yk, kenar, k.x, MASA + 0.5, kenar, k.x, MASA + 0.5, s.koridorY], SERIT_DIRSEK);
-      // koridorda 45° katlanır: koldaki k. damar koridordaki k. damarın üstünde biter
-      parcalar.push({ yol: dunya(yol), en: [1, 0, 0], g: SERIT_GEN * S, uc: dz });
+      // koridorda 45° katlanır: koldaki k. damar koridordaki k. damarın üstünde biter (σ = −1'de kablo
+      // ters yüzüyle döner: 1. damar +x'te, soket de 180° dönük)
+      const sg = sigma(i);
+      parcalar.push({ yol: dunya(yol), en: [sg, 0, 0], g: SERIT_GEN * S, uc: dz });
       const [x, z] = w(k.x, k.y);
-      soketler.push({ x, y: SOKET_TABAN * S, z, kart: p?.kart ?? "", ref: k.ref, etiket: p ? `${panoAdlari(p, dil).kisa} · ${k.ref}` : k.ref });
-    }
+      soketler.push({ x, y: SOKET_TABAN * S, z, kart: p?.kart ?? "", ref: k.ref, etiket: p ? `${panoAdlari(p, dil).kisa} · ${k.ref}` : k.ref, yon: -dz, ters: sg < 0 });
+    });
     return { parcalar, soketler };
   }, [s, w, sahne, dil]);
   return (
