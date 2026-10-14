@@ -45,7 +45,7 @@ programla sınar.
 
 ## Sonra: diğer C örnekleri
 
-Aynı listede kolaydan zora on C örneği daha var: `sayilar.c` (16 bitlik taşma, onluk / hex /
+Aynı listede basitten karmaşığa on C örneği daha var: `sayilar.c` (16 bitlik taşma, onluk / hex /
 ikilik), `uzun.c` (32 bitlik `long` ve her işlemin kaç döngü sürdüğü), `kalbur.c` (65535'e kadar
 asallar), `siralama.c`, `liste.c` (`malloc`), `hesap.c` (klavyeden satır okuyan hesap makinesi),
 `sabit.c` (`float` olmadan sinüs), `ekran.c` (VRAM'e doğrudan), `kesme.c` (vsync kesmesine C
