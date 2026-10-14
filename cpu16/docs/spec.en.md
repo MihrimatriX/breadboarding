@@ -83,8 +83,8 @@ Vector table (ARM style, each entry one `JAL`): `0x0000` reset, `0x0002` IRQ, `0
 
 ## 2c. Programming and loading (AFU, 09:36)
 
-A program can be loaded **two ways**:
-- Web: write it in the browser IDE → compile → load it into the simulator. If a real board is connected, send it over USB-UART to the board's bootloader with the **Web Serial API** (no chip pulling).
+A program can be loaded in two ways:
+- Web: write it in the browser IDE → compile → load it into the simulator. If a real board is connected, send it over USB-UART to the board's bootloader with the Web Serial API (no chip pulling).
 - Physical: write the same .bin / Intel HEX file to the 28C256 with an EEPROM programmer. The experiment kit includes our own programmer (Arduino Nano + 2×74HC595, Ben Eater style); an off-the-shelf TL866/T48 works too.
 
 **It will be programmed in C, with a compiler we write ourselves.**
@@ -97,7 +97,7 @@ A program can be loaded **two ways**:
                        web: simulator / Web Serial    physical: EEPROM programmer
 ```
 
-The toolchain is written in **TypeScript**, so the same code runs in the browser (web IDE) and in the Node CLI.
+The toolchain is written in TypeScript, so the same code runs in the browser (web IDE) and in the Node CLI.
 Compiler: chibicc style, a hand-written recursive-descent parser + AST → simple IR → CPU16 assembly. Versions:
   1. C subset: int/char/pointer/array/if/while/for/function (the first C program prints "Merhaba" on screen)
   2. struct/union/enum, global variables, strings, switch
@@ -108,7 +108,7 @@ ABI: arguments in r0–r3, return value in r0 (32-bit: r0:r1), r4–r5 callee-sa
 
 ## 2d. Teaching material and experiment kit (AFU, 09:36)
 
-The project is also a **tutorial and experiment kit**. Each experiment = a video + a scene in the simulator + a module on the real board:
+The project is also a tutorial and experiment kit. Each experiment = a video + a scene in the simulator + a module on the real board:
 
 | # | Experiment | Result |
 |---|---|---|
@@ -132,7 +132,7 @@ The project is also a **tutorial and experiment kit**. Each experiment = a video
 2. Chip: every 74HC part has its own gate-level model (e.g. 74HC283 = 4 full adders).
 3. Gate → transistor: every gate expands into CMOS transistors (the Silikon3D engine already supports CMOS switch level).
 
-Single source: the **KiCad schematic**. The simulator and the 3D view are generated from the schematic; when the schematic changes, everything updates.
+Single source: the KiCad schematic. The simulator and the 3D view are generated from the schematic; when the schematic changes, everything updates.
 
 ## 4. Instruction formats
 
