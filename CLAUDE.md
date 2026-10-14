@@ -45,7 +45,8 @@ npm ci && npm run dev                          # http://localhost:5173
 npx tsc -b                                     # tip denetimi (kullanılmayan değişken de hata)
 npx vitest run                                 # bütün testler: 760 test, ≈ 1 dakika
 npx vitest run cpu16/tests/emu.test.ts -t "ad" # tek dosya, adı eşleşen testler
-npm run build                                  # üretim derlemesi (CI de koşar)
+npm run build                                  # üretim derlemesi (CI de koşar); SITE_URL=https://… ile
+                                               # kanonik adresler ve sitemap.xml (src/seo.ts)
 npm run kontrast                               # tema renk karşıtlığı (arayüz rengi değişince)
 npm run cpu16 -- board                         # çip sayıları ve ERC ("ERC: sorun yok")
 npm run cpu16 -- zamanlama --anakart [--tip]   # statik zamanlama, hedef 1 MHz
@@ -74,6 +75,7 @@ npm run cpu16 -- machine x.s --cycles N < /dev/null   # bütün bilgisayar komut
 | kart tanımı, diyagram yerleşimi, tema renkleri | `npm run cpu16 -- mimari` | `cpu16/docs/img/mimari-*.svg`, `hesap8/docs/img/mimari-hesap.svg` (İngilizceleri `*.en.svg`) |
 | bir CPU16 kartının netlisti ya da pano tanımı | `npm run cpu16 -- breadboard --uret <kart>` (CPU ≈ 2,5 dakika) | `cpu16/breadboard/veri/<kart>.ts` |
 | hesap8 netlisti ya da yerleşimi | `npm run hesap8 -- breadboard --uret` | `hesap8/breadboard/veri.ts` |
+| `src/seo.ts` sayfa başlığı, yeni bölüm | `npm run dev` → `/scripts/og-gorselleri.html` | `public/og/*.png`, simgeler |
 
 Breadboard verisi netlistin parmak izini taşır: devre değişip veri eskirse plan kurulmaz ve
 `breadboard.test.ts` kırmızı yanar. Kurulum ve breadboard belgelerinin HTML/PDF çıktıları depoya girmez

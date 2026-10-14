@@ -6,6 +6,8 @@ import { BolumSiniri, BolumYukleniyor } from "./ui/Yukleniyor";
 import { useApp } from "./state/store";
 import { sim } from "./sim/SimClient";
 import { useAyarlariUygula } from "./ui/ayarlar";
+import { useDil } from "./ui/ceviri";
+import { bolumBasligi } from "./seo";
 
 // her bölüm kendi parçasında: #hesap açılınca 6502 die'ın kodu ve çip verisi inmez, tersi de öyle
 const App = lazy(() => yukle6502().then((m) => ({ default: m.App })));
@@ -39,6 +41,11 @@ export function Root() {
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
+  // sekme başlığı, paylaşım sayfasının başlığıyla aynı (src/seo.ts)
+  const dil = useDil();
+  useEffect(() => {
+    document.title = bolumBasligi(location.hash, dil);
+  }, [mode, dil]);
   useEffect(() => {
     if (mode !== "6502" && useApp.getState().running) {
       sim.pause();

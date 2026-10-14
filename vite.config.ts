@@ -1,5 +1,7 @@
 import { defineConfig } from "vitest/config";
+import type { Plugin } from "vite";
 import react from "@vitejs/plugin-react";
+import { bildirim, robots, SAYFALAR, sayfaDosyasi, sayfaHtml, siteAdresi, siteHaritasi } from "./src/seo.ts";
 
 /**
  * Dış kütüphaneler ayrı parçalarda: React (her bölümde, ilk açılışta), three (3D bölümleri),
@@ -40,8 +42,37 @@ function vendorParcasi(id: string): string | undefined {
   return VENDOR[paket];
 }
 
+/**
+ * Arama motorları ve paylaşım kartları (src/seo.ts): derlenen index.html'e ana sayfanın etiketleri, kökte her
+ * bölümün kendi sayfası (6502.html, kart.html, …: aynı uygulama, kendi başlığı ve önizlemesiyle, o bölümde
+ * açılır), robots.txt, site.webmanifest ve sitenin adresi verilmişse sitemap.xml. Adres: SITE_URL ortam
+ * değişkeni (örn. SITE_URL=https://silikon3d.example npm run build).
+ */
+function seoEklentisi(): Plugin {
+  const site = siteAdresi(process.env.SITE_URL);
+  return {
+    name: "silikon3d-seo",
+    apply: "build",
+    enforce: "post",
+    generateBundle(_, bundle) {
+      const idx = bundle["index.html"];
+      if (!idx || idx.type !== "asset") return;
+      const html = String(idx.source);
+      for (const sayfa of SAYFALAR) {
+        const kaynak = sayfaHtml(html, sayfa, site);
+        if (sayfaDosyasi(sayfa) === "index.html") idx.source = kaynak;
+        else this.emitFile({ type: "asset", fileName: sayfaDosyasi(sayfa), source: kaynak });
+      }
+      this.emitFile({ type: "asset", fileName: "robots.txt", source: robots(site) });
+      this.emitFile({ type: "asset", fileName: "site.webmanifest", source: `${JSON.stringify(bildirim(), null, 2)}\n` });
+      if (site) this.emitFile({ type: "asset", fileName: "sitemap.xml", source: siteHaritasi(site, new Date().toISOString().slice(0, 10)) });
+      else this.warn("SITE_URL verilmedi: kanonik bağlantı, og:url ve sitemap.xml yazılmadı, önizleme görselleri göreli");
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), seoEklentisi()],
   base: "./",
   worker: { format: "es" },
   build: {

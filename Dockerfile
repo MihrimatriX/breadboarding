@@ -46,8 +46,13 @@ CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173", "--strict
 # build: tsc -b && vite build → /app/dist; metin dosyalarının .gz kopyaları nginx'in gzip_static'i için
 FROM deps AS build
 COPY --chown=node:node . .
+# Sitenin herkese açık adresi (örn. https://silikon3d.example): kanonik bağlantı, og:url ve sitemap.xml
+# bununla yazılır. Boşsa paylaşım etiketleri göreli adreslerle yazılır (src/seo.ts).
+ARG SITE_URL=""
+ENV SITE_URL=$SITE_URL
 RUN npm run build \
- && find dist -type f \( -name '*.js' -o -name '*.css' -o -name '*.html' -o -name '*.json' -o -name '*.svg' \) \
+ && find dist -type f \( -name '*.js' -o -name '*.css' -o -name '*.html' -o -name '*.json' -o -name '*.svg' \
+      -o -name '*.webmanifest' -o -name '*.xml' \) \
       -size +1k -exec gzip -9 -k {} +
 
 # ---------------------------------------------------------------------------------------------

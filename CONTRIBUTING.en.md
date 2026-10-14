@@ -176,7 +176,8 @@ don't write there by hand, run `npm run cpu16 -- kit`. You can edit the text out
 | `cpu16/breadboard/cikti/`, `hesap8/breadboard/cikti/` (breadboard build guides) | `npm run cpu16 -- breadboard-belge hepsi`, `npm run hesap8 -- breadboard-belge` | when you want them (for printing) | no (`.gitignore`) | `breadboard.test.ts` (HTML content) |
 | `cpu16/kurulum/cikti/` (build guides as HTML + PDF, schematic PDFs) | `npm run cpu16 -- kurulum hepsi`, `… kurulum hesap` | when you want them (for printing) | no (`.gitignore`) | `kurulum.test.ts` (HTML content) |
 | `public/chips/mos6502/chip.json` | `npm run import:6502` | when the visual6502 data or the converter changes | yes | `tests/mos6502.test.ts` |
-| `dist/` | `npm run build` | release | no | CI |
+| `public/og/*.png` (link previews), `public/icon-*.png`, `public/apple-touch-icon.png` | `npm run dev`, then `http://localhost:5173/scripts/og-gorselleri.html` (downloads the images one by one) | when a page title in `src/seo.ts` changes or a section is added | yes | `cpu16/tests/seo.test.ts` (every page has an image, sizes are right) |
+| `dist/` | `npm run build` (with `SITE_URL=…` for canonical URLs and `sitemap.xml`) | release | no | CI |
 
 The build guide PDFs need the `playwright` package (in the repository or global) and Chromium, and the
 schematic PDFs need `kicad-cli`; without them only HTML is written ([kurulum.md](cpu16/docs/kurulum.en.md)).

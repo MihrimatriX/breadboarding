@@ -1,0 +1,257 @@
+<!doctype html>
+<!--
+  Paylaşım önizleme görselleri ve uygulama simgeleri (public/og/*.png, public/icon-*.png,
+  public/apple-touch-icon.png). Metinler src/seo.ts'ten; her bölümün sağında kendi çizimi.
+  Üretmek için: npm run dev, sonra http://localhost:5173/scripts/og-gorselleri.html aç; her görselin altındaki
+  bağlantı PNG'yi indirir (adı dosyanın adı). İndirilenleri public/'e (og görsellerini public/og/'ye) koy.
+  window.gorseller() ad → data URL sözlüğü döndürür (otomatik çekmek için).
+-->
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Silikon3D önizleme görselleri</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" />
+    <style>
+      body { margin: 24px; background: #0c0f13; color: #e9ecf1; font: 15px/1.5 "IBM Plex Sans", system-ui, sans-serif; }
+      figure { margin: 0 0 32px; }
+      canvas { width: 600px; height: auto; border: 1px solid #2a313b; display: block; }
+      a { color: #7aa7ff; }
+    </style>
+  </head>
+  <body>
+    <div id="liste"></div>
+    <script type="module">
+      import { SAYFALAR, sayfaDosyasi } from "/src/seo.ts";
+
+      const W = 1200, H = 630;
+      const FONT = '"IBM Plex Sans", system-ui, sans-serif';
+      const MONO = '"IBM Plex Mono", ui-monospace, monospace';
+      const RENK = { zemin: "#12161b", izgara: "#1a2028", yazi: "#eef1f5", ikincil: "#b7c0cb", vurgu: "#7aa7ff", kart: "#16503a", yol: "#3b8a5c", altin: "#d9b44a", kirmizi: "#ff3b5c", mavi: "#3b82f6" };
+
+      /** tohumlu rastgele (her üretimde aynı çizim) */
+      function rastgele(tohum) {
+        let s = tohum >>> 0;
+        return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
+      }
+
+      function kutu(g, x, y, w, h, r, dolgu, cizgi) {
+        g.beginPath();
+        g.roundRect(x, y, w, h, r);
+        if (dolgu) { g.fillStyle = dolgu; g.fill(); }
+        if (cizgi) { g.strokeStyle = cizgi; g.lineWidth = 2; g.stroke(); }
+      }
+
+      /** uygulamanın simgesi: koyu kare, içinde çip, ortası mavi (index.html'deki simgeyle aynı) */
+      function simge(g, x, y, s) {
+        const k = s / 28;
+        kutu(g, x, y, s, s, 7 * k, "#131920");
+        g.strokeStyle = "#e3e7eb";
+        g.lineWidth = 1.6 * k;
+        g.beginPath();
+        g.roundRect(x + 8 * k, y + 8 * k, 12 * k, 12 * k, 2 * k);
+        g.stroke();
+        kutu(g, x + 11.25 * k, y + 11.25 * k, 5.5 * k, 5.5 * k, 1 * k, "#3a6ad6");
+      }
+
+      /** metni genişliğe göre satırlara böler */
+      function satirlar(g, metin, genislik) {
+        const out = [];
+        let s = "";
+        for (const k of metin.split(" ")) {
+          const d = s ? `${s} ${k}` : k;
+          if (g.measureText(d).width > genislik && s) { out.push(s); s = k; } else s = d;
+        }
+        if (s) out.push(s);
+        return out;
+      }
+
+      // ---- bölümlerin çizimleri (sağdaki alan: x 720..1140, y 90..540)
+
+      function cizAna(g) {
+        // transistörden karta: kalıp → çip → kart, üst üste
+        kutu(g, 760, 300, 360, 220, 18, RENK.kart);
+        const r = rastgele(7);
+        g.strokeStyle = RENK.yol; g.lineWidth = 3;
+        for (let i = 0; i < 9; i++) { const y = 330 + i * 20; g.beginPath(); g.moveTo(780, y); g.lineTo(780 + 120 + r() * 200, y); g.stroke(); }
+        kutu(g, 840, 200, 220, 130, 10, "#1c1f24", "#3a414b");
+        g.fillStyle = "#c9ced6";
+        for (let i = 0; i < 9; i++) { g.fillRect(852 + i * 22, 186, 8, 14); g.fillRect(852 + i * 22, 330, 8, 14); }
+        kutu(g, 900, 110, 100, 100, 8, "#2a2238");
+        for (let i = 0; i < 40; i++) { g.fillStyle = ["#e0b13a", "#58b06b", "#d4553f", "#6d8fe0"][i % 4]; g.globalAlpha = 0.8; g.fillRect(906 + r() * 80, 116 + r() * 80, 4 + r() * 12, 3 + r() * 10); }
+        g.globalAlpha = 1;
+      }
+
+      function ciz6502(g) {
+        kutu(g, 760, 110, 380, 400, 10, "#1b1626", "#3d3550");
+        const r = rastgele(6502);
+        const renk = ["#d8b23c", "#4fa968", "#cf4c3a", "#5e83d8", "#b36bd1"];
+        // kalıbın kutusuna kırpılır (çizgiler kenardan taşmasın)
+        g.save();
+        g.beginPath();
+        g.rect(772, 128, 356, 356);
+        g.clip();
+        for (let i = 0; i < 520; i++) {
+          g.fillStyle = renk[Math.floor(r() * renk.length)];
+          g.globalAlpha = 0.45 + r() * 0.5;
+          const yatay = r() < 0.5;
+          g.fillRect(776 + r() * 340, 126 + r() * 370, yatay ? 6 + r() * 40 : 3 + r() * 4, yatay ? 3 + r() * 4 : 6 + r() * 40);
+        }
+        g.restore();
+        g.globalAlpha = 1;
+        g.fillStyle = "#e8e2d2";
+        for (let i = 0; i < 20; i++) { g.fillRect(780 + i * 17.5, 116, 9, 9); g.fillRect(780 + i * 17.5, 490, 9, 9); }
+      }
+
+      function cizCpu16(g) {
+        kutu(g, 740, 110, 400, 400, 12, "#1a1f27", "#2f3742");
+        for (let i = 0; i < 3; i++) { g.fillStyle = ["#ff5f57", "#febc2e", "#28c840"][i]; g.beginPath(); g.arc(764 + i * 20, 134, 6, 0, 7); g.fill(); }
+        const kod = [["ldi", " r0, 0"], ["ldi", " r1, msg"], ["dongu:", ""], ["ld", "  r2, [r1]"], ["cmp", " r2, 0"], ["jz", "  bitti"], ["out", " VDATA, r2"], ["inc", " r1"], ["jmp", " dongu"]];
+        g.font = `500 22px ${MONO}`;
+        kod.forEach(([a, b], i) => {
+          g.fillStyle = a.endsWith(":") ? "#e0b13a" : "#7aa7ff";
+          g.fillText(a, 768, 182 + i * 30);
+          g.fillStyle = "#c9d2dc";
+          g.fillText(b, 768 + g.measureText(a).width, 182 + i * 30);
+        });
+        kutu(g, 950, 330, 170, 120, 6, "#0000aa", "#c9ced6");
+        g.font = `500 15px ${MONO}`;
+        g.fillStyle = "#ffffff";
+        g.fillText("Merhaba,", 962, 360);
+        g.fillText("CPU16!", 962, 382);
+        g.fillStyle = "#c9ced6";
+        g.fillRect(1020, 450, 30, 14);
+      }
+
+      function cizKart(g) {
+        // iki kart, dilleri altın parmaklarla arka panelin yuvalarına takılı
+        g.fillStyle = "#25282d";
+        g.fillRect(730, 450, 420, 70);
+        g.strokeStyle = "#8d97a5"; g.lineWidth = 2;
+        for (let i = 0; i < 6; i++) { g.beginPath(); g.moveTo(730, 478 + i * 7); g.lineTo(1150, 478 + i * 7); g.stroke(); }
+        g.strokeStyle = RENK.kirmizi; g.lineWidth = 4;
+        g.beginPath(); g.moveTo(730, 492); g.lineTo(1150, 492); g.stroke();
+        for (const [x, h] of [[750, 330], [960, 250]]) {
+          const y = 450 - h;
+          kutu(g, x, y, 180, h - 20, 10, RENK.kart);
+          g.fillStyle = RENK.kart; g.fillRect(x + 40, 420, 100, 30);
+          g.fillStyle = RENK.altin;
+          for (let i = 0; i < 9; i++) g.fillRect(x + 46 + i * 10.5, 432, 6, 18);
+          g.fillStyle = "#111317"; g.fillRect(x + 30, 446, 120, 16);
+          const r = rastgele(x);
+          for (let j = 0; j < Math.floor((h - 60) / 48); j++) {
+            for (let i = 0; i < 2; i++) {
+              const cx = x + 18 + i * 82, cy = y + 22 + j * 48;
+              kutu(g, cx, cy, 64, 24, 3, "#15171b");
+              g.fillStyle = "#c9ced6";
+              for (let p = 0; p < 6; p++) { g.fillRect(cx + 4 + p * 10, cy - 4, 4, 4); g.fillRect(cx + 4 + p * 10, cy + 24, 4, 4); }
+            }
+            g.strokeStyle = RENK.yol; g.lineWidth = 2;
+            g.beginPath(); g.moveTo(x + 10, y + 52 + j * 48 + r() * 6); g.lineTo(x + 170, y + 52 + j * 48 + r() * 6); g.stroke();
+          }
+          g.strokeStyle = RENK.kirmizi; g.lineWidth = 4;
+          g.beginPath(); g.moveTo(x + 90, y + 40); g.lineTo(x + 90, 492); g.stroke();
+        }
+      }
+
+      /** yedi parçalı rakam */
+      function rakam(g, x, y, s, d) {
+        const P = { 0: "abcdef", 1: "bc", 2: "abdeg", 3: "abcdg", 4: "bcfg", 5: "acdfg", 6: "acdefg", 7: "abc", 8: "abcdefg", 9: "abcdfg" }[d];
+        const L = s, t = s * 0.18;
+        const p = { a: [x + t, y, L, t], b: [x + L + t, y + t, t, L], c: [x + L + t, y + L + 2 * t, t, L], d: [x + t, y + 2 * L + 2 * t, L, t], e: [x, y + L + 2 * t, t, L], f: [x, y + t, t, L], g: [x + t, y + L + t, L, t] };
+        for (const k of "abcdefg") { g.fillStyle = P.includes(k) ? RENK.kirmizi : "#2a1418"; g.fillRect(...p[k]); }
+      }
+
+      function cizHesap(g) {
+        kutu(g, 740, 120, 400, 380, 14, "#1a1d22", "#2f3742");
+        kutu(g, 770, 150, 340, 150, 8, "#0b0c0e");
+        "5535".split("").forEach((d, i) => rakam(g, 800 + i * 76, 175, 44, +d));
+        g.font = `500 22px ${MONO}`;
+        g.fillStyle = "#c9d2dc";
+        g.fillText("123 × 45", 870, 340);
+        for (let i = 0; i < 8; i++) {
+          kutu(g, 775 + i * 42, 380, 30, 80, 4, "#e7e3d8");
+          kutu(g, 780 + i * 42, i % 3 === 0 ? 386 : 420, 20, 34, 3, i % 3 === 0 ? RENK.kirmizi : "#5d6672");
+        }
+      }
+
+      function cizMimari(g) {
+        const kutular = [[760, 120, "Kontrol"], [960, 120, "Register"], [760, 250, "ALU"], [960, 250, "Bellek"], [860, 390, "G/Ç"]];
+        g.strokeStyle = RENK.vurgu; g.lineWidth = 3;
+        g.beginPath(); g.moveTo(740, 360); g.lineTo(1140, 360); g.stroke();
+        for (const [x, y] of kutular) { g.beginPath(); g.moveTo(x + 80, y + 70); g.lineTo(x + 80, 360); g.stroke(); }
+        g.font = `600 24px ${FONT}`;
+        for (const [x, y, ad] of kutular) {
+          kutu(g, x, y, 160, 70, 10, "#1d2a44", RENK.vurgu);
+          g.fillStyle = "#dfe8ff";
+          g.fillText(ad, x + 80 - g.measureText(ad).width / 2, y + 44);
+        }
+      }
+
+      function cizBelgeler(g) {
+        for (const [dx, dy, a] of [[60, 40, 0.5], [30, 20, 0.75], [0, 0, 1]]) {
+          g.globalAlpha = a;
+          kutu(g, 770 + dx, 110 + dy, 320, 380, 10, "#e9ecf1");
+        }
+        g.globalAlpha = 1;
+        g.fillStyle = "#1a1f27"; g.font = `700 26px ${FONT}`;
+        g.fillText("CPU16 komut seti", 796, 160);
+        const r = rastgele(16);
+        for (let i = 0; i < 11; i++) { g.fillStyle = i % 4 === 0 ? "#2c62d8" : "#9aa3ae"; g.fillRect(796, 190 + i * 26, 120 + r() * 140, 10); }
+      }
+
+      const CIZIM = { "/": cizAna, "/6502": ciz6502, "/cpu16": cizCpu16, "/kart": cizKart, "/hesap": cizHesap, "/mimari": cizMimari, "/belgeler": cizBelgeler };
+
+      function kartCiz(s) {
+        const c = document.createElement("canvas");
+        c.width = W; c.height = H;
+        const g = c.getContext("2d");
+        g.fillStyle = RENK.zemin; g.fillRect(0, 0, W, H);
+        g.strokeStyle = RENK.izgara; g.lineWidth = 1;
+        for (let x = 0; x <= W; x += 40) { g.beginPath(); g.moveTo(x + 0.5, 0); g.lineTo(x + 0.5, H); g.stroke(); }
+        for (let y = 0; y <= H; y += 40) { g.beginPath(); g.moveTo(0, y + 0.5); g.lineTo(W, y + 0.5); g.stroke(); }
+        CIZIM[s.yol](g);
+        // sol: marka, başlık, alt başlık, alt satır
+        simge(g, 72, 72, 56);
+        g.fillStyle = RENK.yazi; g.font = `600 34px ${FONT}`;
+        g.fillText("Silikon3D", 144, 112);
+        const [ana, alt] = s.yol === "/" ? ["Transistörden karta", "tarayıcıda çalışan bir bilgisayar"] : s.baslik.tr.replace(/ \| Silikon3D$/, "").split(/:\s*/);
+        g.font = `700 60px ${FONT}`;
+        let y = 230;
+        for (const l of satirlar(g, ana, 600)) { g.fillText(l, 72, y); y += 70; }
+        g.fillStyle = RENK.ikincil; g.font = `500 32px ${FONT}`;
+        y += 6;
+        for (const l of satirlar(g, alt ?? "", 600).slice(0, 3)) { g.fillText(l, 72, y); y += 44; }
+        g.fillStyle = RENK.vurgu; g.font = `500 24px ${FONT}`;
+        g.fillText("3D · canlı sinyaller · tarayıcıda · açık kaynak", 72, 560);
+        return c;
+      }
+
+      function simgeCiz(boy) {
+        const c = document.createElement("canvas");
+        c.width = boy; c.height = boy;
+        // tam kare zemin: iOS ve "maskable" simge köşeleri kendisi yuvarlar, saydam köşe kara görünür
+        const g = c.getContext("2d");
+        g.fillStyle = "#131920";
+        g.fillRect(0, 0, boy, boy);
+        simge(g, 0, 0, boy);
+        return c;
+      }
+
+      await document.fonts.load(`700 60px "IBM Plex Sans"`);
+      await document.fonts.load(`500 22px "IBM Plex Mono"`);
+      const sonuc = {};
+      const ekle = (ad, c) => {
+        sonuc[ad] = c.toDataURL("image/png");
+        const f = document.createElement("figure");
+        const a = Object.assign(document.createElement("a"), { href: sonuc[ad], download: ad.split("/").pop(), textContent: ad });
+        f.append(c, a);
+        document.getElementById("liste").append(f);
+      };
+      for (const s of SAYFALAR) ekle(`og/${sayfaDosyasi(s).replace(/\.html$/, "").replace("index", "silikon3d")}.png`, kartCiz(s));
+      ekle("icon-192.png", simgeCiz(192));
+      ekle("icon-512.png", simgeCiz(512));
+      ekle("apple-touch-icon.png", simgeCiz(180));
+      window.gorseller = () => sonuc;
+    </script>
+  </body>
+</html>
