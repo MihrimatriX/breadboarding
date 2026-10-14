@@ -113,10 +113,10 @@ Bir tur kronometreyle: açıkken ≈ 1,15 s, kapalıyken ≈ 1,6 s. Mantık anal
 
 Yapıştırıcı lojik çiplerinin kapıları bloklara dağılmıştır; bu deneyde kullanılan kapılar:
 
-- **U538** (74HC08, Deney 8'de takıldı): 2. kapı (yazılan satır geçerli mi (doldurmada 1)); 3. kapı (sayaçları sıfırla (FF30 yazma, reset)); 4. kapı (ıskalama). Diğerleri: 1. kapı → Deney 8
+- **U538** (74HC08, 8. deneyde takıldı): 2. kapı (yazılan satır geçerli mi (doldurmada 1)); 3. kapı (sayaçları sıfırla (FF30 yazma, reset)); 4. kapı (ıskalama). Diğerleri: 1. kapı → Deney 8
 - **U539** (74HC08, bu deneyde takılır): 1. kapı (ıskalama sayımı)
 - **U541** (74HC32, bu deneyde takılır): 1. kapı (CACHE_CTRL yazma kenarı); 2. kapı (FF30 yazma); 3. kapı (FF30/31 okuma); 4. kapı (FF32/33 okuma)
-- **U543** (74HC02, Deney 8'de takıldı): 3. kapı (temizleme yazma darbesi (OSC düşükken)); 4. kapı (etiket belleği ~WE). Diğerleri: 1. kapı → Deney 8, 2. kapı → Deney 8
+- **U543** (74HC02, 8. deneyde takıldı): 3. kapı (temizleme yazma darbesi (OSC düşükken)); 4. kapı (etiket belleği ~WE). Diğerleri: 1. kapı → Deney 8, 2. kapı → Deney 8
 - **U544** (74HC02, bu deneyde takılır): 1. kapı (isabet)
 - **U546** (74HC04, bu deneyde takılır): 1. kapı (isabet sayımı)
 
