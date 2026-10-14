@@ -11,7 +11,7 @@ Aynı tanımdan dört şey üretilir:
 | Malzeme listesi | `board/kicad-sch.ts` → `kicad/bom.csv` (CPU, test bellek, saat), `kicad/<kart>/bom.csv` (anakart kartları) | Sipariş |
 | Elektriksel kural denetimi | `board/board.ts` → `erc()` | Çakışan çıkış, sürülmeyen giriş |
 
-Şema değişirse hepsi birlikte değişir; testler KiCad dosyalarının koddan yeniden üretilmiş halleriyle
+Şema değişirse hepsi birlikte değişir; testler KiCad dosyalarının koddan yeniden üretilmiş hâlleriyle
 birebir aynı olmasını şart koşar (elle düzeltilmiş ama koda işlenmemiş bir şema CI'da kırmızı yanar).
 
 ## Komutlar
@@ -47,10 +47,10 @@ uçlarındaki **net etiketleriyle** yapılır: aynı adlı iki etiket aynı nett
 | 74HC157 (2:1 seçici) | 3 | ALU işlem seçimi (bit 0..3), bayrak girişi, C/V tutma |
 | 74HC688 (karşılaştırıcı) | 2 | sıfır (Z) algılama |
 
-Kartta ROM yok: kontrol birimi (mikrokod ve ALU kod çözme) 19 MSI çip ve ≈ 38 kapı çipi
+Kartta ROM yok: kontrol birimi (mikrokod ve ALU kod çözme) 19 MSI çip ve ≈ 38 kapı çipi tutar
 ([mikromimari.md](mikromimari.md), "Kapı seviyesinde kontrol birimi"). Kartın referans aralığı
 U1..U199 (`CARD_REF_BASE`); sonradan eklenen register tamponlarının son 11'i ve kondansatörleri taşma
-diliminde: U901–U911, C901–C912 (`CARD_REF_TASMA`), öbür çiplerin numaraları değişmedi.
+diliminde: U901–U911, C901–C912 (`CARD_REF_TASMA`); öbür çiplerin numaraları değişmedi.
 
 Ayrıca: veriyolu çekme dirençleri (2 × 10 kΩ SIP-9), her entegreye 100 nF, kart girişine 100 µF,
 HALTED ve FAULT LED'leri, 2 × 32 arka panel konnektörü.
@@ -74,7 +74,7 @@ Her LED'in yanında 1 kΩ (R3–R41), her çubuk göstergenin önünde 8 × 1 k�
 bağlıdır (VCC → 1 kΩ → LED → sinyal): çıkış 0 olunca yanar. Çubuk göstergede 1. segment bit 0'dır.
 Ayrıntı ve renk kuralları: [kit/led-ve-direnc.md](../kit/led-ve-direnc.md).
 
-Register'ların içeriğini görmek için register'ın 574'leri artık veriyolunu doğrudan sürmez:
+Register içeriğini görmek için register'ların 574'leri artık veriyolunu doğrudan sürmez:
 çıkışları hep açıktır (`~OE` = GND) ve `R{r}Q0..15` hatlarındadır; çubuk göstergeler bu hatlara
 bağlıdır. Veriyolunu register başına iki 74HC541 sürer (U195–U199, U901–U911; `~OE1` = `~ROEr`).
 Bedeli 16 çip ve okuma yolunda bir tampon gecikmesi; zamanlama analizinin sonuçları değişmedi (en
@@ -172,7 +172,7 @@ Her katman bir öncekine karşı test edilir (`cpu16/tests/board.test.ts`):
 3. **Kapı seviyesi kart** ↔ **emülatör**: program sonunda register'lar, bellek ve UART çıktısı.
 4. **KiCad şeması** ↔ **kart**: gerçek `kicad-cli` (7.x) şemadan netlist çıkarır; her netin pin
    kümesi kartın netleriyle aynı olmalıdır. `kicad-cli` kurulu değilse bu test atlanır.
-5. **Anakart kartları** ↔ **`Machine`**: veri yolu izi bellek ve önbellek kartlarında, tam sistem
+5. **Anakart kartları** ↔ **`Machine`**: veriyolu izi bellek ve önbellek kartlarında, tam sistem
    (CPU dahil) komut komut (`tests/anakart-bellek.test.ts`, `tests/anakart-sistem.test.ts`; bkz.
    [anakart-kartlari.md](anakart-kartlari.md)).
 
@@ -189,6 +189,6 @@ Kapı seviyesi kart tarayıcı dışında saniyede yaklaşık 30 000 saat döng�
 
 ## Sınırlar ve sonraki adımlar
 
-- Şema çizimi otomatik ızgaradır; okunurluk için KiCad'de bloklar halinde yeniden düzenlenebilir.
+- Şema çizimi otomatik ızgaradır; okunurluk için KiCad'de bloklar hâlinde yeniden düzenlenebilir.
 - PCB yerleşimi ve üretim dosyaları (Gerber, montaj kılavuzu, saat kartı, ROM programlayıcı) Faz 9'da.
 - 3D görünümde kart → çip → kapı → transistör inişi Faz 5'te bu kart tanımını kullanır.

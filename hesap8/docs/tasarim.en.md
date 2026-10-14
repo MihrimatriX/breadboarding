@@ -98,7 +98,7 @@ remainder ≥ B, B is subtracted and that bit of the quotient becomes 1, otherwi
 
 ### Result selector
 
-Eight 74HC153s (dual 4-to-1 multiplexer), with the select inputs wired straight to OP1 OP0. Each result
+Eight 74HC153s (dual 4-to-1 multiplexers), with the select inputs wired straight to OP1 OP0. Each result
 bit has 4 sources: addition/subtraction (M), the same again, product (P), quotient (Q). Bit 8 is T8 for
 addition and P8 for multiplication; bits 9–15 are used only for multiplication.
 
@@ -148,7 +148,7 @@ need to be faster; in a calculator 2 µs is instant.
 5 V, 2-pin input (J1: 1 = +5 V, 2 = GND), a 100 µF input capacitor, 100 nF at every chip.
 
 - The quiescent current of the 74HC chips is negligible (µA). Nearly all the current goes to the LEDs.
-- Segment current ≈ (5 − 2 − 0.3) V / 470 Ω ≈ 6 mA; one digit draws at most 7 segments ≈ 42 mA
+- Segment current ≈ (5 − 2 − 0.3) V / 470 Ω ≈ 6 mA; one digit draws at most ≈ 42 mA (7 segments)
   (the 74HC4511's total VCC / GND limit is 50 mA).
 - Typical (≈ 9 digits lit, 5 segments on average) ≈ 0.3 A; during the lamp test (14 digits × 7
   segments) ≈ 0.6 A. A **5 V 2 A adapter** is enough, with margin to spare.

@@ -28,18 +28,18 @@ kapılarıyla kurulmuş bir **kontrol birimi**dir. Deneyin en büyük parçası 
 - **Komut sınıfları:** aynı mikro programı çalıştıran komutlar tek hatta toplanır (ör. bütün yasadışı
   komutlar; op 9'da koşulun doğru ya da yanlış olması: `~KOP9_C0`, `~KOP9_C1`).
 - **VEYA ağı** (yapıştırıcı kapılar, "Kontrol birimi" bloğu): her kontrol biti ve her adım için "bu biti 1
-  olan komut sınıfları" kümesi. Hatlar aktif düşük olduğu için kümedekilerin NAND'ı VEYA'dır; küme büyükse
-  kümede olmayanların AND'ı ("hiçbiri değil") daha az kapı ister. Kümelerin ortak parçaları bir kez kurulur
-  ("ortak alt küme" kapıları).
+  olan komut sınıfları" kümesinin VEYA'sı. Hatlar aktif düşük olduğu için kümedekilerin NAND'ı VEYA'dır;
+  küme büyükse kümede olmayanların AND'ı ("hiçbiri değil") daha az kapı ister. Kümelerin ortak parçaları
+  bir kez kurulur ("ortak alt küme" kapıları).
 - **Adım seçicileri** (10 × 74HC151, U147–U156): adım 0..7'nin çoğunda kullanılan bitlerde (`CW0..4`, `CW7`,
-  `CW16`, `CW17`, `CW21`, `CW31`) seçici `STEP0..2`, veri girişleri her adımın kümesi. Seyrek bitler
-  "adım ∧ küme" terimlerinin VEYA'sıdır.
+  `CW16`, `CW17`, `CW21`, `CW31`) seçici girişleri `STEP0..2`, veri girişleri her adımın kümesi. Seyrek
+  bitler "adım ∧ küme" terimlerinin VEYA'sıdır.
 - Kontrol biriminin çıkışları `MK0..MK31`; **kontrol register'ı** (4 × 74HC574: U2, U4, U6, U8) onları CLK'nin
   düşen kenarında alır: `CW0..CW31`.
 - `CW0..2` bir 74HC138 (U13) ile veriyolu sürücüsünü seçer (`~SRC_REG/ALU/PC/MEM/IMM/FLAGS`): aynı anda tek
-  sürücü donanımla garanti edilir.
+  sürücü olduğunu donanım garanti eder.
 - **Sabit birimi** (16 × 74HC151): komut kelimesinden 8 biçimden birini çıkarır (IMM6, IMM6×2, IMM8, IMM9,
-  OFF8×2, OFF12×2, 2, 4), `~SRC_IMM` ile veriyoluna.
+  OFF8×2, OFF12×2, 2, 4), `~SRC_IMM` ile veriyoluna verir.
 - **Çalışma izni:** HALT ya da FAULT'ta `RUN_R` düşer, kapılı saat (`CLKR`) durur. `IRQ` ∧ I bayrağı CPU'yu
   uyandırır; adım 0'da (`~ADIM0`) kesme varsa `INT` 1 olur ve kontrol birimi kesme girişini çalıştırır.
 
@@ -81,7 +81,7 @@ Sonra bütün CPU:
 | `0xF000` (yasadışı op) | FAULT LED'i yanar |
 | `0xE000` + YAVAŞ | mikro adım sayacının çıkışları 0, 1, 2, 0, 1, 2 … |
 
-Adres LED'lerindeki sayaç 0xFFFE'den 0x0000'a sarar: CPU tüm adres alanında NOP "çalıştırıyor".
+Adres LED'lerindeki sayaç 0xFFFE'den sonra 0x0000'a döner: CPU tüm adres alanında NOP "çalıştırıyor".
 
 ## Simülatörde
 
@@ -134,46 +134,46 @@ Adres LED'lerindeki sayaç 0xFFFE'den 0x0000'a sarar: CPU tüm adres alanında N
 Yapıştırıcı lojik çiplerinin kapıları bloklara dağılmıştır; bu deneyde kullanılan kapılar:
 
 - **U117** (74HC08, bu deneyde takılır): 1. kapı (IRQ ∧ I); 2. kapı (INT seçimi); 3. kapı (INT seçimi); 4. kapı (HALT durumu)
-- **U118** (74HC08, Deney 5'de takıldı): 1. kapı (HALT durumu); 2. kapı (yasadışı komut); 3. kapı (çalışma izni). Diğerleri: 4. kapı → Deney 5
-- **U126** (74HC08, Deney 6'de takıldı): 4. kapı (ortak alt küme). Diğerleri: 1. kapı → Deney 6, 2. kapı → Deney 6, 3. kapı → Deney 6
+- **U118** (74HC08, 5. deneyde takıldı): 1. kapı (HALT durumu); 2. kapı (yasadışı komut); 3. kapı (çalışma izni). Diğerleri: 4. kapı → Deney 5
+- **U126** (74HC08, 6. deneyde takıldı): 4. kapı (ortak alt küme). Diğerleri: 1. kapı → Deney 6, 2. kapı → Deney 6, 3. kapı → Deney 6
 - **U127** (74HC32, bu deneyde takılır): 1. kapı (INT seçimi); 2. kapı (HALT durumu); 3. kapı (yasadışı komut); 4. kapı (çalışma izni)
-- **U129** (74HC32, Deney 5'de takıldı): 4. kapı (komut sınıfı: op 9). Diğerleri: 1. kapı → Deney 5, 2. kapı → Deney 6, 3. kapı → Deney 6
-- **U130** (74HC00, Deney 6'de takıldı): 1. kapı (kapılı ana saat); 2. kapı (END: adımı sıfırla). Diğerleri: 3. kapı → Deney 6, 4. kapı → Deney 6
-- **U132** (74HC00, Deney 6'de takıldı): 3. kapı (CW0); 4. kapı (CW1). Diğerleri: 1. kapı → Deney 6, 2. kapı → Deney 6
-- **U135** (74HC02, Deney 5'de takıldı): 2. kapı (kesme girişi); 3. kapı (CW5); 4. kapı (CW6). Diğerleri: 1. kapı → Deney 5
-- **U145** (74HC04, Deney 5'de takıldı): 1. kapı (saat tersi); 2. kapı (kapılı ana saat); 3. kapı (adım 0); 4. kapı (uyanma). Diğerleri: 5. kapı → Deney 5, 6. kapı → Deney 6
-- **U146** (74HC04, Deney 6'de takıldı): 3. kapı (CW0); 4. kapı (koşul tersi); 5. kapı (CW1); 6. kapı (CW2). Diğerleri: 1. kapı → Deney 6, 2. kapı → Deney 6
+- **U129** (74HC32, 5. deneyde takıldı): 4. kapı (komut sınıfı: op 9). Diğerleri: 1. kapı → Deney 5, 2. kapı → Deney 6, 3. kapı → Deney 6
+- **U130** (74HC00, 6. deneyde takıldı): 1. kapı (kapılı ana saat); 2. kapı (END: adımı sıfırla). Diğerleri: 3. kapı → Deney 6, 4. kapı → Deney 6
+- **U132** (74HC00, 6. deneyde takıldı): 3. kapı (CW0); 4. kapı (CW1). Diğerleri: 1. kapı → Deney 6, 2. kapı → Deney 6
+- **U135** (74HC02, 5. deneyde takıldı): 2. kapı (kesme girişi); 3. kapı (CW5); 4. kapı (CW6). Diğerleri: 1. kapı → Deney 5
+- **U145** (74HC04, 5. deneyde takıldı): 1. kapı (saat tersi); 2. kapı (kapılı ana saat); 3. kapı (adım 0); 4. kapı (uyanma). Diğerleri: 5. kapı → Deney 5, 6. kapı → Deney 6
+- **U146** (74HC04, 6. deneyde takıldı): 3. kapı (CW0); 4. kapı (koşul tersi); 5. kapı (CW1); 6. kapı (CW2). Diğerleri: 1. kapı → Deney 6, 2. kapı → Deney 6
 - **U157** (74HC08, bu deneyde takılır): 1. kapı (ortak alt küme); 2. kapı (ortak alt küme); 3. kapı (ortak alt küme); 4. kapı (ortak alt küme)
 - **U158** (74HC08, bu deneyde takılır): 1. kapı (ortak alt küme); 2. kapı (CW0); 3. kapı (ortak alt küme); 4. kapı (ortak alt küme)
 - **U159** (74HC08, bu deneyde takılır): 1. kapı (ortak alt küme); 2. kapı (ortak alt küme); 3. kapı (ortak alt küme); 4. kapı (ortak alt küme)
 - **U160** (74HC08, bu deneyde takılır): 1. kapı (ortak alt küme); 2. kapı (ortak alt küme); 3. kapı (ortak alt küme); 4. kapı (ortak alt küme)
 - **U161** (74HC08, bu deneyde takılır): 1. kapı (ortak alt küme); 2. kapı (ortak alt küme); 3. kapı (CW2); 4. kapı (CW3)
-- **U162** (74HC08, Deney 5'de takıldı): 1. kapı (CW13); 2. kapı (CW13); 3. kapı (CW22). Diğerleri: 4. kapı → Deney 5
+- **U162** (74HC08, 5. deneyde takıldı): 1. kapı (CW13); 2. kapı (CW13); 3. kapı (CW22). Diğerleri: 4. kapı → Deney 5
 - **U164** (74HC32, bu deneyde takılır): 1. kapı (komut sınıfı: op 9); 2. kapı (CW10); 3. kapı (CW10); 4. kapı (CW11)
 - **U165** (74HC32, bu deneyde takılır): 1. kapı (CW11); 2. kapı (CW12); 3. kapı (CW13); 4. kapı (CW13)
 - **U166** (74HC32, bu deneyde takılır): 1. kapı (CW14); 2. kapı (komut sınıfı: op 0); 3. kapı (CW18); 4. kapı (CW18)
 - **U167** (74HC32, bu deneyde takılır): 1. kapı (CW19); 2. kapı (CW19); 3. kapı (CW19); 4. kapı (CW22)
 - **U168** (74HC32, bu deneyde takılır): 1. kapı (CW22); 2. kapı (CW24); 3. kapı (CW24); 4. kapı (CW27)
-- **U169** (74HC32, Deney 5'de takıldı): 1. kapı (CW27). Diğerleri: 2. kapı → Deney 5, 3. kapı → Deney 5, 4. kapı → Deney 5
+- **U169** (74HC32, 5. deneyde takıldı): 1. kapı (CW27). Diğerleri: 2. kapı → Deney 5, 3. kapı → Deney 5, 4. kapı → Deney 5
 - **U170** (74HC00, bu deneyde takılır): 1. kapı (CW1); 2. kapı (CW1); 3. kapı (CW2); 4. kapı (CW3)
 - **U171** (74HC00, bu deneyde takılır): 1. kapı (CW3); 2. kapı (CW4); 3. kapı (CW7); 4. kapı (CW10)
 - **U172** (74HC00, bu deneyde takılır): 1. kapı (CW11); 2. kapı (CW12); 3. kapı (CW16); 4. kapı (CW18)
 - **U173** (74HC00, bu deneyde takılır): 1. kapı (CW18); 2. kapı (CW21); 3. kapı (CW24); 4. kapı (CW31)
 - **U175** (74HC02, bu deneyde takılır): 1. kapı (CW20); 2. kapı (CW25); 3. kapı (CW26); 4. kapı (CW28)
-- **U176** (74HC02, Deney 5'de takıldı): 1. kapı (CW29); 2. kapı (CW30). Diğerleri: 3. kapı → Deney 5, 4. kapı → Deney 5
-- **U177** (74HC04, Deney 5'de takıldı): 1. kapı (CW4); 2. kapı (CW16); 3. kapı (f3 çözme); 4. kapı (CW22); 5. kapı (CW31). Diğerleri: 6. kapı → Deney 5
+- **U176** (74HC02, 5. deneyde takıldı): 1. kapı (CW29); 2. kapı (CW30). Diğerleri: 3. kapı → Deney 5, 4. kapı → Deney 5
+- **U177** (74HC04, 5. deneyde takıldı): 1. kapı (CW4); 2. kapı (CW16); 3. kapı (f3 çözme); 4. kapı (CW22); 5. kapı (CW31). Diğerleri: 6. kapı → Deney 5
 - **U179** (74HC10, bu deneyde takılır): 1. kapı (komut sınıfı: op 13); 2. kapı (CW0); 3. kapı (CW0)
 - **U180** (74HC10, bu deneyde takılır): 1. kapı (CW1); 2. kapı (CW1); 3. kapı (CW2)
 - **U181** (74HC10, bu deneyde takılır): 1. kapı (CW2); 2. kapı (CW3); 3. kapı (CW13)
 - **U182** (74HC10, bu deneyde takılır): 1. kapı (CW14); 2. kapı (f3 çözme); 3. kapı (CW16)
 - **U183** (74HC10, bu deneyde takılır): 1. kapı (CW21); 2. kapı (CW22); 3. kapı (CW27)
-- **U184** (74HC10, Deney 5'de takıldı): 1. kapı (CW31); 2. kapı (CW31). Diğerleri: 3. kapı → Deney 5
-- **U186** (74HC11, Deney 5'de takıldı): 1. kapı (CW12); 2. kapı (CW24). Diğerleri: 3. kapı → Deney 5
+- **U184** (74HC10, 5. deneyde takıldı): 1. kapı (CW31); 2. kapı (CW31). Diğerleri: 3. kapı → Deney 5
+- **U186** (74HC11, 5. deneyde takıldı): 1. kapı (CW12); 2. kapı (CW24). Diğerleri: 3. kapı → Deney 5
 - **U187** (74HC21, bu deneyde takılır): 1. kapı (aynı mikro program); 2. kapı (aynı mikro program)
 - **U188** (74HC21, bu deneyde takılır): 1. kapı (CW1); 2. kapı (CW3)
-- **U189** (74HC21, Deney 5'de takıldı): 1. kapı (CW16). Diğerleri: 2. kapı → Deney 5
+- **U189** (74HC21, 5. deneyde takıldı): 1. kapı (CW16). Diğerleri: 2. kapı → Deney 5
 - **U191** (74HC20, bu deneyde takılır): 1. kapı (komut); 2. kapı (CW16)
-- **U192** (74HC20, Deney 5'de takıldı): 1. kapı (CW19). Diğerleri: 2. kapı → Deney 5
+- **U192** (74HC20, 5. deneyde takıldı): 1. kapı (CW19). Diğerleri: 2. kapı → Deney 5
 
 #### Bağlantılar (278 net)
 

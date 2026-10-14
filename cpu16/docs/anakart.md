@@ -10,7 +10,7 @@
 Model komut seviyesinde çalışır ama **zamanı CPU döngüsüyle sayar**: her komut mikromimari
 tablosundaki döngü sayısı + bellek bekleme durumları kadar sürer; zamanlayıcı, dikey tarama,
 UART ve klavye bu sayaçla ilerler. Böylece "önbellek açıkken program ne kadar hızlı?" sorusu
-simülasyonda ölçülebilir (deney 10).
+simülasyonda ölçülebilir (Deney 10).
 
 ## Blok şeması
 
@@ -84,8 +84,8 @@ iken çalışır. `~Y0` EEPROM'u (`PA19..PA15 = 00000`), `~Y4..~Y7` RAM 0..3'ü 
 
 Reset bank register'larını 0, 32, 33, 34'e getirir: vektörler (`0x0000` reset, `0x0002` IRQ,
 `0x0004` SWI) her zaman BIOS'tan okunur. Bank register'ları geri okunabilir (`FF10–FF13`, üst
-2 bit 0). Pencere 3'ün son 256 baytı G/Ç olduğundan bank 34'ün `0x3F00–0x3FFF` ofseti CPU'dan
-görünmez (başka bir pencereden görünür).
+2 bit 0). Pencere 3'ün son 256 baytı G/Ç olduğundan bank 34'ün `0x3F00–0x3FFF` ofseti CPU'ya bu
+pencereden görünmez (başka bir pencereden görünür).
 
 ## G/Ç haritası (`0xFF00–0xFFFF`)
 
@@ -123,7 +123,7 @@ Sabitler kodda: `IO` nesnesi (`emu/machine.ts`); BIOS'ta `IOB = 0xFF20` tabanlı
 
 ## Kesme denetleyicisi
 
-Dört kaynak, seviye tetiklemeli; kaynak isteği sürdükçe bekler:
+Dört kaynak, seviye tetiklemeli; istek, kaynağı onu sürdükçe bekler:
 
 | No | Kaynak | İstek | Nasıl onaylanır |
 |---|---|---|---|
@@ -140,12 +140,12 @@ giriş 8 döngü sürer (PC ve bayraklar yığına, I = 0, `0x0002` vektörü), 
 
 ## Zamanlayıcı
 
-4 MHz'ten 74HC161 ×3 ile 4000'e bölünmüş **1 kHz tık** (1 ms) 16 bitlik sayacı azaltır. Sayaç
+4 MHz'den 74HC161 ×3 ile 4000'e bölünmüş **1 kHz tık** (1 ms) 16 bitlik sayacı azaltır. Sayaç
 dört eşzamanlı 74HC161'dir ve kalan tık sayısının tersini tutar: aşağı saymak tersini yukarı
 saymaktır (`c − 1 = ¬(¬c + 1)`); RELOAD sayıcılara eviricilerden geçerek yüklenir. Sayaç 0 olunca RELOAD'dan yeniden yüklenir ve EXPIRED kurulur; IRQ_EN
 açıksa kesme ister. Periyot = RELOAD ms (RELOAD = 0 → 65 536 ms). BIOS 10 yükler: 100 Hz
 (`TICKS` sayacı, bkz. bios.md).
-Tık TCLK / 4000'dir (TCLK = CPU saati, bekleme turlarında da sayar): 4 MHz'te 1 kHz, 1 MHz'lik
+Tık TCLK / 4000'dir (TCLK = CPU saati, bekleme turlarında da sayar): 4 MHz'de 1 kHz, 1 MHz'lik
 ilk kartta 250 Hz. BIOS'un 100 Hz'i de aynı oranda yavaşlar; gerçek zaman gereken programlar
 RELOAD'ı CPU hızına göre seçmelidir.
 
@@ -171,10 +171,10 @@ RELOAD'ı CPU hızına göre seçmelidir.
 - **Yazılımla boşaltma**: ayrı bir "boşalt" komutu yok. Önbellek açıkken 2 KB'lık bitişik bir
   RAM bölgesini okumak her satırı RAM'den taze bir satırla değiştirir (EEPROM'un eski kopyaları
   gider). BIOS bunu EEPROM'a yazdıktan sonra `0xC000–0xC7FF` ile yapar.
-- **Sayaçlar**: isabet ve ıskalama 16 bit (her biri 74HC161 ×4 eşzamanlı sayıcı, okuma 74HC541
-  ×2 tamponla), komut
-  çekme dahil her *kelime* erişimi bir kez sayılır (CPU'nun iki baytı aynı veriyolu döngüsüdür).
-  Önbellek kapalıyken sayılmaz. Simülatör arayüzü taşmayan toplamları da gösterir.
+- **Sayaçlar**: isabet ve ıskalama sayaçları 16 bittir (her biri 74HC161 ×4 eşzamanlı sayıcı,
+  okuma 74HC541 ×2 tamponla); komut çekme dahil her *kelime* erişimi bir kez sayılır (CPU'nun iki
+  baytı aynı veriyolu döngüsüdür). Önbellek kapalıyken sayılmaz. Simülatör arayüzü taşmayan
+  toplamları da gösterir.
 - **G/Ç** (`FF00–FFFF`) önbelleğe girmez.
 - Kapı seviyesi gerçekleme (bekleme üreteci, bayt sıralayıcı, zamanlama çizimi):
   [anakart-kartlari.md](anakart-kartlari.md).
@@ -238,17 +238,17 @@ yükler).
 VRAM iki 8 bitlik SRAM'dir (karakter / renk şeridi, adres bit 0 seçer): tarama tarafı bir
 karakter süresinde (318 ns) ikisini birlikte okur. Her karakter süresinin bir dilimi CPU'ya
 ayrılmıştır: yazma bir latch'te (74HC574) bekler ve o dilimde VRAM'e yazılır; okumada kart
-`VADDR` değişince baytı önceden okuma latch'ine getirir. CPU'nun iki erişimi arası en az bir
+`VADDR` değişince baytı önceden okuma latch'ine getirir. CPU'nun iki erişimi arasında en az bir
 komut (≥ 1 µs) olduğundan CPU hiç beklemez ve ekranda "kar" oluşmaz. Modelde VRAM erişimi
 anlıktır.
 
 **Piksel hattı.** VRAM karakter + renk → latch → karakter ROM'u (28C256, adres = kod·16 + tarama
 satırı) → font latch'i (74HC574, ROM'a tam bir karakter süresi kalsın diye) → 74HC166 kaydırma
-register'ı (8 piksel) → 74HC157 (bit 1 ise yazı, 0 ise zemin
-rengi nibble'ı) → IRGB → dirençli DAC → VGA R/G/B. Kahverengi için CGA'daki gibi küçük bir
-düzeltme (I = 0, R = G = 1, B = 0 iken yeşil yarıya). İmleç: iki 74HC688 sütun/satır
-sayaçlarını `CURSOR_X/Y` ile karşılaştırır; eşleşmede 14–15. tarama satırları zorla yazı
-rengindedir; yanıp sönme bir 74HC393 kare sayacının 4. bitinden.
+register'ı (8 piksel) → 74HC157 (bit 1 ise yazı, 0 ise zemin rengi nibble'ı) → IRGB → dirençli
+DAC → VGA R/G/B. Kahverengi için CGA'daki gibi küçük bir düzeltme yapılır (I = 0, R = G = 1,
+B = 0 iken yeşil yarıya iner). İmleç: iki 74HC688 sütun/satır sayaçlarını `CURSOR_X/Y` ile
+karşılaştırır; eşleşmede 14–15. tarama satırları yazı rengine zorlanır; yanıp sönme bir 74HC393
+kare sayacının 4. bitinden gelir.
 
 ### Karakter ROM'u ve font
 
@@ -268,7 +268,7 @@ rengindedir; yanıp sönme bir 74HC393 kare sayacının 4. bitinden.
 
 PS/2 seri çerçevesi 11 bittir (başlangıç, 8 veri LSB önce, tek eşlik, bitiş); klavye saati
 10–16,7 kHz. Kart veriyi saatin düşen kenarında bir 74HC595'e kaydırır, bir 74HC161 bitleri
-sayar; 11. bitte `READY` (74HC74) kurulur. `READY` 1 iken kart saat hattını açık-kollektörle
+sayar; 11. bitte `READY` (74HC74) kurulur. `READY` 1 iken kart saat hattını açık-kolektörle
 (74HC05) aşağı çeker (PS/2 "inhibit"): klavye sonraki baytı kendi tamponunda bekletir, bayt
 kaybolmaz. `KBD_DATA` okununca `READY` ve sayaç sıfırlanır, saat hattı bırakılır.
 
@@ -282,19 +282,19 @@ Web IDE ve CLI tarayıcının `KeyboardEvent.code` adlarından set 2 kodu üreti
 
 115200 baud 8N1 (bayt 10 bit = 86,8 µs = **347 CPU döngüsü**). Hız CPU saatine bağlıdır: kapı
 seviyesi G/Ç kartı bit süresini TCLK'den böler, bu yüzden 1 MHz'lik ilk kartta **28 800 baud** olur
-(bkz. [uretim.md](uretim.md)). Aşağıdaki osilatörlü tasarım ilk tahmindir. Bilgisayar tarafında CH340
-USB-UART köprüsü. 1,8432 MHz osilatör + 74HC4040 baud saati (16×), gönderici 74HC165 +
+(bkz. [uretim.md](uretim.md)). Aşağıdaki osilatörlü tasarım ilk tahmindir. Ana makine tarafında
+CH340 USB-UART köprüsü vardır. 1,8432 MHz osilatör + 74HC4040 baud saati (16×), gönderici 74HC165 +
 74HC161 bit sayacı, alıcı 74HC595 + 74HC161 ×2 (16× örnekleme ve bit sayacı) + 74HC74.
 (İstenirse yerine tek bir TL16C550 takılabilir; register haritası aynı kalacak şekilde
 seçici mantıkla.)
 
 - **TX**: `UART_DATA`'ya yazılan bayt gönderilir; `TX_EMPTY` bir bayt süresi 0 olur. Yazılım
   `TX_EMPTY`'yi bekleyip yazar (BIOS `uart_putc`).
-- **RX**: alınan bayt `UART_DATA`'da durur, `RX_READY` = 1. Tek baytlık alıcı: bir sonraki bayt
-  bir bayt süresi içinde okunmalı.
-- **Akış denetimi (RTS/CTS)**: `RX_READY` 1 iken kartın RTS# çıkışı pasiftir ve CH340'ın CTS#
-  girişine bağlıdır: köprü sonraki baytı bekletir, taşma olmaz. Model bunu böyle uygular: bayt
-  ancak RX boşken ve önceki okumadan en az bir bayt süresi sonra düşer. Önyükleyici protokolü
+- **RX**: alınan bayt `UART_DATA`'da durur, `RX_READY` = 1. Alıcı tek baytlıktır: alınan bayt,
+  sonraki bayt gelmeden (bir bayt süresi içinde) okunmalı.
+- **Akış denetimi (RTS/CTS)**: kartın RTS# çıkışı CH340'ın CTS# girişine bağlıdır; `RX_READY` 1
+  iken RTS# pasiftir: köprü sonraki baytı bekletir, taşma olmaz. Model bunu böyle uygular: bayt
+  ancak RX boşken ve önceki okumadan en az bir bayt süresi sonra gelir. Önyükleyici protokolü
   her kayıttan sonra yanıt beklediği için akış denetimi kapalı bir bağlantıda da çalışır (BIOS
   bir kayıt içinde karakter başına ≈ 120 döngü harcar, bayt süresi 347 döngü).
 
@@ -305,13 +305,13 @@ istemez, her bayt doğrudan yeni değerini alır:
 
 | İşlem | Nasıl |
 |---|---|
-| Bayt / sayfa yazma | `~WE` darbesiyle bayt çipin sayfa tamponuna yüklenir. Aynı 64 baytlık sayfaya (A14..A6 aynı) sonraki bayt **150 µs** (tBLC) içinde gelirse eklenir; gelmezse çip iç yazma döngüsünü başlatır (tWC ≤ 10 ms). Yüklenmeyen baytlar eski değerini korur |
+| Bayt / sayfa yazma | `~WE` darbesiyle bayt çipin sayfa tamponuna yüklenir. Aynı 64 baytlık sayfaya (A14..A6 aynı) sonraki bayt **150 µs** (tBLC) içinde gelirse eklenir; gelmezse çip iç yazma döngüsünü başlatır (tWC ≤ 10 ms). Yüklenmeyen baytlar eski değerlerini korur |
 | Durum | Yazma sürerken okunan bayt durumdur: D7 son yazılan baytın D7'sinin tersi (DATA yoklaması), D6 her okumada değişir (toggle biti) |
 | Koruma açma / korumalı yazma (SDP) | `AA→5555`, `55→2AAA`, `A0→5555`, ardından sayfanın baytları. Koruma açık kalır |
 | Koruma kapatma | `AA→5555`, `55→2AAA`, `80→5555`, `AA→5555`, `55→2AAA`, `20→5555` |
 
-Koruma açıkken diziden gelmeyen yazmalar yok sayılır: çalışan bir programın yanlışlıkla yaptığı
-yazma BIOS'u bozamaz. Programlayıcı (Deney 3) ve BIOS'un `F` komutu her sayfayı korumalı yazar;
+Koruma açıkken komut dizisi olmadan gelen yazmalar yok sayılır: çalışan bir programın yanlışlıkla
+yaptığı yazma BIOS'u bozamaz. Programlayıcı (Deney 3) ve BIOS'un `F` komutu her sayfayı korumalı yazar;
 çip fabrikadan korumasız gelir, ilk yazmada korumalı olur. Yazma döngüsü sürerken EEPROM'dan komut
 okunamaz: BIOS yazma rutinlerini RAM'e kopyalayıp oradan çalıştırır (bkz. bios.md, "EEPROM'a
 yazma"). Kimlik okuma yazılımla yapılamaz (A9'a 12 V ister).
@@ -352,10 +352,10 @@ bölücüsü de TCLK'yi sayar.
   süresi 0 olur). RX'te RTS/CTS akış denetimi modellenmiştir.
 - VRAM erişimi anlıktır (gerçek kartta CPU dilimi yüzünden en çok bir karakter süresi gecikir;
   CPU'yu bekletmez).
-- Video karesi 4 MHz CPU saatinden türetilir (60,00 Hz, faz sabit); gerçek kartta ayrı osilatör.
+- Video karesi 4 MHz CPU saatinden türetilir (60,00 Hz, faz sabit); gerçek kartta ayrı bir osilatör vardır.
 - Bayt yazmaları da (`SB`) 2 bekleme durumu sayılır (gerçek kartta tek bayt döngüsü daha kısa
   olabilir); G/Ç erişimleri bekleme durumsuzdur.
-- `VSTAT` bit1 (vsync bayrağı, W1C) ve sadece-yazılır register'ların `0xFF` okunması bu
+- `VSTAT` bit1 (vsync bayrağı, W1C) ve sadece yazılan register'ların `0xFF` okunması bu
   tasarımda tanımlanmıştır.
 - Kapı seviyesi saat, bellek ve önbellek kartları bu modelle erişim erişim ve komut komut aynıdır
   (değer, bekleme, bank, sayaç, etiket, EEPROM'un iç durumu); kalan küçük farklar (gerçek kart
@@ -375,7 +375,8 @@ m.renderText();               // VGA ekranı metin olarak
 m.cache.totalHits; m.waitCycles; m.cycles;
 ```
 
-Testler (`tests/machine.test.ts`): bank eşlemesi ve 1 MB fiziksel harita, 128 KB RAM'i CPU
-programıyla test, 28C256 (bayt ve sayfa yazma, tBLC, yazma döngüsü, DATA yoklaması, toggle biti,
-SDP, CPU'dan korumalı yazma), kendin yap bellek, UART, PS/2 kodları, zamanlayıcı, IRQ öncelik ve maske, vsync, VRAM portu,
-imleç, font, önbellek sayaçları ve **döngü sayısının birebir hesabı** (önbellek açık/kapalı).
+Testler (`tests/machine.test.ts`): bank eşlemesi ve 1 MB fiziksel harita, 128 KB RAM'in CPU
+programıyla testi, 28C256 (bayt ve sayfa yazma, tBLC, yazma döngüsü, DATA yoklaması, toggle biti,
+SDP, CPU'dan korumalı yazma), kendin yap bellek, UART, PS/2 kodları, zamanlayıcı, IRQ öncelik ve
+maske, vsync, VRAM portu, imleç, font, önbellek sayaçları ve **döngü sayısının birebir hesabı**
+(önbellek açık/kapalı).

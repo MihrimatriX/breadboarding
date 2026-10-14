@@ -17,7 +17,7 @@ sağlamsa `0x5A` yanar ve ardından kayan ışık başlar. Sahte bellek (Deney 6
   gereken bitlerin girişte ve çıkışta evirici çiftiyle ters saklanmasıyla elde edilir.
 - **8 bitlik çipe 16 bitlik kelime**: bayt sıralayıcı. Çift bayt bir 74HC574 mandalına alınır, tek
   bayt doğrudan geçer; A0'ı (`BSEL`) sıralayıcı sürer.
-- **Bekleme durumları**: önbellek kartının `~WAIT`'i, saat kartının W flip-flop'u; her bekleme turu
+- **Bekleme durumları**: önbellek kartının `~WAIT`'i, saat kartının W flip-flopu; her bekleme turu
   CPU döngüsünü tam 8 osilatör periyodu uzatır.
 - **Adres çözme**: 74HC688 ile G/Ç alanı (`FF00–FFFF`); tek bir 74HC138 ile beş bellek çipinden
   hangisinin seçileceği (EEPROM, RAM 0..3) ya da hiçbirinin seçilmemesi (boş bölge).
@@ -34,7 +34,7 @@ sağlamsa `0x5A` yanar ve ardından kayan ışık başlar. Sahte bellek (Deney 6
 - **Çip seçimi**: U425 (74HC138) `PA19`, `PA16`, `PA15`'i çözer; `PA17 = PA18 = 0` ve `~IO = 1`
   iken çalışır. `~Y0` EEPROM'u (`PA19..PA15 = 00000`), `~Y4..~Y7` RAM 0..3'ü (`100xx`) seçer. Başka
   her adreste hiçbir çip seçilmez: veriyolu çekme dirençleri (RN401) `0xFF` okutur, yazmalar kaybolur.
-- Her ana bellek erişimi **iki bekleme turu** alır. Önbellek kartının bekleme sayacı (U503) `~WAIT`'i
+- Her ana bellek erişimi iki bekleme turu alır. Önbellek kartının bekleme sayacı (U503) `~WAIT`'i
   iki tur düşük tutar; bellek kartının sıralayıcısı (U415) aynı `~WAIT` ve `TCLK`'den çift ve tek baytın
   sırasını çıkarır. Zaman çizimi: `cpu16/docs/anakart-kartlari.md` ("Bekleme durumlu bir erişim").
 - Bu deneyde önbellek yok: `C_EN` ve `C_HIT` GND'de, her okuma ana belleğe gider. Program yine de
@@ -43,9 +43,9 @@ sağlamsa `0x5A` yanar ve ardından kayan ışık başlar. Sahte bellek (Deney 6
   `FF00` ile karşılaştırır, yazma darbesi mandalı saatler; çıkışlar 8 LED'i sürer. G/Ç kartına
   (Deney 10) kadar programların tek çıkışı budur, sonra da hata ayıklama ışığı olarak kalır.
 - Program (`cpu16/kit/programlar/bellek-deneme.s`): her kelimeye `adres XOR bank·0x0101` yazar,
-  8 bankın hepsini yazıp sonra hepsini okur, sonra aynısını ters desenle yapar. RAM'i başka hiçbir
+  8 bankın hepsini yazıp sonra hepsini okur, ardından aynısını ters desenle yapar. RAM'i başka hiçbir
   şey için kullanmaz (yığın yok): RAM bozuksa bile program çalışır ve hatayı gösterir. Son olarak
-  boş bölgeden (bank 8, 16, 40, 48) `0xFFFF` okunmasını ister: bu banklarda `PA17` ya da `PA18` 1'dir;
+  boş bölgeden (bank 8, 16, 40, 48) `0xFFFF` okunmasını bekler: bu banklarda `PA17` ya da `PA18` 1'dir;
   biri U425'e ulaşmıyorsa orada EEPROM ya da RAM cevap verir.
 
 ## Kurulum adımları
@@ -55,10 +55,10 @@ sağlamsa `0x5A` yanar ve ardından kayan ışık başlar. Sahte bellek (Deney 6
    bayt sıralayıcı (U415–U419), EEPROM ve RAM soketleri (U420–U424), çekme dirençleri
    (RN401–RN403) ve tablodaki yapıştırıcı kapılar.
 3. Önbellek kartından yalnızca "G/Ç çözme" (U501, U502) ve "Bekleme ve sıralama" (U503–U505)
-   blokları ile tabloda "bu deneyde takılır" denen kapılar. `C_EN` ve `C_HIT`'i 10 kΩ ile GND'ye çek
+   bloklarını ve tabloda "bu deneyde takılır" denen kapıları kur. `C_EN` ve `C_HIT`'i 10 kΩ ile GND'ye çek
    (Deney 9'da önbelleğin kendisi sürer).
 4. Test kartının UART bloğu (U301, U302, U305–U307). U305'in Q0..Q7 bacaklarına (19, 18 … 12)
-   birer 1 kΩ + LED, katotlar GND'ye. Q7 (bacak 12) en soldaki LED olsun.
+   birer 1 kΩ + LED bağla, katotlar GND'ye. Q7 (bacak 12) en soldaki LED olsun.
 5. Programı bir 28C256'ya yaz (Deney 3'teki programlayıcıyla) ve çipi U420'ye tak:
    ```
    npm run cpu16 -- asm cpu16/kit/programlar/bellek-deneme.s -o bellek.hex
@@ -84,7 +84,7 @@ LED'ler hiç `0x20`'ye gelmiyorsa CPU programı EEPROM'dan okuyamıyordur (aşa�
 ## Simülatörde
 
 - `npm run cpu16 -- machine cpu16/kit/programlar/bellek-deneme.s --rom --led`: program EEPROM'a
-  yazılmış gibi BIOS'suz çalışır, FF00'a her yazılan değer bir LED satırı olarak 1 MHz zamanıyla basılır.
+  yazılmış gibi BIOS'suz çalışır, FF00'a yazılan her değer bir LED satırı olarak 1 MHz zamanıyla basılır.
 - Kapı seviyesi: `cpu16/tests/anakart-bellek.test.ts` bellek ve önbellek kartlarını kapı seviyesinde
   kurar ve her erişimi `Machine` modeliyle karşılaştırır (bank register'ları, RAM, EEPROM ve onun
   yazma döngüsü, bekleme).
@@ -98,7 +98,7 @@ LED'ler hiç `0x20`'ye gelmiyorsa CPU programı EEPROM'dan okuyamıyordur (aşa�
 | CPU hep bekliyor (CLK durmuş) | `~WAIT` bırakılmıyor: U503'ün CA/CB çıkışları; `TCLK` önbellek kartına geliyor mu |
 | Rastgele değerler, program kayıyor | Bayt sırası: U415'te `BSEL`; U417 çift baytı t = 6'da alıyor mu. EEPROM'un A0'ı `BSEL`'e bağlı olmalı, CPU'nun A0'ına değil |
 | Hep aynı bankta hata | Hangi RAM çipi: bank 32–33 U421, 34–35 U422, 36–37 U423, 38–39 U424. Bir çipin iki bankından yalnız biri hatalıysa o çipin A14'ü (`PA14`) |
-| İki çip birbirinin yerine (ör. bank 34 hatası bank 32 yazılırken) | U425'in A0/A1 girişleri (`PA15`, `PA16`) ya da RAM çiplerinin `~CE`'leri yer değiştirmiş |
+| İki çip birbirinin yerine seçiliyor (ör. bank 34 hatası bank 32 yazılırken) | U425'in A0/A1 girişleri (`PA15`, `PA16`) ya da RAM çiplerinin `~CE`'leri yer değiştirmiş |
 | Okuma geçişinin başında hata (bank 32) | Banklar birbirinin üstüne yazıyor: U408–U410 seçicileri ya da bank register'ı (U405) |
 | Hep aynı bitte hata (r0 XOR r2 tek bit) | O veri hattı: `MD0..7` ve U418/U419'un yönü (`DIR`); simülatörde r0 okunan, r2 beklenen |
 | Hatalı bank her RESET'te değişiyor | Gürültü ya da zamanlama: dekuplaj kondansatörleri, kısa kablolar; 4 MHz osilatörle (CPU 0,5 MHz) tekrar dene |

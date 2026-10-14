@@ -101,11 +101,11 @@ Inputs tied to VCC are fed from a "tie-high" cell (a PMOS with its gate at GND):
 
 Clock oscillator (4 MHz crystal oscillator can), 555 (step clock), reset button RC, decoupling capacitors, LEDs and resistors, VGA connector and its resistor color DAC, PS/2 connector, USB-UART module (CH340). The simulation models these as ideal signal sources; the phase 9 BOM lists them.
 
-The CPU board's debug indicators belong here too: 39 3 mm LEDs (each with 1 kΩ), 26 10-segment LED bar
-graphs (`DISP_BAR_10`, DIP-20; e.g. Kingbright DC-10YWA, Broadcom HDSP-4840; pins 1–10 are the segment
-anodes, pins 20–11 the cathodes; 16 of them show the register contents) and, in front of them, 26 8 × 1 kΩ
-isolated resistor networks (`RN_1K_ISO_8`, DIP-16, e.g. Bourns 4116R-1-102; resistor k sits between pin k
-and pin 17 − k). The simulation does not know the resistor values: whether an LED or a segment is lit is
+The CPU board's debug indicators belong here too: 39 LEDs (3 mm, each with 1 kΩ), 26 LED bar graphs with
+10 segments each (`DISP_BAR_10`, DIP-20; e.g. Kingbright DC-10YWA, Broadcom HDSP-4840; pins 1–10 are the
+segment anodes, pins 20–11 the cathodes; 16 of them show the register contents) and, in front of them, 26
+isolated resistor networks of 8 × 1 kΩ (`RN_1K_ISO_8`, DIP-16, e.g. Bourns 4116R-1-102; resistor k sits
+between pin k and pin 17 − k). The simulation does not know the resistor values: whether an LED or a segment is lit is
 read from the signal at the other end of the resistor ([kartlar.en.md](kartlar.en.md)).
 
 ## Adding a new chip

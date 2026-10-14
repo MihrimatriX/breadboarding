@@ -20,7 +20,7 @@ npx vitest run cpu16/tests/chips.test.ts
 
 ## Nasıl doğrulanıyor (Faz 3 "bitti" ölçütü)
 
-1. **Kapı modeli = veri sayfası.** Her çipin fonksiyon tablosu kapı devresinden bağımsız olarak koda yazıldı (`ref`). Birleşimsel çiplerde 12 girişe kadar **bütün kombinasyonlar** gri kod sırasıyla, diğerlerinde ve sıralı çiplerde 2 × 3000 rastgele adım (her adımda tek pin değişir) karşılaştırılır.
+1. **Kapı modeli = veri sayfası.** Her çipin fonksiyon tablosu kapı devresinden bağımsız olarak koda yazıldı (`ref`). Birleşimsel çiplerde 12 girişe kadar **bütün kombinasyonlar** Gray kodu sırasıyla, diğerlerinde ve sıralı çiplerde 2 × 3000 rastgele adım (her adımda tek pin değişir) karşılaştırılır.
 2. **Transistör modeli = kapı modeli.** Aynı adımlar kapılardan açılan CMOS netlist'i üzerinde Silikon3D'nin `SwitchLevelEngine`'inde (6502'yi çalıştıran motor) koşar; her adımda bütün çıkışlar aynı olmalı.
 3. **Pin düzeni**: her kılıfta pinler 1..N, GND N/2'de, VCC N'de (74HC ve JEDEC bellek düzeni); KiCad sembolündeki pin numaraları kütüphaneyle birebir.
 4. **Veri sayfası satırları**: 74HC138, 283, 161 (yükle/say/TC), 74 (ikisi birden aktif), 595 (kaydır/mandalla/Z), 273 için tablo satırları ayrıca yazıldı.
@@ -55,7 +55,7 @@ Güç verildiğinde flip-flopların değeri **bilinmiyor (X)** kabul edilir; ver
 | 74HC153 | DIP-16 | 14 | 108 | 2 × (4'ten 1'e seçici) |
 | 74HC157 | DIP-16 | 14 | 92 | 4 × (2'den 1'e seçici) |
 | 74HC283 | DIP-16 | 30 | 260 | 4 bit ikili tam toplayıcı (ileri bakışlı elde) |
-| 74HC688 | DIP-20 | 10 | 116 | 8 bit eşitlik karşılaştırıcı |
+| 74HC688 | DIP-20 | 10 | 116 | 8 bit eşitlik karşılaştırıcısı |
 | 74HC74 | DIP-14 | 2 | 72 | 2 × D flip-flop (asenkron preset ve clear) |
 | 74HC161 | DIP-16 | 26 | 309 | 4 bit senkron ikili sayıcı (asenkron reset) |
 | 74HC393 | DIP-14 | 12 | 297 | 2 × 4 bit dalgalı (ripple) ikili sayıcı (düşen kenar, asenkron temizleme) |
@@ -73,7 +73,7 @@ Güç verildiğinde flip-flopların değeri **bilinmiyor (X)** kabul edilir; ver
 | 28C256 | DIP-28 | - | - | 32 KB paralel EEPROM (32K × 8, 5 V, bayt/sayfa yazma; 62256 ile aynı bacak düzeni) |
 | SST39SF010A | DIP-32 | - | - | 128 KB Flash (128K × 8, 5 V, komutla programlanır) |
 
-"Kapı" sayısında flip-flop ve mandal tek eleman sayılır; transistör sayısı onların açılmış halini içerir. Gerçek 74HC çiplerinde giriş koruma diyotları ve tamponlanmış çıkış katları da vardır, mantığı değiştirmedikleri için modellenmez; bu yüzden gerçek transistör sayısı biraz daha yüksektir.
+"Kapı" sayısında flip-flop ve mandal tek eleman sayılır; transistör sayısı onların açılmış hâlini içerir. Gerçek 74HC çiplerinde giriş koruma diyotları ve tamponlanmış çıkış katları da vardır. Mantığı değiştirmedikleri için modellenmezler; bu yüzden gerçek transistör sayısı biraz daha yüksektir.
 
 CPU16'da her çipin nerede kullanıldığı `usage` alanında ve KiCad sembolünün `CPU16_Kullanim` özelliğinde yazılı.
 
@@ -95,7 +95,7 @@ paketlenir. 74HC20 ve 74HC21'in 3. ve 11., 74HC30'un 9., 10. ve 13. bacakları b
 | D flip-flop | 7474 yapısı: 6 adet 3 girişli NAND (kenar tetiklemeli) | 36 |
 | D mandalı | 4 NAND + 1 NOT | 18 |
 
-VCC'ye bağlı girişler bir "tie-high" hücresinden beslenir (kapısı GND'de bir PMOS): anahtar seviyesi motor güç raylarını yeniden hesaplamaz, gerçek çiplerde de sabit girişler böyle bağlanır.
+VCC'ye bağlı girişler bir "tie-high" hücresinden beslenir (kapısı GND'de bir PMOS): anahtar seviyesi motoru güç raylarını yeniden hesaplamaz, gerçek çiplerde de sabit girişler böyle bağlanır.
 
 ## Kütüphanede olmayan parçalar (BOM'da var, simülasyonda ideal)
 

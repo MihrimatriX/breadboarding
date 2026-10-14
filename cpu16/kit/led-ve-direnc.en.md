@@ -95,7 +95,7 @@ errors only (FAULT), so that at a glance it says "something went wrong".
 ![Signal, resistor, LED and GND: node voltages and current](gorseller/seri-direnc.svg)
 
 Once the LED's forward voltage (Vf) is exceeded, its current is set almost entirely by the resistor in
-the circuit. Without a resistor, the 74HC output and the LED draw more current than the output
+the circuit. Without a resistor, the LED draws more current from the 74HC output than the output
 transistor can handle: the output voltage collapses, the chip heats up, and the LED can die. The
 calculation takes four steps:
 

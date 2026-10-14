@@ -8,13 +8,13 @@ Bilgisayarın RAM'i dört 62256'dır: her biri tek bir entegrede 32 768 bayt. Bu
 yapan bir belleği açıkta kurarız: 16 bayt, her bayt bir 74HC574. Kart G/Ç alanında `FF40–FF4F`'te
 durur; CPU onu sıradan bellek gibi okur ve yazar. Bir 62256'nın içindeki üç şey burada ayrı ayrı
 görünür: bitleri tutan hücreler, hangi baytın seçileceğine karar veren adres çözücü ve bütün
-hücrelerin paylaştığı veri hattı. Kart bilgisayarın çalışması için gerekmez; 13 deneyin
-bilgisayarına sonradan takılır.
+hücrelerin paylaştığı veri hattı. Kart bilgisayarın çalışması için gerekmez; ilk 13 deneyde
+kurulan bilgisayara sonradan takılır.
 
 ## Ne öğreneceksin
 
 - **Bellek hücresi**: bir bit bir D flip-flop'tur; 74HC574 sekiz flip-flop ve üç durumlu çıkışla bir
-  bayttır. Kapı modelinde bir 574 355 transistör eder (bit başına ≈ 44); 62256'nın hücresi 6
+  bayttır. Kapı modelinde bir 574, 355 transistör eder (bit başına ≈ 44); 62256'nın hücresi 6
   transistördür. 16 bayt için 22 entegre, 32 KB için bir entegre: belleğin neden çip içinde
   yapıldığı buradan görünür.
 - **Adres çözme**: 74HC138 üç adres bitini sekiz seçim hattına açar. Bir çözücü kartı seçer
@@ -44,7 +44,7 @@ bilgisayarına sonradan takılır.
   `KE` → U805 → `DE`, tek bayt `KO` → U806 → `DO`. Bayt okumasında CPU A0'a göre baytı seçer;
   okumanın yan etkisi yoktur.
 - **Tampon yönü**: U805/U806'nın `DIR`'ı `~MRD`'dir. Yüksekken (yazma ya da boşta) veri veriyolundan
-  karta (`DE` → `KE`), düşükken karttan veriyoluna akar. İzinleri (`~OE`) `~K_G`: kart seçili değilken
+  karta (`DE` → `KE`), düşükken karttan veriyoluna akar. İzinleri (`~OE`) `~K_G`'dir: kart seçili değilken
   veriyolundan tamamen ayrıdır. 574'lerin D ve Q bacakları aynı şeride bağlıdır; Q'lar yalnız okumada
   açılır, yazmada şeridi tampon sürer.
 - **Zamanlama**: okuma yolu U804 (`~MRD` → `~K_RDk`), 574'ün `~OE` → Q gecikmesi ve 245'tir.
@@ -61,7 +61,7 @@ bilgisayarına sonradan takılır.
 2. Hücreler bayt bayt: çift baytlar (U807 = FF40, U809 = FF42 … U821 = FF4E) `KE` şeridinde, tek
    baytlar (U808 = FF41 … U822 = FF4F) `KO` şeridinde. Her 574'ün D0..D7 (bacak 2–9) ve Q0..Q7
    (bacak 19–12) bacakları aynı şeridin aynı bitine bağlanır.
-3. Deneme programını bir 28C256'ya yaz (Deney 3'teki programlayıcıyla). BIOS'un çipini sökmemek
+3. Deneme programını bir 28C256'ya yaz (Deney 3'teki programlayıcıyla). BIOS'un çipini silmemek
    için ikinci bir 28C256 kullan; U420'ye bu çipi tak:
    ```
    npm run cpu16 -- asm cpu16/kit/programlar/kyb-deneme.s -o kyb.hex

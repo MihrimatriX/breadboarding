@@ -32,7 +32,7 @@ hane hiç sönmez (sıfır "0" görünür). İşlem LED'leri (yeşil) hangi işl
 
 ## Bloklar
 
-Sayılar 216 entegre, hepsi yaygın 74HC: 74HC00, 02, 04, 08, 30, 32, 86 (kapılar), 74HC283 (4 bit
+Toplam 216 entegre, hepsi yaygın 74HC: 74HC00, 02, 04, 08, 30, 32, 86 (kapılar), 74HC283 (4 bit
 toplayıcı), 74HC157 ve 153 (seçiciler), 74HC4511 (gösterge sürücüsü).
 
 ![8 bit hesap makinesi: mimari (blok) diyagramı](img/mimari-hesap.svg)
@@ -40,7 +40,7 @@ toplayıcı), 74HC157 ve 153 (seçiciler), 74HC4511 (gösterge sürücüsü).
 Blok diyagramı: kutular aşağıdaki bloklar (içindeki entegreler ve sayıları devreden), çizgiler aralarındaki
 yollar; ok sürenden okuyana. Her kutunun blokları ve her yolun netleri netlistle denetlenir
 (`hesap8/tests/mimari.test.ts`); devre değişince `npm run cpu16 -- mimari hesap` resmi yeniler.
-Etkileşimli hali uygulamanın Mimari bölümünde (`#mimari/hesap`): kutuya tıklayınca entegreler çip çip,
+Etkileşimli hâli uygulamanın Mimari bölümünde (`#mimari/hesap`): kutuya tıklayınca entegreler çip çip,
 "3D'de göster" ile kartta yeri. Diyagramların genel anlatımı: [cpu16/docs/mimari.md](../../cpu16/docs/mimari.md).
 
 | Blok | Entegre | Ne yapar |
@@ -79,7 +79,7 @@ pp[i][j] = A[j] · B[i], 64 AND kapısı (16 × 74HC08). Satırlar sırayla topl
 
 ### Bölme
 
-Okulda öğrenilen uzun bölmenin ikilik hali, geri yüklemeli (restoring). 8 aynı basamak, A7'den
+Okulda öğrenilen uzun bölmenin ikilik hâli, geri yüklemeli (restoring). 8 aynı basamak, A7'den
 A0'a: kalan bir bit sola kayar, A'nın sıradaki biti sağdan girer; kalan ≥ B ise B çıkarılır ve
 bölümün o biti 1 olur, değilse kalan olduğu gibi kalır.
 
@@ -99,7 +99,7 @@ bitler yalnız çarpmada.
 
 ### Onluğa çevirme ("3 ekle ve kaydır")
 
-Göstergeler onluk, sayılar ikilik. Dönüşüm double dabble algoritmasının birleşimsel hali: ikilik
+Göstergeler onluk, sayılar ikilik. Dönüşüm double dabble algoritmasının birleşimsel hâli: ikilik
 sayı en anlamlı bitten başlayarak onluk hanelere bit bit kaydırılır; her kaydırmadan önce 5 ya da
 daha büyük olan her haneye 3 eklenir (kaydırınca 2 × 5 + 6 = 16, yani onluk taşma doğru olur).
 
@@ -128,7 +128,7 @@ geçmez; lamba testini kendi OR kapısıyla alır. HATA LED'i sonuç göstergesi
 Saat yok; soru "anahtarı çevirdikten ne kadar sonra göstergeler doğru?". Statik analiz
 (`npm run hesap8 -- ozet --yol`, gecikmeler 74HC veri sayfalarından, 4,5 V, 25 °C):
 
-- En uzun yol: Çarpma → Sonuç seçici → Onluğa çevirme (sonuç) → Gösterge. 74 çip geçer.
+- En uzun yol: Çarpma → Sonuç seçici → Onluğa çevirme (sonuç) → Gösterge. 74 çipten geçer.
 - Tipik 887 ns, en kötü 2,05 µs. Göz hiçbir geçişi göremez; anahtar sıçraması (bounce) bile
   devreden yavaştır.
 
