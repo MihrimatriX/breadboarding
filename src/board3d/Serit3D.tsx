@@ -1,6 +1,7 @@
 // Şerit kablo ve arka panel yolları 3D'de: breadboard'da panolar arası 64 damarlı kablo, PCB'de arka
-// panelin yolları ve kartları arka panele bağlayan kısa kablolar. Damarlar şeridin dokusu (damar başına 3
-// piksel damar + 1 piksel oluk), renkleri canlı; uzaktan mipmap ile harelenmez. Kablo dik açıyla dönerken
+// panelin yolları ve kartların konnektöründen şeride inen dilleri. Damarlar şeridin dokusu (damar başına 4
+// piksel), uzaktan mipmap ile harelenmez. Seçim yokken gerçek görünüm (gri kablo, 1. damarı kırmızı çizgili;
+// maskeli yeşil bakır); canlı renkler "hepsi" kipinde ve seçili damarda. Kablo dik açıyla dönerken
 // 45° katlanır: koldaki k. damar koridordaki k. damarın üstünde biter. Bir damara tıklayınca sinyali seçilir
 // (useKart.net): o damar baştan sona, her şeyin üstünde parlayan bir izle çizilir, öbürleri soluklaşır;
 // sinyalin uçları olan kartların soketleri çerçevelenir ve etiketlerine uç sayısı yazılır; yan panelde hangi
@@ -24,7 +25,7 @@ const S = 0.1;
 /** damar başına doku pikseli: 3 damar, 1 oluk (64 × 4 = 256, mipmap için 2'nin kuvveti) */
 const PIKSEL = 4;
 
-/** kablo: gri yalıtım, damarlar canlı seviyeye çalar; bakır: arka panelin koyu zemininde bakır yollar */
+/** kablo: gri yalıtım (1. damar kırmızı çizgili); bakır: arka panelin koyu zemininde maskeli bakır yollar */
 export type Palet = "kablo" | "bakir";
 const TABAN: Record<Palet, Color> = { kablo: new Color("#a3a8b0"), bakir: new Color("#13261d") };
 const OLUK: Record<Palet, Color> = { kablo: new Color("#80858d"), bakir: new Color("#13261d") };
@@ -34,6 +35,8 @@ const MAVI = new Color("#2f6fd6");
 const KIRMIZI_CIZGI = new Color("#c23030");
 const BILINMEYEN = new Color("#7d838c");
 const BAKIR = new Color("#a07a3a");
+/** arka panelin bakırı lehim maskesinin altında (zemin #13261d) */
+const MASKE_BAKIR = new Color("#2c6143");
 const SEVIYE = LEVEL_COLOR.map((c) => new Color(c));
 /** sinyalin uçları olan kartların soketlerinin çerçevesi ve etiketi */
 const VURGU = "#ffd34d";
@@ -42,20 +45,26 @@ const tmpC = new Color();
 /** Bir damarın seviyesi: −1 bağlantısız, 0, 1, 2 (Z), 3 (X) */
 const seviye = (net: number, v: Uint8Array | null) => (net < 0 ? -1 : net <= 1 ? net : v ? (v[net] ?? 3) : 3);
 
-/** Bir damarın rengi: seviyesi (0, 1, Z, X), paleti; seçili sinyal varsa öbürleri soluk */
-function damarRengi(c: Color, net: number, k: number, v: Uint8Array | null, palet: Palet, vurgu: number | null): Color {
+/**
+ * Bir damarın rengi. Seçim yokken gerçek görünüm: gri kablo (1. damar kırmızı çizgili), arka panelde maskenin
+ * altında yeşil bakır. Canlı renk (seviyesi: 0, 1, Z, X) "hepsi" kipinde bütün damarlarda, seçili sinyalde
+ * yalnız onda; seçili sinyal varken öbürleri soluk.
+ */
+function damarRengi(c: Color, net: number, k: number, v: Uint8Array | null, palet: Palet, vurgu: number | null, canli: boolean): Color {
   const lv = seviye(net, v);
-  if (palet === "kablo") {
-    // 1. damar kırmızı çizgili (canlı değeri yoksa); seçili damar yalıtımsız parlak
-    c.copy(lv === 1 ? SEVIYE[1] : lv === 0 ? MAVI : k === 0 ? KIRMIZI_CIZGI : BILINMEYEN);
-    if (vurgu === null) c.lerp(TABAN.kablo, k === 0 && lv < 0 ? 0 : 0.45);
-  } else if (lv < 0) c.copy(TABAN.bakir);
-  else {
-    c.copy(lv === 1 ? SEVIYE[1] : lv === 0 ? BAKIR : SEVIYE[lv]);
-    // seçim yokken yollar maskenin altında soluk: arka panel kartlardan öne çıkmasın
-    if (vurgu === null) c.lerp(TABAN.bakir, 0.4);
-  }
-  if (vurgu !== null && net !== vurgu) c.lerp(TABAN[palet], SOLUK[palet]);
+  const secili = vurgu !== null && net === vurgu;
+  if (secili || canli) {
+    if (palet === "kablo") {
+      c.copy(lv === 1 ? SEVIYE[1] : lv === 0 ? MAVI : k === 0 ? KIRMIZI_CIZGI : BILINMEYEN);
+      if (!secili) c.lerp(TABAN.kablo, k === 0 && lv < 0 ? 0 : 0.45);
+    } else if (lv < 0) c.copy(TABAN.bakir);
+    else {
+      c.copy(lv === 1 ? SEVIYE[1] : lv === 0 ? BAKIR : SEVIYE[lv]);
+      if (!secili) c.lerp(TABAN.bakir, 0.4);
+    }
+  } else if (palet === "kablo") c.copy(k === 0 ? KIRMIZI_CIZGI : TABAN.kablo);
+  else c.copy(lv < 0 ? TABAN.bakir : MASKE_BAKIR);
+  if (vurgu !== null && !secili) c.lerp(TABAN[palet], SOLUK[palet]);
   return c;
 }
 
@@ -73,7 +82,7 @@ function useSeciliDamar(netler: Int32Array): number {
   return net !== null && net > 1 ? netler.indexOf(net) : -1;
 }
 
-/** Damar dokusu: canlı değerler ya da seçili net değişince yeniden boyanır */
+/** Damar dokusu: canlı değerler, seçili net ya da tel kipi değişince yeniden boyanır */
 function useDamarDokusu(netler: Int32Array, palet: Palet): DataTexture {
   const doku = useMemo(() => {
     const t = new DataTexture(new Uint8Array(DAMAR * PIKSEL * 4), DAMAR * PIKSEL, 1, RGBAFormat);
@@ -86,9 +95,10 @@ function useDamarDokusu(netler: Int32Array, palet: Palet): DataTexture {
   }, []);
   useEffect(() => () => doku.dispose(), [doku]);
   const net = useKart((s) => s.net);
+  const canli = useKart((s) => s.wires) === "hepsi";
   const surum = useRef("");
   useFrame(() => {
-    const anahtar = `${liveNets.version}|${net}`;
+    const anahtar = `${liveNets.version}|${net}|${canli}`;
     if (surum.current === anahtar) return;
     surum.current = anahtar;
     const vurgu = net !== null && netler.includes(net) ? net : null;
@@ -98,7 +108,7 @@ function useDamarDokusu(netler: Int32Array, palet: Palet): DataTexture {
       data.set([h >> 16, (h >> 8) & 255, h & 255, 255], 4 * i);
     };
     for (let k = 0; k < DAMAR; k++) {
-      damarRengi(tmpC, netler[k], k, liveNets.values, palet, vurgu);
+      damarRengi(tmpC, netler[k], k, liveNets.values, palet, vurgu, canli);
       // kabloda damar 3 piksel, oluk 1; arka panelde bakır yol 2 piksel, arası 2 (yollar ince)
       const dolu = palet === "kablo" ? PIKSEL - 1 : PIKSEL / 2;
       for (let p = 0; p < PIKSEL; p++) yaz(k * PIKSEL + p, p < dolu ? tmpC : OLUK[palet]);

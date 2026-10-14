@@ -43,7 +43,8 @@ import type { KaziIstegi, KaziYaniti } from "./pcbYol.worker";
 const S = 0.1;
 const BODY_H = 0.32;
 const BODY_Y = 0.05;
-const DIE_Y = 2.2;
+/** kalıp çipin gövdesinin üstünde, kapağı açılmış bir çip gibi */
+const DIE_Y = BODY_Y + BODY_H + 0.012;
 const PIN_TOP = 0.24;
 
 const levelColors = LEVEL_COLOR.map((c) => new Color(c));
@@ -428,55 +429,83 @@ interface Kazima {
 }
 const kazimalar = new WeakMap<object, Kazima>();
 
-/** Yerleşimin yollarını kazımaya başlar (başlamışsa durumunu verir); kart içi kenarlar, besleme hariç */
+/**
+ * Yerleşimin yollarını kazımaya başlar (başlamışsa durumunu verir); kart içi kenarlar, besleme hariç. Kartlar
+ * birbirinden bağımsız: her kart kendi worker'ında, aynı anda (bütün bilgisayar en büyük kartın süresinde).
+ */
 function kazimaBaslat(lay: BoardLayout): Kazima {
   const var_ = kazimalar.get(lay);
   if (var_) return var_;
   const d: Kazima = { partiler: [], bitti: false };
   kazimalar.set(lay, d);
-  const istek: KaziIstegi = { lay: { cards: lay.cards, chips: lay.chips, passives: lay.passives }, edges: allWires(netEnds()).filter(kartIci) };
-  const wk = new Worker(new URL("./pcbYol.worker.ts", import.meta.url), { type: "module" });
-  wk.onmessage = (e: MessageEvent<KaziYaniti>) => {
-    if (e.data.tip === "parti") d.partiler.push(e.data.kazintilar);
-    else {
-      d.bitti = true;
-      wk.terminate();
-    }
-  };
-  wk.postMessage(istek);
+  const kartlar = new Map<string, WireEdge[]>();
+  for (const e of allWires(netEnds()).filter(kartIci)) {
+    let l = kartlar.get(e.a.card);
+    if (!l) kartlar.set(e.a.card, (l = []));
+    l.push(e);
+  }
+  let kalan = kartlar.size;
+  for (const [kart, edges] of kartlar) {
+    const istek: KaziIstegi = {
+      lay: { cards: lay.cards.filter((c) => c.name === kart), chips: lay.chips.filter((c) => c.card === kart), passives: lay.passives.filter((p) => p.card === kart) },
+      edges,
+    };
+    const wk = new Worker(new URL("./pcbYol.worker.ts", import.meta.url), { type: "module" });
+    wk.onmessage = (e: MessageEvent<KaziYaniti>) => {
+      if (e.data.tip === "parti") d.partiler.push(e.data.kazintilar);
+      else {
+        wk.terminate();
+        d.bitti = --kalan === 0;
+      }
+    };
+    wk.postMessage(istek);
+  }
   return d;
 }
 
-/** yolun genişliği (mm), katmanların yüksekliği (dünya): alt katman en altta, üstte yanan yollar; pedler 0,008'e kadar */
-const YOL_W = 0.55;
-const YANAN_W = 0.9;
-const VIA_R = 0.5;
+/** yolun genişliği ve vianın yarıçapı (mm), katmanların yüksekliği (dünya): alt katman en altta, üstte yanan yollar; pedler 0,008'e kadar */
+const YOL_W = 0.45;
+const YANAN_W = 0.8;
+const VIA_R = 0.42;
 const KAT_Y = { alt: 0.0005, ust: 0.0012, via: 0.0019, yanan: 0.0025 };
-/** lehim maskesinin altındaki bakır: üst katman açık yeşil, alt katman kartın içinden soluk, via kalay */
-const BAKIR_RENK = { ust: new Color("#2e7a50"), alt: new Color("#174a33"), via: new Color("#b9a35a") };
+/** lehim maskesinin altındaki bakır (kart #0f3d2c): üst katman bir ton açık, alt katman kartın içinden zor seçilir, via halkası biraz parlak */
+const BAKIR_RENK = { ust: new Color("#1f5d3d"), alt: new Color("#154530"), via: new Color("#3f7552") };
 
-/** Kazıntıların dörtgenleri ve köşe başına netin numarası ve türü (0 üst, 1 alt, 2 via) */
+/** Kazıntıların üçgenleri ve köşe başına netin numarası ve türü (0 üst, 1 alt, 2 via) */
 interface KaziAgi {
   geo: BufferGeometry;
   net: Int32Array;
   tur: Uint8Array;
 }
 
-/** Her parça kare uçlu bir dörtgen (köşelerde parçalar birleşir), her via küçük bir kare */
+/** Her parça kare uçlu bir dörtgen (köşelerde parçalar birleşir), her via sekizgen bir disk */
 function kaziGeometrisi(list: readonly Kazinti[], w: (x: number, y: number) => [number, number], genislik: number, yanan: boolean): KaziAgi {
   const pos: number[] = [];
+  const idx: number[] = [];
   const nets: number[] = [];
   const tur: number[] = [];
   const h = genislik / 2;
+  const kose = (px: number, py: number, y: number, n: number, t: number) => {
+    const [wx, wz] = w(px, py);
+    pos.push(wx, y, wz);
+    nets.push(n);
+    tur.push(t);
+    return pos.length / 3 - 1;
+  };
+  // üçgenler yukarıdan bakınca saat yönünün tersine: yüz yukarı
   const dortgen = (x0: number, y0: number, x1: number, y1: number, y: number, n: number, t: number) => {
     const l = Math.hypot(x1 - x0, y1 - y0) || 1;
     const ux = ((x1 - x0) / l) * h, uy = ((y1 - y0) / l) * h;
-    for (const [px, py] of [[x0 - ux - uy, y0 - uy + ux], [x0 - ux + uy, y0 - uy - ux], [x1 + ux + uy, y1 + uy - ux], [x1 + ux - uy, y1 + uy + ux]]) {
-      const [wx, wz] = w(px, py);
-      pos.push(wx, y, wz);
-      nets.push(n);
-      tur.push(t);
-    }
+    const a = kose(x0 - ux - uy, y0 - uy + ux, y, n, t);
+    kose(x0 - ux + uy, y0 - uy - ux, y, n, t);
+    kose(x1 + ux + uy, y1 + uy - ux, y, n, t);
+    kose(x1 + ux - uy, y1 + uy + ux, y, n, t);
+    idx.push(a, a + 2, a + 1, a, a + 3, a + 2);
+  };
+  const disk = (cx: number, cy: number, r: number, y: number, n: number) => {
+    const m = kose(cx, cy, y, n, 2);
+    for (let k = 0; k < 8; k++) kose(cx + r * Math.cos((k * Math.PI) / 4), cy + r * Math.sin((k * Math.PI) / 4), y, n, 2);
+    for (let k = 0; k < 8; k++) idx.push(m, m + 1 + ((k + 1) % 8), m + 1 + k);
   };
   list.forEach((k, i) => {
     // aynı çizgiyi paylaşan yollar titremesin: her yolun kendi küçük yükseklik farkı
@@ -484,11 +513,8 @@ function kaziGeometrisi(list: readonly Kazinti[], w: (x: number, y: number) => [
     for (const [p, t] of [[k.alt, 1], [k.ust, 0]] as const) {
       for (let j = 0; j + 3 < p.length; j += 4) dortgen(p[j], p[j + 1], p[j + 2], p[j + 3], (yanan ? KAT_Y.yanan : t ? KAT_Y.alt : KAT_Y.ust) + dy, k.net, t);
     }
-    for (let j = 0; j + 1 < k.via.length; j += 2) dortgen(k.via[j] - VIA_R + h, k.via[j + 1], k.via[j] + VIA_R - h, k.via[j + 1], (yanan ? KAT_Y.yanan : KAT_Y.via) + dy, k.net, 2);
+    for (let j = 0; j + 1 < k.via.length; j += 2) disk(k.via[j], k.via[j + 1], yanan ? VIA_R * 1.3 : VIA_R, (yanan ? KAT_Y.yanan : KAT_Y.via) + dy, k.net);
   });
-  const idx: number[] = [];
-  // yukarıdan bakınca saat yönünün tersi: yüz yukarı
-  for (let q = 0; q < pos.length / 12; q++) idx.push(4 * q, 4 * q + 2, 4 * q + 1, 4 * q, 4 * q + 3, 4 * q + 2);
   const geo = new BufferGeometry();
   geo.setAttribute("position", new BufferAttribute(new Float32Array(pos), 3));
   geo.setAttribute("normal", new BufferAttribute(new Float32Array(pos.length).map((_, i) => (i % 3 === 1 ? 1 : 0)), 3));
@@ -604,8 +630,9 @@ function Die({ chip }: { chip: ChipPlace }) {
   const bonds = useRef<LineSegments>(null);
   const version = useRef(-1);
   const [cx, cz] = w(chip.x + chip.w / 2, chip.y + chip.h / 2);
-  const dieW = Math.min(9, Math.max(5, ins.width * 0.012));
-  const s = dieW / ins.width;
+  // gövdeye sığar (komşu çiplerin üstünü örtmez); en-boy oranı kalıbın kendisi
+  const s = Math.min((chip.w * S * 0.92) / ins.width, (chip.h * S * 0.82) / ins.height);
+  const dieW = ins.width * s;
   const dieD = ins.height * s;
   const X = (x: number) => cx - dieW / 2 + x * s;
   const Z = (y: number) => cz - dieD / 2 + y * s;
@@ -615,7 +642,7 @@ function Die({ chip }: { chip: ChipPlace }) {
     const nets: number[] = [];
     for (const wr of ins.wires) {
       for (let k = 0; k + 3 < wr.points.length; k += 2) {
-        pos.push(X(wr.points[k]), DIE_Y + 0.012, Z(wr.points[k + 1]), X(wr.points[k + 2]), DIE_Y + 0.012, Z(wr.points[k + 3]));
+        pos.push(X(wr.points[k]), DIE_Y + 0.011, Z(wr.points[k + 1]), X(wr.points[k + 2]), DIE_Y + 0.011, Z(wr.points[k + 3]));
         nets.push(wr.net, wr.net);
       }
     }
@@ -644,8 +671,8 @@ function Die({ chip }: { chip: ChipPlace }) {
 
   useLayoutEffect(() => {
     ins.gates.forEach((g, i) => {
-      tmpO.position.set(X(g.x + g.w / 2), DIE_Y + 0.03, Z(g.y + g.h / 2));
-      tmpO.scale.set(g.w * s, 0.05, g.h * s);
+      tmpO.position.set(X(g.x + g.w / 2), DIE_Y + 0.014, Z(g.y + g.h / 2));
+      tmpO.scale.set(g.w * s, 0.006, g.h * s);
       tmpO.updateMatrix();
       tiles.current!.setMatrixAt(i, tmpO.matrix);
       tiles.current!.setColorAt(i, levelColors[0]);
@@ -682,8 +709,8 @@ function Die({ chip }: { chip: ChipPlace }) {
 
   return (
     <group>
-      <mesh position={[cx, DIE_Y - 0.03, cz]} raycast={noRaycast}>
-        <boxGeometry args={[dieW + 0.3, 0.05, dieD + 0.3]} />
+      <mesh position={[cx, DIE_Y, cz]} raycast={noRaycast}>
+        <boxGeometry args={[dieW + 0.04, 0.02, dieD + 0.04]} />
         <meshStandardMaterial color="#1a2330" roughness={0.35} metalness={0.5} transparent opacity={0.94} />
       </mesh>
       <instancedMesh

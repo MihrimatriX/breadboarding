@@ -1,6 +1,6 @@
-// PCB görünümünün bakır yollarını kazıyan worker (pcbYol.ts kazi): bütün bilgisayarda ~4 700 yol, ~10 s.
-// Ana iş parçacığı takılmasın diye burada; sonuçlar ~100 ms'lik partiler hâlinde gelir, yollar kazındıkça
-// görünür (pcbKazi.ts).
+// PCB görünümünün bakır yollarını kazıyan worker (pcbYol.ts kazi): her kart kendi worker'ında, aynı anda
+// (bütün bilgisayarda ~4 700 yol; en uzun en büyük kart, CPU, sürer). Ana iş parçacığı takılmasın diye
+// burada; sonuçlar ~100 ms'lik partiler hâlinde gelir, yollar kazındıkça görünür (BoardScene.tsx KaziliYollar).
 
 import type { BoardLayout } from "../../cpu16/board/layout";
 import { kazi, type Kazinti } from "./pcbYol";
