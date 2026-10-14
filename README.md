@@ -4,6 +4,8 @@
 
 [![CI](https://github.com/MihrimatriX/breadboarding/actions/workflows/ci.yml/badge.svg)](https://github.com/MihrimatriX/breadboarding/actions/workflows/ci.yml)
 
+**Canlı:** [breadboard.ahmetfuzunkaya.com](https://breadboard.ahmetfuzunkaya.com)
+
 Bu depo bir bilgisayarın içini en alttan en üste kadar gösteriyor. **Silikon3D** tarayıcıda çalışan
 bir 3D simülatör: gerçek bir MOS 6502'nin kalıbını transistör transistör çalıştırıyor, sinyalleri
 canlı gösteriyor. Aynı uygulamada iki devre projemiz de var. **CPU16**, tamamen 74HC entegrelerinden
@@ -170,15 +172,16 @@ açılınca uygulama o bölümde başlar. nginx bunları `/kart`, `/6502` gibi a
 `robots.txt`, `site.webmanifest` ve simgeler (`favicon.svg`, `icon-192.png`, `icon-512.png`,
 `apple-touch-icon.png`) bulunur. Metinlerin hepsi tek yerde: [src/seo.ts](src/seo.ts).
 
-Sitenin herkese açık adresini derlemeye ver. Kanonik bağlantı, `og:url`, mutlak görsel adresleri ve
-`sitemap.xml` bununla yazılır:
+Sitenin herkese açık adresi (`SITE_URL`) kanonik bağlantıyı, `og:url`'yi, mutlak görsel adreslerini ve
+`sitemap.xml`'i yazar. `docker compose` varsayılan olarak yayın adresini
+(https://breadboard.ahmetfuzunkaya.com) kullanır; başka bir adres için:
 
 ```bash
 SITE_URL=https://silikon3d.example npm run build
 SITE_URL=https://silikon3d.example docker compose up -d --build
 ```
 
-Adres verilmezse etiketler göreli adreslerle yazılır ve site haritası çıkmaz. Bazı paylaşım
+`npm run build` adres verilmezse etiketleri göreli adreslerle yazar ve site haritası çıkarmaz. Bazı paylaşım
 siteleri (Facebook, LinkedIn) önizleme görselini yalnız mutlak adresten alır.
 
 ## Komutlar
