@@ -161,6 +161,26 @@ docker compose down           # durdur
 
 Ayrıntılar `Dockerfile`, `docker-compose.yml` ve `docker/nginx/default.conf` içindeki yorumlarda.
 
+### Yayın: arama motorları ve paylaşım önizlemeleri
+
+Derleme her bölüme kökte kendi sayfasını yazar: `index.html` (ana sayfa), `6502.html`, `cpu16.html`,
+`kart.html`, `hesap.html`, `mimari.html`, `belgeler.html`. Hepsi aynı uygulamadır; her birinin kendi
+başlığı, açıklaması, Open Graph ve Twitter kartı (`public/og/*.png`, 1200×630) ve JSON-LD'si vardır,
+açılınca uygulama o bölümde başlar. nginx bunları `/kart`, `/6502` gibi adreslerle sunar. Yanlarında
+`robots.txt`, `site.webmanifest` ve simgeler (`favicon.svg`, `icon-192.png`, `icon-512.png`,
+`apple-touch-icon.png`) bulunur. Metinlerin hepsi tek yerde: [src/seo.ts](src/seo.ts).
+
+Sitenin herkese açık adresini derlemeye ver. Kanonik bağlantı, `og:url`, mutlak görsel adresleri ve
+`sitemap.xml` bununla yazılır:
+
+```bash
+SITE_URL=https://silikon3d.example npm run build
+SITE_URL=https://silikon3d.example docker compose up -d --build
+```
+
+Adres verilmezse etiketler göreli adreslerle yazılır ve site haritası çıkmaz. Bazı paylaşım
+siteleri (Facebook, LinkedIn) önizleme görselini yalnız mutlak adresten alır.
+
 ## Komutlar
 
 ### npm betikleri

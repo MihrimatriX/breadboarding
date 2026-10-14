@@ -174,7 +174,8 @@ arasındaki bölüm (malzeme ve bacak bacak bağlantılar) kart tanımlarından 
 | `cpu16/breadboard/cikti/`, `hesap8/breadboard/cikti/` (breadboard kurulum belgeleri) | `npm run cpu16 -- breadboard-belge hepsi`, `npm run hesap8 -- breadboard-belge` | istediğinde (yazdırmak için) | hayır (`.gitignore`) | `breadboard.test.ts` (HTML içeriği) |
 | `cpu16/kurulum/cikti/` (kurulum belgeleri HTML + PDF, şema PDF'leri) | `npm run cpu16 -- kurulum hepsi`, `… kurulum hesap` | istediğinde (yazdırmak için) | hayır (`.gitignore`) | `kurulum.test.ts` (HTML içeriği) |
 | `public/chips/mos6502/chip.json` | `npm run import:6502` | visual6502 verisi ya da dönüştürücü değişince | evet | `tests/mos6502.test.ts` |
-| `dist/` | `npm run build` | yayın | hayır | CI |
+| `public/og/*.png` (paylaşım önizlemeleri), `public/icon-*.png`, `public/apple-touch-icon.png` | `npm run dev`, sonra `http://localhost:5173/scripts/og-gorselleri.html` (görselleri tek tek indirir) | `src/seo.ts`'te bir sayfanın başlığı değişince ya da yeni bölüm eklenince | evet | `cpu16/tests/seo.test.ts` (her sayfanın görseli var, boyutlar doğru) |
+| `dist/` | `npm run build` (`SITE_URL=…` ile kanonik adresler ve `sitemap.xml`) | yayın | hayır | CI |
 
 Kurulum belgelerinin PDF'i için `playwright` paketi (depoda ya da global) ve Chromium, şema PDF'leri
 için `kicad-cli` gerekir; yoksa yalnız HTML yazılır ([kurulum.md](cpu16/docs/kurulum.md)). Docker

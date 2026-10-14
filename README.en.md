@@ -161,6 +161,26 @@ Fine tuning:
 
 The details are in the comments in `Dockerfile`, `docker-compose.yml` and `docker/nginx/default.conf`.
 
+### Deploying: search engines and link previews
+
+The build writes a page for each section at the root: `index.html` (home page), `6502.html`,
+`cpu16.html`, `kart.html`, `hesap.html`, `mimari.html` and `belgeler.html`. They are all the same app.
+Each has its own title, description, Open Graph and Twitter card (`public/og/*.png`, 1200×630) and
+JSON-LD, and opens the app in its section. nginx serves them at addresses such as `/kart` and `/6502`.
+Next to them are `robots.txt`, `site.webmanifest` and the icons (`favicon.svg`, `icon-192.png`,
+`icon-512.png`, `apple-touch-icon.png`). All the text lives in one place: [src/seo.ts](src/seo.ts).
+
+Give the build the site's public address. It is used for the canonical link, `og:url`, absolute
+image URLs and `sitemap.xml`:
+
+```bash
+SITE_URL=https://silikon3d.example npm run build
+SITE_URL=https://silikon3d.example docker compose up -d --build
+```
+
+Without it, the tags use relative URLs and no sitemap is written. Some sites (Facebook, LinkedIn)
+only show a preview image when its URL is absolute.
+
 ## Commands
 
 ### npm scripts

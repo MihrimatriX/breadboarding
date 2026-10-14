@@ -40,6 +40,8 @@ services:
     build:
       context: .
       target: web
+      args:
+        SITE_URL: ${SITE_URL:-}
     image: breadboarding-web:latest
     ports:
       - "${WEB_PORT:-3347}:8080"
