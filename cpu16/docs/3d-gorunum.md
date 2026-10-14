@@ -71,9 +71,13 @@ fazlası. Breadboard kurulum belgelerinin pano haritası aynı bölgeleri aynı 
 ### Teller
 
 - **yok**: tel çizilmez.
-- **seçili çip** (varsayılan): seçilen çipin (ya da pasifin) her pininden aynı netteki bütün öteki
-  uçlara birer tel gider. Yan paneldeki **Bağlantılar** aynı uçları sayar. Bir uca tıklayınca o
-  eleman seçilir, net adına tıklayınca net seçilir.
+- **seçili çip** (varsayılan): seçilen çipin (ya da pasifin) netleri kartın yüzeyinde **bakır yol**
+  olarak çizilir: dik açılı, köşeleri 45° pahlı, gövdelerin ve başka netlerin pedlerinin çevresinden
+  dolanan, canlı seviyenin renginde yollar (`src/board3d/pcbYol.ts`: kartın 2,54 mm'lik ızgarasında A*;
+  yollar kare başına birkaç milisaniyede döşenir). Kartlar arası kısım konnektörden konnektöre, arka
+  panel boyunca çizgidir. Seçili bir netin yolları daha kalın ve açık. GND ve VCC yol olarak döşenmez
+  (gerçek kartta düzlem). Yan paneldeki **Bağlantılar** aynı uçları sayar. Bir uca tıklayınca o eleman
+  seçilir, net adına tıklayınca net seçilir.
 - **hepsi**: bütün bilgisayarın kablolaması. Kart içinde her net en kısa yayılan ağaçla birleşir
   (gerçek bir atlama teli zinciri gibi). Kartlar birbirine yalnızca kenar konnektörlerinden
   bağlanır: kartlar arası teller arka panel şeridi boyunca, sıralar arasında soldaki kablodan
@@ -83,8 +87,9 @@ fazlası. Breadboard kurulum belgelerinin pano haritası aynı bölgeleri aynı 
 - **GND/VCC**: besleme telleri varsayılan olarak çizilmez (her kartta yüzlerce ucu var). Kutu
   işaretlenince çizilir.
 
-Kısa teller alçak, uzun teller yüksek kavis çizer. Çizimin geometrisi `src/board3d/wires.ts` içinde
-saf fonksiyonlardır (testli).
+**Hepsi** kipinin telleri ince çizgidir: kısa teller alçak, uzun teller yüksek kavis çizer (binlerce
+bağlantıyı yönlendirmek her seçimde kasardı). Çizimin geometrisi `src/board3d/wires.ts` ve
+`src/board3d/pcbYol.ts` içinde saf fonksiyonlardır (testli).
 
 ### VGA ekranı
 

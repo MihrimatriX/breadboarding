@@ -8,7 +8,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from "rea
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import {
-  BufferAttribute, BufferGeometry, CanvasTexture, Color, InstancedMesh, LineBasicMaterial, LineSegments, Object3D, SRGBColorSpace, Vector3,
+  BufferAttribute, BufferGeometry, CanvasTexture, Color, InstancedMesh, LineBasicMaterial, LineSegments, Mesh, MeshBasicMaterial, Object3D, SRGBColorSpace, Vector3,
   type InterleavedBufferAttribute, type PerspectiveCamera,
 } from "three";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
@@ -37,7 +37,8 @@ import { BolumKatmani } from "./BolumKatmani";
 import { azHareket, ucusAdimi, useSahneRengi } from "../ui/ayarlar";
 import { useDil } from "../ui/ceviri";
 import { blokAdi, kartBasligi } from "./adlar";
-import { allWires, busRouter, netWires, partWires, wireGeometry, type Endpoint, type WireEdge } from "./wires";
+import { allWires, busRouter, netTree, netWires, partWires, wireGeometry, type Endpoint, type WireEdge } from "./wires";
+import { bakirYollariSirayla, yolSeridi, type BakirYol } from "./pcbYol";
 
 /** 1 dünya birimi = 10 mm */
 const S = 0.1;
@@ -49,6 +50,7 @@ const PIN_TOP = 0.24;
 const levelColors = LEVEL_COLOR.map((c) => new Color(c));
 const PIN_COLORS = [new Color("#56606c"), new Color("#ff2a55"), new Color("#9d8cff"), new Color("#e6e600")];
 /** tellerde 0 koyu kartın üstünde görünsün diye açık mavi; 1, Z, X her yerdeki gibi */
+const BEYAZ = new Color("#ffffff");
 const WIRE_COLORS = [new Color("#5f8fd6"), new Color("#ff2a55"), new Color("#9d8cff"), new Color("#e6e600")];
 const tmpC = new Color();
 const DIE_LOW = new Color("#5d7390");
@@ -410,22 +412,116 @@ function WireLayer({ edges, width, opacity = 1, onTop = false, order = 0 }: { ed
   return obj ? <primitive object={obj.line} /> : null;
 }
 
+/** kartın içindeki (bakır yol olarak döşenen) kenar mı: aynı kart, besleme değil (besleme gerçek kartta düzlem) */
+const kartIci = (e: WireEdge) => e.a.card === e.b.card && e.net > 1;
+
 function Wires() {
   const mode = useKart((s) => s.wires);
   const power = useKart((s) => s.power);
   const chip = useKart((s) => s.chip);
   const net = useKart((s) => s.net);
   const all = useMemo(() => (mode === "hepsi" ? allWires(netEnds(), { power }) : []), [mode, power]);
-  const mine = useMemo(() => (mode !== "yok" && chip ? partWires(chip, netEnds(), { power }) : []), [mode, chip, power]);
+  // seçili çipin her netinin bütün uçları (kart içinde ağaç, kartlar arası konnektörden konnektöre)
+  const mine = useMemo(() => {
+    if (mode === "yok" || !chip) return [];
+    const out: WireEdge[] = [];
+    for (const [n, list] of netEnds()) if ((power || n > 1) && list.some((e) => e.ref === chip)) out.push(...netTree(n, list));
+    return out;
+  }, [mode, chip, power]);
   const sel = useMemo(() => (net !== null ? netWires(net, netEnds()) : []), [net]);
+  const gruplar = useMemo(() => [{ edges: mine.filter(kartIci), etiket: false }, { edges: sel.filter(kartIci), etiket: true }], [mine, sel]);
+  const mineCizgi = useMemo(() => mine.filter((e) => !kartIci(e)), [mine]);
+  const selCizgi = useMemo(() => sel.filter((e) => !kartIci(e)), [sel]);
   return (
     <group>
       {/* bütün bilgisayar: binlerce tel, ince çizgi (ucuz) */}
       <WireLayer edges={all} width={1} opacity={chip ? 0.35 : 0.85} />
-      <WireLayer edges={mine} width={2.2} order={5} />
-      <WireLayer edges={sel} width={3.2} onTop order={10} />
+      {/* seçili çipin ve netin kart içindeki bağlantıları bakır yol; kartlar arası arka panel boyunca çizgi */}
+      <BakirYollar gruplar={gruplar} />
+      <WireLayer edges={mineCizgi} width={2.2} order={5} />
+      <WireLayer edges={selCizgi} width={3.2} onTop order={10} />
     </group>
   );
+}
+
+/** bakır yolun genişliği (mm) ve karttan yüksekliği (dünya): seçili netinki daha kalın ve üstte */
+const YOL_GENISLIK = { cip: 0.9, net: 1.3 };
+const YOL_Y = { cip: 0.003, net: 0.0035 };
+/** kare başına yol döşemeye ayrılan süre (ms) */
+const YOL_SURE = 6;
+
+/**
+ * Bakır yollar (pcbYol.ts): kartın yüzeyinde dik açılı, 45° pahlı, canlı seviyenin renginde (seçili netin
+ * yolları daha kalın ve açık). Yollar kare başına birkaç milisaniyede döşenir, döşendikçe görünür.
+ */
+function BakirYollar({ gruplar }: { gruplar: { edges: WireEdge[]; etiket: boolean }[] }) {
+  const { lay, w } = useLayoutWorld();
+  const obj = useMemo(() => {
+    const geo = new BufferGeometry();
+    const mat = new MeshBasicMaterial({ vertexColors: true });
+    const mesh = new Mesh(geo, mat);
+    mesh.raycast = noRaycast;
+    mesh.frustumCulled = false;
+    return { geo, mat, mesh };
+  }, []);
+  useEffect(() => () => {
+    obj.geo.dispose();
+    obj.mat.dispose();
+  }, [obj]);
+  const durum = useRef<{ uretec: Generator<BakirYol<boolean>> | null; yollar: BakirYol<boolean>[]; kirli: boolean; surum: number }>({ uretec: null, yollar: [], kirli: true, surum: -1 });
+  useEffect(() => {
+    durum.current = { uretec: bakirYollariSirayla(lay, gruplar), yollar: [], kirli: true, surum: -1 };
+  }, [lay, gruplar]);
+  useFrame(() => {
+    const d = durum.current;
+    if (d.uretec) {
+      const t0 = performance.now();
+      while (performance.now() - t0 < YOL_SURE) {
+        const r = d.uretec.next();
+        if (r.done) {
+          d.uretec = null;
+          break;
+        }
+        d.yollar.push(r.value);
+        d.kirli = true;
+      }
+    }
+    if (d.kirli) {
+      // yolların şeritleri tek geometride; her köşenin rengi yolunun netinden (aşağıda boyanır)
+      const pos: number[] = [];
+      const idx: number[] = [];
+      for (const y of d.yollar) {
+        const dunya: number[] = [];
+        for (let k = 0; k < y.yol.length; k += 2) dunya.push(...w(y.yol[k], y.yol[k + 1]));
+        const s = yolSeridi(dunya, (y.etiket ? YOL_GENISLIK.net : YOL_GENISLIK.cip) * S);
+        const yy = y.etiket ? YOL_Y.net : YOL_Y.cip;
+        const o = pos.length / 3;
+        for (let k = 0; k < s.length; k += 2) pos.push(s[k], yy, s[k + 1]);
+        for (let k = 0; k + 1 < s.length / 4; k++) {
+          const a = o + 2 * k;
+          idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
+        }
+      }
+      obj.geo.setAttribute("position", new BufferAttribute(new Float32Array(pos), 3));
+      obj.geo.setAttribute("color", new BufferAttribute(new Float32Array(pos.length), 3));
+      obj.geo.setIndex(idx);
+      d.kirli = false;
+      d.surum = -1;
+    }
+    if (d.surum === liveNets.version) return;
+    d.surum = liveNets.version;
+    const col = obj.geo.getAttribute("color") as BufferAttribute | undefined;
+    if (!col) return;
+    const arr = col.array as Float32Array;
+    let o = 0;
+    for (const y of d.yollar) {
+      tmpC.copy(WIRE_COLORS[level(liveNets.values, y.net)] ?? WIRE_COLORS[3]);
+      if (y.etiket) tmpC.lerp(BEYAZ, 0.25);
+      for (let k = 0; k < y.yol.length; k++, o += 3) arr.set([tmpC.r, tmpC.g, tmpC.b], o);
+    }
+    col.needsUpdate = true;
+  });
+  return <primitive object={obj.mesh} />;
 }
 
 // ---------------------------------------------------------------- çipin kalıbı (die): kapılar havada
