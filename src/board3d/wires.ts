@@ -242,6 +242,13 @@ export function wireGeometry(
   return { positions, nets, segments: total };
 }
 
+/** Bir netin uçları kart kart (ilk görülme sırasıyla): hangi kartta kaç uç; arka panel sinyali kartlar arasında nereden nereye gider */
+export function kartlaraGore(ends: readonly Pick<Endpoint, "card">[]): { card: string; n: number }[] {
+  const m = new Map<string, number>();
+  for (const e of ends) m.set(e.card, (m.get(e.card) ?? 0) + 1);
+  return [...m].map(([card, n]) => ({ card, n }));
+}
+
 /** Bir elemanın pin pin bağlantıları (Bağlantılar paneli) */
 export interface PinLinks {
   num: number;

@@ -36,7 +36,8 @@ function Uc({ p, t, son }: { p: BbPanosu; t: BbTel; son: boolean }) {
   );
 }
 
-function TelKarti({ p, t, takildi }: { p: BbPanosu; t: BbTel; takildi: boolean }) {
+/** Bir telin kartı: kimlik, renk, boy, net, aşama, nereden → nereye (kurulum panelinde ve İnceleme'de seçili tel) */
+export function TelKarti({ p, t, takildi }: { p: BbPanosu; t: BbTel; takildi: boolean }) {
   const tr = useT();
   const dil = useDil();
   const asama = p.plan.asamalar.find((a) => a.no === t.asama);
