@@ -19,7 +19,7 @@ inilir ve her seviyede sinyaller canlıdır. Kartlar elle yazılmış bir listed
 | Çip | Çipe tıkla | Kamera çip ile tellerinin öbür uçlarını birlikte görecek şekilde uçar. Çipin üstünde **kalıbı** (die) açılır. Yan panelde **Bağlantılar**: pin no + ad → net → öbür uçlar (çip.pin). Alt panelde **Çipin içi**: kapı seviyesi şema ya da bellek dizisi. |
 | Kapı | Kalıpta ya da şemada bir kapıya tıkla | O kapının CMOS transistör şeması. İletimdeki transistörler yeşil. |
 | Net | Bir pine, bir uca ya da bir net adına tıkla | Netin bütün uçları kalın bir telle, öteki her şeyin üstünde birleşir. Yan panelde netin uçları listelenir. |
-| Bölüm | Araç çubuğu: **Etiketler**; bir etikete tıkla | Kartın bölgeleri, blokları ve çip grupları işaretli ve adlı. Tıklanan bölümün görevi, nasıl çalıştığı ve çipleri yan panelde. Aşağıda. |
+| Bölüm | Araç çubuğu: **Etiketler**; bir etikete tıkla | Kartın bölgeleri, blokları ve çip grupları işaretli ve adlı. Tıklanan bölümün görevi, nasıl çalıştığı ve çipleri yan panelde. Ayrıntı aşağıda. |
 
 ### Görünüm: PCB ve breadboard
 
@@ -76,7 +76,7 @@ fazlası. Breadboard kurulum belgelerinin pano haritası aynı bölgeleri aynı 
   gider. Yaklaşık 3 500 tel ve 40 000 parça var. Hepsi tek bir çizim çağrısıdır ve yalnızca
   netlerin değeri değişince yeniden renklenir. Bir çip seçiliyken "hepsi" soluklaşır, seçili
   çipin telleri öne çıkar.
-- **GND/VCC**: besleme telleri varsayılan olarak çizilmez (her kartta yüzlerce uçları var). Kutu
+- **GND/VCC**: besleme telleri varsayılan olarak çizilmez (her kartta yüzlerce ucu var). Kutu
   işaretlenince çizilir.
 
 Kısa teller alçak, uzun teller yüksek kavis çizer. Çizimin geometrisi `src/board3d/wires.ts` içinde
@@ -93,8 +93,8 @@ Sahnenin sağ üstünde **VGA** paneli, sahnede de aynı görüntüyü gösteren
   başka bir VRAM düzeni ya da piksel tamponu) yalnızca bu dosya değişir, çizim (`screen.ts`) aynı
   kalır.
 - **Işın modu**: monitörün gördüğü gibi. Her piksel saatinde VGA konnektörünün hatları okunur:
-  HSYNC, VSYNC ve renk pinleri. Renk pinlerinin gerilimi, DAC dirençlerinden (R_680, R_1K3)
-  75 Ω'luk monitör girişine göre hesaplanır. Bir kare 800 × 525 piksel saati sürer, yani kapı
+  HSYNC, VSYNC ve renk pinleri. Renk pinlerinin gerilimi DAC dirençleri (R_680, R_1K3) ve
+  75 Ω'luk monitör girişinden hesaplanır. Bir kare 800 × 525 piksel saati sürer, yani kapı
   seviyesinde ~20 saniye. Işının yeri küçük bir artıyla gösterilir.
 - **büyük / küçük**: paneli büyütür. **gizle**: paneli kapatır (sahnedeki monitör kalır).
 - **Klavye**: ekrana tıklayıp yaz. Tuşlar PS/2 tarama kodu olarak G/Ç kartının PS/2
