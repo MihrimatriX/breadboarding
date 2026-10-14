@@ -85,14 +85,14 @@ Sahte bellek `0xE000` (NOP: `DE` = 0x00, `DO` = 0xE0). Saat ADIM kipinde:
 
 Yapıştırıcı lojik çiplerinin kapıları bloklara dağılmıştır; bu deneyde kullanılan kapılar:
 
-- **U119** (74HC08, Deney 5'de takıldı): 2. kapı (MAR saati); 3. kapı (IR saati); 4. kapı (PC += 2). Diğerleri: 1. kapı → Deney 5
-- **U125** (74HC08, Deney 5'de takıldı): 4. kapı (bellek yazma). Diğerleri: 1. kapı → Deney 5, 2. kapı → Deney 5, 3. kapı → Deney 5
+- **U119** (74HC08, 5. deneyde takıldı): 2. kapı (MAR saati); 3. kapı (IR saati); 4. kapı (PC += 2). Diğerleri: 1. kapı → Deney 5
+- **U125** (74HC08, 5. deneyde takıldı): 4. kapı (bellek yazma). Diğerleri: 1. kapı → Deney 5, 2. kapı → Deney 5, 3. kapı → Deney 5
 - **U126** (74HC08, bu deneyde takılır): 1. kapı (tek adresli bayt); 2. kapı (yazma darbesi); 3. kapı (yazma darbesi). Diğerleri: 4. kapı → Deney 7
-- **U129** (74HC32, Deney 5'de takıldı): 2. kapı (bellek erişimi); 3. kapı (yazma darbesi). Diğerleri: 1. kapı → Deney 5, 4. kapı → Deney 7
+- **U129** (74HC32, 5. deneyde takıldı): 2. kapı (bellek erişimi); 3. kapı (yazma darbesi). Diğerleri: 1. kapı → Deney 5, 4. kapı → Deney 7
 - **U130** (74HC00, bu deneyde takılır): 3. kapı (PC yükle); 4. kapı (çift bayt hattı kullanılıyor). Diğerleri: 1. kapı → Deney 7, 2. kapı → Deney 7
 - **U131** (74HC00, bu deneyde takılır): 1. kapı (hat seçimi); 2. kapı (hat seçimi); 3. kapı (hat seçimi); 4. kapı (bayt okuma)
 - **U132** (74HC00, bu deneyde takılır): 1. kapı (çift bayt yazma darbesi); 2. kapı (tek bayt yazma darbesi). Diğerleri: 3. kapı → Deney 7, 4. kapı → Deney 7
-- **U145** (74HC04, Deney 5'de takıldı): 6. kapı (bellek okuma). Diğerleri: 1. kapı → Deney 7, 2. kapı → Deney 7, 3. kapı → Deney 7, 4. kapı → Deney 7, 5. kapı → Deney 5
+- **U145** (74HC04, 5. deneyde takıldı): 6. kapı (bellek okuma). Diğerleri: 1. kapı → Deney 7, 2. kapı → Deney 7, 3. kapı → Deney 7, 4. kapı → Deney 7, 5. kapı → Deney 5
 - **U146** (74HC04, bu deneyde takılır): 1. kapı (kelime erişimi); 2. kapı (bellek okuma (aktif düşük)). Diğerleri: 3. kapı → Deney 7, 4. kapı → Deney 7, 5. kapı → Deney 7, 6. kapı → Deney 7
 
 #### Bağlantılar (166 net)
