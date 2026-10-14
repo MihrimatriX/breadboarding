@@ -80,6 +80,7 @@ export const useBolum = create<BolumDurumu>((set, get) => ({
     const k = useKart.getState();
     if (k.gate !== null) k.selectGate(null);
     if (k.net !== null) k.selectNet(null);
+    if (k.tel !== null) k.selectTel(null);
     if (k.chip !== null) k.selectChip(null);
   },
   ustundeSec(u) {

@@ -115,6 +115,8 @@ interface KartState {
   chip: string | null;
   gate: number | null;
   net: number | null;
+  /** breadboard'da tıklanıp seçilen atlama teli: panosu (kart) ve no'su; çip ve net seçimiyle birlikte olmaz */
+  tel: { kart: string; no: number } | null;
   /** üstüne gelinen parça; ek: ipucuna eklenen satır (ör. DIP anahtarın hangi anahtarı) */
   hover: { ref: string; x: number; y: number; ek?: string } | null;
   /**
@@ -153,6 +155,7 @@ interface KartState {
   selectChip(ref: string | null): void;
   selectGate(g: number | null): void;
   selectNet(n: number | null): void;
+  selectTel(t: { kart: string; no: number } | null): void;
   /** kamerayı yerleşimdeki bir işlev bloğuna götür (seçim değişmez); null: genel bakış */
   focusBlock(blok: string | null): void;
   setWires(m: WireMode): void;
@@ -199,6 +202,7 @@ export const useKart = create<KartState>((set, get) => ({
   chip: null,
   gate: null,
   net: null,
+  tel: null,
   hover: null,
   odak: null,
   wires: "secili",
@@ -239,7 +243,7 @@ export const useKart = create<KartState>((set, get) => ({
     send({ type: "speed", hz });
   },
   selectChip(ref) {
-    set({ chip: ref, gate: null, odak: null, ...(ref && findPart(ref)?.chip ? { bottom: "ic" as const } : {}) });
+    set({ chip: ref, gate: null, odak: null, tel: null, ...(ref && findPart(ref)?.chip ? { bottom: "ic" as const } : {}) });
     // bellek çipinin içi worker'dan gelir (yalnız bilgisayarda)
     if (aktifKart() !== "cpu16") return;
     const ci = ref ? boardModel().board.chips.find((c) => c.ref === ref) : null;
@@ -249,7 +253,11 @@ export const useKart = create<KartState>((set, get) => ({
     set({ gate: g });
   },
   selectNet(n) {
-    set({ net: n });
+    set(n === null ? { net: n } : { net: n, tel: null });
+  },
+  selectTel(t) {
+    if (t && get().chip !== null) get().selectChip(null);
+    set(t ? { tel: t, net: null, gate: null } : { tel: null });
   },
   focusBlock(blok) {
     set({ odak: { blok, n: (get().odak?.n ?? 0) + 1 }, hover: null });
@@ -402,7 +410,7 @@ const sonAltSekme = new Map<KartTuru, BottomTab>([["cpu16", "program"], ["hesap"
 gorunumDegisince((g) => {
   liveNets.version++;
   // breadboard'da yalnız fiziksel parçalar da var (besleme girişleri, tamponlar): öbür görünümde yoksa seçim kalkar
-  useKart.setState((s) => ({ gorunum: g, chip: s.chip && findPart(s.chip) ? s.chip : null, hover: null, odak: null, tick: s.tick + 1 }));
+  useKart.setState((s) => ({ gorunum: g, chip: s.chip && findPart(s.chip) ? s.chip : null, tel: null, hover: null, odak: null, tick: s.tick + 1 }));
 });
 
 kartDegisince((tur, onceki) => {
@@ -411,5 +419,5 @@ kartDegisince((tur, onceki) => {
   liveNets.prev = null;
   liveNets.values = sonDegerler.get(tur) ?? null;
   liveNets.version++;
-  useKart.setState((s) => ({ chip: null, gate: null, net: null, hover: null, odak: null, gorunum: aktifGorunum(tur), bottom: sonAltSekme.get(tur) ?? "ic", tick: s.tick + 1 }));
+  useKart.setState((s) => ({ chip: null, gate: null, net: null, tel: null, hover: null, odak: null, gorunum: aktifGorunum(tur), bottom: sonAltSekme.get(tur) ?? "ic", tick: s.tick + 1 }));
 });
