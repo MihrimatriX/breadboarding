@@ -20,7 +20,8 @@ import { Simge } from "../ui/simgeler";
 import { HataKutusu, Yukleniyor } from "../ui/Yukleniyor";
 import { useYaziTipleri } from "../ui/yaziTipleri";
 import { blokAdi, kartBasligi, parcaBasligi } from "./adlar";
-import { aktifKart, aktifKartiSec, gorunumHazir, type Gorunum, type KartTuru } from "./aktif";
+import { aktifKart, aktifKartiSec, bbSahnesi, gorunumHazir, type Gorunum, type KartTuru } from "./aktif";
+import { TelKarti } from "./BbKurulumPanel";
 import { BoardScene } from "./BoardScene";
 import { installHesapApi, useHesap } from "./hesap";
 import { HesapMeters, HesapPanel } from "./HesapPanel";
@@ -39,7 +40,8 @@ import { screenCanvas, updateScreenCanvas } from "./screenCanvas";
 import {
   EXAMPLES, SPEEDS, boardLayoutData, boardModel, currentLang, findPart, liveNets, netEnds, speedLabel, startBoardWorker, useKart, type BottomTab, type LangMode, type WireMode,
 } from "./store";
-import { partLinks, type Endpoint } from "./wires";
+import { sinyalinDamarlari } from "./serit";
+import { kartlaraGore, partLinks, type Endpoint } from "./wires";
 
 const REG_NAMES = ["r0", "r1", "r2", "r3", "r4", "r5", "r6 sp", "r7 lr"];
 const wireModes = (t: Cevir): { m: WireMode; label: string; title: string }[] => [
@@ -544,6 +546,9 @@ function NetPanel() {
   const ends = netEnds().get(net) ?? [];
   const lv = levelOf(liveNets.values, net);
   const n = sayi(ends.length, dil);
+  // arka panel sinyaliyse: şerit kablonun (arka panelin) hangi damarı ve hangi kartlara gittiği
+  const damarlar = aktifKart() === "cpu16" ? sinyalinDamarlari(board.netName(net)) : [];
+  const kartlar = kartlaraGore(ends);
   return (
     <section>
       <div className="parca-bas">
@@ -557,6 +562,22 @@ function NetPanel() {
       <p className="parca-baslik">
         {t(`${n} uca bağlı; 3D'de bu pinler kalın tellerle birleşir.`, `Connected to ${n} ${ends.length === 1 ? "end" : "ends"}; in 3D thick wires join these pins.`)}
       </p>
+      {damarlar.length > 0 && (
+        <p className="parca-baslik">
+          {t(`Arka panelin ${damarlar.join(", ")}. damarı (şerit kablo, 2 × 32 konnektör).`, `Backplane wire ${damarlar.join(", ")} (ribbon cable, 2 × 32 connector).`)}
+        </p>
+      )}
+      {kartlar.length > 1 && (
+        <p className="parca-baslik">
+          {t("Kartlar: ", "Boards: ")}
+          {kartlar.map((k, i) => (
+            <span key={k.card}>
+              {i > 0 && " · "}
+              <b>{kartBasligi(k.card, cardTitle(k.card), dil)}</b> {sayi(k.n, dil)}
+            </span>
+          ))}
+        </p>
+      )}
       <ul className="tlist net-uclar">
         {ends.map((p, i) => (
           <li key={i}>
@@ -566,6 +587,28 @@ function NetPanel() {
           </li>
         ))}
       </ul>
+    </section>
+  );
+}
+
+/** Breadboard'da tıklanan tel: nereden → nereye (kurulum panelinin tel kartı) */
+function TelPanel() {
+  const t = useT();
+  const tel = useKart((s) => s.tel);
+  const p = tel && bbSahnesi().panolar.find((x) => x.kart === tel.kart);
+  // tellerin no'su kurulum sırası: no = sıra + 1
+  const bt = p && p.plan.teller[tel.no - 1];
+  if (!bt) return null;
+  return (
+    <section>
+      <div className="parca-bas">
+        <div className="parca-ad">
+          <span className="hint-text">{t("Tel", "Wire")}</span>
+          <h2 className="mono">{telKimligi(bt.no)}</h2>
+        </div>
+        <button className="link" onClick={() => useKart.getState().selectTel(null)} title={t("Kısayol: Esc", "Shortcut: Esc")}>{t("kapat", "close")}</button>
+      </div>
+      <TelKarti p={p} t={bt} takildi={false} />
     </section>
   );
 }
@@ -764,13 +807,15 @@ const SIDE_TABS: Record<KartTuru, SideTab[]> = { cpu16: ["inceleme", "cpu", "kur
 function Inspector() {
   const chip = useKart((s) => s.chip);
   const net = useKart((s) => s.net);
+  const tel = useKart((s) => s.tel);
   const bolum = useBolum((s) => s.secili);
   return (
     <div className="inspector">
+      {tel && <TelPanel />}
       {chip && <PartPanel />}
       {!chip && bolum && <BolumPanel key={bolum} />}
       {net !== null && <NetPanel />}
-      {!chip && !bolum && net === null && <PartPanel />}
+      {!tel && !chip && !bolum && net === null && <PartPanel />}
     </div>
   );
 }
@@ -779,11 +824,12 @@ function SidePanel({ tab, onTab }: { tab: SideTab; onTab: (t: SideTab) => void }
   const t = useT();
   const chip = useKart((s) => s.chip);
   const net = useKart((s) => s.net);
+  const tel = useKart((s) => s.tel);
   const bolum = useBolum((s) => s.secili);
-  // bir parça, net ya da bölüm seçilince ayrıntıları öne gelir
+  // bir parça, net, tel ya da bölüm seçilince ayrıntıları öne gelir
   useEffect(() => {
-    if (chip || net !== null || bolum) onTab("inceleme");
-  }, [chip, net, bolum]); // onTab her çizimde yeni; yalnız seçim değişince çalışsın
+    if (chip || net !== null || tel || bolum) onTab("inceleme");
+  }, [chip, net, tel, bolum]); // onTab her çizimde yeni; yalnız seçim değişince çalışsın
   // Yeni yan panel sekmeleri (ör. "Kurulum") bu listeye ve SIDE_TABS'a eklenir.
   const inceleme = t("İnceleme", "Inspect");
   const tumu: Record<SideTab, TabDef<SideTab>> = {
@@ -830,10 +876,11 @@ function Tooltip() {
   );
 }
 
-/** Esc: seçimi geri al (kapı → net → çip → bölüm) */
+/** Esc: seçimi geri al (kapı → tel → net → çip → bölüm) */
 function secimiGeriAl() {
   const s = useKart.getState();
   if (s.gate !== null) s.selectGate(null);
+  else if (s.tel !== null) s.selectTel(null);
   else if (s.net !== null) s.selectNet(null);
   else if (s.chip !== null || !useBolum.getState().secili) s.selectChip(null);
   else useBolum.getState().sec(null);
