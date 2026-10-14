@@ -28,18 +28,18 @@ kapılarıyla kurulmuş bir **kontrol birimi**dir. Deneyin en büyük parçası 
 - **Komut sınıfları:** aynı mikro programı çalıştıran komutlar tek hatta toplanır (ör. bütün yasadışı
   komutlar; op 9'da koşulun doğru ya da yanlış olması: `~KOP9_C0`, `~KOP9_C1`).
 - **VEYA ağı** (yapıştırıcı kapılar, "Kontrol birimi" bloğu): her kontrol biti ve her adım için "bu biti 1
-  olan komut sınıfları" kümesi. Hatlar aktif düşük olduğu için kümedekilerin NAND'ı VEYA'dır; küme büyükse
-  kümede olmayanların AND'ı ("hiçbiri değil") daha az kapı ister. Kümelerin ortak parçaları bir kez kurulur
-  ("ortak alt küme" kapıları).
+  olan komut sınıfları" kümesinin VEYA'sı. Hatlar aktif düşük olduğu için kümedekilerin NAND'ı VEYA'dır;
+  küme büyükse kümede olmayanların AND'ı ("hiçbiri değil") daha az kapı ister. Kümelerin ortak parçaları
+  bir kez kurulur ("ortak alt küme" kapıları).
 - **Adım seçicileri** (10 × 74HC151, U147–U156): adım 0..7'nin çoğunda kullanılan bitlerde (`CW0..4`, `CW7`,
-  `CW16`, `CW17`, `CW21`, `CW31`) seçici `STEP0..2`, veri girişleri her adımın kümesi. Seyrek bitler
-  "adım ∧ küme" terimlerinin VEYA'sıdır.
+  `CW16`, `CW17`, `CW21`, `CW31`) seçici girişleri `STEP0..2`, veri girişleri her adımın kümesi. Seyrek
+  bitler "adım ∧ küme" terimlerinin VEYA'sıdır.
 - Kontrol biriminin çıkışları `MK0..MK31`; **kontrol register'ı** (4 × 74HC574: U2, U4, U6, U8) onları CLK'nin
   düşen kenarında alır: `CW0..CW31`.
 - `CW0..2` bir 74HC138 (U13) ile veriyolu sürücüsünü seçer (`~SRC_REG/ALU/PC/MEM/IMM/FLAGS`): aynı anda tek
-  sürücü donanımla garanti edilir.
+  sürücü olduğunu donanım garanti eder.
 - **Sabit birimi** (16 × 74HC151): komut kelimesinden 8 biçimden birini çıkarır (IMM6, IMM6×2, IMM8, IMM9,
-  OFF8×2, OFF12×2, 2, 4), `~SRC_IMM` ile veriyoluna.
+  OFF8×2, OFF12×2, 2, 4), `~SRC_IMM` ile veriyoluna verir.
 - **Çalışma izni:** HALT ya da FAULT'ta `RUN_R` düşer, kapılı saat (`CLKR`) durur. `IRQ` ∧ I bayrağı CPU'yu
   uyandırır; adım 0'da (`~ADIM0`) kesme varsa `INT` 1 olur ve kontrol birimi kesme girişini çalıştırır.
 
@@ -81,7 +81,7 @@ Sonra bütün CPU:
 | `0xF000` (yasadışı op) | FAULT LED'i yanar |
 | `0xE000` + YAVAŞ | mikro adım sayacının çıkışları 0, 1, 2, 0, 1, 2 … |
 
-Adres LED'lerindeki sayaç 0xFFFE'den 0x0000'a sarar: CPU tüm adres alanında NOP "çalıştırıyor".
+Adres LED'lerindeki sayaç 0xFFFE'den sonra 0x0000'a döner: CPU tüm adres alanında NOP "çalıştırıyor".
 
 ## Simülatörde
 
