@@ -75,8 +75,12 @@ panel map in the breadboard build guides draws the same regions in the same colo
 ### Wires
 
 - **none**: no wires are drawn.
-- **selected chip** (default): from every pin of the selected chip (or passive) a wire runs to each of the
-  other endpoints on the same net. **Connections** in the side panel lists the same endpoints. Clicking an
+- **selected chip** (default): the nets of the selected chip (or passive) are drawn on the board surface as
+  **copper traces**: right-angled, with 45° chamfered corners, going around bodies and other nets' pads,
+  in the color of the live level (`src/board3d/pcbYol.ts`: A* on the board's 2.54 mm grid; traces are laid
+  a few milliseconds per frame). The part between boards is a line from connector to connector along the
+  backplane. The traces of a selected net are thicker and lighter. GND and VCC are not laid as traces (on
+  a real board they are planes). **Connections** in the side panel lists the same endpoints. Clicking an
   endpoint selects that component; clicking a net name selects the net.
 - **all**: the wiring of the whole computer. Inside a board each net is joined with a minimum spanning
   tree (like a real chain of jumper wires). Boards connect to each other only through their edge
@@ -87,8 +91,9 @@ panel map in the breadboard build guides draws the same regions in the same colo
 - **GND/VCC**: power wires are not drawn by default (each board has hundreds of power endpoints). Checking
   the box draws them.
 
-Short wires arc low, long wires arc high. The drawing geometry is a set of pure functions in
-`src/board3d/wires.ts` (with tests).
+The wires of **all** mode are thin lines: short wires arc low, long wires arc high (routing thousands of
+connections would stall every selection). The drawing geometry is a set of pure functions in
+`src/board3d/wires.ts` and `src/board3d/pcbYol.ts` (with tests).
 
 ### VGA screen
 
