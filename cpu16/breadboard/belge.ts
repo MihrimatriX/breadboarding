@@ -164,7 +164,7 @@ function nasilOkunur(p: KartBbPlani, o: BbOlcu, sirali: Map<number, number[]>): 
   return `<section class="bolum">
 <h2>1. Nasıl okunur</h2>
 <h3>Board'lar ve delikler</h3>
-<p>Taban plakasında ${y.nx} sütun × ${y.ny} sıra board var: <b>BB01</b> sol arka köşe, satır satır soldan sağa, <b>BB${String(y.boards.length).padStart(2, "0")}</b> sağ ön köşe. Panonun şerit kablo uyarlayıcısı ${koridor}, ${ub.ad}'de: panolar makinede iki sıra halinde ortadaki koridora bakar, şerit kablo koridorda uzanır (2. bölüm). Her board'un adı sol üst köşesine yazılır.</p>
+<p>Taban plakasında ${y.nx} sütun × ${y.ny} sıra board var: <b>BB01</b> sol arka köşe, satır satır soldan sağa, <b>BB${String(y.boards.length).padStart(2, "0")}</b> sağ ön köşe. Panonun şerit kablo uyarlayıcısı ${koridor}, ${ub.ad}'de: panolar makinede iki sıra hâlinde ortadaki koridora bakar, şerit kablo koridorda uzanır (2. bölüm). Her board'un adı sol üst köşesine yazılır.</p>
 <p>Bir delik <b>board + satır harfi + sütun</b> ile yazılır: <code>BB07 c14</code> = BB07'nin c satırı, 14. sütunu. Her sütunun <b>a–e</b>'si bir şerittir (5 delik, içeriden bağlı), <b>f–j</b>'si ayrı bir şerit; ortadaki kanal (e ile f arası, 7,62 mm) iki yarıyı ayırır. Çipler kanalın üstüne oturur.</p>
 <p>Raylar: üstte <code>üst+</code> (dış, kırmızı çizgi) ve <code>üst−</code> (iç, mavi çizgi), altta <code>alt−</code> (iç) ve <code>alt+</code> (dış). Ray delikleri 5'li gruplardır: <code>BB07 üst+16</code>. Her board'un üst ve alt + rayları, üst ve alt − rayları board'un sağ ucundan ray köprüsüyle bağlıdır; board'lar arası köprüler sıradan sıraya (arka-ön, sol uçta) ve en arka ile en ön sırada yan yana.</p>
 <div class="uyari"><b>Varsayım: raylar boydan boya kesintisiz</b> (BB830 türü). Bazı tam boy breadboard'larda her ray ortadan bölüktür: öyleyse her rayın iki yarısını ayrıca kısa bir telle köprüle (board başına 4 ek tel, ${y.boards.length * 4} tel) ya da ray boyunca 5 V'u ölçerek doğrula.</div>
@@ -226,7 +226,7 @@ function harita(m: MakineBbPlani, p: KartBbPlani): string {
 <figcaption>Board'lar, çip grupları ve takıldıkları aşama (zemin rengi); renkli çerçeve: bölge; koyu şerit: şerit kablo uyarlayıcısı. Üstten bakış; BB01 sol arka köşe.</figcaption></figure>
 ${bolumlerHtml(p.kart, y, k, "Bölümler: her bölgenin görevi ve çip grupları", "5. bölüm")}
 <h3>Makinedeki yeri</h3>
-<figure class="harita">${makineHaritasi(m, p.kart, 150)}<figcaption>Yedi pano iki sıra halinde koridora bakar; şerit kablo koridorda uzanır, her panonun uyarlayıcısına bir IDC soketiyle iner.</figcaption></figure>
+<figure class="harita">${makineHaritasi(m, p.kart, 150)}<figcaption>Yedi pano iki sıra hâlinde koridora bakar; şerit kablo koridorda uzanır, her panonun uyarlayıcısına bir IDC soketiyle iner.</figcaption></figure>
 </section>`;
 }
 
@@ -479,7 +479,7 @@ export function dizinBelgesi(m: MakineBbPlani, belgeler: UretilenBelge[], o: Bel
   const govde = `<section class="kapak">
 <div class="ust">Silikon3D · CPU16 · breadboard kurulumu</div>
 <h1>CPU16 bilgisayarı<br>breadboard'da</h1>
-<p class="alt">Her kart kendi panosunda: bir taban plakasında bir grup tam boy breadboard (BB830). Yedi pano iki sıra halinde ortadaki koridora bakar; anakartın arka paneli koridorda uzanan 64 damarlı bir şerit kablodur, her panoya bir IDC soketiyle iner. Kartın PCB'deki 2 × 32 kenar konnektörü breadboard'da bir şerit kablo uyarlayıcısıdır: kartlar arası her bağlantı arka paneldeki gibi tek bir yoldan geçer, panolar arasında atlama teli yoktur.</p>
+<p class="alt">Her kart kendi panosunda: bir taban plakasında bir grup tam boy breadboard (BB830). Yedi pano iki sıra hâlinde ortadaki koridora bakar; anakartın arka paneli koridorda uzanan 64 damarlı bir şerit kablodur, her panoya bir IDC soketiyle iner. Kartın PCB'deki 2 × 32 kenar konnektörü breadboard'da bir şerit kablo uyarlayıcısıdır: kartlar arası her bağlantı arka paneldeki gibi tek bir yoldan geçer, panolar arasında atlama teli yoktur.</p>
 <div class="olgular">
 ${olgu("7", "pano (kart başına bir)")}
 ${olgu(String(board), "breadboard (BB830)")}

@@ -148,7 +148,7 @@ ${olgu(p.cipler.length, "entegre")}${olgu(p.pasifler.length, "pasif eleman")}${o
 ${olgu(p.bloklar.filter((b) => b.cipler.length || b.telSayisi).length, "işlev bloğu")}${olgu(`${mm(p.olcu.w)} × ${mm(p.olcu.h)}`, "önerilen yerleşim (mm)")}${olgu(`≈ ${sayi(p.gucButcesi.toplam)} mA`, "besleme (5 V, kaba hesap)")}${olgu(kk.yol, "kurulum yolu")}
 </div>
 ${kk.rehber
-    ? `<p><b>Kurulum rehberi:</b> <span class="mono">${esc(kk.rehber)}</span> (PDF hali bu belgenin yanında). Rehber kurma sırasını ve her aşamanın testini anlatır; bu belge hangi bacağın nereye gittiğini.</p>`
+    ? `<p><b>Kurulum rehberi:</b> <span class="mono">${esc(kk.rehber)}</span> (PDF hâli bu belgenin yanında). Rehber kurma sırasını ve her aşamanın testini anlatır; bu belge hangi bacağın nereye gittiğini.</p>`
     : `<p><b>Deney:</b> ${deneyler || "—"}. Deney rehberi ne yapılacağını ve nasıl test edileceğini anlatır; bu belge hangi bacağın nereye gittiğini.</p>`}
 ${haric}
 <h3>Bu belgede</h3>
@@ -203,7 +203,7 @@ function kullanimBolumu(p: KurulumPlani, kk: KurulumKarti): string {
 <li><b>Yerleşim haritası</b> çiplerin önerilen yerini gösterir. Her çipin <b>çentiği solda</b>, <b>1. pini sol altta</b>dır (haritada nokta ve kare ped). Haritanın kenarındaki harf + sayı (ör. <b>C4</b>) çipin bulunduğu 20 mm'lik hücredir; tablolarda "yer" sütunu bunu yazar.</li>
 <li><b>Besleme önce</b>: her entegrenin VCC / GND bacağı ve dekuplaj kondansatörü, sonra sabit 0 / sabit 1 girişleri (Besleme bölümü). Sinyal tellerinden önce besleme ölçülür.</li>
 <li><b>Blok blok kur</b> (Kurulum sırası). Tel listesi bloklara bölünmüştür: bir bloğun telleri o bloğun kendi bağlantıları ve önceki bloklara giden bağlantılarıdır. Bir blok bitince o ana kadar kurulan blokların bütün bağlantıları tamamdır; deney rehberindeki testi yap, sonra sonraki bloğa geç.</li>
-<li><b>Tel listesi</b>: her satır iki bacak arasında tek bir teldir. Aynı netteki uçlar kısa bir zincir halinde dizilmiştir (A → B → C), böylece teller kısa kalır ve bir bacağa en çok üç tel gelir. Takıp ya da denetleyip kutuyu işaretle.</li>
+<li><b>Tel listesi</b>: her satır iki bacak arasında tek bir teldir. Aynı netteki uçlar kısa bir zincir hâlinde dizilmiştir (A → B → C), böylece teller kısa kalır ve bir bacağa en çok üç tel gelir. Takıp ya da denetleyip kutuyu işaretle.</li>
 <li><b>Çip kartları</b>: çip çip çalışmak için. Her pinin neti, rengi, telleri ve telin öbür ucu yazılıdır. Kart, çentik yukarıda (veri sayfasındaki gibi) çizilmiştir: kâğıdı 90° sola çevirince karttaki duruşla (çentik solda) aynı olur.</li>
 </ol>
 <h3>Gösterim</h3>
@@ -218,7 +218,7 @@ function kullanimBolumu(p: KurulumPlani, kk: KurulumKarti): string {
 <p>${ornekMetin}</p>
 <h3>Yönteme göre</h3>
 <table class="tablo"><tbody>
-<tr><td style="width:30mm"><b>Breadboard</b></td><td>Tel listesini sırayla tak, rengi renk koduna göre seç. Önerilen yerleşim breadboard dizilişiyle birebir değildir: çipleri aynı bloklar halinde, aynı sırayla (çentik solda) diz; tel uzunluğunu yerinde ölç.${kk.yol.startsWith("breadboard") ? ` <b>Bu kart deneyde (${p.deneyler.map((d) => `Deney ${d}`).join(", ")}) breadboard'da kurulur.</b>` : ""}</td></tr>
+<tr><td style="width:30mm"><b>Breadboard</b></td><td>Tel listesini sırayla tak, rengi renk koduna göre seç. Önerilen yerleşim breadboard dizilişiyle birebir değildir: çipleri aynı bloklar hâlinde, aynı sırayla (çentik solda) diz; tel uzunluğunu yerinde ölç.${kk.yol.startsWith("breadboard") ? ` <b>Bu kart deneyde (${p.deneyler.map((d) => `Deney ${d}`).join(", ")}) breadboard'da kurulur.</b>` : ""}</td></tr>
 <tr><td><b>PCB</b></td><td>Kart KiCad şemasından (yanındaki şema PDF'i) çizilir; teller yerine bakır yollar vardır. Lehimden sonra, çipler takılmadan, tel listesini <b>bip testi</b> listesi olarak kullan: multimetre süreklilik kipinde, uçları "Nereden" ve "Nereye" soket pinlerine değdir, bip sesini duyunca kutuyu işaretle. Ayrıca her çipin VCC ve GND pinini Besleme tablosundan denetle.${kk.yol.endsWith("PCB") ? " <b>Tam bilgisayarda bu kart PCB olarak kurulur (çipler soketlerde).</b>" : ""}</td></tr>
 <tr><td><b>Wire-wrap</b></td><td>Her satır bir sarımdır; zincir yapısı sayesinde bir pine en çok üç tel gelir. Renk kodunu koru, aynı netin tellerini aynı renkte sar.</td></tr>
 </tbody></table>
@@ -435,7 +435,7 @@ function semaBolumu(p: KurulumPlani, kk: KurulumKarti, o: BelgeSecenekleri): str
   const cokSayfa = kk.kaynak === "hesap";
   return `<section class="bolum" id="sema">
 <h2>Şema</h2>
-<p>KiCad şeması: <span class="mono">cpu16/kicad/${esc(p.kart)}/${esc(p.kart)}.kicad_sch</span>${cokSayfa ? " (çok sayfalı: kök sayfada her blok bir kutu, blokların çipleri kendi sayfalarında; sayfalar arası bağlantılar global etiketlerle)" : ""}${o.semaDosyasi ? `; PDF hali bu belgenin yanında: <b class="mono">${esc(o.semaDosyasi)}</b>` : ""}. Şemada bağlantılar tel yerine net etiketleriyle yapılmıştır: aynı adlı etiketler aynı nettir; adlar bu belgedeki net adlarıyla aynıdır.</p>
+<p>KiCad şeması: <span class="mono">cpu16/kicad/${esc(p.kart)}/${esc(p.kart)}.kicad_sch</span>${cokSayfa ? " (çok sayfalı: kök sayfada her blok bir kutu, blokların çipleri kendi sayfalarında; sayfalar arası bağlantılar global etiketlerle)" : ""}${o.semaDosyasi ? `; PDF hâli bu belgenin yanında: <b class="mono">${esc(o.semaDosyasi)}</b>` : ""}. Şemada bağlantılar tel yerine net etiketleriyle yapılmıştır: aynı adlı etiketler aynı nettir; adlar bu belgedeki net adlarıyla aynıdır.</p>
 <p>Bir bağlantıdan şüphelenirsen: net adını şema PDF'inde ara (Ctrl+F), aynı netin bütün uçlarını gör; tel listesinde aynı net adının tellerini işaretle. ${cokSayfa ? "Simülatörde de aynı devre çalışır (Silikon3D → 8 bit hesap makinesi): anahtarları çevir, bir çipe tıklayıp pinlerinin netlerini ve değerlerini gör." : `Simülatörde de aynı ad seçilebilir (Silikon3D → "CPU16 kartı 3D", <span class="mono">kart.secNet("…")</span>).`}</p>
 </section>`;
 }

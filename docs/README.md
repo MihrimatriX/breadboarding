@@ -116,7 +116,7 @@ görünür. Breadboard'da ilk dört aşaması ≈ 22 entegre ve 6–7 breadboard
 | Hangi blok ne iş yapar, hangi yolla bağlı? | [mimari.md](../cpu16/docs/mimari.md), uygulamada Mimari bölümü, `npm run cpu16 -- mimari` |
 | Hangi bacak nereye, tel hangi renk? | [kurulum.md](../cpu16/docs/kurulum.md), `npm run cpu16 -- kurulum <kart>` |
 | Breadboard'da hangi delikten hangi deliğe? | [breadboard.md](../cpu16/docs/breadboard.md), `npm run cpu16 -- breadboard-belge <kart>` |
-| Gerçek kart kaç MHz'te çalışır? | [uretim.md](../cpu16/docs/uretim.md), `npm run cpu16 -- zamanlama` |
+| Gerçek kart kaç MHz'de çalışır? | [uretim.md](../cpu16/docs/uretim.md), `npm run cpu16 -- zamanlama` |
 | Dirençlerin renk kodu, LED'in yönü? | [led-ve-direnc.md](../cpu16/kit/led-ve-direnc.md) |
 | 3D görünümü konsoldan nasıl sürerim? | [3d-gorunum.md](../cpu16/docs/3d-gorunum.md#konsol) |
 | Docker ile nasıl çalıştırırım? | [README: Docker ile](../README.md#docker-ile) |

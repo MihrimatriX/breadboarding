@@ -41,7 +41,7 @@ stdout'a yazılır (0x80 üstü baytlar CP857 olarak çözülür).
 3. Afiş: ilk satır mavi zemin üzerine beyaz `CPU16 BIOS v1`, ardından donanım özeti.
 4. Monitör: `EI`, istem `> `.
 
-Açılış ≈ 128 000 döngü (4 MHz'te 32 ms) sürer; çoğu ekran temizlemeye gider.
+Açılış ≈ 128 000 döngü (4 MHz'de 32 ms) sürer; çoğu ekran temizlemeye gider.
 
 ## Bellek yerleşimi
 
@@ -158,7 +158,7 @@ Sayılar hex; küçük harf de olur; argümanlar boşlukla ayrılır.
 | `F` | Intel HEX yükle: UART → EEPROM (yalnız bank 1: `0x4000–0x7FFF`) |
 | `I` | EEPROM bilgisi: `EEPROM 28C256, yazma korumasi: acik` (ya da `kapali`). 28C256'nın yazılımla okunan kimliği yoktur; koruma, son bayt komutsuz yeniden yazılarak sınanır (içerik değişmez) |
 | `C [0\|1]` | önbellek isabet / ıskalama sayaçlarını ve denetim register'ını yazar, sonra sayaçları sıfırlar; `C 0` önbelleği kapatır, `C 1` açar |
-| `T` | RAM testi: bank 32–39 (4 × 62256; 34 hariç: BIOS değişkenleri ve yığın) pencere 2 üzerinden; önce hepsine banka özgü desen yazar, sonra hepsini doğrular (adres hatlarının ve çip seçiminin karışmasını da yakalar). 4 MHz'te ≈ 0,9 s. Sonunda pencere 2 eski bankına döner |
+| `T` | RAM testi: bank 32–39 (4 × 62256; 34 hariç: BIOS değişkenleri ve yığın) pencere 2 üzerinden; önce hepsine banka özgü desen yazar, sonra hepsini doğrular (adres hatlarının ve çip seçiminin karışmasını da yakalar). 4 MHz'de ≈ 0,9 s. Sonunda pencere 2 eski bankına döner |
 | `?` / `H` | yardım |
 
 `D` G/Ç alanını (`FF00–FFFF`) da okur; bazı register'ları okumanın yan etkisi vardır (UART ve

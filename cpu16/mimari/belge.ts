@@ -42,7 +42,7 @@ export function mimariBolumu(id: DiyagramKimligi, o: { baslik?: string; dil?: Di
   const svg = mimariSvg(id, "acik", dil);
   const alt = dil === "en"
     ? `Boxes are function blocks: their names, roles, chips and chip counts come from the circuit (netlist). Lines are connections; thickness shows the bit count and arrows point from driver to reader. The blocks of every box, the nets of every connection and the arrow directions are checked against the netlist (cpu16/tests/mimari.test.ts). Interactive version: Silikon3D → Architecture; standalone SVG: <code>npm run cpu16 -- mimari ${id}</code>.`
-    : `Kutular işlev blokları: adı, görevi, içindeki entegreler ve sayıları devreden (netlist) sayılır. Çizgiler yollar; kalınlık bit sayısı, ok sürenden okuyana. Her kutunun blokları, her yolun netleri ve okların yönü netlistle denetlenir (cpu16/tests/mimari.test.ts). Etkileşimli hali: Silikon3D → Mimari; tek başına SVG: <code>npm run cpu16 -- mimari ${id}</code>.`;
+    : `Kutular işlev blokları: adı, görevi, içindeki entegreler ve sayıları devreden (netlist) sayılır. Çizgiler yollar; kalınlık bit sayısı, ok sürenden okuyana. Her kutunun blokları, her yolun netleri ve okların yönü netlistle denetlenir (cpu16/tests/mimari.test.ts). Etkileşimli hâli: Silikon3D → Mimari; tek başına SVG: <code>npm run cpu16 -- mimari ${id}</code>.`;
   return `<section class="bolum yatay mimari" id="mimari-${id}">
 <style>${STIL}</style>
 <h2>${esc(o.baslik ?? (dil === "en" ? `Architecture: ${ad}` : `Mimari: ${ad}`))}</h2>

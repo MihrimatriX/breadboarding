@@ -43,7 +43,7 @@ npm run cpu16 -- cc cpu16/programs/c/fib.c --run                         # düz 
   terminale akar, program monitöre dönünce (en çok `--max` döngü, varsayılan 50 milyon = 12,5 s)
   VGA ekranının son hâli yazılır. stdin bir boru ya da dosyaysa içeriği programa UART'tan klavye
   girdisi gibi gider; terminalden çalıştırırken beklememesi için `< /dev/null` verilebilir.
-- `machine dosya.c` programı derler, önyükleyiciyle yükler ve çalıştırır; makine 4 MHz'te gerçek
+- `machine dosya.c` programı derler, önyükleyiciyle yükler ve çalıştırır; makine 4 MHz'de gerçek
   zamanlı çalışır, terminal UART'a bağlıdır. Toplu kip: `--cycles N --screen`.
 - Gerçek kart: `.hex` dosyası Web IDE'nin "Karta gönder (Web Serial)" düğmesiyle ya da monitörün `L`
   komutuna bir seri terminalden gönderilir ([bios.md](bios.md#önyükleyici-protokolü-uart-115200-8n1)).
@@ -67,7 +67,7 @@ npm run cpu16 -- cc cpu16/programs/c/fib.c --run                         # düz 
 | 13 | [`yilan.c`](#yilanc) | oyun döngüsü, halka tampon | klavye, zamanlayıcı, VRAM | etkileşimli |
 
 Programların hepsi 1,5–4 KB kod tutar; UART'tan (115 200 baud) bir iki saniyede yüklenir. Süreler
-simülatörün 4 MHz'i içindir; 1 MHz'te çalışan gerçek kartta 4 kat uzar
+simülatörün 4 MHz'i içindir; 1 MHz'de çalışan gerçek kartta 4 kat uzar
 ([Deney 13](../kit/deney-13-c.md#sonra-diğer-c-örnekleri)).
 
 ### yeni.c ve selam.c
@@ -236,7 +236,7 @@ Conway'in Hayat Oyunu, ekranın tamamında (80 × 27): Gosper'in planör tabanca
 salınıcı; renk hücrenin yaşı. Saniyede 10 nesil, 100 nesil sonra biter. R rastgele bir dünya kurar,
 Q çıkar.
 
-Öğrenilecek: 4 MHz'te algoritma seçimi. Her hücrenin 8 komşusunu her nesilde saymak bu makinede nesil
+Öğrenilecek: 4 MHz'de algoritma seçimi. Her hücrenin 8 komşusunu her nesilde saymak bu makinede nesil
 başına 0,3 s sürer; burada her hücre baytı kendi komşu sayısını taşır ve sayılar yalnız bir hücre doğunca
 ya da ölünce güncellenir (boş hücre tek karşılaştırmayla geçilir). Satır uzunluğu 128 seçildi: indeks
 `y * 128 + x` bir kaydırmadır, 82 olsaydı her seferinde `__mul16`. Ekrana yalnız değişen hücreler
@@ -323,7 +323,7 @@ Tam tablo: [anakart.md](anakart.md#gç-haritası-0xff000xffff).
 ### İşlemlerin maliyeti
 
 CPU16'da çarpma ve bölme komutu yok, kaydırıcı 1 bitlik; toplama, mantık işlemleri ve
-karşılaştırmalar tek komuttur. 4 MHz'te bir komut 4–6 döngü (+ bellek bekleme):
+karşılaştırmalar tek komuttur. 4 MHz'de bir komut 4–6 döngü (+ bellek bekleme):
 
 | İşlem | Nasıl yapılır | Yaklaşık döngü |
 |---|---|---|
