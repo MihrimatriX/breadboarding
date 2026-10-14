@@ -238,7 +238,7 @@ guides, `kurulum/plan.ts` `akim`): the current of every breadboard farther from 
 rails and jumpers in between (≈ 50 mΩ per jumper: rail strip, two contacts and a 22 AWG jumper; separately
 on the + and − rails) and causes a drop. The worst panel is the cache board: its more heavily loaded input
 carries ≈ 139 mA, with ≈ 59 mV of drop at the farthest breadboard (comfortably inside the 4.5–5.5 V range
-of 74HC). The CPU panel's current is the LEDs' worst case (all segments lit).
+of 74HC). The CPU panel's current is computed for the LEDs' worst case (all segments lit).
 
 | Panel | Inputs | Current | Most loaded input | Drop at the farthest breadboard |
 |---|---|---|---|---|

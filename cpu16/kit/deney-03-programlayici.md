@@ -9,18 +9,18 @@ bir ZIF soket.
 
 ## Ne öğreneceksin
 
-- Paralel bir belleğe az pinle erişmek: iki 74HC595 kaydırmalı register ile 15 adres biti.
-- EEPROM'un nasıl yazıldığı: bayt ya da en çok 64 baytlık bir sayfa çipin tamponuna yüklenir, çip
+- Paralel bir belleğe az pinle erişmeyi: iki 74HC595 kaydırmalı register ile 15 adres biti.
+- EEPROM'un nasıl yazıldığını: bayt ya da en çok 64 baytlık bir sayfa çipin tamponuna yüklenir, çip
   onu kendi içinde ≈ 5–10 ms'de yazar. Silme gerekmez: her bayt doğrudan yeni değerini alır.
-- Yazma sürerken çipin durum bildirmesi: okunan baytın D7'si son yazılanın tersidir (**DATA
+- Yazma sürerken çipin durum bildirmesini: okunan baytın D7'si son yazılanın tersidir (**DATA
   yoklaması**), D6 her okumada değişir (**toggle biti**).
 - **Yazılım veri koruması (SDP)**: `AA → 5555`, `55 → 2AAA`, `A0 → 5555` dizisinden sonra gelen baytlar
-  yazılır, diziden gelmeyen yazmalar yok sayılır. Bilgisayardaki BIOS çipi korumalıdır: çalışan bir
+  yazılır, bu dizi olmadan gelen yazmalar yok sayılır. Bilgisayardaki BIOS çipi korumalıdır: çalışan bir
   programın yanlışlıkla yaptığı yazma BIOS'u bozamaz.
-- Zamanlamanın önemi: bir sayfanın baytları arasında en çok 150 µs (tBLC) olabilir. Arduino'nun
+- Zamanlamanın önemini: bir sayfanın baytları arasında en çok 150 µs (tBLC) olabilir. Arduino'nun
   `digitalWrite`'ı ≈ 3,5 µs sürer; bir bayt 60 pin işlemidir (≈ 210 µs) ve sınırı aşar. Yazılım bu
   yüzden pinleri port register'larıyla sürer (≈ 0,3 µs; bayt başına ≈ 20 µs).
-- Intel HEX biçimi ve doğrulama (sağlama toplamı, okuyup karşılaştırma).
+- Intel HEX biçimini ve doğrulamayı (sağlama toplamı, okuyup karşılaştırma).
 
 ## Nasıl çalışır
 
@@ -37,11 +37,11 @@ DATA yoklamasıyla yazmanın bitmesini bekler ve geri okuyup karşılaştırır.
 | `:10000000…` | `OK` / `ERR …` | Intel HEX satırı (`0000–7FFF`) |
 | `READ a n` / `SUM a n` | döküm / `OK SUM xxxx` | okuma, doğrulama |
 
-Protokolün tamamı: `cpu16/programlayici/cpu16-programlayici/cpu16-programlayici.ino` başı.
+Protokolün tamamı `cpu16/programlayici/cpu16-programlayici/cpu16-programlayici.ino`'nun başında.
 
 ## Kurulum adımları
 
-1. Arduino Nano'yu breadboard'a, ZIF-28 soketi yanına tak. U1 ve U2 (74HC595) zincir: U1'in `Q7S`'i
+1. Arduino Nano'yu breadboard'a, ZIF-28 soketi yanına tak. U1 ve U2 (74HC595) zincirlenir: U1'in `Q7S`'i
    U2'nin `DS`'ine. U2'nin Q7'si boştur (28C256'da A15 yok).
 2. Bağlantıları aşağıdaki tablodan yap (Arduino pinleri `A1.n` = Nano'nun n. bacağı, adları tabloda).
 3. Arduino IDE ile `cpu16/programlayici/cpu16-programlayici/cpu16-programlayici.ino`'yu yükle.
@@ -62,7 +62,7 @@ Protokolün tamamı: `cpu16/programlayici/cpu16-programlayici/cpu16-programlayic
 
 ## Test: beklenen sonuç
 
-- `--dogrula` her parça için `OK SUM` değerini bilgisayarın hesabıyla eşler ve `tamam, doğrulandı` yazar.
+- `--dogrula` her parça için `OK SUM` değerini bilgisayarın hesabıyla karşılaştırır ve `tamam, doğrulandı` yazar.
 - Yazmadan sonra `--koruma` `açık` der: programlayıcı her sayfayı korumalı yazar. Korumayı kapatmak
   gerekirse (çipi başka bir programlayıcıda yazmak için) `--koruma-kapat`.
 - Aynı dosyayı ikinci kez yazmak çok hızlıdır: çipte zaten aynı olan satırlar yazılmaz.

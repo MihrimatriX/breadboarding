@@ -1,8 +1,8 @@
 # Katkı rehberi
 
-Bu depoya katkı vermek isteyen herkes için: ortamı kurmak, değişikliği PR olarak göndermek, depodaki
+Bu depoya katkıda bulunmak isteyen herkes için: ortamı kurmak, değişikliği PR olarak göndermek, depodaki
 kurallar ve sık yapılan işlerin (yeni çip, kart, örnek program) adımları. Projeye yeniysen önce
-[README](README.md) ve [belgelerin okuma yolu](docs/README.md).
+[README](README.md)'yi ve [belgelerin okuma yolunu](docs/README.md) oku.
 
 ## Ortam
 
@@ -45,15 +45,15 @@ netlist'i ve şema PDF'leri), `g++` ve `python3` (EEPROM programlayıcısı), `p
    ```
    Kart, mikrokod ya da deney tanımı değiştiyse önce üretilen dosyaları yenile
    ([aşağıda](#üretilen-dosyalar)); testler eski kalanları yakalar.
-4. Dalı gönder, `main`'e PR aç. PR açıklamasına ne değiştiğini, nasıl denediğini ve ekran görüntüsü
-   gereken bir şeyse görüntüyü yaz.
+4. Dalı gönder, `main`'e PR aç. PR açıklamasına ne değiştiğini ve nasıl denediğini yaz; değişiklik
+   ekran görüntüsü gerektiriyorsa görüntüyü de ekle.
 5. CI (testler, derleme, Docker imajı) yeşil olmalı. **AFU inceler ve birleştirir**; `main`'e
    doğrudan push yok.
 
 Spec'te ([spec.md](cpu16/docs/spec.md)) bir değişiklik gerekiyorsa önce yalnız spec'i değiştiren bir
 PR açılır, kod sonra gelir ([yol haritası](cpu16/docs/roadmap.md), kural 4).
 
-Hata ve istekler için GitHub'da **Issues > New issue** altındaki "Hata bildirimi" ve "Özellik
+Hatalar ve istekler için GitHub'da **Issues > New issue** altındaki "Hata bildirimi" ve "Özellik
 isteği" şablonları var.
 
 ## Kurallar
@@ -77,7 +77,7 @@ modeli (`cpu16/micro/`), kapı seviyesi kartlar (`cpu16/board/`) ve gerçek kart
 çalıştırıp emülatörle adım adım (lockstep) aynı sonucu vermek zorunda.
 
 - Davranışı değiştiren bir değişiklik önce emülatörde ve [isa-ayrintilari.md](cpu16/docs/isa-ayrintilari.md)'de
-  yapılır, sonra alttaki katmanlar ona uydurulur. İkisi çelişirse ikisi birlikte düzeltilir.
+  yapılır, sonra alttaki katmanlar ona uydurulur. Emülatörle belge çelişirse ikisi birlikte düzeltilir.
 - Bir hata bulduğunda farkın ilk göründüğü katmanda ara: lockstep testleri bunu söyler.
 - hesap8'de altın model `hesap8/model.ts`; devre her durumda onunla aynı olmalı
   (`npm run hesap8 -- dogrula --hepsi`).
@@ -97,7 +97,7 @@ rehberleri).
   da çoğunlukla Türkçe (`kurulumPlani`, `buildKybCard`'daki `b.block = "Adres çözme"`, `HesapSim`,
   `sinyalSinifi`); eski kısımlarda (6502 tarafı, emülatörün çekirdeği) İngilizce. Değiştirdiğin
   dosyanın diline uy, bir dosyanın içinde dili karıştırma.
-- **Dosya başı yorumu:** dosyanın ne yaptığını, kim tarafından çağrıldığını ve ilgili belgeyi anlatan
+- **Dosya başı yorumu:** dosyanın ne yaptığını, onu kimin çağırdığını ve ilgili belgeyi anlatan
   birkaç satır (ör. `cpu16/board/kyb-card.ts`, `cpu16/tools/cli.ts`). Üretilen dosyaların başında
   "elle değiştirme" ve onu üreten komut yazar.
 - **TypeScript:** `strict`, kullanılmayan değişken ve parametre yok (`tsc -b` hata verir). Node'da
@@ -115,14 +115,14 @@ rehberleri).
 
 ### Yeni bir çip eklemek
 
-[parcalar.md](cpu16/docs/parcalar.md#yeni-çip-eklemek) özetle:
+[parcalar.md](cpu16/docs/parcalar.md#yeni-çip-eklemek)'den özetle:
 
 1. `cpu16/chips/parts/` altında bir `ChipDef` yaz: pin adları veri sayfası sırasıyla, kapı devresi
    (`build`), veri sayfasının fonksiyon tablosu (`ref`).
 2. `cpu16/chips/library.ts` listesine ekle.
 3. `npm run cpu16 -- kicad-sym` ile sembol kütüphanesini yenile, sonra
-   `npx vitest run cpu16/tests/chips.test.ts`: kapı = tablo ve transistör = kapı testleri yeni çip için
-   kendiliğinden koşar.
+   `npx vitest run cpu16/tests/chips.test.ts` çalıştır: kapı = tablo ve transistör = kapı testleri
+   yeni çip için kendiliğinden koşar.
 
 Kütüphaneye yalnız yaygın, birden fazla üreticisi olan parçalar girer (AFU kararı, [spec.md](cpu16/docs/spec.md)).
 

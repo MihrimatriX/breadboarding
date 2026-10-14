@@ -1,7 +1,7 @@
 # CPU16 BIOS v1 (Faz 7)
 
 > EEPROM bank 0'daki yazılım: vektörler, açılış, programlar için **atlama tablosu**, kesme
-> işleyici (zamanlayıcı + klavye), VGA metin sürücüsü, UART, **monitör** ve UART üzerinden
+> işleyicisi (zamanlayıcı + klavye), VGA metin sürücüsü, UART, **monitör** ve UART üzerinden
 > **Intel HEX önyükleyicisi** (RAM'e ya da korumalı sayfa yazmasıyla EEPROM'a).
 > Kaynak: `bios/bios.s` (as16). İmaj: `bios/build.ts`. Yükleyici istemcisi: `bios/uploader.ts`.
 > Testler: `tests/bios.test.ts`. Donanım: [anakart.md](anakart.md).
@@ -17,7 +17,7 @@ npm run cpu16 -- charrom -o charrom.bin # video kartının 4 KB karakter ROM'u
 `bios.bin` ya da `bios.hex` EEPROM programlayıcıyla (TL866/T48 ya da deney setinin Arduino + 74HC595
 programlayıcısı, Deney 3) anakarttaki 28C256'ya (bellek kartı U420) yazılır. Deney setinin
 programlayıcısı çipi yazılım veri korumasıyla (SDP) bırakır. BIOS v1 4248 bayttır (bank 0'ın %26'sı).
-Komut satırı her iki durumda da atlama tablosunu yazar.
+Komut satırı iki biçimde de atlama tablosunu ekrana yazar.
 
 Simülatörde denemek için:
 
@@ -41,7 +41,7 @@ stdout'a yazılır (0x80 üstü baytlar CP857 olarak çözülür).
 3. Afiş: ilk satır mavi zemin üzerine beyaz `CPU16 BIOS v1`, ardından donanım özeti.
 4. Monitör: `EI`, istem `> `.
 
-Açılış ≈ 128 000 döngü (4 MHz'te 32 ms) sürer; çoğu ekran temizleme.
+Açılış ≈ 128 000 döngü (4 MHz'de 32 ms) sürer; çoğu ekran temizlemeye gider.
 
 ## Bellek yerleşimi
 
@@ -86,7 +86,7 @@ yuvadan geçerken değişmez. Bu kural cc16 ABI'siyle uyumludur (r0–r3 çağı
 
 | Adres | Ad | Girdi | Çıktı / not |
 |---|---|---|---|
-| `0x0010` | MONITOR | – | monitöre döner (yığın `0xFF00`'a sıfırlanır), geri dönmez |
+| `0x0010` | MONITOR | – | monitöre geçer (yığın `0xFF00`'a sıfırlanır); çağırana dönmez |
 | `0x0018` | PUTC | r0 = karakter | VGA'ya ve UART'a; `'\n'` UART'a CR LF olarak gider |
 | `0x0020` | GETC | – | r0 = karakter (klavye tamponu ya da UART); gelene kadar bekler |
 | `0x0028` | TRYGETC | – | r0 = karakter, yoksa `0xFFFF` (beklemez) |
@@ -131,7 +131,7 @@ BIOS'un IRQ işleyicisi bütün register'ları saklar ve `IRQ_SRC` `0xFF` olana 
   (I = 0). Kanca yoksa BIOS o kaynağın maskesini kapatır (kesme fırtınası olmasın).
 
 **SWI**: kesme noktası. `SWI` çalışınca BIOS `SWI @ adres` yazar ve monitöre döner (yığın
-sıfırlanır). Program içinde hata ayıklamak için `SWI` koyup `D` ile belleğe bakılabilir.
+sıfırlanır). Bir programda hata ayıklamak için araya `SWI` koyup `D` ile belleğe bakabilirsin.
 
 ## Klavye
 
@@ -158,7 +158,7 @@ Sayılar hex; küçük harf de olur; argümanlar boşlukla ayrılır.
 | `F` | Intel HEX yükle: UART → EEPROM (yalnız bank 1: `0x4000–0x7FFF`) |
 | `I` | EEPROM bilgisi: `EEPROM 28C256, yazma korumasi: acik` (ya da `kapali`). 28C256'nın yazılımla okunan kimliği yoktur; koruma, son bayt komutsuz yeniden yazılarak sınanır (içerik değişmez) |
 | `C [0\|1]` | önbellek isabet / ıskalama sayaçlarını ve denetim register'ını yazar, sonra sayaçları sıfırlar; `C 0` önbelleği kapatır, `C 1` açar |
-| `T` | RAM testi: bank 32–39 (4 × 62256; 34 hariç: BIOS değişkenleri ve yığın) pencere 2 üzerinden; önce hepsine banka özgü desen yazar, sonra hepsini doğrular (adres hatlarının ve çip seçiminin karışmasını da yakalar). 4 MHz'te ≈ 0,9 s. Sonunda pencere 2 eski bankına döner |
+| `T` | RAM testi: bank 32–39 (4 × 62256; 34 hariç: BIOS değişkenleri ve yığın) pencere 2 üzerinden; önce hepsine banka özgü desen yazar, sonra hepsini doğrular (adres hatlarının ve çip seçiminin karışmasını da yakalar). 4 MHz'de ≈ 0,9 s. Sonunda pencere 2 eski bankına döner |
 | `?` / `H` | yardım |
 
 `D` G/Ç alanını (`FF00–FFFF`) da okur; bazı register'ları okumanın yan etkisi vardır (UART ve
@@ -167,7 +167,7 @@ klavye verisi).
 ## Önyükleyici protokolü (UART, 115200 8N1)
 
 Programlar çip sökmeden UART'tan yüklenir. Aynı istemci kodu (`bios/uploader.ts`, `uploadHex`)
-Web IDE'de simülatöre, Web Serial ile gerçek karta ve CLI'da kullanılır.
+Web IDE'de simülatör için, Web Serial ile gerçek kart için ve CLI'da kullanılır.
 
 ```
 ana makine                         BIOS
@@ -188,7 +188,7 @@ Kurallar:
   sonra sonu `\n` olan `HEX…` satırı, her kayıttan sonra tek karakterlik yanıt.
 - Yanıtlar: **`.`** kayıt kabul edildi · **`!`** sağlama toplamı ya da hex hatası: kayıt aynen
   yeniden gönderilebilir (istemci 3 kez dener) · **`X`** reddedildi: yükleme biter, BIOS bir
-  satır hata iletisi ve `"> "` yazar (`Hata: adres izinli degil`, `Hata: EEPROM yazilamadi`).
+  satırlık hata iletisi ve `"> "` yazar (`Hata: adres izinli degil`, `Hata: EEPROM yazilamadi`).
 - Kayıtlar `:` ile başlar; araya giren diğer karakterler (CR, LF, boşluk) yok sayılır. Kayıt
   sonu için ayrıca bir karakter beklenmez; istemci yine de `\r\n` ekler.
 - `ESC` (27) ya da `Ctrl-C` (3), kayıtlar arasında yüklemeyi iptal eder (`Iptal`).
@@ -213,18 +213,18 @@ kapalıdır, sonunda önbellek boşaltılıp eski durumuna getirilir. `F` progra
 EEPROM'daki programı çalıştırmak: `0x4000`'e derlenmiş bir program `F` ile EEPROM ofseti
 `0x4000`'e (bank 1) yazılır; sonra monitörde `B 1 1` (pencere 1 = EEPROM bank 1) ve `G 4000`.
 Program bu durumda kendi bölgesine yazamaz (EEPROM); değişkenleri pencere 2/3'teki RAM'de
-tutmalıdır. Reset bank'ları yeniden RAM'e döndürür, EEPROM içeriği kalır.
+tutmalıdır. Reset bankları yeniden RAM'e döndürür, EEPROM içeriği kalır.
 
 ### İstemciler
 
 - **Web IDE** (`#cpu16`, "Anakart + BIOS" kipi): "Derle ve RAM'e yükle" gerçek karttaki akışı
-  yapar: reset → BIOS açılır → `L` → kayıtlar → `G`. "EEPROM'a yaz" `F` ile yazar ve
+  izler: reset → BIOS açılır → `L` → kayıtlar → `G`. "EEPROM'a yaz" `F` ile yazar ve
   "EEPROM'dan çalıştır" düğmesi `B 1 1` + `G 4000` gönderir.
 - **Web Serial** ("Karta gönder (Web Serial)", Chrome / Edge masaüstü, https ya da localhost):
   tarayıcı kartın CH340 seri portunu 115200 8N1 açar ve tam olarak yukarıdaki diziyi gönderir:
   `"\r"`, `"L\r"`, her kayıt + `"\r\n"`, en sonda `"G\r"`; port sonra kapatılır. Kartın
   çıktısı IDE'de "Kart (Web Serial)" bölümünde görünür. Tarayıcıda `navigator.serial` yoksa
-  düğme açıklamasıyla devre dışıdır.
+  düğme devre dışı kalır ve nedenini gösterir.
 - **CLI**: `npm run cpu16 -- machine program.s` aynı istemciyi simülatörün UART'ına bağlar.
 - Elle: herhangi bir seri terminalde `L` yazıp `.hex` dosyasını metin olarak yapıştırmak da
   çalışır (akış denetimi açık olmalı ya da terminal satır başına gecikme eklemeli).
@@ -241,13 +241,13 @@ oradan, kesmeler kapalıyken çağrılır (sadece göreli dallanma kullanırlar;
 
 1. `AA → 5555h`, `55 → 2AAAh`, `A0 → 5555h`; ardından 1–64 bayt aynı 64 baytlık sayfaya, aralarında
    en çok 150 µs (tBLC). Son bayttan 150 µs sonra çip yazma döngüsüne girer.
-2. Son yazılan adres D7 yoklamasıyla beklenir (zaman aşımı ≈ 0,8 s).
+2. Yazmanın bitmesi, son yazılan adreste D7 yoklanarak beklenir (zaman aşımı ≈ 0,8 s).
 3. Baytlar geri okunup kaynakla karşılaştırılır; fark varsa `Hata: EEPROM yazilamadi`.
 
 Komut adresleri pencerelerle üretilir: `5555h` için pencere 1 geçici olarak EEPROM bank 1'e
 eşlenir (CPU `0x5555`), `2AAAh` pencere 0'dadır (bank 0, CPU `0x2AAA`); hedef de pencere 1'dedir
 (ofset = CPU adresi). Yoklama ve doğrulama okumaları önbellekten değil EEPROM'dan gelmeli:
-önbellek bu sırada kapalıdır. Sonrasında pencereler ve önbellek eski haline döner.
+önbellek bu sırada kapalıdır. Sonrasında pencereler ve önbellek eski durumlarına döner.
 
 `I` komutu korumayı `fr_sdp` ile sınar: EEPROM'un son baytı (`0x7FFF`) kendi değeriyle, komut
 dizisi olmadan yeniden yazılır. Çip korumalıysa yazma yok sayılır ve D7 doğru okunur; değilse

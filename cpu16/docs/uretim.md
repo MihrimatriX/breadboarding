@@ -12,7 +12,7 @@
   ailesinde garanti edilemez. Neden ve 4 MHz'e giden yol aşağıda.
 - **UART hızı CPU saatine bağlı**: 1 MHz'de kart 28 800 baud konuşur (4 MHz'de 115 200).
 - **Kurulum sırası** deney sırasıdır: saat → programlayıcı → CPU blokları → bellek → önbellek →
-  G/Ç → video → BIOS → C. Her blok kurulunca kendi testi geçmeden sonrakine geçilmez.
+  G/Ç → video → BIOS → C. Kurulan blok kendi testini geçmeden sonrakine geçilmez.
 - **Bitti ölçütü**: `npm run cpu16 -- kart-testi --port …` 4/4 geçer, yani gerçek kart dört test
   programında simülatörle bayt bayt aynı çıktıyı verir.
 
@@ -82,7 +82,7 @@ belirler (bayt seçimi `BSEL` → 28C256 A0 → `MD`, 150 ns), karakter saatini 
 (28C256) → font register'ı yolu. İkisi de gereken hızın çok üstünde. Video kartında 28C256'nın
 yavaşlığı bir boru hattı aşamasıyla (font register'ı, bir karakter süresi) karşılanır; bu olmasaydı
 font yolu yarım karakter süresine (158,9 ns) sığmazdı ([anakart-gc-video.md](anakart-gc-video.md)).
-Kendin yap bellek kartının (Deney 14) 574'leri veri yoluna doğrudan bağlansaydı her hatta 16 bacak
+Kendin yap bellek kartının (Deney 14) 574'leri veriyoluna doğrudan bağlansaydı her hatta 16 bacak
 eklenir ve CPU yolu 972 ns olurdu; iki 74HC245 tamponla her hatta bir bacak kalır: 956 ns.
 
 Video kartında piksel saatiyle yalnızca üç çip çalışır: faz sayacı (74AC161), karakter saatini
@@ -96,7 +96,7 @@ yazma girişine: aynı döngüde okuma ve yazma olmaz) ve G/Ç kartının zamanl
 darbesindeki bir yayı adlı istisnalarla analiz dışı bırakır; rapor her istisnayı sayısıyla yazar.
 Kapılı saatlerin izinlerinden saat açıkken değişebilenler test edilir ve listelenir:
 `~WSEL` ve `C_MEMACC` (CLK), `C_CB`, `C_INVL`, `C_RAMHIT` (TCLK), `V_OPW` (karakter saati: yalnızca
-VRAM'in `~OE`/`~WE`'sini kapılar). Bunlar mantık olarak güvenlidir:
+VRAM'in `~OE`/`~WE`'sini kapılar). Bunlar mantıksal olarak güvenlidir:
 `~WSEL` aşağıdaki mikrokod kuralıyla; `C_MEMACC`'ın kapıladığı bekleme isteği saat değildir,
 yalnızca s7'nin ortasında örneklenir; TCLK tarafındakiler yazma evresi boyunca sabittir ya da
 değiştikleri kenarda kapı zaten kapalıdır (gerekçeleri `tests/zamanlama.test.ts`'te). Test listeyi sabit
@@ -117,10 +117,10 @@ bırakmak istiyoruz; kart 1 MHz'de testleri geçtikten sonra kristal değiştiri
 ### Analizin bulduğu ve düzeltilen sorun
 
 İlk şemada C ve V bayraklarının kapılı saati, ALU kod çözme ROM'unun `SETSCV` çıkışından geliyordu.
-ROM'un adresinde `CFLAG` var ve CFLAG tam da bayrakların yüklendiği kenarda değişiyor; o anda ROM
-çıkışında bir sıçrama (glitch) olursa bayrak saatine ikinci bir darbe gider ve C bayrağı yanlış
-yüklenirdi. Simülasyon bunu göremez (kapı modeli sıçrama üretmez), gerçek kartta ise ara sıra
-bozulan bir ADC/SBC olarak, bulunması çok zor bir hata olurdu. Düzeltme: dört bayrak aynı kapılı
+ROM'un adresinde `CFLAG` vardı ve CFLAG tam da bayrakların yüklendiği kenarda değişir; o anda ROM
+çıkışında bir sıçrama (glitch) olsaydı bayrak saatine ikinci bir darbe giderdi ve C bayrağı yanlış
+yüklenirdi. Simülasyon bunu göremez (kapı modeli sıçrama üretmez); gerçek kartta ise bu, ara sıra
+bozulan bir ADC/SBC olarak görünen, bulunması çok zor bir hata olurdu. Düzeltme: dört bayrak aynı kapılı
 saatle yüklenir; `SETSCV = 0` iken bir 74HC157 eski C ve V'yi geri yazar. Bugünkü kapı seviyesindeki
 kod çözücü de C'ye bağlı bitlerinde aynı sıçramayı üretebilir: kural aynen geçerli, kod çözücünün hiçbir
 çıkışı bir saat kapısına gitmez.
@@ -142,8 +142,8 @@ kod çözücü de C'ye bağlı bitlerinde aynı sıçramayı üretebilir: kural 
 ### 4 MHz'e giden yol
 
 1. **Daha hızlı parçalar**, aynı pin dizilişiyle: ALU yolunda ve ALU kod çözücüde 74AC/74AHC
-   aileleri (gecikmeler kabaca üçte bir). Analizi değiştirip (`GECIKME` tablosu) yeniden
-   çalıştırarak etkisi önceden görülür.
+   aileleri (gecikmeler kabaca üçte bir). Analizde `GECIKME` tablosunu değiştirip yeniden
+   çalıştırırsan etkisini önceden görürsün.
 2. **Saat kartı**: 4 MHz CPU için 32 MHz osilatör gerekir; 74HC175 Johnson sayacı en kötü
    durumda ≈24 MHz'e kadar garanti (analizde 42 ns'lik yol). Burada da 74AC175 gerekir.
 3. **Tam periyot ALU**: CR'yi yükselen kenara alıp mikrokod adresini bir adım önceden hesaplamak
@@ -202,12 +202,12 @@ Kaba hesap (5 V):
 | CPU kartının çubuk göstergeleri (8 segment × 1 kΩ, bütün bitler 1 iken) | 26 | ≤24 mA → 0,62 A |
 | **Toplam** | | **≈1,4 A** |
 
-LED'ler en kötü durumla sayıldı: hepsi birden yanmaz (okuma ve yazma LED'lerinden birer tanesi,
+LED'ler en kötü duruma göre sayıldı: hepsi birden yanmaz (okuma ve yazma LED'lerinden birer tanesi,
 veriyolu sürücülerinden en çok biri yanar; değerlerin bitlerinin yarısı 0'dır). CPU kartının
 kurulum belgesindeki bütçe (`npm run cpu16 -- kurulum cpu`) LED'lerle ≈ 0,97 A'dir (göstergeler ve
 hata ayıklama LED'leri olmadan ≈ 0,23 A); bunun ≈ 0,4 A'i register içeriğinin 16 göstergesidir.
 
-5 V 3 A'lik düzenli bir adaptör yeterli payı bırakır. Şemada her kartın girişinde 100 µF, her
+5 V 3 A'lik regüleli bir adaptör yeterli payı bırakır. Şemada her kartın girişinde 100 µF, her
 entegrenin yanında 100 nF var; breadboard'da da bunları atlama: dekuplajsız 74HC kartlar
 osilatörün kenarlarında rastgele hatalar yapar. Uzun breadboard dizilerinde beslemeyi iki uçtan ver.
 
@@ -241,8 +241,8 @@ npm run cpu16 -- kart-testi                                        # karşı tar
 
 Windows'ta Web IDE'deki **Kart testi (Web Serial)** düğmesi aynı işi yapar (Chrome / Edge).
 
-Dört program (`cpu16/bios/testler/`) önce simülatörde çalıştırılıp beklenen çıktı alınır, sonra
-aynı yoldan (monitör, Intel HEX, `G`) karta yüklenip çıktılar karşılaştırılır:
+Dört program (`cpu16/bios/testler/`) önce simülatörde çalıştırılır ve beklenen çıktı alınır; sonra
+aynı yoldan (monitör, Intel HEX, `G`) karta yüklenir ve çıktılar karşılaştırılır:
 
 | Test | Sınadığı | Kalırsa önce bak |
 |---|---|---|
@@ -251,8 +251,8 @@ aynı yoldan (monitör, Intel HEX, `G`) karta yüklenip çıktılar karşılaşt
 | `3-onbellek.s` | etiket karşılaştırması, yazma gözetleme, isabet sayacı | önbellek kartı: etiket SRAM'i ve 74HC688 karşılaştırıcılar |
 | `4-gc-video.c` | zamanlayıcı kesmesi, kesme denetleyicisi, VRAM yaz / oku | takılırsa (zaman aşımı) zamanlayıcı veya IRQ hattı; VRAM satırı farklıysa video kartının veri hatları |
 
-Test ilk farklı satırı gösterir. Araç kendi kendini de sınar: VRAM'in bir veri hattı kopuk bir
-simüle kartta yalnızca video testinin kaldığı `tests/kart-testi.test.ts`'de denetlenir.
+Test ilk farklı satırı gösterir. Araç kendi kendini de sınar: `tests/kart-testi.test.ts`, VRAM'in
+bir veri hattı kopuk olan simüle bir kartta yalnızca video testinin kaldığını denetler.
 
 ## 6. Arıza bulma
 
@@ -263,11 +263,11 @@ simüle kartta yalnızca video testinin kaldığı `tests/kart-testi.test.ts`'de
 - **Önce besleme ve saat**: her entegrenin VCC / GND bacağı, CLK'nin her kartta aynı şekilde
   göründüğü (yansıma, çınlama), ~RESET'in açılışta yeterince uzun düşük kaldığı.
 - **Boşta giriş**: CMOS girişi asla boşta bırakılmaz; şema bunu denetler (ERC), breadboard'da
-  unutulan bir tel rastgele davranış yapar.
+  unutulan bir tel rastgele davranışa yol açar.
 - **Veriyolu çakışması**: iki sürücü aynı anda veriyoluna yazarsa çipler ısınır ve değerler
   karışır. Şemada her sürücünün ~OE'si tek bir çözücü çıkışından gelir; breadboard'da bu hatları
   ilk kurulumda LED'le izle.
-- **Zamanlama şüphesi**: hata hızla değişiyorsa (YAVAŞ'ta yok, kristalde var) önce kristali
+- **Zamanlama şüphesi**: hata hıza bağlıysa (YAVAŞ'ta yok, kristalde var) önce kristali
   yarıya indir. Analiz hangi yolun sınırda olduğunu `--yol 10` ile listeler.
 
 ## 7. PCB notları
@@ -279,7 +279,7 @@ ve yönlendirme henüz yapılmadı. Plan:
   tasarımın kopyası olur.
 - Kartlar arka panele 2 × 32 konnektörle oturur (pin listesi `board/passives.ts`, `BACKPLANE`).
 - **CPU kartı büyük** (≈150 entegre): tek PCB yerine işlev bloklarına göre iki ya da üç karta
-  bölmek ve aralarını kısa bir şeritle bağlamak daha ucuz ve onarılabilir. Bölme yeri, iç veriyolu
-  (BUS0..15) ve kontrol kelimesi (CW0..31) dışında az sinyal geçen yerlerdir.
+  bölmek ve aralarını kısa bir şeritle bağlamak daha ucuz, onarımı da daha kolay. Bölme yerleri,
+  iç veriyolu (BUS0..15) ve kontrol kelimesi (CW0..31) dışında az sinyal geçen yerlerdir.
 - 4 katman (iç katmanlar GND ve VCC düzlemi) saat kenarlarındaki gürültüyü belirgin azaltır; 2
   katmanda geniş GND dökümü ve her entegrenin dekuplajı bacağın dibinde olmalı.

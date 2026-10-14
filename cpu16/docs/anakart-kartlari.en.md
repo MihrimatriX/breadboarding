@@ -183,8 +183,8 @@ is common, so 4 × 62256 and a 28C256 replaced them (AFU's decision, [spec.en.md
    I/O address (≈ 58,200 cycles: bank registers, enabling the cache, clearing variables, copying the EEPROM
    write routines to RAM, clearing the screen).
 5. KiCad: `kicad-cli` extracts netlists from the memory and cache schematics; each net's pin set
-   matches the board's nets (`board.test.ts`, skipped if not installed). ERC: no conflicting outputs and no
-   floating inputs in `buildMachineBoard()`.
+   matches the board's nets (`board.test.ts`; skipped if `kicad-cli` is not installed). ERC: no
+   conflicting outputs and no floating inputs in `buildMachineBoard()`.
 
 Speed (outside the browser): `BusMaster` runs ≈ 18,000 and `GateMachine` ≈ 9,000 CPU cycles per second
 (≈ 7,000 with the I/O, video and DIY memory boards fitted too).

@@ -10,7 +10,7 @@
 The model runs at instruction level but **counts time in CPU cycles**: each instruction lasts its cycle
 count from the microarchitecture table plus any memory wait states, and the timer, vertical scan, UART
 and keyboard advance with this counter. That makes "how fast does the program run with the cache on?"
-something you can measure in the simulation (experiment 10).
+something you can measure in the simulation (Experiment 10).
 
 ## Block diagram
 
@@ -257,8 +257,8 @@ color; the blinking comes from bit 4 of a 74HC393 frame counter.
   <https://www.cl.cam.ac.uk/~mgk25/ucs-fonts.html> or the xorg `font-misc-misc` package.
 - Generator: `video/bdf2font.ts` (`node --experimental-strip-types cpu16/video/bdf2font.ts 8x13.bdf > cpu16/video/font.ts`).
   The 13-line glyphs start at line 1 of the 16-line cell. The generator draws the box-drawing (─ │ ╔ ═ …)
-  and block (█ ▀ ▄ ░ ▒ ▓ ■) characters so that they fill the cell completely (so adjacent frames join
-  without gaps).
+  and block (█ ▀ ▄ ░ ▒ ▓ ■) characters to fill the cell completely (so adjacent frames join without
+  gaps).
 - Code page: `0x20–0x7E` ASCII, `0x80–0xFF` **CP857** (Turkish DOS: Ç ü ğ ı İ ö ş …, box-drawing
   and block characters), `0x01–0x1F` and `0x7F` CP437 symbols (☺ ♥ ♪ ► ↑ … ⌂).
 - ROM image: `npm run cpu16 -- charrom -o charrom.hex` (4096 bytes). It goes into the first 4 KB of a
@@ -284,7 +284,7 @@ Web IDE and the CLI generate set 2 codes from the browser's `KeyboardEvent.code`
 115200 baud 8N1 (a byte is 10 bits = 86.8 µs = **347 CPU cycles**). The rate depends on the CPU clock:
 the gate-level I/O board divides the bit time from TCLK, so on the first 1 MHz board it becomes
 **28,800 baud** (see [uretim.en.md](uretim.en.md)). The oscillator-based design below is the initial
-estimate. On the PC side there is a CH340 USB-UART bridge. A 1.8432 MHz oscillator + 74HC4040 baud clock
+estimate. On the host side there is a CH340 USB-UART bridge. A 1.8432 MHz oscillator + 74HC4040 baud clock
 (16×), a 74HC165 transmitter with a 74HC161 bit counter, and a 74HC595 receiver with 74HC161 ×2 (16×
 sampling and bit counter) + 74HC74. (A single TL16C550 could replace it if wanted, with select logic that
 keeps the register map the same.)
@@ -293,8 +293,8 @@ keeps the register map the same.)
   `TX_EMPTY` and then writes (BIOS `uart_putc`).
 - RX: the received byte sits in `UART_DATA` and `RX_READY` = 1. The receiver holds a single byte: it must
   be read within one byte time, before the next byte arrives.
-- Flow control (RTS/CTS): while `RX_READY` is 1 the board's RTS# output is inactive. It connects to the
-  CH340's CTS# input, so the bridge holds the next byte and nothing overflows. The model implements it
+- Flow control (RTS/CTS): the board's RTS# output connects to the CH340's CTS# input. While `RX_READY`
+  is 1, RTS# is inactive, so the bridge holds the next byte and nothing overflows. The model implements it
   this way: a byte arrives only when RX is empty and at least one byte time after the previous read. The
   bootloader protocol waits for a reply after every record, so it also works over a link without flow
   control (inside a record the BIOS spends ≈ 120 cycles per character, and a byte time is 347 cycles).
@@ -311,11 +311,11 @@ erase, and each byte takes its new value directly:
 | Enable protection / protected write (SDP) | `AA→5555`, `55→2AAA`, `A0→5555`, then the page's bytes. Protection stays on |
 | Disable protection | `AA→5555`, `55→2AAA`, `80→5555`, `AA→5555`, `55→2AAA`, `20→5555` |
 
-With protection on, writes that do not come with the sequence are ignored, so a stray write from a
-running program cannot corrupt the BIOS. The programmer (experiment 3) and the BIOS `F` command write
+With protection on, writes that arrive without the command sequence are ignored, so a stray write from
+a running program cannot corrupt the BIOS. The programmer (Experiment 3) and the BIOS `F` command write
 every page protected; the chip ships unprotected from the factory and becomes protected on its first
 write. While a write cycle is in progress, instructions cannot be fetched from the EEPROM: the BIOS copies
-its write routines to RAM and runs them from there (see bios.md, "Writing to the EEPROM"). The ID cannot be
+its write routines to RAM and runs them from there (see bios.md, "Writing to EEPROM"). The ID cannot be
 read in software (it needs 12 V on A9).
 
 The model (`emu/devices/eeprom.ts`) counts time in CPU cycles (the cycle the instruction started in ×

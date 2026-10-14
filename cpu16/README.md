@@ -1,7 +1,7 @@
 # CPU16
 
-Tamamen 74HC entegrelerinden kurulan, kendi komut seti, kendi C derleyicisi ve 3D'de transistörüne
-kadar incelenebilen bir 16 bit bilgisayar. Aynı zamanda bir eğitim ve deney seti: 14 deneyde, saat
+Tamamen 74HC entegrelerinden kurulan, kendi komut seti ve kendi C derleyicisi olan, 3D'de
+transistörüne kadar incelenebilen bir 16 bit bilgisayar. Aynı zamanda bir eğitim ve deney seti: 14 deneyde, saat
 kartından başlayıp C ile yazılmış yılan oyununa kadar breadboard'da kurulur. Bitmiş bilgisayarın iki
 yolu var: PCB'li (kartlar KiCad'den) ya da bütünüyle breadboard'lı (kart başına bir pano, 149 board,
 kartlar arası şerit kablo; [docs/breadboard.md](docs/breadboard.md)).

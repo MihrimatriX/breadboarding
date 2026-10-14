@@ -60,9 +60,9 @@ export function elKitabi(planlar: { kk: KurulumKarti; plan: KurulumPlani }[], o:
 </ul>
 <h3>İki yol</h3>
 <table class="tablo"><tbody>
-<tr><td style="width:42mm"><b>Yol A — breadboard</b><br><span class="muted kucuk">Deney 1–8</span></td><td>Öğrenme deneyleri: saat kartı, programlayıcı, CPU kartı blok blok, bellek kartı ve ilk program. Bir blok kurulur, test edilir, sonraki bloğa geçilir. Hata bulmak kolay, değiştirmek serbest.</td></tr>
-<tr><td><b>Yol B — PCB</b><br><span class="muted kucuk">tam bilgisayar</span></td><td>Bütün kartlar KiCad şemalarından PCB olarak yapılır, çipler soketlere takılır, kartlar arka panele oturur. Tel listesi burada <b>bip testi listesidir</b>: lehimden sonra her bağlantı multimetreyle denetlenir. CPU kartı ileride arka panelde 4–5 küçük karta bölünecek; bölününce belgeler yeniden üretilir.</td></tr>
-<tr><td><b>Ek — wire-wrap</b></td><td>PCB yerine tek seferlik kart: aynı tel listesi, sarım sarım (Ek A).</td></tr>
+<tr><td style="width:42mm"><b>Yol A: breadboard</b><br><span class="muted kucuk">Deney 1–8</span></td><td>Öğrenme deneyleri: saat kartı, programlayıcı, CPU kartı blok blok, bellek kartı ve ilk program. Bir blok kurulur, test edilir, sonraki bloğa geçilir. Hata bulmak kolay, değiştirmek serbest.</td></tr>
+<tr><td><b>Yol B: PCB</b><br><span class="muted kucuk">tam bilgisayar</span></td><td>Bütün kartlar KiCad şemalarından PCB olarak yapılır, çipler soketlere takılır, kartlar arka panele oturur. Tel listesi burada <b>bip testi listesidir</b>: lehimden sonra her bağlantı multimetreyle denetlenir. CPU kartı ileride arka panelde 4–5 küçük karta bölünecek; bölününce belgeler yeniden üretilir.</td></tr>
+<tr><td><b>Ek: wire-wrap</b></td><td>PCB yerine tek seferlik kart: aynı tel listesi, sarım sarım (Ek A).</td></tr>
 </tbody></table>
 <h3>Kartlar</h3>
 <table class="tablo"><thead><tr><th>Kart</th><th style="width:15mm">Deney</th><th class="sag" style="width:13mm">Entegre</th><th class="sag" style="width:10mm">Pasif</th><th class="sag" style="width:12mm">Tel</th><th class="sag" style="width:14mm">mA</th><th style="width:22mm">Yol</th><th style="width:56mm">Dosyalar</th></tr></thead>
@@ -139,7 +139,7 @@ ${ornekCip ? cipKarti(ornekCip, ornekCip.blok) : ""}
 <li><b>Her entegre</b>: VCC ve GND bacağı (14 pinlide 14 / 7, 16 pinlide 16 / 8, 20 pinlide 20 / 10, 62256 ve 28C256'da 28 / 14) besleme hattına. Kurulum belgesinin Besleme tablosu her çip için yazar. Ters takılmış bir çip VCC'yi GND'ye bağlar: ısınır.</li>
 <li><b>Dekuplaj</b>: her entegrenin yanında 100 nF seramik, VCC ve GND bacaklarına en kısa yoldan. Her kartın (her breadboard'un) girişinde 100 µF elektrolitik. Dekuplajsız 74HC kartlar osilatör kenarlarında rastgele hata yapar.</li>
 <li><b>Sabit girişler</b>: CMOS girişi asla boşta kalmaz. Yapıştırıcı çiplerin kullanılmayan kapılarının girişleri GND'ye bağlıdır; ~OE, ~MR gibi sabit girişler tabloda "sabit 0 / sabit 1" sütunundadır.</li>
-<li><b>Breadboard</b>: her breadboard'un iki rayına da besleme ver; uzun breadboard'larda raylar ortadan bölünmüştür, köprü tel koy. Bir sıra breadboard'u besleme iki uçtan beslensin (yalnız bir uçtan beslenen 6–8 breadboard'da gerilim düşer).</li>
+<li><b>Breadboard</b>: her breadboard'un iki rayına da besleme ver; uzun breadboard'larda raylar ortadan bölünmüştür, köprü tel koy. Bir sıra breadboard'u iki uçtan besle (yalnız bir uçtan beslenen 6–8 breadboard'da gerilim düşer).</li>
 <li><b>PCB</b>: geniş VCC / GND yolları ya da düzlemler (4 katmanda iç katmanlar GND ve VCC). Arka panel her karta VCC'yi 3 pin, GND'yi 4 pin üzerinden verir.</li>
 </ul>
 <h3>İlk açılış (her kartta, her yeni blokta)</h3>
@@ -196,7 +196,7 @@ ${ornekCip ? cipKarti(ornekCip, ornekCip.blok) : ""}
 <li><b>Zincir</b>: bir netin telleri pinden pine zincir gibidir; bir bacağın sütununda 4 boş delik var, en çok 3 tel gelir.</li>
 <li><b>Yarım bloklar</b>: deney rehberindeki "▶ elle sür" girişleri anahtar + 10 kΩ çekme direnciyle sür; bu teller listede yoktur, blok kurulunca sök.</li>
 <li><b>Kartlar arası</b>: arka panel sinyalleri (A0..A15, DE0..7, CLK, ~RESET …) breadboard'lar arasında aynı adlı netleri birleştiren uzun tellerdir. Kurulum belgesinde bunlar kenar konnektörüne (J…) giden tellerdir: konnektör yerine bir başlık (pin header) ya da breadboard'un kenar sütunu kullan, adını etiketle.</li>
-<li><b>Saat</b>: CLK ve OSC tellerini kısa tut; hızlanınca bozulan devre çoğu zaman uzun saat teli ya da eksik dekuplajdır. İlk kurulum 8 MHz osilatör / 1 MHz CPU (Deney 1).</li>
+<li><b>Saat</b>: CLK ve OSC tellerini kısa tut; hızlanınca bozulan devrenin nedeni çoğu zaman uzun saat teli ya da eksik dekuplajdır. İlk kurulum 8 MHz osilatör / 1 MHz CPU (Deney 1).</li>
 <li><b>Bitince</b>: kartın tamamı Deney 8'e kadar breadboard'da çalışır. Tam bilgisayarın PCB'si bu çalışan devrenin kopyasıdır: önce breadboard'da 4/4, sonra PCB.</li>
 </ul>
 </section>
@@ -224,8 +224,8 @@ ${ornekCip ? cipKarti(ornekCip, ornekCip.blok) : ""}
 <ol>
 <li><b>Besleme</b>: her soketin VCC pininden VCC'ye, GND pininden GND'ye bip (Besleme tablosu). Sabit 0 / sabit 1 girişleri de. VCC ile GND arasında kondansatörler dolarken kısa bir bip normaldir; sürekli bip kısa devredir.</li>
 <li><b>Tel listesi</b>: her satır için problar "Nereden" ve "Nereye" soket pinlerine; bip → kutuyu işaretle. Bir bloğun listesini bitirmeden sonrakine geçme.</li>
-<li><b>Kısa devre</b>: her soketin komşu pinleri arasında bip olmamalı — çip kartında aynı neti göstermiyorlarsa. Bip duyarsan lehim köprüsü ya da yol hatası.</li>
-<li>Kenar konnektörü: kenar konnektörü tablosundaki her kullanılan pinden karttaki ilk uca bip.</li>
+<li><b>Kısa devre</b>: çip kartında aynı nette görünmeyen komşu soket pinleri arasında bip olmamalı. Bip duyarsan lehim köprüsü ya da yol hatası.</li>
+<li>Kenar konnektörü: kenar konnektörü tablosunda kullanılan her pinden karttaki ilk uca bip.</li>
 </ol>
 <h3>İlk çalıştırma</h3>
 <ol>
@@ -261,7 +261,7 @@ ${ornekCip ? cipKarti(ornekCip, ornekCip.blok) : ""}
 <li>Araç: wire-wrap aleti (sarma / sökme), 30 AWG tel renk koduna göre, uzun pinli soketler ve başlıklar.</li>
 <li>Besleme: önce, daha kalın telle ya da lehimli bir besleme ızgarasıyla; dekuplaj kondansatörleri soket pinlerine lehimlenir.</li>
 <li>Tel listesi aynıdır: her satır bir sarım. Zincir yapısı sayesinde bir pine en çok üç tel gelir (pin boyu genellikle üç sarıma yeter). İlk sarım pinin dibine, sonrakiler üstüne.</li>
-<li>Kart arkadan bakılır: pin numaraları ters yöndedir (aynalanmış). Soketlerin arkasına pin 1'i işaretle.</li>
+<li>Karta arkadan bakılır: pin numaraları ters yöndedir (aynalanmış). Soketlerin arkasına pin 1'i işaretle.</li>
 <li>Bir blok bitince bip testi ve deney testi, PCB'deki gibi.</li>
 </ul>
 </section>

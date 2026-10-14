@@ -60,7 +60,7 @@ npm run cpu16 -- machine x.s --cycles N < /dev/null   # bütün bilgisayar komut
 2. Kart, çip, mikrokod ya da deney tanımı değiştiyse aşağıdaki üretilen dosyaları yenile; testler eski
    kalanı yakalar. `npm run cpu16 -- board` ERC temiz; zamanlama değiştiyse
    [uretim.md](cpu16/docs/uretim.md)'deki tabloyu güncelle.
-3. Arayüz değiştiyse `npm run kontrast` ve tarayıcıda bak (Playwright, aşağıdaki tuzaklar).
+3. Arayüz değiştiyse `npm run kontrast` çalıştır, tarayıcıda bak (Playwright, aşağıdaki tuzaklar).
 4. Belgelerdeki sayılar (çip, tel, board, test) koddan gelir: komutun çıktısıyla güncelle.
 
 ## Üretilen dosyalar: elle değiştirme, komutla yenile

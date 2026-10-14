@@ -53,7 +53,7 @@ export function hesapDiyagrami(board: Board, devre = new Devre(board), dil: Dil 
       id: "carpma", ad: t("ÇARPMA", "MULTIPLY"), rol: "islem", x: ISLEM.x, y: 560, w: ISLEM.w, h: 120, bloklar: h("Çarpma"),
       gorev: t("8 × 8 dizi çarpıcı → 16 bit", "8 × 8 array multiplier → 16 bits"),
       aciklama: t(
-        "Elle çarpmanın ikilik hali: 64 AND kapısı kısmi çarpımları (A[j] · B[i]) verir, 7 sıra toplayıcı (2 × 74HC283 her sırada) bunları kaydırarak toplar. En çok 255 × 255 = 65 025.",
+        "Elle çarpmanın ikilik hâli: 64 AND kapısı kısmi çarpımları (A[j] · B[i]) verir, 7 sıra toplayıcı (2 × 74HC283 her sırada) bunları kaydırarak toplar. En çok 255 × 255 = 65 025.",
         "Long multiplication in binary: 64 AND gates form the partial products (A[j] · B[i]) and 7 rows of adders (2 × 74HC283 per row) add them up with shifts. At most 255 × 255 = 65,025.",
       ),
     },
@@ -61,7 +61,7 @@ export function hesapDiyagrami(board: Board, devre = new Devre(board), dil: Dil 
       id: "bolme", ad: t("BÖLME", "DIVIDE"), rol: "islem", x: ISLEM.x, y: 710, w: ISLEM.w, h: 150, bloklar: h("Bölme"),
       gorev: t("geri yüklemeli bölücü: bölüm, kalan, B = 0", "restoring divider: quotient, remainder, B = 0"),
       aciklama: t(
-        "Uzun bölmenin ikilik hali, 8 aynı basamak: kalan bir bit sola kayar, A'nın sıradaki biti girer; kalan ≥ B ise B çıkarılır (2 × 74HC283) ve bölümün biti 1 olur, değilse eski kalan geri yüklenir (2 × 74HC157). B = 0 ise (74HC30) HATA: LED yanar, sonuç ve kalan söner.",
+        "Uzun bölmenin ikilik hâli, 8 aynı basamak: kalan bir bit sola kayar, A'nın sıradaki biti girer; kalan ≥ B ise B çıkarılır (2 × 74HC283) ve bölümün biti 1 olur, değilse eski kalan geri yüklenir (2 × 74HC157). B = 0 ise (74HC30) HATA: LED yanar, sonuç ve kalan söner.",
         "Long division in binary, 8 identical stages: the remainder shifts left one bit and the next bit of A comes in. If the remainder ≥ B, B is subtracted (2 × 74HC283) and the quotient bit is 1; otherwise the old remainder is restored (2 × 74HC157). If B = 0 (74HC30), HATA (error) is set: the LED lights and the result and remainder go blank.",
       ),
     },

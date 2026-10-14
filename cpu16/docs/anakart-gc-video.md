@@ -54,7 +54,7 @@ değişen bir durum k ≥ E döngüsündeki okumada (veri k + 1'de alınır) ve 
   olur (Machine: `txBusyUntil = C + 347`). Meşgulken yazmak çerçeveyi baştan başlatır.
 - **UART RX**: hat iki flip-flop ile eşzamanlanır; başlangıç biti görülünce bölücü 19'dan sayar,
   sonra her 35 döngüde bir örnek alınır (başlangıç, 8 veri, bitiş). Örnek anlarının ideal bit
-  ortasından sapması −1,4 … +2,2 döngü; testte ±%2 baud hatası sorunsuz alınır. Başlangıç biti
+  ortasından sapması −1,4 … +2,2 döngü; testte ±%2 baud hatasıyla gelen baytlar doğru alınır. Başlangıç biti
   t döngüsünde düşerse bitiş biti örneğinde (kenar t + 334) bayt UART_DATA'ya geçer ve
   `RX_READY` kurulur. `RX_READY` = RTS# → CH340'ın CTS#'i: köprü bayt okunana kadar sonrakini
   göndermez (taşma yok). Machine'de bir bayt ancak okumadan ≥ 347 döngü sonra hazır olur; bu
@@ -109,8 +109,8 @@ değişen bir durum k ≥ E döngüsündeki okumada (veri k + 1'de alınır) ve 
 - **İki saat alanı**: piksel saatinde (VID_OSC, 39,7 ns) yalnızca faz sayacı (74AC161), H2 / LD7
   register'ı (74AC74) ve piksel kaydırıcı (74HC166) çalışır. Faz sayacı 9..15, 0 diye sayar
   (9..15 = p0..p6, 0 = p7); 0'da Q3 = 0 olduğu için kendi ~PE'siyle yine 9 yükler, çözücü kapı
-  gerekmez. Q3 (~LD7) p7'de düşüktür: kaydırıcının yükleme izni ve p7 → p0 kenarında yükselen
-  çıkış register'larının saati. H2 = Q2'nin bir piksel gecikmişi (p4..p7), LD7 = TC'nin bir
+  gerekmez. Q3 (~LD7) p7'de düşüktür: kaydırıcının yükleme izni ve çıkış register'larının saati
+  (p7 → p0 kenarında yükselir). H2 = Q2'nin bir piksel gecikmişi (p4..p7), LD7 = TC'nin bir
   piksel gecikmişi (p7). Geri kalan her şey **karakter saatinde** (H2 = piksel / 8, 318 ns):
   karakter sayacı (hc'nin 9..3 bitleri), dikey sayaç, MA, satır başı, CPU istekleri H2'nin
   yükselen kenarında (p4); VBQ ve istek eşzamanlayıcıları düşen kenarında (p0).
@@ -131,7 +131,7 @@ değişen bir durum k ≥ E döngüsündeki okumada (veri k + 1'de alınır) ve 
   Machine'inkiyle piksel piksel aynıdır (test bir tam kareyi karşılaştırır). Satır başı (ROWSTART) karakter satırının son tarama satırında karakter 98'de
   MA'dan alınır, MA karakter 99'da onu yükler; dikey karartmada MA 0'dır.
 - **Renk**: 74HC157 renk baytının düşük (yazı) ya da yüksek (zemin) nibble'ını seçer; seçim =
-  piksel ∨ imleç. DAC 75 Ω monitör girişine: renk biti 680 Ω (0,47 V), parlaklık 1,3 kΩ
+  piksel ∨ imleç. DAC 75 Ω'luk monitör girişini sürer: renk biti 680 Ω (0,47 V), parlaklık 1,3 kΩ
   (0,25 V), ikisi 0,72 V. Kahverengi (I = 0, R = G = 1, B = 0) için yeşil yalnız 1,3 kΩ'dan
   sürülür: 0xAA5500. Test her rengin üç bileşenini CGA paletiyle (`src/cpu16/vga.ts`)
   karşılaştırır.
@@ -142,7 +142,7 @@ değişen bir durum k ≥ E döngüsündeki okumada (veri k + 1'de alınır) ve 
   vsync bayrağı (vblank'in yükselen kenarında kurulur, FF26'ya bit1 = 1 yazınca silinir) =
   VSYNC_REQ.
 - **CPU portu**: VADDR dört eşzamanlı 74HC161'dir ve tek saati V_PFCLK = ~V_WE0 ∧ ~V_WO0 ∧ V_INC'dir.
-  FF20 / FF21 yazma darbesi o yarının yükleme bayrağını (74HC74) asenkron kurar (~PRE); darbe
+  FF20 / FF21 yazma darbesi o yarının yükleme bayrağını (74HC74) eşzamansız kurar (~PRE); darbe
   bitince saat yükselir, sayıcılar baytı yükler ve aynı kenar bayrağı D = 0 ile siler. Bayt
   yazmasında öbür yarı o kenarda saymaz (CEP = öbür yarının bayrağı yok). Artırma saati V_INC
   (VDATA okumasından sonraki döngünün sonu ya da VRAM yazmasının sonu) aynı saate girer; bayrak
@@ -154,8 +154,8 @@ değişen bir durum k ≥ E döngüsündeki okumada (veri k + 1'de alınır) ve 
   veriyolu döngüsünde); sonraki döngüde VADDR artar ve VADDR her değiştiğinde (yazma, okuma,
   VADDR yazması) yeni ön okuma istenir. En kötü durumda yazma ≈ 3,4, okumadan sonraki ön okuma
   ≈ 4,4, yazmadan sonraki ön okuma ≈ 5,8 CPU döngüsünde biter. CPU'nun G/Ç komutları
-  (`LBU`/`SB`/`LW`/`SW`) 6 döngü sürdüğü için ardışık iki erişim bunu her zaman bekler: CPU hiç
-  beklemez. Test erişimleri tam bu en kısa aralıkla (6 döngü) yapar.
+  (`LBU`/`SB`/`LW`/`SW`) 6 döngü sürdüğü için ardışık iki erişim arasında bu süre her zaman geçer:
+  CPU hiç beklemez. Test erişimleri tam bu en kısa aralıkla (6 döngü) yapar.
 
 ### Statik zamanlama (piksel saati 25,175 MHz)
 
@@ -179,15 +179,15 @@ en kötüde yarısı, tipikte %70'i alır (`zamanlama.ts` `AC_ORANI`; veri sayfa
 
 | Çip | Neden |
 |---|---|
-| 74AC161 (piksel fazı) | Her piksel kenarında sayar ve Q3'ü kaydırıcının yükleme iznidir. 74HC161 ile CP → Q3 37 + 74HC166 kurulumu 12 = 49 ns > 39,7 ns. |
+| 74AC161 (piksel fazı) | Her piksel kenarında sayar; Q3'ü kaydırıcının yükleme iznidir. 74HC161 ile CP → Q3 37 + 74HC166 kurulumu 12 = 49 ns > 39,7 ns. |
 | 74AC74 (H2, LD7) | H2 hem karakter saati hem VRAM adres seçicisidir; CP → Q gecikmesi alanlar arası her geçişe girer. 74HC74 ile (35 ns) ön okuma latch'inin payı eksiye düşer (aşağıda 7 ns → −6 ns). |
 
-**74HC166 neden kalıyor.** Kaydırıcı 74HC166'dır (~PE yolu 30,5 ns sığar); çıkışı yalnızca
+**74HC166 neden kalıyor.** Kaydırıcı 74HC166'dır (30,5 ns'lik ~PE yolu sığar); çıkışı yalnızca
 birleşimsel renk seçicisine gider (register'a girmez). 74HC166 yaygın bir 7400 serisi parçadır;
 yerine düşünülebilecek tek kaydırıcı 74HC165'tir ve olmaz: 165'in paralel yüklemesi
 eşzamansızdır (~PL seviyesi). Yükleme, piksel saatinden kapılarla üretilen ve bir piksel periyodu
-(39,7 ns) içine sığan, en az ≈ 20 ns'lik (veri sayfası tW) bir ~PL darbesi isterdi: piksel
-saatinde kapılı bir sinyal (bu kartın kaçındığı şey) ve darbe süresince Q7 font baytının ilk
+(39,7 ns) içine sığan, en az ≈ 20 ns'lik (veri sayfası tW) bir ~PL darbesi isterdi. Bu, piksel
+saatinde kapılı bir sinyaldir (bu kartın kaçındığı şey) ve darbe süresince Q7 font baytının ilk
 bitini erken gösterir, yani ilk piksel kayar ve resim Machine'inkiyle aynı olmaz. 74HC166
 yüklemeyi kaydırmayla aynı saat kenarında yapar (~PE = LD7 izni): arada kapı yok, ilk piksel tam
 bir piksel süresi görünür. Piksel çıkışı (Q7, en geç 35 ns) ile renk / karartma register'larının
@@ -200,9 +200,10 @@ kapılamasıdır (dikey sayaç → VBL → ~ENRS, H2'nin yarım periyodunda: 131
 (tipik) 36 ns. Karakter ROM'u (28C256, erişim 150 ns) artık tam bir H2 periyodunun içindedir:
 CHR (ya da tarama satırı V0–V3) → ROM → font register'ı en kötü 37 + 150 + 12 = **199 ns ≤ 317,8 ns**
 (119 ns pay); tipikte en uzun V_H2 yolu da budur (16 + 150 + 4 = 170 ns). Ardışık düzen olmasaydı
-ROM'un karakter ROM'u → kaydırıcı yolu yarım karakterde (4 piksel, 158,9 ns) H2 17,5 + 574 33 +
-ROM 150 + kurulum 12 = 212,5 ns isterdi: 150 ns'lik bir EEPROM sığmazdı. Açıkken değişen izin yalnızca OPW'dir: VRAM ~OE'sini (H2 ∧ OPW) ve ~WE'yi kapılar,
-ikisi de saat değildir ve OPW'nin değiştiği p4'te yazma darbesi WRP = H2 ∧ Q1 zaten 0'dır.
+karakter ROM'u → kaydırıcı yolu yarım karakterde (4 piksel, 158,9 ns) H2 17,5 + 574 33 +
+ROM 150 + kurulum 12 = 212,5 ns isterdi: 150 ns'lik bir EEPROM sığmazdı. Açıkken değişen izin
+yalnızca OPW'dir: VRAM ~OE'sini (H2 ∧ OPW) ve ~WE'yi kapılar, ikisi de saat değildir ve OPW'nin
+değiştiği p4'te yazma darbesi WRP = H2 ∧ Q1 zaten 0'dır.
 
 **Alanlar arası geçişler** (elle; t(pk) = pk'nin başındaki piksel kenarı, P = 39,7 ns; yavaş
 taraf en kötü, hızlı taraf tipik gecikmeyle):
@@ -222,16 +223,16 @@ taraf en kötü, hızlı taraf tipik gecikmeyle):
 
 1. **Yeni çipler** (`chips/parts/gc-ek.ts`: 74HC05, 74HC166, 74HC393):
    `tests/chips.test.ts` her birini veri sayfası fonksiyon tablosuyla (`ref`) ve CMOS transistör
-   açılımıyla karşılaştırır (74HC05 bütün girişler, diğerleri rastgele adımlar).
+   açılımıyla karşılaştırır (74HC05'te bütün girişler, diğerlerinde rastgele adımlar).
 2. **Machine ile döngü döngüsüne** (`tests/anakart-gc.test.ts`; kartlar bir test tezgâhında tek
    başına çalışır, tezgâh arka paneli CPU gibi sürer):
    - *BIOS izi*: BIOS Machine'de açılır, klavyeden ve UART'tan komut alır (yön tuşu E0/F0
-     önekleri, art arda UART baytları), zamanlayıcı 100 Hz çalışır. Bütün G/Ç erişimleri
+     önekleri, art arda UART baytları), zamanlayıcı 100 Hz'de çalışır. Bütün G/Ç erişimleri
      (`onAccess`) aynı TCLK döngüsünde kapı seviyesi karta uygulanır; UART ve PS/2 seri dalga
      biçimleri Machine'in "bayt hazır" anlarına göre üretilir (CTS# ve inhibit kuralına uyduğu da
      denetlenir). Her G/Ç okuması ve her komut başında IRQ hattı karşılaştırılır.
    - *Rastgele erişimler*: FF00–FF0F'e rastgele bayt / kelime okuma ve yazmaları, küçük RELOAD
-     değerleri, uzun beklemeler; her okuma ve **her döngüde** IRQ hattı Machine ile aynı.
+     değerleri, uzun beklemeler; her okumada ve **her döngüde** IRQ hattı Machine ile aynı.
    - *Zamanlayıcı*: machine.test.ts'deki senaryo, ayrıca tık kenarına göre −2 … +1 döngüde açma.
    - *Video portu*: deneme ekranı (bütün karakter kodları ve renk baytları) VDATA ile yazılır,
      VRAM şeritleri Machine'in VRAM'iyle aynı; VDATA okumaları (ön okuma), yalnız düşük / yüksek
@@ -245,7 +246,7 @@ taraf en kötü, hızlı taraf tipik gecikmeyle):
    saati en kötü ve tipik değerlerle 25,175 MHz'e, karakter saati en kötü değerlerle 3,15 MHz'e
    sığar, piksel saatinde kapılı saat yoktur, 74AC olan yalnızca faz sayacı ve H2 / LD7 register'ı.
 5. **Şema**: ERC (çakışan çıkış ve sürülmeyen giriş yok; üç kart birlikte de), kart başına
-   KiCad şeması; kicad-cli kuruluysa geçici bir dizine yazılıp netlist'i kartın netleriyle
+   KiCad şeması; kicad-cli kuruluysa geçici bir dizine yazılıp netlisti kartın netleriyle
    karşılaştırılır (kurulu değilse atlanır).
 
 Video tezgâhında piksel saati kare = 420 000 piksel = 66 667 CPU döngüsü olacak biçimde
@@ -262,9 +263,9 @@ kart tarafında aynen elde edilir.
 - **UART baud saati** ayrı 1,8432 MHz osilatör + 74HC4040 yerine TCLK'den (35/34 döngülük
   bitler); alıcı 16× yerine bit başına bir örnekle. CH340 modülünün 6 pinli başlığında yalnız
   CTS# var: TX için akış denetimi yok (Machine'de de yok).
-- **Ön bölücü** saat kartında değil G/Ç kartında; resetle fazı sıfırlanır. Machine'de tıklar
+- **Ön bölücü** saat kartında değil, G/Ç kartında; resetle fazı sıfırlanır. Machine'de tıklar
   güç verildiğinden beri 4000k'dadır, resetle kaymaz (yalnız güç açılışı resetinde aynı).
-- **Reset'te temizlenmeyenler**: TIMER_RELOAD, CURSOR_X/Y (74HC574), UART_DATA ve KBD_DATA
+- **Resette temizlenmeyenler**: TIMER_RELOAD, CURSOR_X/Y (74HC574), UART_DATA ve KBD_DATA
   (74HC595 çıkış register'ları), VRAM. Machine bunları 0'lar; BIOS hepsini kullanmadan önce
   yazar. Testlerde flip-flop'lar güç açılışında 0'lanır (GateComputer gibi).
 - **FF00/FF02 kelime okuması**: kart tek döngüde iki baytı da okur, UART_STAT / KBD_STAT
@@ -303,9 +304,9 @@ her bayt bir 74HC574. Bir 62256'nın içindeki düzen açıkta: hücreler, adres
   aktarır. Okumanın yan etkisi yoktur; bayt okumasında CPU A0'a göre baytı seçer.
 - **Neden tampon**: 574'lerin D ve Q bacakları doğrudan DE/DO'ya bağlansaydı her veri hattına 16
   bacak (≈ 80 pF) eklenirdi. Statik zamanlama (5 pF / bacak) bunu CPU'nun okuma yolunda görür:
-  CLK en kötü durumu tamponsuz 951 → 972 ns, iki 74HC245 ile 956 ns.
+  CLK'nin en kötü durumu tamponsuz 951 → 972 ns, iki 74HC245 ile 956 ns.
 - **Reset** içeriği silmez (74HC574'ün reset ucu yok); güç açılışında içerik rastgeledir. Machine
-  de reset'te `kyb`'yi korur.
+  de resette `kyb`'yi korur.
 - Doğrulama (`tests/anakart-gc.test.ts`, "kendin yap bellek kartı"): ERC, parça sayısı, FF4x
   dışında veriyolunu hiç sürmediği; G/Ç kartıyla birlikte bayt / kelime, okuma / yazma ve 300
   rastgele erişimde her okuma Machine'le aynı.

@@ -17,7 +17,7 @@ npm run cpu16 -- charrom -o charrom.bin # the video board's 4 KB character ROM
 `bios.bin` or `bios.hex` is written with an EEPROM programmer (TL866/T48, or the experiment kit's
 Arduino + 74HC595 programmer from Experiment 3) to the 28C256 on the motherboard (memory board U420). The
 kit's programmer leaves the chip with software data protection (SDP) enabled. BIOS v1 is 4248 bytes (26%
-of bank 0). In both cases the command line prints the jump table.
+of bank 0). For both formats the command line prints the jump table.
 
 To try it in the simulator:
 
@@ -86,7 +86,7 @@ cc16 ABI (r0–r3 caller-saved, r4–r5 callee-saved); calls from C use at most 
 
 | Address | Name | Input | Output / note |
 |---|---|---|---|
-| `0x0010` | MONITOR | none | returns to the monitor (stack reset to `0xFF00`), does not come back |
+| `0x0010` | MONITOR | none | goes to the monitor (stack reset to `0xFF00`); never returns to the caller |
 | `0x0018` | PUTC | r0 = character | to VGA and UART; `'\n'` goes to the UART as CR LF |
 | `0x0020` | GETC | none | r0 = character (keyboard buffer or UART); waits until one arrives |
 | `0x0028` | TRYGETC | none | r0 = character, or `0xFFFF` if there is none (does not wait) |

@@ -34,7 +34,7 @@ söyler. Bir komut birkaç döngüde yürür: getir (PC → MAR, bellek → IR),
 | Bayraklar ve koşul | N Z C V ve I bayrakları. ALU'nun sonuç bitlerinden yüklenir, dallanma koşulunu (COND) kontrol birimine verir; elde biti (C) ALU'ya geri döner |
 | Program sayacı (PC) | Sıradaki komutun adresi: += 2 ya da yoldan yüklenir (dallanma, çağrı) |
 | Sabit birimi | Komuttaki sabiti ya da ofseti (IR'nin alt bitleri) işaretiyle 16 bite genişletip yola sürer |
-| MAR ve IR | IR çalışan komutu tutar ve kontrol birimine ve sabit birimine verir. MAR erişilecek adresi tutar ve arka paneldeki adres yolunu (A0–A15) doğrudan sürer |
+| MAR ve IR | IR çalışan komutu tutar, kontrol birimine ve sabit birimine verir. MAR erişilecek adresi tutar ve arka paneldeki adres yolunu (A0–A15) doğrudan sürer |
 | Bellek arayüzü | 16 bitlik iç veri yolunu arka paneldeki iki bayt hattına (DE çift, DO tek adresli) bağlar; okuma ve yazma darbelerini (~MRD, ~MWE_E, ~MWE_O) üretir |
 | Kontrol | Solda mikrokod: komut, adım ve koşuldan 32 kontrol hattı. ROM yok, 74HC138 / 151 ve kapılarla kurulu. Sağda kontrol register'ı (CR), adım sayacı, kesme ve HALT |
 | Arka panel | J1, 2 × 32 konnektör: öbür kartlara giden bütün hatlar |
@@ -114,8 +114,8 @@ Diyagramlar elle yerleştirilir (kutuların yeri, çizgilerin kıvrımları) ama
 `cpu16/tests/mimari.test.ts` ve `hesap8/tests/mimari.test.ts` her diyagram için şunları denetler
 (`cpu16/mimari/denetim.ts`):
 
-1. **Bloklar:** diyagramın kapsadığı kartların her bloğu (`ChipInstance.block`) tam bir kutuda ya da
-   kart çerçevesinde durur; tanımdaki her blok devrede vardır. Bölmeli kutularda her parça tam bir
+1. **Bloklar:** diyagramın kapsadığı kartların her bloğu (`ChipInstance.block`) tek bir kutuda ya da
+   kart çerçevesinde durur; tanımdaki her blok devrede vardır. Bölmeli kutularda her parça tek bir
    bölmeye düşer.
 2. **Yollar:** her net devrede vardır. Yolun her ucu, netlerinden en az birine pinle bağlıdır. Ok
    yönü pinlere uyar: "çıkış" kutusu netlerden birini sürer, "giriş" kutusu okur ama sürmez, "iki

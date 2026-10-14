@@ -50,7 +50,7 @@ export const KURULUM_KARTLARI: KurulumKarti[] = [
   },
   {
     kart: "bellek", kaynak: "anakart", yol: "breadboard → PCB",
-    aciklama: "Bilgisayarın ana belleği: 32 KB EEPROM (28C256, BIOS) ve 128 KB RAM (4 × 62256), 16 KB'lik bank'lar halinde. Bank register'ları fiziksel adresin üst bitlerini (PA14..PA19) üretir; bayt sıralayıcı her 16 bitlik kelimeyi iki 8 bitlik erişimle okur ve yazar, bu sırada ~WAIT ile CPU'yu bekletir.",
+    aciklama: "Bilgisayarın ana belleği: 32 KB EEPROM (28C256, BIOS) ve 128 KB RAM (4 × 62256), 16 KB'lik bank'lar hâlinde. Bank register'ları fiziksel adresin üst bitlerini (PA14..PA19) üretir; bayt sıralayıcı her 16 bitlik kelimeyi iki 8 bitlik erişimle okur ve yazar, bu sırada ~WAIT ile CPU'yu bekletir.",
   },
   {
     kart: "onbellek", kaynak: "anakart", yol: "breadboard → PCB",

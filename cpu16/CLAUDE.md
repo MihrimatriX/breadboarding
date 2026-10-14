@@ -50,7 +50,7 @@ Komutların hepsi `npm run cpu16 -- …`; tam liste `tools/cli.ts`'in başında.
   netlistle birebir). Ortak motor `board/breadboard/` hesap8 ile paylaşılır: oradaki bir değişiklik
   hesap8'in testlerini de koşturmalı.
 - **Pano düzeni:** `duzen` her board'a tek bir iş verir; `grup+` belirteci o grubun göstergelerini
-  taşıyan board'u gösterir. Board'lar modül adaları halinde, aralarında boşluk var (`kafesKonumu`).
+  taşıyan board'u gösterir. Board'lar modül adaları hâlinde, aralarında boşluk var (`kafesKonumu`).
 - **Zamanlama:** gerçek hedef 1 MHz; `zamanlama --anakart` ve `--tip` sonuçları
   [docs/uretim.md](docs/uretim.md)'de tabloda.
 - **Belgelerdeki sayılar** (çip, tel, board, akım) komut çıktısından: `board`, `breadboard`,

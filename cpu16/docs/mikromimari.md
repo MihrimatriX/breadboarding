@@ -4,7 +4,7 @@
 
 ## Blok şeması
 
-Tek bir 16 bitlik **iç veriyolu** var. Her saat döngüsünde veriyoluna tek bir kaynak yazar, istenen sayıda hedef saat kenarında onu yükler (Ben Eater mimarisinin 16 bitlik, register dosyalı hali).
+Tek bir 16 bitlik **iç veriyolu** var. Her saat döngüsünde veriyoluna tek bir kaynak yazar, istenen sayıda hedef saat kenarında onu yükler (Ben Eater mimarisinin 16 bitlik, register dosyalı hâli).
 
 ```
                        ┌──────────── 16 bit İÇ VERİYOLU ────────────────────────────┐
@@ -39,7 +39,7 @@ Tek bir 16 bitlik **iç veriyolu** var. Her saat döngüsünde veriyoluna tek bi
 | 2..0 | `BUS` veriyolu kaynağı | 0 yok · 1 REG · 2 ALU · 3 PC · 4 MEM · 5 IMM · 6 FLAGS |
 | 5..3 | `RSEL` register seçimi | 0 RD · 1 RS1 · 2 RS2 · 3 SP (r6) · 4 LR (r7) |
 | 10..6 | `ALU_OP` | 0–7: ADD ADC SUB SBC AND OR XOR CMP · 8–15: MOV NOT NEG SHL SHR SAR ROL ROR · 17 SXB · 18 MERGE |
-| 11 | `ALU_IR` | 1 ise işlem = {IR.op[0], IR.f3}: ALU komutları decoder'sız seçilir |
+| 11 | `ALU_IR` | 1 ise işlem = {IR.op[0], IR.f3}: ALU komutları kod çözücüsüz seçilir |
 | 15..12 | `IMM` sabit birimi | IMM6 · IMM6×2 · IMM8 (imm8 iki bayta da kopyalanır; MERGE h'ye göre birini alır) · IMM9 · OFF8×2 · OFF12×2 · sabit 2 · sabit 4 |
 | 16 | `REG_W` | register dosyasına veriyolunu yaz |
 | 17, 18 | `TA_L`, `TB_L` | ALU giriş latch'leri |
@@ -96,9 +96,9 @@ Ortalama ≈ 5 döngü/komut: 4 MHz saatte ≈ 0,8 milyon komut/saniye (MIPS).
 
 ## Donanıma geçerken (Faz 3–4'e notlar)
 
-- Veriyolu sürücüleri: her kaynak bir 74HC245/541 çifti; `BUS` alanı bir 74HC138 ile çözülür (aynı anda tek sürücü garanti).
-- Register dosyası: `RSEL` + IR alanları 74HC153 ile 3 bitlik indekse, 74HC138 ile 8 çıkış/yazma sinyaline.
-- `TA`/`TB` olmadan ALU'yu veriyoluna bağlamak mümkün değil (tek veriyolu); bu yüzden üç operandlı komutlar 5 döngü.
+- Veriyolu sürücüleri: her kaynak bir 74HC245/541 çifti; `BUS` alanı bir 74HC138 ile çözülür (aynı anda tek sürücü garanti edilir).
+- Register dosyası: `RSEL` + IR alanları 74HC153 ile 3 bitlik indekse, 74HC138 ile 8 çıkış/yazma sinyaline çevrilir.
+- `TA`/`TB` olmadan ALU'yu veriyoluna bağlamak mümkün değil (tek veriyolu); bu yüzden üç operandlı komutlar 5 döngü sürer.
 - Daha hızlı sürüm (ileride, ayrı bir video): ikinci veriyolu ile TA/TB adımlarını birleştirmek ALU komutlarını 3 döngüye indirir.
 
 ## Kapı seviyesinde kontrol birimi
@@ -119,7 +119,7 @@ yeniler, devreyi tabloyla karşılaştırır), sonra `npm run cpu16 -- board kic
 - 16 op × 16 (f3, COND) birleşimi 27 **atom**a ayrılır: aynı mikro programı çalıştıran (op, f3, COND)
   kümeleri. Op 0 (CMP ayrı), op 9 (koşul doğru / yanlış), op 13 (3 atom) ve op 14 (8 atom: NOP, HALT,
   EI, DI, RETI, SWI …) dallanır; diğer op'lar tek atomdur. Kesme girişi (INT = 1) 28. atomdur.
-- Her an tam bir atom etkindir (tek sıcak). Bir kontrol biti bu yüzden "bu adımda biti 1 olan atomlardan
+- Her an tek bir atom etkindir (tek sıcak). Bir kontrol biti bu yüzden "bu adımda biti 1 olan atomlardan
   biri etkin" demektir: atom hatlarının VEYA'sı.
 
 ### Katmanlar
@@ -128,7 +128,7 @@ yeniler, devreyi tabloyla karşılaştırır), sonra `npm run cpu16 -- board kic
 |---|---|---|
 | Kod çözücüler | 6 × 74HC138 | adım 0..7 → `~ADIM0..7` (STEP3 = 1 iken pasif); op 0..7 ve 8..15 → `~KOP0..15` (INT = 1 iken pasif); op 13 ve op 14'ün f3 alt çözücüleri → `~KOP13_F0..7`, `~KOP14_F0..7`; adım 8..15'e yalnızca SWI ulaştığı için son çözücü SWI'ın hattıyla açılır, çıkışları doğrudan "SWI ∧ adım" |
 | Atom hatları | kapılar | çok atomlu op'larda her atomun aktif düşük hattı: op 9 `~KOP9 ∨ ¬COND` (OR), op 0 f3 = 7 kapılarla, op 13/14 alt çözücü çıkışları (gerekirse AND/NAND). Bütün adımlarda aynı kelimeyi üreten atomlar **sınıf hattı**nda birleşir (hatlarının AND'ı): yasadışı komutların dört atomu; dallanmayan Bcc ile NOP |
-| VEYA ağı | kapılar | her (bit, adım) için atom kümesi: kümedeki hatların NAND'ı (= VEYA) ya da kümede olmayanların AND'ı ("hiçbiri", küme büyükse); hangisi az çip payı tutuyorsa. Kümelerde ortak hat çiftleri ("ortak alt küme") bir kez kurulur |
+| VEYA ağı | kapılar | her (bit, adım) için atom kümesi: kümedeki hatların NAND'ı (= VEYA) ya da kümede olmayanların AND'ı ("hiçbiri", küme büyükse); hangisi daha az çip payı tutuyorsa. Kümelerde ortak hat çiftleri ("ortak alt küme") bir kez kurulur |
 | Adım boyutu | 10 × 74HC151 | adım 0..7'nin en az dördünde 1 olabilen bitler (CW0..4, CW7, CW16, CW17, CW21, CW31): S = STEP0..2, veri = her adımın kümesi, ~E = STEP3. Seyrek bitler "adım ∧ küme" terimlerinin VEYA'sı (NAND/NOR) |
 | ALU kod çözme | 3 × 74HC138 + kapılar | işlem kodu → `~AIS0..23` (24..31 yasadışı işlemler varsayılan davranışta: çözülmez); işlem bitleri (AOPi = 0 kümesi = AOPi hattı) ve tersleri; aynı VEYA ağı; ADC/SBC/ROL/ROR … için C bayrağı ve h biti (IR8) terimleri |
 
@@ -164,9 +164,9 @@ kartın sonunda. Kartın diğer bütün çiplerinin referansları ROM'lu sürüm
 ### Zamanlama
 
 Kontrol register'ı kontrol biriminin çıkışlarını CLK'nin düşen kenarında alır: adım sayacı ve IR yükselen
-kenarda değişir, yarım periyotta 138 → kapılar → 151 → CR. Kritik yol yine ALU tarafında: CR (düşen kenar)
-→ `CW11` → AOP4 → ALU işlem çözücü → `AD3` (CIN) → 4 × 74HC283 → V → bayrak (yarım periyot). Flash'ın 70 ns
-erişimi yerine üç-dört kapı gecikmesi:
+kenarda değişir, böylece 138 → kapılar → 151 → CR yoluna yarım periyot kalır. Kritik yol yine ALU
+tarafında: CR (düşen kenar) → `CW11` → AOP4 → ALU işlem çözücü → `AD3` (CIN) → 4 × 74HC283 → V → bayrak
+(yarım periyot). Flash'ın 70 ns erişimi yerine üç-dört kapı gecikmesi:
 
 | Köşe | ROM'lu | Kapı seviyesinde |
 |---|---|---|

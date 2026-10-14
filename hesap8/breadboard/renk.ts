@@ -15,7 +15,7 @@ export const BB_RENKLERI: HesapRenk[] = [
   grup("kirmizi", "+5 V", "+ raylar, ray köprüleri, çiplerin VCC bacağı, 1'e bağlı girişler, anahtarların ortak ucu", "+5 V"),
   grup("siyah", "GND", "− raylar, ray köprüleri, çiplerin GND bacağı, 0'a bağlı (kullanılmayan) girişler, göstergelerin ortak katodu", "GND"),
   grup("sari", "A sayısı", "A0–A7", "Number A"),
-  grup("turuncu", "B sayısı", "B0–B7, tersleri (NB, bölme) ve çıkarmada çevrilmiş hali (BX)", "Number B"),
+  grup("turuncu", "B sayısı", "B0–B7, tersleri (NB, bölme) ve çıkarmada çevrilmiş hâli (BX)", "Number B"),
   grup("mor", "Kontrol", "işlem anahtarları ve kod çözme (OP, TOPLA … BOL), lamba testi, söndürme (~BI), NEG, HATA, B = 0", "Control"),
   grup("yesil", "Ara işlem", "toplayıcıların, çarpıcının ve bölücünün iç sinyalleri: kısmi çarpımlar, ara toplamlar, eldeler, kalanlar", "Intermediate signals"),
   grup("mavi", "Sonuç", "dört işlemin sonuçları (M, P, Q, K, T8) ve seçilen sonuç (SONUC0–15)", "Result"),

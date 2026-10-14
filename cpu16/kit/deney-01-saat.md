@@ -9,10 +9,10 @@ Pasif elemanları (renk kodu, LED'in kutbu, 100 nF dekuplaj, elektrolitiğin şe
 
 ## Ne öğreneceksin
 
-- Bir bilgisayarda her şeyin neden bir saat kenarında olduğunu; yükselen ve düşen kenarın ayrı işleri.
+- Bir bilgisayarda her şeyin neden bir saat kenarında olduğunu; yükselen ve düşen kenarın ayrı işlerini.
 - Johnson sayacıyla parazitsiz (glitch'siz) saat ve yazma penceresi üretmeyi.
 - Buton sıçramasını (bounce) Schmitt tetikleyiciyle süzmeyi ve asenkron bir butonu saate eşzamanlamayı.
-- Açılış reseti (RC gecikmesi) ve tek döngü adımlama: CPU'yu istediğin kadar yavaş izleyebilmek.
+- Açılış resetini (RC gecikmesi) ve tek döngü adımlamayı: CPU'yu istediğin kadar yavaş izleyebilmek.
 
 ## Nasıl çalışır
 
@@ -32,7 +32,7 @@ s7     0 0 0 1       0           0     ← pencere kapanır
 s0                   1           0     ← CLK yükselir: register'lar yüklenir
 ```
 
-İki komşu bitten çözülen sinyal tek bitlik değişimle değiştiği için kod çözücü çıkışında parazit oluşmaz.
+Her adımda tek bit değiştiği için, iki komşu bitten çözülen kod çözücü çıkışlarında parazit oluşmaz.
 Bellek yazma darbesi bu yüzden adres ve veri oturduktan sonra başlar, register'lar değişmeden önce biter.
 
 **Adım kipi.** OTOMATİK/ADIM anahtarı (SW203) ADIM'dayken osilatör sayaca yalnızca GO = 1 iken ulaşır.
@@ -79,8 +79,9 @@ anahtarı (SW204) 74HC157 (U202) ile kaynağı seçer.
 
 - Kapı seviyesi test: `npx vitest run cpu16/tests/board.test.ts -t "saat kartı"` (ADIM kipinde her basışın
   tam bir döngü ilerlettiği doğrulanır).
-- 3D: Silikon3D → "CPU16 kartı 3D" → saat kartı; konsolda `kart.secCip("U203")` Johnson sayacının içini,
-  bir flip-flopa tıklamak transistörlerini gösterir. `kart.hiz(2)` ile yavaşlat, `kart.secNet("CLK")`.
+- 3D: Silikon3D → "CPU16 kartı 3D" → saat kartı; konsolda `kart.secCip("U203")` Johnson sayacının içini
+  gösterir; bir flip-flopa tıklayınca transistörleri görünür. `kart.hiz(2)` ile yavaşlat,
+  `kart.secNet("CLK")` ile saat netini seç.
   `kart.yakinlas("D201")` mavi CLK LED'ine yaklaşır: CLK 1 olunca yanar. D201'e, R205'e ya da C201'e
   tıklayınca sağ panel değeri, renk bantlarını, akımı ve RC süresini anlatır.
 - Şema: `cpu16/kicad/clk/clk.kicad_sch` (KiCad 7).

@@ -15,7 +15,7 @@ Bu deney büyüktür; beş parçada kur ve her parçayı ayrı test et: (a) işl
   seçici girişleri a ve b, veri girişleri işlemin 4 bitlik doğruluk tablosu.
 - Mikrokodun yükünü azaltmak için bir **kod çözücü**: 5 bitlik işlem kodu (h biti ve C bayrağıyla) 24 kontrol
   bitine açılır. ROM yerine 74HC138'ler ve kapılar: her kontrol biti "bu biti isteyen işlemlerin VEYA'sı".
-- NZCV bayrakları ve koşullu dallanmanın 14 koşulunu tek bir 74HC151'den üretmek.
+- NZCV bayrakları ve koşullu dallanma: 14 koşulu tek bir 74HC151'den üretmek.
 
 ## Nasıl çalışır
 
@@ -24,12 +24,12 @@ Bu deney büyüktür; beş parçada kur ve her parçayı ayrı test et: (a) işl
   `IR12`) gelir. İşlemler: 0 ADD, 1 ADC, 2 SUB, 3 SBC, 4 AND, 5 OR, 6 XOR, 7 CMP, 8 MOV, 9 NOT,
   10 NEG, 11 SHL, 12 SHR, 13 SAR, 14 ROL, 15 ROR, 17 SXB, 18 MERGE.
 - **ALU kod çözücü** (3 × 74HC138: U69–U71, ve kapılar): girişler işlem kodu, `IR8` (h biti) ve C bayrağı;
-  çıkış `AD0..AD23`: toplayıcı girişlerinin terslenmesi, elde girişi, mantık tablosu, kaydırmada giren bit,
+  çıkışlar `AD0..AD23`: toplayıcı girişlerinin terslenmesi, elde girişi, mantık tablosu, kaydırmada giren bit,
   sonuç seçimi ve "bu işlem C/V'yi değiştirir mi". 74HC138'ler işlem kodunu `~AIS0..23` hatlarına açar; her
   `AD` biti bu hatların (ve işlem bitlerinin) VEYA'sıdır, ADC/SBC gibi işlemlerde C ile, kaydırmalarda h ile
   birleşir. Tablo `cpu16/board/alu-kod.ts`'de; devre ondan üretilir (`cpu16/board/kontrol.ts`).
-- **Toplayıcı:** `X = TA ⊕ INVA`, `Y = (TB ∧ PASSB) ⊕ INVB`, 4 × 74HC283. Taşma: işaretler aynıyken
-  sonucun işareti farklıysa.
+- **Toplayıcı:** `X = TA ⊕ INVA`, `Y = (TB ∧ PASSB) ⊕ INVB`, 4 × 74HC283. Taşma: girişlerin işareti
+  aynıyken sonucun işareti farklıysa.
 - **Mantık birimi:** 16 × 74HC151, her bit kendi doğruluk tablosu; yüksek baytta `TA7` de seçiciye girer
   (SXB ve MERGE bu sayede aynı devrede).
 - **Sonuç seçici:** 8 × 74HC153: toplam / mantık / sola kaydırma / sağa kaydırma; sıfır algılama 2 × 74HC688.

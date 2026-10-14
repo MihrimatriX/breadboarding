@@ -6,7 +6,7 @@
 ## Kaybolmamak için 5 kural
 
 1. **Aynı anda tek ana faz.** Yanında en fazla bir paralel iz (aşağıda ⇄ ile işaretli) yürür.
-2. **Her fazın "bitti" ölçütü bir testtir**, his değil. Test geçmeden sonraki faza geçilmez.
+2. **Her fazın "bitti" ölçütü bir testtir.** Test geçmeden sonraki faza geçilmez.
 3. **Altın model.** Faz 1'deki emülatör doğrunun tanımıdır. Sonraki her katman (mikrokod modeli, kapı seviyesi kart, gerçek kart) aynı test programlarını çalıştırıp emülatörle **adım adım aynı sonucu** vermek zorunda (lockstep karşılaştırma). Böylece hata hep "son eklenen katmanda" aranır.
 4. **Spec değişikliği = PR.** `spec.md` dondurulmuş; değişiklik gerekirse önce spec'i değiştiren bir PR, sonra kod.
 5. **Her faz bir video.** Faz bittiğinde çekilecek video zaten belli; içerik üretimi kodun gerisinde kalmaz.
@@ -62,20 +62,20 @@ Faz 0 Spec ─▶ Faz 1 Emülatör+as16 ─▶ Faz 2 Mikromimari ─▶ Faz 3 74
 - Sonuç: Silikon3D'de **CPU16 kartı 3D** bölümü (`#kart`): kapı seviyesi bilgisayar bir Web Worker'da çalışır; kart → çip (kalıp ve kapı şeması) → transistör yakınlaştırması, her seviyede canlı sinyaller, konsoldan `kart.*` API'si. Ayrıntı: `docs/3d-gorunum.md`.
 
 ### Faz 6 — Çevre birimleri ve anakart ✅ 2026-10-11
-- Çıktı: VGA metin kartı, PS/2 klavye, UART, zamanlayıcı, kesme denetleyicisi (öncelik kodlayıcı kapılarla), cache kartı (+ hit/miss sayaçları), bank register'ları. Hepsi şema + simülasyon.
-- Bitti ölçütü: simülasyonda klavyeden basılan tuş ekranda görünür; cache hit oranı ölçülür; 1 MB bellek testi geçer.
+- Çıktı: VGA metin kartı, PS/2 klavye, UART, zamanlayıcı, kesme denetleyicisi (öncelik kodlayıcı kapılarla), önbellek kartı (+ hit/miss sayaçları), bank register'ları. Hepsi şema + simülasyon.
+- Bitti ölçütü: simülasyonda klavyeden basılan tuş ekranda görünür; önbellek hit oranı ölçülür; 1 MB bellek testi geçer.
 - Sonuç: davranış modeli `emu/machine.ts` (bank'lı 1 MB bellek, önbellek, UART, PS/2, zamanlayıcı, kesmeler, VGA metin) ve aynı anakartın kapı seviyesi kartları: saat (bekleme durumlu), bellek, önbellek, G/Ç, video, kendin yap bellek (16 × 74HC574, eğitim kartı). Anakart yalnız yaygın 7400 serisi lojikle ve iki bellek çipiyle (62256, 28C256) kurulur: 32 KB EEPROM + 128 KB RAM. CPU + beş kart birlikte BIOS'u reset'ten monitör istemine kadar açar ve `Machine` ile komut komut, zamanlayıcı kesmesi dahil aynıdır. Bütün anakart KiCad'de. Ayrıntı: `docs/anakart.md`, `docs/anakart-kartlari.md`, `docs/anakart-gc-video.md`.
 
 ### Faz 7 — Yazılım tabanı ve Web IDE ✅ 2026-10-11
 - Çıktı: BIOS/monitör (bellek göster/düzenle, programı çalıştır), UART bootloader, Web IDE (editör + derle + simülatörde çalıştır + Web Serial ile karta gönder).
 - Bitti ölçütü: tarayıcıda yazılan program tek tuşla simülatörde ve (Faz 9 sonrası) gerçek kartta çalışır.
-- Sonuç: `bios/bios.s` (atlama tablosu, kesme işleyici, VGA ve UART sürücüleri, monitör, RAM'e ve EEPROM'a Intel HEX önyükleyici), Silikon3D'de CPU16 Web IDE'si (editör, C ve assembly, simülatörde çalıştır, Web Serial ile karta yükle). Ayrıntı: `docs/bios.md`.
+- Sonuç: `bios/bios.s` (atlama tablosu, kesme işleyicisi, VGA ve UART sürücüleri, monitör, RAM'e ve EEPROM'a Intel HEX önyükleyici), Silikon3D'de CPU16 Web IDE'si (editör, C ve assembly, simülatörde çalıştır, Web Serial ile karta yükle). Ayrıntı: `docs/bios.md`.
 
 ### Faz 8 — C derleyicisi cc16 ⇄ (Faz 1'den sonra paralel) ✅ 2026-10-11
 - Aşamalar: (1) int/char/pointer/dizi/kontrol akışı/fonksiyon → (2) struct/union/enum/string/switch → (3) typedef + önişlemci + linker (ld16) → (4) long, register ayırma, optimizasyon → (5) soft-float, self-host denemesi.
 - Çıktı: `cpu16/cc`, `cpu16/libc` (crt0, printf, malloc, soft MUL/DIV, string).
 - Bitti ölçütü (her aşama): o aşamanın C test paketi emülatörde geçer. Final: C ile yazılmış yılan oyunu ekranda oynanır.
-- Sonuç: `cc/` (önişlemci, tipli ayrıştırıcı, kod üreteci, bağlayıcı; struct, union, enum, switch, long, göstergeler), `lib/` (crt0, rt, libc16: printf, malloc, string, yazılım çarpma/bölme). `cc --hedef bios` ile BIOS üzerinde çalışan programlar; `yilan.c` VGA ekranda klavyeyle oynanır. Soft-float ve self-host yok. Ayrıntı: `docs/cc16.md`.
+- Sonuç: `cc/` (önişlemci, tipli ayrıştırıcı, kod üreteci, bağlayıcı; struct, union, enum, switch, long, göstergeler), `lib/` (crt0, rt, libc16: printf, malloc, string, yazılım çarpma/bölme). `cc --hedef bios` BIOS üzerinde çalışan programlar üretir; `yilan.c` VGA ekranda klavyeyle oynanır. Soft-float ve self-host yok. Ayrıntı: `docs/cc16.md`.
 
 ### Faz 9 — Gerçek kartlar 🔧 araçlar hazır, kartlar kurulacak
 - Sıra Faz 4 ile aynı; her kart önce breadboard, sonra PCB. Kendi EEPROM programlayıcımız (Arduino + 74HC595) ilk iş.

@@ -43,7 +43,7 @@ adresleri yer imi olarak kaydedebilirsin.
 
 | Özellik | Açıklama |
 | --- | --- |
-| 3D die | Metal, polisilikon ve 4 difüzyon türü ayrı katmanlar. 8.233 poligon tek tek üçgenlenip kalınlık verilir. |
+| 3D die | Metal, polisilikon ve 4 difüzyon türü ayrı katmanlar. 8.233 poligon tek tek üçgenlenir ve kalınlaştırılır. |
 | Canlı sinyaller | 1.725 düğümün durumu her karede GPU'ya tek doku olarak yüklenir; yüksek (1) olan teller kırmızı yanar. |
 | Ölçüm | Herhangi bir tele tıkla: adı, 0/1 durumu, sürdüğü ve bağlı olduğu transistörler. Bağlantılara tıklayarak devrede gezin. |
 | Sinyal bul | `clk0`, `ab5`, `alucin`, `#1234` gibi isim ya da numara yaz, kamera oraya uçar. |
@@ -299,12 +299,12 @@ npx vitest run cpu16/tests/cc-bios.test.ts -t "yılan"     # bir dosyada adı e�
 Bir katman testleri geçince "bitti" sayılır:
 
 - **6502:** `tests/mos6502.test.ts` motorumuzu visual6502'nin orijinal `chipsim.js`'inden kaydedilmiş
-  600 yarım çevrimlik izle karşılaştırır (adres yolu, veri yolu, R/W, SYNC). Ayrıca 1..10 toplamının 55
+  600 yarım çevrimlik izle karşılaştırır (adres yolu, veriyolu, R/W, SYNC). Ayrıca 1..10 toplamının 55
   çıktığını ve reset sonrası SP=$FD olduğunu denetler. Motor Node'da saniyede ≈ 12 000 yarım çevrim koşar.
 - **CPU16:** her opcode ve bayrak kenar durumu; mikrokod modeli, kapı seviyesi CPU ve bütün anakart
   emülatörle komut komut aynı (BIOS açılışı ve zamanlayıcı kesmesi dahil); her çip veri sayfası
   tablosunu kapı ve transistör seviyesinde geçer; KiCad dosyaları ve deney rehberleri koddan yeniden
-  üretilmiş halleriyle birebir aynı (elle düzeltilip koda işlenmemiş bir şema CI'da kırmızı yanar);
+  üretilmiş hâlleriyle birebir aynı (elle düzeltilip koda işlenmemiş bir şema CI'da kırmızı yanar);
   C derleyicisi, BIOS, yılan oyunu, kurulum belgeleri, zamanlama.
 - **hesap8:** 74HC4511, devrenin yapısı, uç durumlar, lamba testi, KiCad netlist'i; bütün durumlar için
   `npm run hesap8 -- dogrula --hepsi`.
@@ -343,7 +343,7 @@ src/
 
 **Veri akışı (6502):** Worker her ~16 ms'de bütçesi kadar yarım çevrim koşar, düğüm ve transistör
 durumlarını `Uint8Array` olarak (kopyasız transfer) gönderir. `SimClient` bunları `live` nesnesine koyar;
-React'e yalnızca yazmaçlar, pinler ve iz satırları gider. 3D tarafı `useFrame` içinde `live.version`
+React'e yalnızca register'lar, pinler ve iz satırları gider. 3D tarafı `useFrame` içinde `live.version`
 değiştiyse dokuyu günceller. Böylece React her düğüm değişiminde yeniden çizim yapmaz.
 
 **Neden bu yığın:**
@@ -351,7 +351,7 @@ değiştiyse dokuyu günceller. Böylece React her düğüm değişiminde yenide
 | Seçim | Neden | Alternatif |
 | --- | --- | --- |
 | React + react-three-fiber | Panel UI ile 3D sahne aynı bileşen modelinde | Saf Three.js (daha az soyutlama, ama UI elle) |
-| Web Worker | 4 kHz'de simülasyon 3D'yi takılmadan çalışır | WASM (Rust) motor: 5-10 kat hız, büyük çiplerde gerekebilir |
+| Web Worker | Simülasyon 4 kHz'de çalışırken 3D takılmaz | WASM (Rust) motor: 5-10 kat hız, büyük çiplerde gerekebilir |
 | Veri dokusu + shader | 1.700 düğüm tek doku güncellemesi | Düğüm başına materyal (binlerce draw call) |
 | three-mesh-bvh | Milyon üçgende anlık fare altı seçim | GPU picking (renk kodlu ikinci render) |
 | zustand | Seçici bazlı abonelik, gereksiz render yok | Redux Toolkit (bu ölçekte fazla) |

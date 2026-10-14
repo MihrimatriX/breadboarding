@@ -9,7 +9,7 @@ gerekmiyor: önce "Önce dene" bölümünü yap, sonra amacına uyan yolu seç.
 | CPU16'nın nasıl çalıştığını anlamak | [Yol A: CPU16'yı anlamak](#yol-a-cpu16yı-anlamak) |
 | Breadboard'da kurmak | [Yol B: Deney seti ile kurmak](#yol-b-deney-seti-ile-kurmak) |
 | Daha küçük bir donanım projesi | [Yol C: Hesap makinesi](#yol-c-hesap-makinesi) |
-| Koda katkı vermek | [Yol D: Koda katkı](#yol-d-koda-katkı) |
+| Koda katkıda bulunmak | [Yol D: Koda katkı](#yol-d-koda-katkı) |
 | Belli bir sorunun cevabı | [Hangi soru hangi belgede](#hangi-soru-hangi-belgede) |
 
 ## Önce dene
@@ -36,7 +36,7 @@ Tasarımdan başlayıp kapılara, oradan kartlara ve yazılıma iner. Her belge 
 | 5 | [as16.md](../cpu16/docs/as16.md) | assembler sözdizimi; burada ilk programını yaz ve `npm run cpu16 -- run` ile çalıştır |
 | 6 | [mikromimari.md](../cpu16/docs/mikromimari.md) | iç veriyolu, 32 bitlik kontrol kelimesi, mikrokod, komut başına döngü; mikrokodun 74HC kapılarına çevrilmesi |
 | 7 | [parcalar.md](../cpu16/docs/parcalar.md) | 74HC parça kütüphanesi: her çip veri sayfası tablosu, kapı devresi ve CMOS transistör açılımıyla |
-| 8 | [kartlar.md](../cpu16/docs/kartlar.md) | şema = kod: kartlar TypeScript'te, KiCad şemaları ve BOM bundan üretilir; CPU kartı çip çip |
+| 8 | [kartlar.md](../cpu16/docs/kartlar.md) | şema = kod: kartlar TypeScript'te, KiCad şemaları ve BOM bunlardan üretilir; CPU kartı çip çip |
 | 9 | [anakart.md](../cpu16/docs/anakart.md) | anakartın davranış modeli: bank'lı bellek, önbellek, G/Ç haritası, kesmeler, video, UART, PS/2 |
 | 10 | [anakart-kartlari.md](../cpu16/docs/anakart-kartlari.md), [anakart-gc-video.md](../cpu16/docs/anakart-gc-video.md) | aynı anakart kapı seviyesinde: saat, bellek, önbellek, G/Ç ve video kartları |
 | 11 | [3d-gorunum.md](../cpu16/docs/3d-gorunum.md) | bütün bunları Silikon3D'de görmek: kart → çip → kapı → transistör, VGA ekranı, konsol |
@@ -86,7 +86,7 @@ görünür. Breadboard'da ilk dört aşaması ≈ 22 entegre ve 6–7 breadboard
 
 1. [hesap8/README.md](../hesap8/README.md): dosyalar ve komutlar.
 2. [tasarim.md](../hesap8/docs/tasarim.md): kullanım, bloklar (toplama, çarpma, bölme, onluğa çevirme,
-   göstergeler), hız, besleme, malzeme. Blok diyagramı başta; etkileşimli hali uygulamanın Mimari
+   göstergeler), hız, besleme, malzeme. Blok diyagramı başta; etkileşimli hâli uygulamanın Mimari
    bölümünde.
 3. [kurulum-rehberi.md](../hesap8/docs/kurulum-rehberi.md): aşama aşama fiziksel kurulum ve testler.
 
@@ -116,7 +116,7 @@ görünür. Breadboard'da ilk dört aşaması ≈ 22 entegre ve 6–7 breadboard
 | Hangi blok ne iş yapar, hangi yolla bağlı? | [mimari.md](../cpu16/docs/mimari.md), uygulamada Mimari bölümü, `npm run cpu16 -- mimari` |
 | Hangi bacak nereye, tel hangi renk? | [kurulum.md](../cpu16/docs/kurulum.md), `npm run cpu16 -- kurulum <kart>` |
 | Breadboard'da hangi delikten hangi deliğe? | [breadboard.md](../cpu16/docs/breadboard.md), `npm run cpu16 -- breadboard-belge <kart>` |
-| Gerçek kart kaç MHz'te çalışır? | [uretim.md](../cpu16/docs/uretim.md), `npm run cpu16 -- zamanlama` |
+| Gerçek kart kaç MHz'de çalışır? | [uretim.md](../cpu16/docs/uretim.md), `npm run cpu16 -- zamanlama` |
 | Dirençlerin renk kodu, LED'in yönü? | [led-ve-direnc.md](../cpu16/kit/led-ve-direnc.md) |
 | 3D görünümü konsoldan nasıl sürerim? | [3d-gorunum.md](../cpu16/docs/3d-gorunum.md#konsol) |
 | Docker ile nasıl çalıştırırım? | [README: Docker ile](../README.md#docker-ile) |

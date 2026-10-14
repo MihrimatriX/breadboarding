@@ -49,8 +49,8 @@ bip testi listesi. Breadboard panolarının delikten deliğe tel listesi breadbo
 | `gc`, `video`, `kyb` | 10, 11, 14 | anakart | PCB ya da breadboard panosu |
 
 Kaynak tanım KiCad şemasınınkiyle aynıdır (`board/kicad-files.ts`), böylece adsız netlerin adları
-(N123) belgede ve şemada aynıdır. CPU ve saat kartı test bilgisayarında ve anakartta aynı çipler, aynı
-teller (test bunu denetler). Test bellek kartının RAM bloğu yalnızca simülasyondadır
+(N123) belgede ve şemada aynıdır. CPU ve saat kartının çipleri ve telleri test bilgisayarında ve
+anakartta aynıdır (test bunu denetler). Test bellek kartının RAM bloğu yalnızca simülasyondadır
 (`kit/deneyler.ts`, `SADECE_SIM`) ve belgeye girmez.
 
 ## Kart belgesinin bölümleri
@@ -106,7 +106,7 @@ Belgelerde rengin adı her kutucuğun yanında yazılıdır: siyah-beyaz baskıd
 `kurulum/el-kitabi.ts`: belgeler ve iki yol (breadboard, PCB), araçlar ve malzeme, tel renk standardı,
 listelerin okunuşu (gerçek bir çip kartı örneğiyle), besleme dağıtımı ve dekuplaj, çip yönü,
 blok blok kurma ve test (deney rehberleri, `kart-testi`), breadboard ve PCB montajı (soketler, lehim
-sırası, çıplak kart ve bip testi), sık yapılan hatalar, ek olarak wire-wrap.
+sırası, çıplak kart ve bip testi), sık yapılan hatalar, ekte wire-wrap.
 
 ## Testler
 
