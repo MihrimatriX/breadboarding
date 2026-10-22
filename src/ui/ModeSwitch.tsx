@@ -18,6 +18,8 @@ export interface Bolum {
   mode: Mode;
   hash: string;
   ad: IkiDil;
+  /** telefonda alttaki bölüm çubuğunda: tek kısa sözcük */
+  kisa: IkiDil;
   /** üst çubuk ipucu: tek satır */
   ipucu: IkiDil;
   /** Başlangıç panelinde: ne olduğu (ilk adımlar Baslangic.tsx'te) */
@@ -36,6 +38,7 @@ export const BOLUMLER: Bolum[] = [
     mode: "6502",
     hash: "#6502",
     ad: { tr: "6502 die", en: "6502 die" },
+    kisa: { tr: "6502", en: "6502" },
     ipucu: { tr: "MOS 6502'nin kalıbı: 3.510 transistör, 3D ve canlı", en: "The MOS 6502 die: 3,510 transistors, live in 3D" },
     tanitim: {
       tr: "Gerçek MOS 6502 işlemcisinin kalıbı, transistör seviyesinde çalışıyor. Veri visual6502'den: 3.510 transistör, katman katman 3D'de.",
@@ -52,6 +55,7 @@ export const BOLUMLER: Bolum[] = [
     mode: "cpu16",
     hash: "#cpu16",
     ad: { tr: "CPU16 tezgâhı", en: "CPU16 workbench" },
+    kisa: { tr: "Tezgâh", en: "Bench" },
     ipucu: { tr: "Kendi 16 bit işlemcimiz: assembly / C yaz, derle, çalıştır", en: "Our own 16-bit processor: write assembly or C, compile, run" },
     tanitim: {
       tr: "Kendi 16 bit işlemcimiz CPU16'nın emülatörü, BIOS'lu bilgisayarıyla birlikte. VGA ekranı, PS/2 klavye ve UART terminali tezgâhta; Web Serial ile programı gerçek karta da gönderebilirsin.",
@@ -68,6 +72,7 @@ export const BOLUMLER: Bolum[] = [
     mode: "kart",
     hash: "#kart",
     ad: { tr: "CPU16 kartı 3D", en: "CPU16 board 3D" },
+    kisa: { tr: "Kart", en: "Board" },
     ipucu: { tr: "Aynı bilgisayar kartlarıyla 3D'de, kapı seviyesinde", en: "The same computer and its boards in 3D, at the gate level" },
     tanitim: {
       tr: "Aynı bilgisayar, bütün kartları ve entegreleriyle 3D'de, kapı seviyesinde çalışıyor. Kartları PCB ya da breadboard olarak görebilirsin; Kurulum sekmesi kartı tel tel kurdurur.",
@@ -86,6 +91,7 @@ export const BOLUMLER: Bolum[] = [
     mode: "hesap",
     hash: "#hesap",
     ad: { tr: "8 bit hesap 3D", en: "8-bit calculator 3D" },
+    kisa: { tr: "Hesap", en: "Calc" },
     ipucu: { tr: "DIP anahtarlı, 7 segment göstergeli hesap makinesi kartı", en: "Calculator board with DIP switches and 7-segment displays" },
     tanitim: {
       tr: "74HC entegrelerinden kurulan 8 bit dört işlem hesap makinesi. İki sayıyı DIP anahtarlarla girersin; toplama, çıkarma, çarpma ve bölme tamamen kapılarla yapılır, sonuç 7 segment göstergelerde.",
@@ -103,6 +109,7 @@ export const BOLUMLER: Bolum[] = [
     mode: "mimari",
     hash: "#mimari",
     ad: { tr: "Mimari", en: "Architecture" },
+    kisa: { tr: "Mimari", en: "Arch." },
     ipucu: { tr: "Blok diyagramları: kartlar, yollar ve görevleri", en: "Block diagrams: boards, buses and what they do" },
     tanitim: {
       tr: "Bilgisayarın ve hesap makinesinin blok diyagramları. Her kutu bir işlev bloğu (görevi ve entegreleri), çizgiler veri, adres ve kontrol yolları.",
@@ -121,6 +128,7 @@ export const BOLUMLER: Bolum[] = [
     mode: "belgeler",
     hash: "#belgeler",
     ad: { tr: "Belgeler", en: "Docs" },
+    kisa: { tr: "Belgeler", en: "Docs" },
     ipucu: { tr: "CPU16 ve hesap8 belgeleri: spec, komut seti, kartlar, deneyler", en: "CPU16 and hesap8 docs: spec, instruction set, boards, experiments" },
     tanitim: {
       tr: "Depodaki bütün belgeler uygulamanın içinde: okuma yolu, CPU16'nın spec'i ve komut seti, kartlar, BIOS ve C derleyicisi, deney rehberleri, hesap makinesi.",
@@ -154,6 +162,7 @@ export function ModeSwitch({ mode }: { mode: Mode }) {
         >
           {b.simge}
           <span className="modes-ad">{sec(b.ad, dil)}</span>
+          <span className="modes-kisa" aria-hidden="true">{sec(b.kisa, dil)}</span>
         </a>
       ))}
     </nav>

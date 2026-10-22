@@ -8,6 +8,7 @@ konsol API'si: [cpu16/docs/3d-gorunum.md](../cpu16/docs/3d-gorunum.md).
 
 | Bölüm | Adres | Giriş bileşeni | Klasör |
 |---|---|---|---|
+| Açılış sayfası | kök, `#giris` | `giris/Giris.tsx` | `giris/`: `icerik.ts` (adres kararı `girisMi`, iki dilli metinler); bölüm kodu inmez |
 | 6502 die | `#6502` | `App.tsx` | `chip/`, `sim/` (anahtar seviyesi motor, worker), `render/` |
 | CPU16 tezgâhı | `#cpu16` | `cpu16/Cpu16Bench.tsx` | `cpu16/`: `MachineBench.tsx` (IDE + BIOS + VGA), `FlatBench.tsx` (düz bellek) |
 | CPU16 kartı 3D | `#kart` | `board3d/BoardView.tsx` | `board3d/` |
@@ -20,7 +21,10 @@ Bölüm geçişi `ui/ModeSwitch.tsx`; ortak iskelet `ui/Shell.tsx`; renk ve boyu
 `styles.css`; tema, yazı boyutu, odak modu ve dil `ui/ayarlar.ts` (kısayollar T, Y, F, L). Üst çubuğun
 dar ekran eşikleri sabit değil: sığmayınca `ui/sikisma.ts` altı kademede sıkıştırır (`data-sikisma`:
 bölüm adları simgeye, ikincil ölçümler gizli, …, en sonda seçili bölümün adı da); üst çubuğa öğe eklersen
-900–1680 px'te iki dilde ve iki yazı boyutunda bak. Başlangıç paneli uygulamanın kılavuzu: bölüm başına
+900–1680 px'te iki dilde ve iki yazı boyutunda bak. 900 px'in altında (telefon) üst çubuk tek satır,
+bölüm geçişi ekranın altında sabit sekme çubuğu (simge + `kisa` ad, testi `cpu16/tests/arayuz.test.ts`),
+araç çubuğu yana kayar ve açılır menüler alttan açılan sayfa olur; 1240 px'in altında araç çubuğundaki
+sınıfsız (sakin) düğmeler yalnız simge. Başlangıç paneli uygulamanın kılavuzu: bölüm başına
 tanıtım ve "İlk adımlar" `ui/kilavuz.ts`'te (testi `tests/ceviri-kabuk.test.ts`); bir bölümün düğmesi
 ya da kısayolu değişince oradaki adımı da güncelle.
 

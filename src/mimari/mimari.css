@@ -82,7 +82,8 @@
 
 /* ============================================================ bölüm düzeni */
 .app.mimari { --side-w: clamp(22rem, 24vw, 27rem); }
-.mm-stage { background: var(--surface-scene); }
+/* diyagram bir çizim masasında: soluk nokta ızgarası (styles.css'teki tezgâh zemini gibi) */
+.mm-stage { background: radial-gradient(circle, var(--dot) 1px, transparent 1.5px) 0 0 / 22px 22px, var(--surface-scene); }
 
 /* ============================================================ sahne: kaydırma, vurgu, seçim */
 .mm-sahne {
