@@ -8,6 +8,12 @@ import { sim } from "./sim/SimClient";
 import { useAyarlariUygula } from "./ui/ayarlar";
 import { useDil } from "./ui/ceviri";
 import { bolumBasligi } from "./seo";
+import { Giris } from "./giris/Giris";
+import { girisMi } from "./giris/icerik";
+
+/** Adresin gösterdiği sayfa: açılış sayfası ya da bir bölüm */
+type Sayfa = Mode | "giris";
+const sayfaAdresten = (): Sayfa => (girisMi(location.hash) ? "giris" : modeFromHash());
 
 // her bölüm kendi parçasında: #hesap açılınca 6502 die'ın kodu ve çip verisi inmez, tersi de öyle
 const App = lazy(() => yukle6502().then((m) => ({ default: m.App })));
@@ -26,18 +32,20 @@ function Bolum({ mode, aktif, children }: { mode: Mode; aktif: boolean; children
 }
 
 /**
- * 6502 die görünümü, CPU16 tezgâhı, CPU16 kartı, 8 bit hesap makinesi, mimari diyagramları ve belgeler
- * arasında geçiş. Die görünümü ilk açıldığında yüklenir, sonra bağlı kalır, başka bölüme geçince yalnız
+ * Açılış sayfası (sitenin kökü, #giris) ile 6502 die görünümü, CPU16 tezgâhı, CPU16 kartı, 8 bit hesap
+ * makinesi, mimari diyagramları ve belgeler arasında geçiş. Başlangıç paneli yalnız bölümlerde: ilk ziyarette
+ * açılış sayfasından bir bölüme girilince açılır. Die görünümü ilk açıldığında yüklenir, sonra bağlı kalır, başka bölüme geçince yalnız
  * durdurulur. İki 3D kart bölümü aynı görünümü kullanır (BoardView), aynı anda yalnız biri açıktır.
  */
 export function Root() {
   // tema, yazı boyutu ve odak modu: <html> işaretleri ve T / Y / F kısayolları
   useAyarlariUygula();
-  const [mode, setMode] = useState<Mode>(modeFromHash);
+  // açılış sayfasındayken hiçbir bölümün kodu inmez (6502 die da)
+  const [mode, setMode] = useState<Sayfa>(sayfaAdresten);
   const [dieAcildi, setDieAcildi] = useState(mode === "6502");
   if (mode === "6502" && !dieAcildi) setDieAcildi(true);
   useEffect(() => {
-    const onHash = () => setMode(modeFromHash());
+    const onHash = () => setMode(sayfaAdresten());
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
@@ -84,7 +92,7 @@ export function Root() {
           <BelgelerView />
         </Bolum>
       )}
-      <Baslangic mode={mode} />
+      {mode === "giris" ? <Giris /> : <Baslangic mode={mode} />}
     </>
   );
 }
