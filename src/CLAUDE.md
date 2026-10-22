@@ -20,7 +20,10 @@ Bölüm geçişi `ui/ModeSwitch.tsx`; ortak iskelet `ui/Shell.tsx`; renk ve boyu
 `styles.css`; tema, yazı boyutu, odak modu ve dil `ui/ayarlar.ts` (kısayollar T, Y, F, L). Üst çubuğun
 dar ekran eşikleri sabit değil: sığmayınca `ui/sikisma.ts` altı kademede sıkıştırır (`data-sikisma`:
 bölüm adları simgeye, ikincil ölçümler gizli, …, en sonda seçili bölümün adı da); üst çubuğa öğe eklersen
-900–1680 px'te iki dilde ve iki yazı boyutunda bak. Başlangıç paneli uygulamanın kılavuzu: bölüm başına
+900–1680 px'te iki dilde ve iki yazı boyutunda bak. 900 px'in altında (telefon) üst çubuk tek satır,
+bölüm geçişi ekranın altında sabit sekme çubuğu (simge + `kisa` ad, testi `cpu16/tests/arayuz.test.ts`),
+araç çubuğu yana kayar ve açılır menüler alttan açılan sayfa olur; 1240 px'in altında araç çubuğundaki
+sınıfsız (sakin) düğmeler yalnız simge. Başlangıç paneli uygulamanın kılavuzu: bölüm başına
 tanıtım ve "İlk adımlar" `ui/kilavuz.ts`'te (testi `tests/ceviri-kabuk.test.ts`); bir bölümün düğmesi
 ya da kısayolu değişince oradaki adımı da güncelle.
 
