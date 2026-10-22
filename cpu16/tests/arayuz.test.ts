@@ -7,6 +7,10 @@ import { describe, expect, it } from "vitest";
 import { BOLUMLER } from "../../src/ui/ModeSwitch.tsx";
 import { girisMi, GIRIS_HASH, ILKELER, KAHRAMAN, YOLCULUK } from "../../src/giris/icerik.ts";
 import type { IkiDil } from "../../src/ui/ceviri.ts";
+import { blokOnAdi, kartOzeti } from "../../src/board3d/ozet.ts";
+import { boardLayout } from "../board/layout.ts";
+import { buildFullMachineBoard } from "../board/machine-board.ts";
+import { buildHesapBoard } from "../../hesap8/kart.ts";
 
 const ikiDildeDolu = (m: IkiDil, ad: string) => {
   expect(m.tr.trim(), `${ad} tr`).not.toBe("");
@@ -60,5 +64,45 @@ describe("arayüz: açılış sayfası (src/giris/)", () => {
     const bolumler = new Set(BOLUMLER.map((b) => b.mode));
     for (const a of YOLCULUK) expect(bolumler.has(a.mode), a.mode).toBe(true);
     expect(new Set(YOLCULUK.map((a) => a.mode)).size).toBe(YOLCULUK.length);
+  });
+});
+
+describe("arayüz: kartın genel bakışı (src/board3d/ozet.ts)", () => {
+  const bilgisayar = boardLayout(buildFullMachineBoard().board);
+  const hesap = boardLayout(buildHesapBoard().board);
+
+  it("bilgisayar kart kart: her kart bir satır, satırların toplamı bütün parçalar", () => {
+    const o = kartOzeti(bilgisayar, "kart");
+    expect(o.satirlar.map((s) => s.ad)).toEqual(bilgisayar.cards.map((c) => c.name).filter((ad) => o.satirlar.some((s) => s.ad === ad)));
+    expect(o.satirlar.reduce((t, s) => t + s.entegre, 0)).toBe(o.entegre);
+    expect(o.satirlar.reduce((t, s) => t + s.pasif, 0)).toBe(o.pasif);
+    expect(o.entegre).toBe(bilgisayar.chips.length);
+    const cpu = o.satirlar.find((s) => s.ad === "cpu")!;
+    expect(cpu.entegre).toBe(bilgisayar.chips.filter((c) => c.card === "cpu").length);
+    expect(cpu.baslik).toBe("CPU kartı");
+  });
+
+  it("hesap makinesi blok blok: alt bloklar ön adlarıyla tek satır, toplam bütün parçalar", () => {
+    const o = kartOzeti(hesap, "blok");
+    const adlar = o.satirlar.map((s) => s.ad);
+    expect(new Set(adlar).size).toBe(adlar.length);
+    for (const ad of adlar) expect(ad).not.toContain(":");
+    expect(o.satirlar.reduce((t, s) => t + s.entegre + s.pasif, 0)).toBe(hesap.chips.length + hesap.passives.length);
+  });
+
+  it("parçası olmayan kart ya da blok satır olmaz; ön ad ayrımı", () => {
+    const lay = {
+      cards: [{ name: "a", title: "A kartı" }, { name: "bos", title: "Boş kart" }],
+      blocks: [{ card: "a", name: "Gösterge: 1. sayı" }, { card: "a", name: "Gösterge: 2. sayı" }, { card: "a", name: "Anahtarlar" }],
+      chips: [{ card: "a", block: "Gösterge: 1. sayı" }, { card: "a", block: "Gösterge: 2. sayı" }, { card: "a", block: "Anahtarlar" }],
+      passives: [{ card: "a", block: "Anahtarlar" }],
+    } as unknown as Parameters<typeof kartOzeti>[0];
+    expect(kartOzeti(lay, "kart").satirlar).toEqual([{ ad: "a", baslik: "A kartı", entegre: 3, pasif: 1 }]);
+    expect(kartOzeti(lay, "blok").satirlar).toEqual([
+      { ad: "Gösterge", baslik: "Gösterge", entegre: 2, pasif: 0 },
+      { ad: "Anahtarlar", baslik: "Anahtarlar", entegre: 1, pasif: 1 },
+    ]);
+    expect(blokOnAdi("Gösterge: 1. sayı")).toBe("Gösterge");
+    expect(blokOnAdi("ALU")).toBe("ALU");
   });
 });

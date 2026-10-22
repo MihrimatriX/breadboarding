@@ -968,6 +968,35 @@ button.pin.toggle:hover:not(:disabled) { background: var(--surface-3); border-st
 .bos-durum p { color: var(--text-muted); max-width: 44ch; }
 .bos-durum .hint-text { margin-top: var(--sp-2); }
 
+/* kartın genel bakışı (boş durumun altında): üç büyük sayı ve kart / blok listesi; satırdaki çubuk
+   entegre sayısını en kalabalık karta göre gösterir, satıra tıklayınca kamera oraya gider */
+.genel-bakis { align-self: stretch; display: flex; flex-direction: column; gap: var(--sp-4); margin-top: var(--sp-5); padding-top: var(--sp-6); border-top: 1px solid var(--border); }
+.genel-bakis h3 { color: var(--text); font-size: var(--fs-md); }
+.ozet-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.ozet-satir {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "ad sayi" "cubuk cubuk";
+  align-items: baseline;
+  gap: var(--sp-2) var(--sp-3);
+  width: 100%;
+  height: auto;
+  padding: var(--sp-3) var(--sp-3);
+  border: 0;
+  border-radius: var(--r-md);
+  background: transparent;
+  box-shadow: none;
+  text-align: left;
+  font: inherit;
+  white-space: normal;
+}
+button.ozet-satir:hover:not(:disabled) { background: var(--surface-2); border: 0; }
+button.ozet-satir:hover .ozet-cubuk i { background: var(--accent); }
+.ozet-ad { grid-area: ad; font-weight: 600; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ozet-sayi { grid-area: sayi; font-size: var(--fs-sm); color: var(--text-faint); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ozet-cubuk { grid-area: cubuk; display: block; height: 4px; border-radius: var(--r-pill); background: var(--surface-inset); overflow: hidden; }
+.ozet-cubuk i { display: block; height: 100%; border-radius: inherit; background: var(--accent-line); transition: background-color var(--t-fast), width var(--t-med) var(--ease); }
+
 /* ============================================================ 6502 die */
 .olcum-bas { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
 .olcum-bas .big { font: 500 var(--fs-xl)/1.25 var(--mono); overflow-wrap: anywhere; color: var(--text); }
