@@ -43,7 +43,7 @@ Daha uzun harita: [README, Proje yapısı](README.md#proje-yapısı), [cpu16/REA
 ```bash
 npm ci && npm run dev                          # http://localhost:5173
 npx tsc -b                                     # tip denetimi (kullanılmayan değişken de hata)
-npx vitest run                                 # bütün testler: 760 test, ≈ 1 dakika
+npx vitest run                                 # bütün testler: 755 test, ≈ 1 dakika
 npx vitest run cpu16/tests/emu.test.ts -t "ad" # tek dosya, adı eşleşen testler
 npm run build                                  # üretim derlemesi (CI de koşar); SITE_URL=https://… ile
                                                # kanonik adresler ve sitemap.xml (src/seo.ts)

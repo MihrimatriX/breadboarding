@@ -40,7 +40,7 @@ netlist'i ve şema PDF'leri), `g++` ve `python3` (EEPROM programlayıcısı), `p
    `Zamanlama: bütün anakartın analizi; 74AC ailesi seçeneği`).
 3. Göndermeden önce:
    ```bash
-   npm run check        # tsc -b + vitest (760 test, ≈ 1 dakika)
+   npm run check        # tsc -b + vitest (755 test, ≈ 1 dakika)
    npm run build        # üretim derlemesi
    ```
    Kart, mikrokod ya da deney tanımı değiştiyse önce üretilen dosyaları yenile
