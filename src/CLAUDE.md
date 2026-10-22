@@ -8,6 +8,7 @@ konsol API'si: [cpu16/docs/3d-gorunum.md](../cpu16/docs/3d-gorunum.md).
 
 | Bölüm | Adres | Giriş bileşeni | Klasör |
 |---|---|---|---|
+| Açılış sayfası | kök, `#giris` | `giris/Giris.tsx` | `giris/`: `icerik.ts` (adres kararı `girisMi`, iki dilli metinler); bölüm kodu inmez |
 | 6502 die | `#6502` | `App.tsx` | `chip/`, `sim/` (anahtar seviyesi motor, worker), `render/` |
 | CPU16 tezgâhı | `#cpu16` | `cpu16/Cpu16Bench.tsx` | `cpu16/`: `MachineBench.tsx` (IDE + BIOS + VGA), `FlatBench.tsx` (düz bellek) |
 | CPU16 kartı 3D | `#kart` | `board3d/BoardView.tsx` | `board3d/` |
