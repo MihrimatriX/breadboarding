@@ -123,7 +123,7 @@ interface KartState {
    * kamera bu bloğa (ya da "Gösterge" gibi bir ön adla başlayan bloklara) gitsin; blok null: genel
    * bakış. n her istekte artar: aynı yere yeniden gidilebilsin.
    */
-  odak: { blok: string | null; n: number } | null;
+  odak: { blok: string | null; kart?: string; n: number } | null;
   wires: WireMode;
   /** GND / VCC tellerini de çiz */
   power: boolean;
@@ -157,7 +157,8 @@ interface KartState {
   selectNet(n: number | null): void;
   selectTel(t: { kart: string; no: number } | null): void;
   /** kamerayı yerleşimdeki bir işlev bloğuna götür (seçim değişmez); null: genel bakış */
-  focusBlock(blok: string | null): void;
+  /** kamerayı bir bloğa (ön adıyla bütün alt blokları), bir karta (kart verilirse) ya da bütün karta (null) götür */
+  focusBlock(blok: string | null, kart?: string): void;
   setWires(m: WireMode): void;
   setPower(on: boolean): void;
   setGorunum(g: Gorunum): void;
@@ -259,8 +260,8 @@ export const useKart = create<KartState>((set, get) => ({
     if (t && get().chip !== null) get().selectChip(null);
     set(t ? { tel: t, net: null, gate: null } : { tel: null });
   },
-  focusBlock(blok) {
-    set({ odak: { blok, n: (get().odak?.n ?? 0) + 1 }, hover: null });
+  focusBlock(blok, kart) {
+    set({ odak: { blok, kart, n: (get().odak?.n ?? 0) + 1 }, hover: null });
   },
   setWires(m) {
     set({ wires: m });

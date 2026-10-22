@@ -904,13 +904,14 @@ function CameraFly() {
   useEffect(() => {
     if (!controls || !odak) return;
     const start = { t0: controls.target.clone(), c0: camera.position.clone(), t: 0 };
-    if (odak.blok === null) {
+    if (odak.blok === null && !odak.kart) {
       const o = overview(lay.width, lay.height, aktifKart());
       anim.current = { target: o.target, cam: o.cam, ...start };
       return;
     }
-    // "Gösterge" gibi bir ön ad bütün "Gösterge: …" bloklarını birlikte çerçeveler
-    const bs = lay.blocks.filter((x) => x.name === odak.blok || x.name.startsWith(`${odak.blok}:`));
+    // kart: kartın çerçevesi (yalnız PCB görünümünde; breadboard'da kart yok). "Gösterge" gibi bir ön ad
+    // bütün "Gösterge: …" bloklarını birlikte çerçeveler.
+    const bs = odak.kart ? lay.cards.filter((c) => c.name === odak.kart) : lay.blocks.filter((x) => x.name === odak.blok || x.name.startsWith(`${odak.blok}:`));
     if (!bs.length) return;
     const [ax, az] = w(Math.min(...bs.map((b) => b.x)), Math.min(...bs.map((b) => b.y)));
     const [bx, bz] = w(Math.max(...bs.map((b) => b.x + b.w)), Math.max(...bs.map((b) => b.y + b.h)));
