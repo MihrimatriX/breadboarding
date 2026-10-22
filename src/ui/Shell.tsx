@@ -15,6 +15,7 @@ import { Simge } from "./simgeler";
 import { useAyar, type TemaSecimi } from "./ayarlar";
 import { useSikisma } from "./sikisma";
 import { sec, useDil, useT, type Dil, type IkiDil } from "./ceviri";
+import { GIRIS_HASH } from "../giris/icerik";
 
 /** Kısayol ve sekme tablolarında metin düz yazı (tek dil) ya da { tr, en } olabilir */
 function ikiDilMi(x: unknown): x is IkiDil {
@@ -119,7 +120,7 @@ export function AppHeader({ mode, context, meters, shortcuts }: { mode: Mode; co
   useSikisma(ref);
   return (
     <header className="appbar" ref={ref}>
-      <div className="brand" title={typeof context === "string" ? context : undefined}>
+      <a className="brand" href={GIRIS_HASH} title={t("Silikon3D ana sayfası", "Silikon3D home page")} aria-label={t("Silikon3D ana sayfası", "Silikon3D home page")}>
         <Logo />
         <div className="brand-text">
           <h1>
@@ -127,7 +128,7 @@ export function AppHeader({ mode, context, meters, shortcuts }: { mode: Mode; co
           </h1>
           {context && <span className="brand-sub">{context}</span>}
         </div>
-      </div>
+      </a>
       <ModeSwitch mode={mode} />
       <div className="appbar-end">
         {meters && <div className="meter" role="group" aria-label={t("Canlı ölçümler", "Live readings")}>{meters}</div>}
@@ -135,7 +136,7 @@ export function AppHeader({ mode, context, meters, shortcuts }: { mode: Mode; co
           <DilDugmesi />
           <TemaDugmesi />
           <GorunumMenusu />
-          <Menu label={<><Simge ad="klavye" boyut={18} /> <span className="menu-label">{t("Kısayollar", "Shortcuts")}</span></>} title={t("Klavye ve fare kısayolları", "Keyboard and mouse shortcuts")} className="icon-btn" align="end">
+          <Menu label={<><Simge ad="klavye" boyut={18} /> <span className="menu-label">{t("Kısayollar", "Shortcuts")}</span></>} title={t("Klavye ve fare kısayolları", "Keyboard and mouse shortcuts")} className="icon-btn kisayol-btn" align="end">
             <p className="menu-baslik">{t("Kısayollar", "Shortcuts")}</p>
             <dl className="keys">
               {[...ozel, ...ORTAK_KISAYOLLAR].map((s, i) => (
@@ -156,7 +157,7 @@ export function AppHeader({ mode, context, meters, shortcuts }: { mode: Mode; co
 }
 
 /** Türkçe ↔ İngilizce (L). Düğmede geçilecek dilin kısaltması yazar. */
-function DilDugmesi() {
+export function DilDugmesi() {
   const dil = useAyar((s) => s.dil);
   const t = useT();
   return (
@@ -174,13 +175,13 @@ function DilDugmesi() {
 }
 
 /** Koyu ↔ açık tema (T). Ayar menüsünde "Sistem" de seçilebilir. */
-function TemaDugmesi() {
+export function TemaDugmesi() {
   const tema = useAyar((s) => s.tema);
   const t = useT();
   const sonraki = tema === "koyu" ? t("açık", "light") : t("koyu", "dark");
   return (
     <button
-      className="icon-btn"
+      className="icon-btn tema-btn"
       onClick={() => useAyar.getState().temaDegistir()}
       aria-label={t(`Temayı değiştir: ${sonraki}`, `Switch theme: ${sonraki}`)}
       data-tip={t(`Tema: ${sonraki} (T)`, `Theme: ${sonraki} (T)`)}
@@ -269,9 +270,9 @@ export function Bayrak({ ad, on }: { ad: string; on: boolean }) {
   );
 }
 
-function Logo() {
+export function Logo({ boyut = 28 }: { boyut?: number }) {
   return (
-    <svg className="logo" viewBox="0 0 28 28" width="28" height="28" aria-hidden="true">
+    <svg className="logo" viewBox="0 0 28 28" width={boyut} height={boyut} aria-hidden="true">
       <rect x="0.5" y="0.5" width="27" height="27" rx="7" className="logo-zemin" />
       <rect x="8" y="8" width="12" height="12" rx="2" fill="none" stroke="currentColor" strokeWidth="1.5" />
       <rect x="11.25" y="11.25" width="5.5" height="5.5" rx="1" className="logo-cekirdek" />

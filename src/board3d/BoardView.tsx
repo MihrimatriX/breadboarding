@@ -20,7 +20,8 @@ import { Simge } from "../ui/simgeler";
 import { HataKutusu, Yukleniyor } from "../ui/Yukleniyor";
 import { useYaziTipleri } from "../ui/yaziTipleri";
 import { blokAdi, kartBasligi, parcaBasligi } from "./adlar";
-import { aktifKart, aktifKartiSec, bbSahnesi, gorunumHazir, type Gorunum, type KartTuru } from "./aktif";
+import { aktifKart, aktifKartiSec, bbSahnesi, gorunumHazir, kartYerlesimi, type Gorunum, type KartTuru } from "./aktif";
+import { kartOzeti } from "./ozet";
 import { TelKarti } from "./BbKurulumPanel";
 import { BoardScene } from "./BoardScene";
 import { installHesapApi, useHesap } from "./hesap";
@@ -460,6 +461,71 @@ function LinkRow({ num, name, net, others, self }: { num: number; name: string; 
   );
 }
 
+/**
+ * Hiçbir parça seçili değilken: bilgisayarda kart kart, hesap makinesinde blok blok entegre ve pasif
+ * sayıları (ozet.ts). Satıra tıklayınca kamera oraya gider; kartlar yalnız PCB görünümünde var.
+ */
+function KartGenelBakis() {
+  const t = useT();
+  const dil = useDil();
+  const gorunum = useKart((s) => s.gorunum);
+  const tur = aktifKart();
+  const hesap = tur === "hesap";
+  const ozet = useMemo(() => kartOzeti(kartYerlesimi(tur, "pcb"), hesap ? "blok" : "kart"), [tur, hesap]);
+  const enCok = Math.max(1, ...ozet.satirlar.map((s) => s.entegre));
+  const gidilir = hesap || gorunum === "pcb";
+  const git = (ad: string) => (hesap ? useKart.getState().focusBlock(ad) : useKart.getState().focusBlock(null, ad));
+  const entegre = (n: number) => t(`${sayi(n, dil)} entegre`, `${sayi(n, dil)} ${n === 1 ? "chip" : "chips"}`);
+  const pasif = (n: number) => t(`${sayi(n, dil)} pasif`, `${sayi(n, dil)} ${n === 1 ? "passive" : "passives"}`);
+  return (
+    <div className="genel-bakis">
+      <h3>{hesap ? t("Hesap makinesine genel bakış", "The calculator at a glance") : t("Bilgisayara genel bakış", "The computer at a glance")}</h3>
+      <div className="degerler">
+        <div className="deger">
+          <span>{hesap ? t("Blok", "Blocks") : t("Kart", "Boards")}</span>
+          <b>{sayi(ozet.satirlar.length, dil)}</b>
+        </div>
+        <div className="deger">
+          <span>{t("Entegre", "Chips")}</span>
+          <b>{sayi(ozet.entegre, dil)}</b>
+        </div>
+        <div className="deger">
+          <span>{t("Pasif eleman", "Passives")}</span>
+          <b>{sayi(ozet.pasif, dil)}</b>
+        </div>
+      </div>
+      <ul className="ozet-liste">
+        {ozet.satirlar.map((s) => {
+          const ad = hesap ? blokAdi(s.ad, dil) : kartBasligi(s.ad, s.baslik, dil);
+          const icerik = (
+            <>
+              <span className="ozet-ad">{ad}</span>
+              <span className="ozet-sayi">
+                {entegre(s.entegre)} · {pasif(s.pasif)}
+              </span>
+              <span className="ozet-cubuk" aria-hidden="true">
+                <i style={{ width: `${(s.entegre / enCok) * 100}%` }} />
+              </span>
+            </>
+          );
+          return (
+            <li key={s.ad}>
+              {gidilir ? (
+                <button className="ozet-satir" onClick={() => git(s.ad)} title={t("Kamerayı oraya götür", "Move the camera there")}>
+                  {icerik}
+                </button>
+              ) : (
+                <div className="ozet-satir">{icerik}</div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {!gidilir && <p className="hint-text">{t("Kartlara gitmek için PCB görünümüne geç.", "Switch to the PCB view to jump to a board.")}</p>}
+    </div>
+  );
+}
+
 function PartPanel() {
   const t = useT();
   const dil = useDil();
@@ -494,6 +560,7 @@ function PartPanel() {
             <>Araç çubuğundaki <b>Teller: hepsi</b> bütün {aktifKart() === "hesap" ? "hesap makinesinin" : "bilgisayarın"} kablolamasını gösterir.</>
           )}
         </p>
+        <KartGenelBakis />
       </section>
     );
   }

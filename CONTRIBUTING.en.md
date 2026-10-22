@@ -40,7 +40,7 @@ schematic netlists and schematic PDFs), `g++` and `python3` (EEPROM programmer),
    `Zamanlama: bütün anakartın analizi; 74AC ailesi seçeneği`.
 3. Before pushing:
    ```bash
-   npm run check        # tsc -b + vitest (760 tests, ≈ 1 minute)
+   npm run check        # tsc -b + vitest (755 tests, ≈ 1 minute)
    npm run build        # production build
    ```
    If a board, microcode or experiment definition changed, regenerate the generated files first
