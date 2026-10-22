@@ -135,7 +135,7 @@ export function AppHeader({ mode, context, meters, shortcuts }: { mode: Mode; co
           <DilDugmesi />
           <TemaDugmesi />
           <GorunumMenusu />
-          <Menu label={<><Simge ad="klavye" boyut={18} /> <span className="menu-label">{t("Kısayollar", "Shortcuts")}</span></>} title={t("Klavye ve fare kısayolları", "Keyboard and mouse shortcuts")} className="icon-btn" align="end">
+          <Menu label={<><Simge ad="klavye" boyut={18} /> <span className="menu-label">{t("Kısayollar", "Shortcuts")}</span></>} title={t("Klavye ve fare kısayolları", "Keyboard and mouse shortcuts")} className="icon-btn kisayol-btn" align="end">
             <p className="menu-baslik">{t("Kısayollar", "Shortcuts")}</p>
             <dl className="keys">
               {[...ozel, ...ORTAK_KISAYOLLAR].map((s, i) => (
@@ -180,7 +180,7 @@ function TemaDugmesi() {
   const sonraki = tema === "koyu" ? t("açık", "light") : t("koyu", "dark");
   return (
     <button
-      className="icon-btn"
+      className="icon-btn tema-btn"
       onClick={() => useAyar.getState().temaDegistir()}
       aria-label={t(`Temayı değiştir: ${sonraki}`, `Switch theme: ${sonraki}`)}
       data-tip={t(`Tema: ${sonraki} (T)`, `Theme: ${sonraki} (T)`)}

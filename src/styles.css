@@ -596,6 +596,8 @@ a.brand:focus-visible { outline-offset: 4px; }
 }
 .modes a .simge { color: var(--text-faint); transition: color var(--t-fast); }
 .modes a:hover { color: var(--text); background: var(--surface-2); }
+/* kısa ad yalnız telefondaki alt çubukta */
+.modes-kisa { display: none; }
 .modes a:hover .simge { color: var(--text-muted); }
 .modes a[aria-current="page"] { background: var(--accent-soft); color: var(--text); font-weight: 600; box-shadow: inset 0 0 0 1px var(--accent-line); }
 .modes a[aria-current="page"] .simge { color: var(--accent); }
@@ -1494,43 +1496,103 @@ p .lv, b.lv { display: inline; padding: 1px 5px; }
   .meter .m-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .meter .m { gap: 0; }
 }
+/* telefon ve dar tablet (≤ 900 px): sayfa aşağı kayar; üst çubuk tek ince satır (logo, canlı ölçümler,
+   Görünüm ve yardım; tema, dil ve kısayollar Görünüm menüsünde), bölüm geçişi ekranın altında sabit
+   bir sekme çubuğu (simge + kısa ad). Araç çubuğu tek satır, yana kayar; açılır menüler alttan açılan
+   bir sayfa olur (kayan çubuğun içinde kesilmesin). */
 @media (max-width: 900px) {
-  body { overflow: auto; }
+  :root { --alt-cubuk: calc(3.5rem + env(safe-area-inset-bottom, 0px)); }
+  body { overflow: auto; padding-bottom: var(--alt-cubuk); }
   html, body, #root { height: auto; }
-  .shell { height: auto; min-height: 100%; }
-  .appbar { flex-wrap: wrap; padding: var(--sp-2) var(--sp-4); row-gap: var(--sp-2); }
-  /* üç satır: marka ve araçlar · canlı ölçümler (boydan boya, etiketleriyle) · bölüm geçişi */
-  .appbar-end { display: contents; }
-  .appbar-tools { order: 1; margin-left: auto; border-left: 0; padding-left: 0; }
-  .meter { order: 2; width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .shell { height: auto; min-height: 100%; animation: none; }
+  .appbar { flex-wrap: nowrap; gap: var(--sp-3); min-height: 3.5rem; padding: 0 var(--sp-2) 0 var(--sp-4); position: sticky; top: 0; }
+  .appbar-end { gap: var(--sp-2); min-width: 0; }
+  .appbar-tools { border-left: 0; padding-left: 0; }
+  .appbar-tools .dil-btn, .appbar-tools .tema-btn, .appbar-tools .kisayol-btn { display: none; }
+  .meter { gap: var(--sp-4); min-width: 0; overflow-x: auto; scrollbar-width: none; }
   .meter .m { flex: none; }
-  .modes { order: 3; width: 100%; overflow-x: auto; scrollbar-width: none; }
-  .modes a { flex: 1 0 auto; justify-content: center; }
+  .meter .m.ikincil { display: none; }
+  /* alttaki bölüm çubuğu: altı eşit sekme */
+  .modes {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 45;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 2px;
+    height: var(--alt-cubuk);
+    padding: var(--sp-1) var(--sp-1) calc(var(--sp-1) + env(safe-area-inset-bottom, 0px));
+    background: var(--glass);
+    backdrop-filter: blur(14px) saturate(1.3);
+    box-shadow: 0 -1px 0 var(--border), 0 -12px 30px -22px rgba(0, 0, 0, 0.6);
+  }
+  .modes a, .modes a:not([aria-current="page"]) {
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    height: auto;
+    min-width: 0;
+    padding: 0 2px;
+    font-size: var(--fs-cap);
+  }
+  .modes a .simge { width: 20px; height: 20px; }
+  .modes a .modes-ad, .modes a:not([aria-current="page"]) .modes-ad { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .modes a .modes-kisa { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 var(--fs-cap)/1.1 var(--sans); }
+  .modes a[aria-current="page"] { box-shadow: none; }
+  .modes a[aria-current="page"]::before { top: calc(-1 * var(--sp-1)); bottom: auto; left: 32%; right: 32%; border-radius: 0 0 2px 2px; }
+  /* araç çubuğu: tek satır, yana kayar; sağ kenar soluklaşır (devamı olduğunu gösterir) */
+  .toolbar, .app.kart .toolbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: var(--sp-2) var(--sp-8) var(--sp-2) var(--sp-4);
+    column-gap: var(--sp-4);
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 2.5rem), transparent);
+    mask-image: linear-gradient(90deg, #000 calc(100% - 2.5rem), transparent);
+  }
+  .toolbar::-webkit-scrollbar { display: none; }
+  .toolbar .tb-group { flex: none; }
+  .toolbar .tb-group.tb-end { margin-left: 0; }
+  .toolbar .seg { flex-wrap: nowrap; }
+  /* açılır menü: alttan açılan sayfa */
+  .menu-pop, .menu-pop.down, .menu-pop.up, .menu-pop.start, .menu-pop.end {
+    position: fixed;
+    z-index: 90;
+    left: var(--sp-3);
+    right: var(--sp-3);
+    top: auto;
+    bottom: calc(var(--alt-cubuk) + var(--sp-3));
+    min-width: 0;
+    max-width: none;
+    max-height: 70vh;
+    overflow: auto;
+    animation: yuksel var(--t-med) var(--ease);
+  }
   .workspace { flex-direction: column; }
-  .stage { flex: none; height: 60vh; }
-  .side { width: 100% !important; border-left: 0; border-top: 1px solid var(--border); }
+  .stage { flex: none; height: 62vh; height: 62svh; }
+  /* panel sahnenin altında: yandan kayarak açılmaz (açılırken sayfa yana taşıyordu) */
+  .side { width: 100% !important; border-left: 0; border-top: 1px solid var(--border); animation: none; }
   .side-body { overflow: visible; }
   .splitter { display: none; }
   .bench-main { padding: var(--sp-4); }
   .monitor { flex: none; height: 75vw; }
   .bench-main > .bench-src { height: auto; }
   .bench-src textarea { min-height: 260px; }
-  .vga-panel { width: min(320px, 70%); }
   .tabbar { flex-wrap: wrap; }
   .tabbar-actions { flex: 1 1 100%; margin-left: 0; padding-bottom: var(--sp-2); }
   .tabbar-actions .chips { flex-wrap: wrap; overflow: visible; }
   .bs-bolumler { grid-template-columns: minmax(0, 1fr); }
-  .baslangic { left: var(--sp-3); right: var(--sp-3); bottom: var(--sp-3); width: auto; padding: var(--sp-5); }
+  .baslangic { left: var(--sp-3); right: var(--sp-3); bottom: calc(var(--alt-cubuk) + var(--sp-3)); width: auto; max-height: calc(100svh - var(--alt-cubuk) - 5rem); padding: var(--sp-5); }
   .bench-regs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 560px) {
-  .modes a .modes-ad { font-size: var(--fs-sm); }
   .bs-alt { flex-direction: column; align-items: stretch; }
-  /* bölümlü öbek sığmazsa satır kırar (sayfa yana kaymasın) */
+  /* bölümlü öbek sığmazsa satır kırar (sayfa yana kaymasın); araç çubuğundaki öbekler kayar, kırılmaz */
   .seg { flex: 0 1 auto; flex-wrap: wrap; min-width: 0; }
-  /* VGA paneli sahnenin çoğunu örtmesin: daha dar, açıklama satırı gizli */
-  .vga-panel { width: min(240px, 62%); gap: var(--sp-2); padding: var(--sp-3); }
-  .vga-panel .vga-note { display: none; }
+  .toolbar .seg { flex: none; flex-wrap: nowrap; }
+  .brand-text { display: none; }
 }
 /* ============================================================ bölüm etiketleri (3D kart görünümü) */
 /* Sahnedeki bölge / blok çerçeveleri ve plakaları 3D'de (Bolumler3D); burada kenar etiketleri, çip
@@ -1635,9 +1697,33 @@ button.etiket.bolum-etiketi:hover:not(:disabled) { background: var(--surface-3);
   html[data-boyut="buyuk"] .app.kart .toolbar { --tb-ara: 0; column-gap: var(--sp-5); }
   html[data-boyut="buyuk"] .app.kart .tb-group + .tb-group::before { display: none; }
 }
-@media (max-width: 900px) {
-  .toolbar, .app.kart .toolbar { padding: var(--sp-2) var(--sp-4); column-gap: var(--sp-4); }
-  .tb-group { flex-wrap: wrap; row-gap: var(--sp-2); }
+/* tablet ve küçük dizüstü: araç çubuğundaki sakin düğmeler yalnız simge (yazı ekran okuyucuda ve
+   ipucunda kalır), öbekler sıkılaşır: bilgisayarın kalabalık araç çubuğu da 1024 px'te tek satır */
+@media (max-width: 1240px) {
+  .toolbar .tb-group > button:not([class]) { width: var(--ctl-h); padding: 0; gap: 0; font-size: 0; }
+  .toolbar, .app.kart .toolbar { column-gap: var(--sp-4); }
+}
+/* "Yazı boyutu: büyük"te bilgisayarın araç çubuğu en geniş ekranda da sığmıyordu: sakin düğmeler hep
+   yalnız simge; 1700 px'in altında Etiketler "⋯" menüsünde, öbek etiketleri gizli */
+html[data-boyut="buyuk"] .app.kart .toolbar .tb-group > button:not([class]) { width: var(--ctl-h); padding: 0; gap: 0; font-size: 0; }
+@media (max-width: 1700px) {
+  html[data-boyut="buyuk"] .app.kart:not(.hesap) .etiket-grubu { display: none; }
+  html[data-boyut="buyuk"] .app.kart:not(.hesap) .etiket-menude { display: flex; }
+  html[data-boyut="buyuk"] .app.kart .tb-label { display: none; }
+}
+/* yan panel 1100 px'in altında daha dar (sahneye yer kalsın); elle ayarlanan genişlik yine geçerli */
+@media (max-width: 1100px) and (min-width: 901px) {
+  .app.shell { --side-w: clamp(20rem, 34vw, 24rem); }
+}
+/* yüzen VGA paneli küçük sahnede küçülür, kartın üstünü örtmez: açıklama ve alt satır gizli */
+@container (max-width: 760px) {
+  .vga-panel:not(.big) { width: min(220px, 40cqw); gap: var(--sp-2); padding: var(--sp-3); }
+  .vga-panel:not(.big) .vga-note, .vga-panel:not(.big) .vga-foot { display: none; }
+}
+@container (max-width: 480px) {
+  .vga-panel:not(.big) { width: min(196px, 52cqw); top: auto; bottom: var(--sp-3); right: var(--sp-3); }
+  .vga-panel:not(.big) .vga-head h2 { font-size: var(--fs-sm); flex: none; }
+  .vga-panel:not(.big) .vga-actions { gap: var(--sp-3); }
 }
 
 @media (prefers-reduced-motion: reduce) {
