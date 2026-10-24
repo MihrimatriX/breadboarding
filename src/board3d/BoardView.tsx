@@ -16,7 +16,7 @@ import {
   AppHeader, Bayrak, Group, Meter, OdakDugmesi, PanelToggle, Section, Splitter, Tabs, TasmaMenusu, YanBolucu, duzenStili, heightShare, useLayout, usePaneller,
   type LayoutPrefs, type Shortcut, type TabDef,
 } from "../ui/Shell";
-import { Simge } from "../ui/simgeler";
+import { Simge, type SimgeAdi } from "../ui/simgeler";
 import { HataKutusu, Yukleniyor } from "../ui/Yukleniyor";
 import { useYaziTipleri } from "../ui/yaziTipleri";
 import { blokAdi, kartBasligi, parcaBasligi } from "./adlar";
@@ -30,7 +30,11 @@ import { KurulumPanel } from "./KurulumPanel";
 import { useKurulum } from "./kurulum";
 import { bbPano, bbSeciliTel, telKimligi, useBbKurulum } from "./bbKurulum";
 import { useBolum } from "./bolum";
-import { BolumEtiketi, BolumIpucuSatiri, BolumPanel, EtiketGrubu, EtiketMenuSecimi } from "./BolumPanel";
+import { BolumEtiketi, BolumIpucuSatiri, BolumPanel, EtiketGrubu, EtiketMenuSecimi, parcaGrubu } from "./BolumPanel";
+import { AnlatimPanel } from "./AnlatimPanel";
+import { PinDiyagrami } from "./PinDiyagrami";
+import { bolumMetni } from "../../cpu16/board/bolum-bilgi";
+import { KodAlani } from "../cpu16/KodAlani";
 import { CmosDiagram } from "./CmosDiagram";
 import { InsideDiagram } from "./InsideDiagram";
 import { LEVEL_NAME, hex4, levelOf, sayi } from "./levels";
@@ -39,7 +43,7 @@ import { PassiveInfo, PassiveTooltip } from "./PassiveInfo";
 import { detectLanguage } from "./program";
 import { screenCanvas, updateScreenCanvas } from "./screenCanvas";
 import {
-  EXAMPLES, SPEEDS, boardLayoutData, boardModel, currentLang, findPart, liveNets, netEnds, speedLabel, startBoardWorker, useKart, type BottomTab, type LangMode, type WireMode,
+  EXAMPLES, SPEEDS, boardLayoutData, boardModel, currentLang, findPart, liveNets, netEnds, speedLabel, startBoardWorker, useKart, type LangMode, type WireMode,
 } from "./store";
 import { sinyalinDamarlari } from "./serit";
 import { kartlaraGore, partLinks, type Endpoint } from "./wires";
@@ -85,7 +89,7 @@ const hesapKisayollari = (t: Cevir): Shortcut[] => [
   ...fare(t),
 ];
 
-/** Üst çubuktaki canlı ölçümler */
+/** Durum çubuğundaki canlı ölçümler */
 function Meters() {
   const t = useT();
   const dil = useDil();
@@ -133,7 +137,7 @@ function GorunumGrubu({ secenekler }: { secenekler: GorunumSecenegi[] }) {
   );
 }
 
-function Toolbar({ lay, setLay }: { lay: LayoutPrefs; setLay: (p: Partial<LayoutPrefs>) => void }) {
+function Toolbar() {
   const t = useT();
   const dil = useDil();
   // yalnız gereken alanlar: bütün depoyu seçmek araç çubuğunu her fare hareketinde (hover) ve saniyede
@@ -170,7 +174,6 @@ function Toolbar({ lay, setLay }: { lay: LayoutPrefs; setLay: (p: Partial<Layout
           <EtiketMenuSecimi />
         </TasmaMenusu>
       </Group>
-      <PanelGrubu lay={lay} setLay={setLay} />
     </div>
   );
 }
@@ -203,22 +206,6 @@ function BeslemeSecimi() {
   );
 }
 
-function PanelGrubu({ lay, setLay }: { lay: LayoutPrefs; setLay: (p: Partial<LayoutPrefs>) => void }) {
-  const t = useT();
-  return (
-    <Group label={t("Paneller", "Panels")} className="tb-end">
-      <PanelToggle
-        which="bottom"
-        open={lay.bottom}
-        onToggle={() => setLay({ bottom: !lay.bottom })}
-        ad={aktifKart() === "hesap" ? t("Çipin içi", "Inside the chip") : t("Program ve çipin içi", "Program and inside the chip")}
-      />
-      <PanelToggle which="side" open={lay.side} onToggle={() => setLay({ side: !lay.side })} />
-      <OdakDugmesi />
-    </Group>
-  );
-}
-
 /** Hesap makinesinde kameranın gidebileceği yerler (yerleşimdeki blok adları) */
 const kameraYerleri = (t: Cevir): { blok: string | null; label: string; title: string }[] => [
   { blok: null, label: t("Genel bakış", "Overview"), title: t("Bütün kart", "The whole board") },
@@ -233,7 +220,7 @@ const hesapGorunumleri = (t: Cevir): GorunumSecenegi[] => [
 ];
 
 /** Hesap makinesinin araç çubuğu: saat ve program yok (devre birleşimsel) */
-function HesapToolbar({ lay, setLay }: { lay: LayoutPrefs; setLay: (p: Partial<LayoutPrefs>) => void }) {
+function HesapToolbar() {
   const t = useT();
   const odak = useKart((s) => s.odak?.blok);
   return (
@@ -254,7 +241,6 @@ function HesapToolbar({ lay, setLay }: { lay: LayoutPrefs; setLay: (p: Partial<L
           <BeslemeSecimi />
         </TasmaMenusu>
       </Group>
-      <PanelGrubu lay={lay} setLay={setLay} />
     </div>
   );
 }
@@ -428,10 +414,12 @@ function LinkRow({ num, name, net, others, self }: { num: number; name: string; 
   const selNet = useKart((s) => s.net);
   const { board } = boardModel();
   const lv = net < 0 ? 2 : levelOf(liveNets.values, net);
+  // besleme bacaklarının öbür uçları (yüzlerce çip) liste olmaz: yalnız sayısı
+  const besleme = net === 0 || net === 1;
   const limit = open ? others.length : 6;
   // aynı elemandaki başka bir pin (ör. birleşik girişler) de listede kalır
   return (
-    <li className={`link-row${net === selNet && net >= 0 ? " sel" : ""}`}>
+    <li className={`link-row${net === selNet && net >= 0 ? " sel" : ""}${besleme ? " besleme" : ""}`}>
       <div className="link-head">
         <i>{num}</i>
         <span className="pname">{name}</span>
@@ -443,9 +431,15 @@ function LinkRow({ num, name, net, others, self }: { num: number; name: string; 
             {board.netName(net)}
           </button>
         )}
-        {net >= 0 ? <span className="uc-sayi">{t(`${sayi(others.length, dil)} uç`, `${sayi(others.length, dil)} ${others.length === 1 ? "end" : "ends"}`)}</span> : <span />}
+        {besleme ? (
+          <span className="uc-sayi">{t("besleme", "power")}</span>
+        ) : net >= 0 ? (
+          <span className="uc-sayi">{t(`${sayi(others.length, dil)} uç`, `${sayi(others.length, dil)} ${others.length === 1 ? "end" : "ends"}`)}</span>
+        ) : (
+          <span />
+        )}
       </div>
-      {others.length > 0 && (
+      {others.length > 0 && !besleme && (
         <div className="link-ends">
           {others.slice(0, limit).map((e, i) => (
             <button key={i} className={`end ${e.kind}`} onClick={() => e.ref !== self && useKart.getState().selectChip(e.ref)} title={t(`${e.part} · ${e.card} kartı`, `${e.part} · ${e.card} board`)}>
@@ -569,6 +563,9 @@ function PartPanel() {
   const kartTr = lay.cards.find((c) => c.name === place.card)?.title ?? (aktifKart() === "cpu16" ? cardTitle(place.card) : place.card);
   const kartAdi = kartBasligi(place.card, kartTr, dil);
   const title = parcaBasligi(place.part, ci ? ci.def.title : PASSIVES[place.part]?.title ?? place.part, dil);
+  // parçanın devredeki görevi: grubunun anlatımı (bolum-bilgi.ts); 100 nF'ların grubu yok
+  const grup = parcaGrubu(place.ref);
+  const grupMetni = grup && bolumMetni(grup, dil);
   return (
     <section>
       <div className="parca-bas">
@@ -591,6 +588,26 @@ function PartPanel() {
           </span>
         )}
       </div>
+      {grup && grupMetni && (
+        <div className="bolum-blok parca-anlatim">
+          <h3>{t("Devredeki görevi", "Its job in the circuit")}</h3>
+          <p>
+            <b>{grupMetni.baslik}.</b> {grupMetni.gorev}
+          </p>
+          <p className="bolum-nasil">{grupMetni.nasil}</p>
+          <button className="link" onClick={() => useBolum.getState().sec(grup.id, true)}>
+            {t("Grubun tamamını göster →", "Show the whole group →")}
+          </button>
+        </div>
+      )}
+      {ci && (
+        <div className="bolum-blok">
+          <h3>
+            {t("Bacak düzeni", "Pinout")} <span className="hint-text">{t("üstten · bacağa tıkla: neti seç", "top view · click a pin to select its net")}</span>
+          </h3>
+          <PinDiyagrami refName={place.ref} part={ci.def.part} pins={place.pins} />
+        </div>
+      )}
       {part?.passive && <PassiveInfo p={part.passive} />}
       <div className="links-title">
         <h3>{t("Bağlantılar", "Connections")}</h3>
@@ -684,21 +701,50 @@ function TelPanel() {
 
 const LANG_MODES: LangMode[] = ["otomatik", "asm", "c"];
 
-function Editor() {
+/** Düzenleyicinin denetimleri (örnek, dil, Derle, Yükle): alt panelin sekme satırında, sağda */
+function EditorBar() {
   const t = useT();
   const dil = useDil();
-  // yalnız düzenleyicinin alanları: bütün depo düzenleyiciyi her hover ve tick'te yeniden çizdirirdi
   const example = useKart((x) => x.example);
+  const source = useKart((x) => x.source);
+  const langMode = useKart((x) => x.langMode);
+  const ready = useKart((x) => x.ready);
+  const s = useKart.getState();
+  const lang = currentLang({ langMode, source });
+  const detected = useMemo(() => detectLanguage(source), [source]);
+  const modAdi = (m: LangMode) => (m === "otomatik" ? `${t("Otomatik", "Auto")} (${detected === "c" ? "C" : "asm"})` : m === "asm" ? "Assembly" : "C");
+  return (
+    <div className="editor-bar">
+      <select value={example} onChange={(e) => s.loadExample(e.target.value)} aria-label={t("Örnek program", "Example program")}>
+        {!EXAMPLES.some((x) => x.name === example) && <option value={example}>{example || t("örnek seç", "pick an example")}</option>}
+        {EXAMPLES.map((x) => <option key={x.name} value={x.name}>{x.label[dil]}</option>)}
+      </select>
+      <span className="seg" role="group" aria-label={t("Dil", "Language")}>
+        {LANG_MODES.map((m) => (
+          <button key={m} className={langMode === m ? "on" : ""} aria-pressed={langMode === m} onClick={() => s.setLangMode(m)}>
+            {modAdi(m)}
+          </button>
+        ))}
+      </span>
+      <button onClick={() => s.check()} title={lang === "c" ? t("cc16 (rom hedefi) ile derle", "Compile with cc16 (rom target)") : t("as16 ile derle", "Assemble with as16")}>{t("Derle", "Compile")}</button>
+      <button className="primary" onClick={() => s.compileAndLoad(true)} disabled={!ready} title={t("Derle, EEPROM bank 0'a yaz, RESET ve çalıştır", "Compile, write to EEPROM bank 0, RESET and run")}>
+        {t("Yükle ve çalıştır", "Load and run")}
+      </button>
+    </div>
+  );
+}
+
+function Editor() {
+  const t = useT();
+  // yalnız düzenleyicinin alanları: bütün depo düzenleyiciyi her hover ve tick'te yeniden çizdirirdi
   const source = useKart((x) => x.source);
   const langMode = useKart((x) => x.langMode);
   const errors = useKart((x) => x.errors);
   const info = useKart((x) => x.info);
-  const ready = useKart((x) => x.ready);
   const s = useKart.getState();
   const ta = useRef<HTMLTextAreaElement>(null);
   const gutter = useRef<HTMLPreElement>(null);
   const lang = currentLang({ langMode, source });
-  const detected = useMemo(() => detectLanguage(source), [source]);
   const lines = useMemo(() => source.split("\n").length, [source]);
   const bad = useMemo(() => new Set(errors.map((e) => e.line)), [errors]);
   const gotoLine = (line: number) => {
@@ -711,36 +757,19 @@ function Editor() {
     const lh = parseFloat(getComputedStyle(ta0).lineHeight) || 18;
     ta0.scrollTop = Math.max(0, (line - 4) * lh);
   };
-  const modAdi = (m: LangMode) => (m === "otomatik" ? `${t("Otomatik", "Auto")} (${detected === "c" ? "C" : "asm"})` : m === "asm" ? "Assembly" : "C");
   return (
     <div className="editor">
-      <div className="row wrap editor-bar">
-        <select value={example} onChange={(e) => s.loadExample(e.target.value)} aria-label={t("Örnek program", "Example program")}>
-          {!EXAMPLES.some((x) => x.name === example) && <option value={example}>{example || t("örnek seç", "pick an example")}</option>}
-          {EXAMPLES.map((x) => <option key={x.name} value={x.name}>{x.label[dil]}</option>)}
-        </select>
-        <span className="seg" role="group" aria-label={t("Dil", "Language")}>
-          {LANG_MODES.map((m) => (
-            <button key={m} className={langMode === m ? "on" : ""} aria-pressed={langMode === m} onClick={() => s.setLangMode(m)}>
-              {modAdi(m)}
-            </button>
-          ))}
-        </span>
-        <button onClick={() => s.check()} title={lang === "c" ? t("cc16 (rom hedefi) ile derle", "Compile with cc16 (rom target)") : t("as16 ile derle", "Assemble with as16")}>{t("Derle", "Compile")}</button>
-        <button className="primary" onClick={() => s.compileAndLoad(true)} disabled={!ready} title={t("Derle, EEPROM bank 0'a yaz, RESET ve çalıştır", "Compile, write to EEPROM bank 0, RESET and run")}>
-          {t("Yükle ve çalıştır", "Load and run")}
-        </button>
-      </div>
       <div className="editor-body">
         <pre ref={gutter} className="gutter" aria-hidden="true">
           {Array.from({ length: lines }, (_, i) => (
             <span key={i} className={bad.has(i + 1) ? "bad" : ""}>{i + 1}{"\n"}</span>
           ))}
         </pre>
-        <textarea
+        <KodAlani
           ref={ta}
           value={source}
-          spellCheck={false}
+          dil={lang}
+          hataliSatirlar={errors.map((e) => e.line)}
           onChange={(e) => s.setSource(e.target.value)}
           onScroll={(e) => {
             if (gutter.current) gutter.current.scrollTop = e.currentTarget.scrollTop;
@@ -837,16 +866,11 @@ function Inside() {
   );
 }
 
-/** Alt panel: sekmeler bir diziden gelir; yeni bir alt sekme (ör. "Kurulum") için diziye bir öğe eklenir. */
+/** Alt panel (sahnenin altında): seçili entegrenin içi. Program sol panelde. */
 function Bottom() {
   const t = useT();
-  const secili = useKart((s) => s.bottom);
   const chip = useKart((s) => s.chip);
-  // hesap makinesinde program yok: yalnız çipin içi
-  const program = aktifKart() === "cpu16";
-  const tab: BottomTab = program ? secili : "ic";
-  const tabs: TabDef<BottomTab>[] = [
-    ...(program ? [{ id: "program" as const, label: "Program", title: t("Assembly / C düzenleyicisi", "Assembly / C editor") }] : []),
+  const tabs: TabDef<"ic">[] = [
     {
       id: "ic",
       label: `${t("Çipin içi", "Inside the chip")}${chip ? ` · ${chip}` : ""}`,
@@ -855,17 +879,54 @@ function Bottom() {
   ];
   return (
     <div className="bottom-tabs">
-      <Tabs tabs={tabs} value={tab} onChange={(x) => useKart.getState().setBottom(x)} label={t("Alt panel", "Bottom panel")} />
-      <div className="bottom-body" role="tabpanel">{tab === "program" ? <Editor /> : <Inside />}</div>
+      <Tabs tabs={tabs} value="ic" onChange={() => {}} label={t("Alt panel", "Bottom panel")} />
+      <div className="bottom-body" role="tabpanel"><Inside /></div>
     </div>
   );
 }
 
 // ---------------------------------------------------------------- yan panel: sekmeler
 
-type SideTab = "inceleme" | "cpu" | "kurulum" | "hesap";
-/** Her kart türünün yan sekmeleri; ilki varsayılan */
-const SIDE_TABS: Record<KartTuru, SideTab[]> = { cpu16: ["inceleme", "cpu", "kurulum"], hesap: ["hesap", "inceleme", "kurulum"] };
+type SideTab = "program" | "inceleme" | "anlatim" | "cpu" | "kurulum" | "hesap";
+/** Her kart türünün sol panelleri (aktivite çubuğunda bu sırayla); ilki varsayılan */
+const SIDE_TABS: Record<KartTuru, SideTab[]> = { cpu16: ["program", "inceleme", "anlatim", "cpu", "kurulum"], hesap: ["hesap", "inceleme", "anlatim", "kurulum"] };
+
+/** Sol panellerin adı, ipucu ve aktivite çubuğundaki simgesi. Yeni panel: buraya ve SIDE_TABS'a bir satır. */
+const panelBilgisi = (t: Cevir): Record<SideTab, { ad: string; ipucu: string; simge: SimgeAdi }> => ({
+  program: { ad: "Program", ipucu: t("Program: assembly / C yaz, derle, EEPROM'a yükle ve çalıştır", "Program: write assembly / C, compile, load into the EEPROM and run"), simge: "derle" },
+  hesap: { ad: t("Hesap", "Calculator"), ipucu: t("Hesap: göstergeler, anahtarlar, işlem ve blokların şu an hesapladığı", "Calculator: displays, switches, operation and what each block computes right now"), simge: "hesap" },
+  inceleme: { ad: t("İnceleme", "Inspect"), ipucu: t("İnceleme: seçili parça ya da net, görevi, bacak düzeni, bağlantılar", "Inspect: the selected part or net, its job, pinout, connections"), simge: "buyutec" },
+  anlatim: { ad: t("Anlatım", "Tour"), ipucu: t("Anlatım: blok blok tur, her bloğun ne işe yaradığı (← →)", "Tour: block by block, what each block is for (← →)"), simge: "kitap" },
+  cpu: { ad: t("CPU ve UART", "CPU and UART"), ipucu: t("CPU ve UART: register'lar, bayraklar, UART terminali", "CPU and UART: registers, flags, UART terminal"), simge: "cip" },
+  kurulum: {
+    ad: t("Kurulum", "Build"),
+    ipucu: t("Kurulum: kartı gerçekte kurarken tel tel ilerle (kurulum belgesiyle aynı numaralar)", "Build: go wire by wire as you build the real board (same numbers as the build guide)"),
+    simge: "kurulum",
+  },
+});
+
+/**
+ * VS Code'daki gibi aktivite çubuğu (en solda): her sol panelin simgesi. Simgeye basınca sol panel o
+ * içeriğe döner; açık panelin simgesine yeniden basınca panel kapanır ve sahne bütün alanı alır. Dipte
+ * alt panel (çipin içi) ve odak modu düğmeleri.
+ */
+function EtkinlikCubugu({ tab, acik, onSec, lay, setLay }: { tab: SideTab; acik: boolean; onSec: (x: SideTab) => void; lay: LayoutPrefs; setLay: (p: Partial<LayoutPrefs>) => void }) {
+  const t = useT();
+  const bilgi = panelBilgisi(t);
+  return (
+    <nav className="etkinlik" aria-label={t("Paneller", "Panels")}>
+      {SIDE_TABS[aktifKart()].map((x) => (
+        <button key={x} className="icon-btn" aria-pressed={acik && tab === x} aria-label={bilgi[x].ad} data-tip={bilgi[x].ipucu} onClick={() => onSec(x)}>
+          <Simge ad={bilgi[x].simge} boyut={22} />
+        </button>
+      ))}
+      <div className="etkinlik-alt">
+        <PanelToggle which="bottom" open={lay.bottom} onToggle={() => setLay({ bottom: !lay.bottom })} ad={t("Çipin içi", "Inside the chip")} />
+        <OdakDugmesi />
+      </div>
+    </nav>
+  );
+}
 
 /**
  * Denetçi (inspector): seçili parçanın (entegre ya da pasif) veya netin ayrıntıları. Yeni ayrıntı
@@ -887,34 +948,44 @@ function Inspector() {
   );
 }
 
+/** Sol panel: aktivite çubuğunda seçili içerik (program düzenleyicisi, inceleme, anlatım …) */
 function SidePanel({ tab, onTab }: { tab: SideTab; onTab: (t: SideTab) => void }) {
   const t = useT();
   const chip = useKart((s) => s.chip);
   const net = useKart((s) => s.net);
   const tel = useKart((s) => s.tel);
   const bolum = useBolum((s) => s.secili);
-  // bir parça, net, tel ya da bölüm seçilince ayrıntıları öne gelir
+  // bir parça, net, tel ya da bölüm seçilince ayrıntıları öne gelir; kod yazarken (Program) panel
+  // değişmez (seçilen çipin içi alt panelde açılır), Anlatım'da bölüm seçmek turun adımıdır
+  const sekme = useRef(tab);
+  sekme.current = tab;
   useEffect(() => {
-    if (chip || net !== null || tel || bolum) onTab("inceleme");
-  }, [chip, net, tel, bolum]); // onTab her çizimde yeni; yalnız seçim değişince çalışsın
-  // Yeni yan panel sekmeleri (ör. "Kurulum") bu listeye ve SIDE_TABS'a eklenir.
-  const inceleme = t("İnceleme", "Inspect");
-  const tumu: Record<SideTab, TabDef<SideTab>> = {
-    hesap: { id: "hesap", label: t("Hesap", "Calculator"), title: t("Göstergeler, anahtarlar, işlem ve blokların şu an hesapladığı", "Displays, switches, operation and what each block computes right now") },
-    inceleme: { id: "inceleme", label: chip ? `${inceleme} · ${chip}` : inceleme, title: t("Seçili parça ya da net: bağlantılar", "Selected part or net: connections") },
-    cpu: { id: "cpu", label: t("CPU ve UART", "CPU and UART"), title: t("Register'lar, bayraklar, UART terminali", "Registers, flags, UART terminal") },
-    kurulum: {
-      id: "kurulum", label: t("Kurulum", "Build"),
-      title: t("Kartı gerçekte kurarken tel tel ilerle (yazdırılan kurulum belgesiyle aynı numaralar)", "Go wire by wire as you build the real board (same numbers as the printed build guide)"),
-    },
-  };
-  const tabs = SIDE_TABS[aktifKart()].map((x) => tumu[x]);
+    if ((chip || net !== null || tel) && sekme.current !== "program") onTab("inceleme");
+  }, [chip, net, tel]); // onTab her çizimde yeni; yalnız seçim değişince çalışsın
+  useEffect(() => {
+    if (bolum && sekme.current !== "anlatim" && sekme.current !== "program") onTab("inceleme");
+  }, [bolum]);
+  const bilgi = panelBilgisi(t)[tab];
+  if (tab === "program") {
+    return (
+      <aside className="side sol" aria-label={bilgi.ad}>
+        <div className="side-head">
+          <h2>{bilgi.ad}</h2>
+          <EditorBar />
+        </div>
+        <Editor />
+      </aside>
+    );
+  }
   return (
-    <aside className="side" aria-label={t("Yan panel", "Side panel")}>
-      <Tabs tabs={tabs} value={tab} onChange={onTab} label={t("Yan panel", "Side panel")} />
-      <div className="side-body" role="tabpanel">
+    <aside className="side sol" aria-label={bilgi.ad}>
+      <div className="side-head">
+        <h2>{bilgi.ad}</h2>
+      </div>
+      <div className="side-body">
         {tab === "hesap" && <HesapPanel />}
         {tab === "inceleme" && <Inspector />}
+        {tab === "anlatim" && <AnlatimPanel />}
         {tab === "cpu" && (
           <>
             <StatePanel />
@@ -969,7 +1040,11 @@ export function BoardView({ tur = "cpu16" }: { tur?: KartTuru }) {
   return tur === "hesap" ? <HesapGorunumu /> : <MakineGorunumu />;
 }
 
-/** Bölümün iskeleti: üst çubuk, araç çubuğu, sahne, alt panel (çipin içi), yan panel */
+/**
+ * Bölümün iskeleti, VS Code gibi: en solda aktivite çubuğu (üstünde başlatıcı düğmesi), yanında sol
+ * panel (bilgisayarda varsayılanı program düzenleyicisi), sağda bütün yüksekliğiyle sahne. Sahnenin
+ * denetimleri (çalıştır, görünüm, teller …) sahnenin üstünde yüzer; seçili çipin içi sahnenin altında.
+ */
 function Iskelet({
   className, lay, setLay, header, toolbar, stage, bottomLabel, sideTab,
 }: {
@@ -984,6 +1059,13 @@ function Iskelet({
 }) {
   const t = useT();
   const panel = usePaneller(lay);
+  const sec = (x: SideTab) => {
+    // odak modunda basılan simge odak modundan çıkar ve o paneli açar
+    if (useAyar.getState().odak) {
+      useAyar.getState().odakSec(false);
+      setLay({ side: true, sideTab: x });
+    } else setLay(lay.side && x === sideTab ? { side: false } : { side: true, sideTab: x });
+  };
   return (
     <div
       className={`app kart shell${className ? ` ${className}` : ""}`}
@@ -992,10 +1074,15 @@ function Iskelet({
       style={duzenStili(lay)}
     >
       {header}
-      {toolbar}
       <div className="workspace">
+        <EtkinlikCubugu tab={sideTab} acik={panel.side} onSec={sec} lay={lay} setLay={setLay} />
+        {panel.side && <SidePanel tab={sideTab} onTab={(x) => setLay({ sideTab: x })} />}
+        {panel.side && <YanBolucu lay={lay} setLay={setLay} taraf="sol" />}
         <div className="center">
-          <main className="stage">{stage}</main>
+          <main className="stage">
+            {toolbar}
+            {stage}
+          </main>
           {panel.bottom && (
             <>
               <Splitter value={lay.bottomH} onChange={(h) => setLay({ bottomH: h })} min={160} label={t("Alt panelin yüksekliği", "Height of the bottom panel")} />
@@ -1005,8 +1092,6 @@ function Iskelet({
             </>
           )}
         </div>
-        {panel.side && <YanBolucu lay={lay} setLay={setLay} />}
-        {panel.side && <SidePanel tab={sideTab} onTab={(x) => setLay({ sideTab: x })} />}
       </div>
       <Tooltip />
     </div>
@@ -1065,7 +1150,7 @@ function HesapGorunumu() {
           shortcuts={kisayolListesi}
         />
       }
-      toolbar={<HesapToolbar lay={lay} setLay={setLay} />}
+      toolbar={<HesapToolbar />}
       stage={
         <>
           {yazi && <BoardScene />}
@@ -1093,8 +1178,9 @@ function MakineGorunumu() {
   const gorunumYukleniyor = useKart((s) => s.gorunumYukleniyor);
   useKart((s) => s.gorunum);
   const sahneHazir = !gorunumYukleniyor && gorunumHazir();
-  // alt panel (program ve çipin içi) ilk açılışta kapalı: bir entegre seçilince açılır
-  const [lay, setLay] = useLayout("kart", { side: true, bottom: false, bottomH: heightShare(0.34, 240, 380), sideTab: "inceleme" });
+  // sol panelde program düzenleyicisi açık; alt panel (çipin içi) kapalı, bir entegre seçilince açılır.
+  // Anahtar yeni: eski düzende program alt paneldeydi, yan panel sağdaydı
+  const [lay, setLay] = useLayout("kart-ide", { side: true, bottom: false, bottomH: heightShare(0.34, 240, 380), sideTab: "program" });
   const sideTab = yanSekme("cpu16", lay.sideTab);
   const { board } = boardModel();
   const chip = useKart((s) => s.chip);
@@ -1129,7 +1215,7 @@ function MakineGorunumu() {
       lay={lay}
       setLay={setLay}
       sideTab={sideTab}
-      bottomLabel={t("Program ve çipin içi", "Program and inside the chip")}
+      bottomLabel={t("Çipin içi", "Inside the chip")}
       header={
         <AppHeader
           mode="kart"
@@ -1138,7 +1224,7 @@ function MakineGorunumu() {
           shortcuts={kisayolListesi}
         />
       }
-      toolbar={<Toolbar lay={lay} setLay={setLay} />}
+      toolbar={<Toolbar />}
       stage={
         <>
           {yazi && sahneHazir && <BoardScene />}

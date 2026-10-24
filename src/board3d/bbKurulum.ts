@@ -6,7 +6,7 @@
 // panonun takılan tellerini kendi renginde, takılmayanları soluk çizer.
 
 import { create } from "zustand";
-import { DUGUM_BOARD, satirRayi, yerelDugum } from "../../cpu16/board/breadboard/geometri";
+import { delikVar, DUGUM_BOARD, SATIR, satirRayi, SUTUN, yerelDugum } from "../../cpu16/board/breadboard/geometri";
 import { noktaBoardu, renkAdi, ucEtiketi, type BbPlanTemel, type BbTel } from "../../cpu16/board/breadboard/plan";
 import { KART_SIRASI } from "../../cpu16/breadboard/panolar";
 import { RENK_KODU } from "../../cpu16/kurulum/plan";
@@ -15,6 +15,7 @@ import { renkTanimi } from "../../hesap8/breadboard/renk";
 import type { Dil } from "../ui/ceviri";
 import { kartBasligi } from "./adlar";
 import { aktifKart, bbSahnesi, kartDegisince, type BbPanosu, type KartTuru } from "./aktif";
+import { secimOku, secimYaz } from "./kurulum";
 
 /** Telin numarası belgelerdeki gibi: T0001 */
 export const telKimligi = (no: number): string => `T${String(no).padStart(4, "0")}`;
@@ -157,7 +158,36 @@ export const asamaMetni = (tr: string, dil: Dil = "tr"): string => (dil === "en"
 // ---------------------------------------------------------------- pano ve ilerleme (tarayıcıda)
 
 /** Kart türünün ilk panosu (bilgisayarda kurulum sırasıyla ilk kart: saat) */
-const ilkPano = (tur: KartTuru): string => (tur === "hesap" ? "hesap" : KART_SIRASI[0]);
+const panoSecimAnahtari = "silikon3d.bbkurulum.pano";
+/** Kart türünün açılışta seçili panosu: hesap makinesinde tek pano; bilgisayarda en son seçilen, yoksa ilki */
+const ilkPano = (tur: KartTuru): string => (tur === "hesap" ? "hesap" : secimOku(panoSecimAnahtari, KART_SIRASI, KART_SIRASI[0]));
+
+/** Delik haritasında bir delik: board'un yerel satırı ve sütunu */
+export interface PencereDeligi {
+  r: number;
+  c: number;
+  /** telin ucunun takıldığı delik */
+  hedef: boolean;
+  /** hedefle aynı iletken parçada (5 delikli şerit ya da ray) */
+  bagli: boolean;
+}
+
+/**
+ * Tel ucunun küçük haritası: board'un (r, c) deliğinin çevresinde `gen` sütun, deliğin bulunduğu yarı
+ * (üst ray + a–e ya da f–j + alt ray). Aynı şeritteki ya da raydaki delikler `bagli`: ucun neyle
+ * birleştiği görünür.
+ */
+export function bbPencere(r: number, c: number, gen = 7): { r0: number; r1: number; c0: number; c1: number; delikler: PencereDeligi[] } {
+  const [r0, r1] = r <= 8 ? [SATIR.ustArti, SATIR.e] : [SATIR.f, SATIR.altArti];
+  const c0 = Math.max(1, Math.min(SUTUN - gen + 1, c - Math.floor(gen / 2)));
+  const c1 = c0 + gen - 1;
+  const dugum = yerelDugum(r, c);
+  const delikler: PencereDeligi[] = [];
+  for (let rr = r0; rr <= r1; rr++)
+    for (let cc = c0; cc <= c1; cc++)
+      if (delikVar(rr, cc)) delikler.push({ r: rr, c: cc, hedef: rr === r && cc === c, bagli: yerelDugum(rr, cc) === dugum });
+  return { r0, r1, c0, c1, delikler };
+}
 
 /** Panonun ilerlemesinin tarayıcıdaki anahtarı (hesap makinesininki eskisi gibi) */
 export const bbKurulumAnahtari = (kart: string): string => (kart === "hesap" ? "hesap8.breadboard.kurulum" : `cpu16.breadboard.kurulum.${kart}`);
@@ -167,6 +197,9 @@ export function bbPano(kart: string): BbPanosu {
   const s = bbSahnesi();
   return s.panolar.find((p) => p.kart === kart) ?? s.panolar[0];
 }
+
+/** Panonun takıldı diye işaretlenmiş tel sayısı (pano seçim listesinde) */
+export const bbTakilanSayisi = (kart: string): number => okuYapilan(kart).size;
 
 function okuYapilan(kart: string): Set<number> {
   try {
@@ -241,6 +274,7 @@ export const useBbKurulum = create<BbKurulumState>((set, get) => ({
   },
   panoSec(kart) {
     if (kart === get().pano) return;
+    if (kart !== "hesap") secimYaz(panoSecimAnahtari, kart);
     const yapilan = okuYapilan(kart);
     const yeni = { pano: kart, asama: null };
     set({ ...yeni, yapilan, secili: bbSiradakiAcik(bbGezilenTeller(yeni), yapilan)?.no ?? 1 });

@@ -97,7 +97,6 @@ export const speedLabel = (hz: number, dil: Dil = "tr"): string =>
   hz === 0 ? (dil === "en" ? "fastest" : "en hızlı") : hz >= 1000 ? `${hz / 1000} kHz` : `${hz} Hz`;
 
 export type WireMode = "yok" | "secili" | "hepsi";
-export type BottomTab = "program" | "ic";
 export type LangMode = "otomatik" | Lang;
 
 interface KartState {
@@ -131,7 +130,6 @@ interface KartState {
   gorunum: Gorunum;
   /** bilgisayarın breadboard verisi yükleniyor (ayrı parça) */
   gorunumYukleniyor: boolean;
-  bottom: BottomTab;
   // ekran
   screenText: string;
   screenInfo: string;
@@ -164,7 +162,6 @@ interface KartState {
   setGorunum(g: Gorunum): void;
   /** bilgisayarın breadboard verisini yükle (görünüm seçiliyse ya da seçilince) */
   bbVerisiniYukle(): Promise<void>;
-  setBottom(t: BottomTab): void;
   setSource(src: string): void;
   setLangMode(m: LangMode): void;
   loadExample(name: string): void;
@@ -210,7 +207,6 @@ export const useKart = create<KartState>((set, get) => ({
   power: false,
   gorunum: aktifGorunum(),
   gorunumYukleniyor: false,
-  bottom: "program",
   screenText: "",
   screenInfo: "",
   beam: false,
@@ -244,7 +240,7 @@ export const useKart = create<KartState>((set, get) => ({
     send({ type: "speed", hz });
   },
   selectChip(ref) {
-    set({ chip: ref, gate: null, odak: null, tel: null, ...(ref && findPart(ref)?.chip ? { bottom: "ic" as const } : {}) });
+    set({ chip: ref, gate: null, odak: null, tel: null });
     // bellek çipinin içi worker'dan gelir (yalnız bilgisayarda)
     if (aktifKart() !== "cpu16") return;
     const ci = ref ? boardModel().board.chips.find((c) => c.ref === ref) : null;
@@ -290,9 +286,6 @@ export const useKart = create<KartState>((set, get) => ({
       set({ gorunumYukleniyor: false });
     }
   },
-  setBottom(t) {
-    set({ bottom: t });
-  },
   setSource(src) {
     set({ source: src });
   },
@@ -302,7 +295,7 @@ export const useKart = create<KartState>((set, get) => ({
   loadExample(name) {
     const ex = EXAMPLES.find((e) => e.name === name);
     if (!ex) return;
-    set({ example: name, source: ex.source, langMode: "otomatik", errors: [], info: "", bottom: "program" });
+    set({ example: name, source: ex.source, langMode: "otomatik", errors: [], info: "" });
   },
   check() {
     const s = get();
@@ -404,9 +397,6 @@ useAyar.subscribe((a, once) => {
 
 // ---------------------------------------------------------------- kart değişince
 
-/** Her kart türünde alt panelin son sekmesi (hesap makinesinde program yok) */
-const sonAltSekme = new Map<KartTuru, BottomTab>([["cpu16", "program"], ["hesap", "ic"]]);
-
 // sahnedeki kartın görünümü değişince: parçalar aynı (seçimler kalır), yerleşim ve sahne yenilenir
 gorunumDegisince((g) => {
   liveNets.version++;
@@ -414,11 +404,10 @@ gorunumDegisince((g) => {
   useKart.setState((s) => ({ gorunum: g, chip: s.chip && findPart(s.chip) ? s.chip : null, tel: null, hover: null, odak: null, tick: s.tick + 1 }));
 });
 
-kartDegisince((tur, onceki) => {
+kartDegisince((tur) => {
   // referanslar karta özgü: seçimler kalkar; canlı değerler yeni kartın son değerleri olur
-  sonAltSekme.set(onceki, useKart.getState().bottom);
   liveNets.prev = null;
   liveNets.values = sonDegerler.get(tur) ?? null;
   liveNets.version++;
-  useKart.setState((s) => ({ chip: null, gate: null, net: null, tel: null, hover: null, odak: null, gorunum: aktifGorunum(tur), bottom: sonAltSekme.get(tur) ?? "ic", tick: s.tick + 1 }));
+  useKart.setState((s) => ({ chip: null, gate: null, net: null, tel: null, hover: null, odak: null, gorunum: aktifGorunum(tur), tick: s.tick + 1 }));
 });

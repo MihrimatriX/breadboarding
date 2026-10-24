@@ -12,6 +12,7 @@ import { sec, useDil, useT, type IkiDil } from "../ui/ceviri";
 import { AppHeader, Bayrak, Group, Meter, OdakDugmesi, PanelToggle, Section, Tabs, TasmaMenusu, YanBolucu, duzenStili, useLayout, usePaneller, type Shortcut, type TabDef } from "../ui/Shell";
 import { Simge } from "../ui/simgeler";
 import { dilBul, ornekDili, type Dil } from "./dil";
+import { KodAlani } from "./KodAlani";
 
 const sources = import.meta.glob("../../cpu16/programs/*.{s,c}", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
 /** Örnekler: assembly dosyaları uzantısız ("fib"), C dosyaları uzantılı ("merhaba.c") anahtarla */
@@ -297,11 +298,13 @@ export function FlatBench({ switcher }: { switcher: ReactNode }) {
               <span className="hint-text grow">
                 {lang === "c" ? t("cc16 · program 0x0000'dan; printf UART'a yazar", "cc16 · program at 0x0000; printf writes to UART") : t("as16 ile derlenir", "built with as16")}
               </span>
+              <button className="primary" onClick={() => build(src, lang)} title="Ctrl+Enter"><Simge ad="yukle" />{t("Derle ve yükle", "Compile and load")}</button>
             </div>
-            <textarea
+            <KodAlani
               id="cpu16-src"
-              spellCheck={false}
               value={src}
+              dil={lang}
+              hataliSatirlar={errors.map((e) => e.line)}
               aria-label={lang === "c" ? t("C kaynak kodu", "C source code") : t("Assembly kaynak kodu", "Assembly source code")}
               onChange={(e) => edit(e.target.value)}
               onKeyDown={(e) => {
@@ -316,7 +319,6 @@ export function FlatBench({ switcher }: { switcher: ReactNode }) {
               </ol>
             )}
             <div className="panel-foot">
-              <button className="primary" onClick={() => build(src, lang)} title="Ctrl+Enter"><Simge ad="yukle" />{t("Derle ve yükle", "Compile and load")}</button>
               <p className="info" role="status">{sec(info, dil)}</p>
             </div>
           </div>

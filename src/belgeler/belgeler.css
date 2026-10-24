@@ -158,7 +158,7 @@
     position: sticky;
     top: var(--sp-7);
     align-self: start;
-    max-height: calc(100vh - var(--appbar-h) - var(--toolbar-h) - var(--sp-9));
+    max-height: calc(100vh - var(--toolbar-h) - var(--sp-9));
     overflow-y: auto;
   }
   .bl-toc details { border: 0; }

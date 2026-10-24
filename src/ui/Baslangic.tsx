@@ -2,7 +2,7 @@
 // kutu. Solda altı bölümün listesi, sağda seçilenin tanıtımı ve 3-4 maddelik ilk adımları (metinler
 // kilavuz.ts'te, iki dilde); altta ortak kısayollar ve dil seçimi. Açılınca bulunulan bölüm seçili gelir;
 // listeden başka bir bölümü okuyup oradan o bölüme geçilebilir, panel açık kalır ki adımlar izlenebilsin.
-// Üst çubuktaki "?" düğmesi ya da "?" tuşu istendiği an yeniden açar. Kapatınca tarayıcı hatırlar;
+// Sol üstteki düğmenin kutusundaki "Başlangıç ve yardım" ya da "?" tuşu istendiği an yeniden açar. Kapatınca tarayıcı hatırlar;
 // otomatik testlerde (navigator.webdriver) kendiliğinden açılmaz ki ekran görüntülerinde sahneyi örtmesin.
 
 import { useEffect, useRef, useState, type KeyboardEvent as TusOlayi } from "react";

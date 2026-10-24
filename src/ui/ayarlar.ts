@@ -1,5 +1,5 @@
 // Görünüm ayarları: tema (sistem / koyu / açık), yazı boyutu (normal / büyük), odak modu (yan ve alt
-// paneller gizli, sahne tam) ve arayüz dili (Türkçe / İngilizce; metinler ceviri.ts ile). Tercihler tarayıcıda saklanır; tema seçilmemişse işletim sisteminin
+// paneller ve durum çubuğu gizli; sahne tam) ve arayüz dili (Türkçe / İngilizce; metinler ceviri.ts ile). Tercihler tarayıcıda saklanır; tema seçilmemişse işletim sisteminin
 // tercihi izlenir (sistem değişince sayfa da değişir). Ayarlar <html> öğesine data-tema, data-boyut ve
 // data-odak olarak, dil lang olarak yazılır; styles.css belirteçleri bunlara göre değişir. index.html'deki küçük betik
 // aynı anahtarları ilk boyamadan önce okur ki sayfa açılırken yanlış temada parlamasın. İşletim

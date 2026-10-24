@@ -106,17 +106,19 @@
   font: 500 var(--fs-2xl)/1.1 var(--mono);
   letter-spacing: 0.01em;
 }
+/* telin rengi: kısa bir tel parçası gibi */
 .kur-renk {
   display: inline-block;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
+  width: 32px;
+  height: 10px;
+  border-radius: 5px;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.25);
   flex: none;
 }
 .kur-renk.kucuk {
-  width: 12px;
-  height: 12px;
+  width: 16px;
+  height: 6px;
+  border-radius: 3px;
 }
 .kur-tel-renk {
   font-size: var(--fs-base);
@@ -187,9 +189,109 @@
   color: var(--text-muted);
 }
 .kur-dip {
-  margin-top: var(--sp-1);
-  max-width: 100%;
+  margin-top: var(--sp-2);
+  width: 100%;
+  max-width: 12rem;
   height: auto;
+}
+.kur-dip-no {
+  fill: var(--text-faint);
+  font: 500 5.5px var(--mono);
+}
+.kur-dip-no.hedef {
+  fill: var(--text);
+  font-weight: 700;
+}
+
+/* breadboard ucunun delik haritası: ucun deliği telin renginde, aynı şerit (ya da ray) vurgulu */
+.kur-delik {
+  margin-top: var(--sp-2);
+  width: 100%;
+  max-width: 10rem;
+  height: auto;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+}
+.kur-delik-bos {
+  fill: var(--surface-3);
+  stroke: var(--border-strong);
+  stroke-width: 0.5;
+}
+.kur-delik-bagli {
+  fill: var(--accent-soft);
+  stroke: var(--accent);
+  stroke-width: 0.8;
+}
+.kur-delik-hedef {
+  stroke: var(--text);
+  stroke-width: 1;
+}
+.kur-delik-yazi {
+  fill: var(--text-faint);
+  font: 500 6.5px var(--mono);
+}
+.kur-delik-yazi.hedef {
+  fill: var(--text);
+  font-weight: 700;
+}
+.kur-delik-yazi.arti {
+  fill: var(--hi);
+}
+.kur-delik-yazi.eksi {
+  fill: var(--lv0);
+}
+
+/* aşama haritası: blokların (aşamaların) tel sayısıyla orantılı dilimleri tek şeritte */
+.kur-harita {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.kur-harita-serit {
+  display: flex;
+  gap: 3px;
+  height: 1.375rem;
+}
+.kur-harita-dilim {
+  position: relative;
+  flex-basis: 0;
+  min-width: 6px;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: var(--surface-3);
+  box-shadow: none;
+  overflow: hidden;
+  cursor: pointer;
+}
+.kur-harita-dilim > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--ok);
+  opacity: 0.75;
+  transition: width 0.25s ease;
+}
+.kur-harita-dilim.bitti > span {
+  opacity: 1;
+}
+.kur-harita-dilim:hover:not(:disabled) {
+  background: var(--border-strong);
+}
+.kur-harita-dilim.aktif {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.kur-harita-yazi {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--sp-1) var(--sp-3);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.kur-harita-yazi b {
+  color: var(--text);
+  font-weight: 600;
 }
 /* çizimdeki entegre gerçek rengindedir (siyah gövde, gümüş bacaklar) */
 .kur-dip-govde {

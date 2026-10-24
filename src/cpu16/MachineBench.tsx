@@ -22,6 +22,7 @@ import {
 } from "../ui/Shell";
 import { Simge } from "../ui/simgeler";
 import { dilBul, ornekDili, type Dil } from "./dil";
+import { KodAlani } from "./KodAlani";
 import { VgaRenderer } from "./vga";
 import { TerminalText, WebSerialLink, webSerial } from "./serial";
 
@@ -622,28 +623,6 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
                   </>
                 )}
               </span>
-            </div>
-            <textarea
-              id="cpu16-msrc"
-              spellCheck={false}
-              value={src}
-              aria-label={lang === "c" ? t("C kaynak kodu", "C source code") : t("Assembly kaynak kodu", "Assembly source code")}
-              onChange={(e) => edit(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-                  e.preventDefault();
-                  void upload("ram");
-                }
-              }}
-            />
-            {errors.length > 0 && (
-              <ol className="bench-errors">
-                {errors.map((e, i) => (
-                  <li key={i}>{t(`satır ${e.line}: ${e.col ? `${e.col}. sütun: ` : ""}`, `line ${e.line}${e.col ? `, column ${e.col}` : ""}: `)}{e.message}</li>
-                ))}
-              </ol>
-            )}
-            <div className="panel-foot">
               <button className="primary" onClick={() => void upload("ram")} disabled={!!busy} title="Ctrl+Enter"><Simge ad="yukle" />{t("Derle ve RAM'e yükle", "Compile and load into RAM")}</button>
               <button
                 onClick={() => void upload("flash")}
@@ -656,7 +635,7 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
                 {t("EEPROM'a yaz", "Write to EEPROM")}
               </button>
               {flashRun && <button onClick={runFromFlash} disabled={!!busy}>{t("EEPROM'dan çalıştır", "Run from EEPROM")}</button>}
-              <Menu label={t("Gerçek kart", "Real board")} title={t("Web Serial ile gerçek karta yükleme ve kart testi", "Load and test the real board over Web Serial")} placement="up" keepMounted>
+              <Menu label={t("Gerçek kart", "Real board")} title={t("Web Serial ile gerçek karta yükleme ve kart testi", "Load and test the real board over Web Serial")} align="end" keepMounted>
                 <div className="menu-col">
                   <button
                     onClick={() => void sendToBoard()}
@@ -703,6 +682,29 @@ export function MachineBench({ switcher }: { switcher: ReactNode }) {
                   </p>
                 </div>
               </Menu>
+            </div>
+            <KodAlani
+              id="cpu16-msrc"
+              value={src}
+              dil={lang}
+              hataliSatirlar={errors.map((e) => e.line)}
+              aria-label={lang === "c" ? t("C kaynak kodu", "C source code") : t("Assembly kaynak kodu", "Assembly source code")}
+              onChange={(e) => edit(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                  e.preventDefault();
+                  void upload("ram");
+                }
+              }}
+            />
+            {errors.length > 0 && (
+              <ol className="bench-errors">
+                {errors.map((e, i) => (
+                  <li key={i}>{t(`satır ${e.line}: ${e.col ? `${e.col}. sütun: ` : ""}`, `line ${e.line}${e.col ? `, column ${e.col}` : ""}: `)}{e.message}</li>
+                ))}
+              </ol>
+            )}
+            <div className="panel-foot">
               <p className="info" role="status">{sec(info, dil)}</p>
             </div>
             {testOut && <pre className="bench-uart" aria-label={t("Kart testi sonucu", "Board test result")}>{testOut}</pre>}

@@ -5,17 +5,57 @@
 // aşama ve renk adlarının İngilizcesi bbKurulum.ts'te.
 
 import { useEffect, useMemo, useState } from "react";
-import { renkAdi, ucEtiketi, type BbTel } from "../../cpu16/board/breadboard/plan";
+import { satirHarfi, satirRayi } from "../../cpu16/board/breadboard/geometri";
+import { noktaBoardu, renkAdi, ucEtiketi, type BbTel } from "../../cpu16/board/breadboard/plan";
 import { useDil, useT } from "../ui/ceviri";
 import { bbSahnesi, type BbPanosu } from "./aktif";
-import { asamaMetni, bbGezilenTeller, bbPano, bbSeciliTel, panoAdlari, telKimligi, telRengiYazisi, ucunKomsulari, useBbKurulum } from "./bbKurulum";
-import { sayiYaz } from "./kurulum";
+import { asamaMetni, bbGezilenTeller, bbPano, bbPencere, bbSeciliTel, bbTakilanSayisi, panoAdlari, telKimligi, telRengiYazisi, ucunKomsulari, useBbKurulum } from "./bbKurulum";
+import { asamaDilimleri, sayiYaz, type AsamaDilimi } from "./kurulum";
 import "./kurulum.css";
 
 const renkHex = (p: BbPanosu, t: BbTel) => (t.renk === "siyah" ? "#444" : p.renk(t.renk).hex);
 const mm = (x: number) => `${Math.round(x)} mm`;
 /** aşamanın sonundaki test (bilgisayarın panolarında) */
 const asamaTesti = (a: object): string | undefined => (a as { test?: string }).test;
+
+/**
+ * Tel ucunun delik haritası (bbPencere): çevredeki birkaç sütun, ucun yarısı. Ucun deliği telin renginde,
+ * aynı şeritteki (ya da raydaki) delikler vurgulu: oraya takılan bacaklar bu uçla birleşir.
+ */
+function DelikHaritasi({ r, c, renk, etiket }: { r: number; c: number; renk: string; etiket: string }) {
+  const { r0, r1, c0, c1, delikler } = bbPencere(r, c);
+  const A = 11;
+  const sol = 16;
+  const ust = 14;
+  const x = (cc: number) => sol + (cc - c0 + 0.5) * A;
+  const y = (rr: number) => ust + (rr - r0 + 0.5) * A;
+  const satirlar = Array.from({ length: r1 - r0 + 1 }, (_, i) => r0 + i);
+  return (
+    <svg className="kur-delik" viewBox={`0 0 ${sol + (c1 - c0 + 1) * A + 4} ${ust + (r1 - r0 + 1) * A + 2}`} role="img" aria-label={etiket}>
+      {satirlar.map((rr) => {
+        const h = satirHarfi(rr);
+        const ray = satirRayi(rr);
+        const ad = h ?? (ray ? (ray.endsWith("+") ? "+" : "−") : "");
+        return ad ? <text key={rr} x={sol - 5} y={y(rr) + 3} textAnchor="end" className={`kur-delik-yazi${ray ? (ray.endsWith("+") ? " arti" : " eksi") : ""}`}>{ad}</text> : null;
+      })}
+      {[c0, c, c1].filter((v, i, a) => a.indexOf(v) === i).map((cc) => (
+        <text key={cc} x={x(cc)} y={ust - 4} textAnchor="middle" className={`kur-delik-yazi${cc === c ? " hedef" : ""}`}>{cc}</text>
+      ))}
+      {delikler.map((d) => (
+        <rect
+          key={`${d.r},${d.c}`}
+          x={x(d.c) - (d.hedef ? 4 : 2.6)}
+          y={y(d.r) - (d.hedef ? 4 : 2.6)}
+          width={d.hedef ? 8 : 5.2}
+          height={d.hedef ? 8 : 5.2}
+          rx={d.hedef ? 2 : 1}
+          className={d.hedef ? "kur-delik-hedef" : d.bagli ? "kur-delik-bagli" : "kur-delik-bos"}
+          style={d.hedef ? { fill: renk } : undefined}
+        />
+      ))}
+    </svg>
+  );
+}
 
 function Uc({ p, t, son }: { p: BbPanosu; t: BbTel; son: boolean }) {
   const tr = useT();
@@ -24,6 +64,7 @@ function Uc({ p, t, son }: { p: BbPanosu; t: BbTel; son: boolean }) {
   const [X, Y] = son ? [t.yol[n - 2], t.yol[n - 1]] : [t.yol[0], t.yol[1]];
   const [board, delik] = ucEtiketi(p.plan.yerlesim, X, Y, dil).split(" ");
   const { kisa } = panoAdlari(p, dil);
+  const b = p.plan.yerlesim.boards[noktaBoardu(p.plan.yerlesim, X, Y)];
   return (
     <div className="kur-uc">
       <div className="kur-uc-yon">{son ? tr("nereye", "to") : tr("nereden", "from")}</div>
@@ -32,6 +73,50 @@ function Uc({ p, t, son }: { p: BbPanosu; t: BbTel; son: boolean }) {
         {board} <span className="kur-uc-deger">{delik}</span>
       </div>
       <div className="kur-uc-yer">{ucunKomsulari(p.plan, X, Y, dil)}</div>
+      <DelikHaritasi r={Y - b.y0} c={X - b.x0} renk={renkHex(p, t)} etiket={tr(`${board} panosunda ${delik} deliği ve aynı şeritteki delikler`, `Hole ${delik} on ${board} and the holes on the same strip`)} />
+    </div>
+  );
+}
+
+/**
+ * Aşama haritası: kurulumun blokları ya da aşamaları tek şeritte, dilimin eni tel sayısıyla orantılı,
+ * dolgusu takılan teller. Odaktaki telin dilimi çerçeveli; tıklanınca dilimin ilk açık teline gidilir.
+ */
+export function AsamaHaritasi<K, T>({ dilimler, aktif, ad, sec }: { dilimler: AsamaDilimi<K, T>[]; aktif: K | undefined; ad: (k: K) => string; sec: (t: T) => void }) {
+  const tr = useT();
+  const dil = useDil();
+  const i = dilimler.findIndex((d) => d.anahtar === aktif);
+  const simdiki = dilimler[i];
+  return (
+    <div className="kur-harita">
+      <div className="kur-harita-serit" role="list" aria-label={tr("Kurulumun aşamaları", "Build stages")}>
+        {dilimler.map((d, j) => {
+          const yazi = `${ad(d.anahtar)}: ${sayiYaz(d.bitti, dil)} / ${sayiYaz(d.toplam, dil)}`;
+          return (
+            <button
+              key={j}
+              role="listitem"
+              className={`kur-harita-dilim${j === i ? " aktif" : ""}${d.bitti === d.toplam ? " bitti" : ""}`}
+              style={{ flexGrow: d.toplam }}
+              onClick={() => sec(d.hedef)}
+              title={yazi}
+              aria-label={yazi}
+            >
+              <span style={{ width: `${(100 * d.bitti) / d.toplam}%` }} />
+            </button>
+          );
+        })}
+      </div>
+      {simdiki && (
+        <div className="kur-harita-yazi">
+          <span>
+            {tr("Şu an", "Now")} <b>{ad(simdiki.anahtar)}</b>
+          </span>
+          <span>
+            {tr(`${i + 1}. / ${dilimler.length} aşama`, `stage ${i + 1} of ${dilimler.length}`)} · {sayiYaz(simdiki.bitti, dil)} / {sayiYaz(simdiki.toplam, dil)}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -158,6 +243,7 @@ function PanoSecimi({ p }: { p: BbPanosu }) {
   const dil = useDil();
   const sahne = bbSahnesi();
   const asama = useBbKurulum((s) => s.asama);
+  const yapilan = useBbKurulum((s) => s.yapilan.size);
   const st = useBbKurulum.getState();
   if (sahne.panolar.length === 1) {
     const b = p.plan.yerlesim.boards.length;
@@ -178,9 +264,13 @@ function PanoSecimi({ p }: { p: BbPanosu }) {
           {sahne.panolar.map((x) => {
             const b = x.plan.yerlesim.boards.length;
             const n = sayiYaz(x.plan.teller.length, dil);
+            // ilerleme: seçili pano durumdan, öbürleri tarayıcıdaki kayıttan
+            const takilan = x.kart === p.kart ? yapilan : bbTakilanSayisi(x.kart);
+            const ilerleme = takilan === 0 ? "" : takilan === x.plan.teller.length ? " · ✓" : ` · ${sayiYaz(takilan, dil)} ${tr("takıldı", "placed")}`;
             return (
               <option key={x.kart} value={x.kart}>
                 {panoAdlari(x, dil).baslik} · {tr(`${b} board · ${n} tel`, `${b} breadboards · ${n} wires`)}
+                {ilerleme}
               </option>
             );
           })}
@@ -237,6 +327,11 @@ export function BbKurulumPanel() {
   const yuzde = toplam ? Math.floor((100 * bitti) / toplam) : 0;
   const asama = s.asama === null ? null : p.plan.asamalar.find((a) => a.no === s.asama);
   const asamaSayisi = p.plan.asamalar.length;
+  const dilimler = useMemo(() => asamaDilimleri(p.plan.teller, (x) => x.asama, (x) => x.no, s.yapilan), [p, s.yapilan]);
+  const asamaAdi = (no: number) => {
+    const a = p.plan.asamalar.find((x) => x.no === no);
+    return a ? `${no}. ${asamaMetni(a.ad, dil)}` : `${no}`;
+  };
   return (
     <div className="kur">
       <div className="kur-ust">
@@ -260,6 +355,16 @@ export function BbKurulumPanel() {
           </span>
         </div>
       </div>
+      <AsamaHaritasi
+        dilimler={dilimler}
+        aktif={tel?.asama}
+        ad={asamaAdi}
+        sec={(x) => {
+          // aşama süzgeci başka bir aşamadaysa kaldır: seçilen tel gezilen listede olsun
+          if (s.asama !== null && s.asama !== x.asama) s.asamaSec(null);
+          s.sec(x.no);
+        }}
+      />
       {tel ? <TelKarti p={p} t={tel} takildi={s.yapilan.has(tel.no)} /> : <p className="kur-not">{tr("Bütün teller takıldı.", "Every wire is placed.")}</p>}
       <div className="kur-dugmeler">
         <button onClick={() => s.git(-1)} title={tr("Önceki tel (←)", "Previous wire (←)")}>
@@ -277,14 +382,14 @@ export function BbKurulumPanel() {
           {tr("Sıradaki açık", "Next open")}
         </button>
       </div>
+      <AsamaListesi p={p} />
       <p className="kur-ipucu">
         {tr(
-          "Enter: taktım · ← →: gez. Delikler: board adı (BB01 panonun sol arka köşesi) ve delik (a–j satırı + sütun; raylar üst+/üst−/alt−/alt+). Numaralar yazdırılan belgeyle aynı",
-          "Enter: placed · ← →: move. Holes: breadboard name (BB01 is the back left corner of the panel) and hole (row a–j + column; rails top+/top−/bottom−/bottom+, written üst/alt in the printed guide). The numbers match the printed guide",
+          "Enter: taktım · ← →: gez. Delikler: board adı (BB01 panonun sol arka köşesi) ve delik (a–j satırı + sütun; raylar üst+/üst−/alt−/alt+). Haritada ucun deliği telin renginde, aynı şeritteki delikler vurgulu. İşaretler bu tarayıcıda saklanır. Numaralar yazdırılan belgeyle aynı",
+          "Enter: placed · ← →: move. Holes: breadboard name (BB01 is the back left corner of the panel) and hole (row a–j + column; rails top+/top−/bottom−/bottom+, written üst/alt in the printed guide). On the map the end's hole is in the wire's colour and the holes on the same strip are highlighted. Marks are saved in this browser. The numbers match the printed guide",
         )}{" "}
         (<code>{bbSahnesi().belgeKomutu}</code>).
       </p>
-      <AsamaListesi p={p} />
       <div className="kur-alt">
         <SifirlaDugmesi bos={s.yapilan.size === 0} sifirla={s.sifirla} baslik={tr(`${p.baslik}: bütün işaretleri sil`, `${panoAdlari(p, "en").baslik}: clear all marks`)} />
       </div>

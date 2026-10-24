@@ -28,7 +28,7 @@ describe("sahnedeki kart (aktif.ts)", () => {
     const makine = new Uint8Array([0, 1, 1, 0]);
     netDegerleri("cpu16", makine);
     expect(liveNets.values).toBe(makine);
-    useKart.setState({ chip: "U1", bottom: "program" });
+    useKart.setState({ chip: "U1" });
 
     expect(aktifKartiSec("hesap")).toBe(true);
     expect(aktifKartiSec("hesap")).toBe(false);
@@ -38,7 +38,6 @@ describe("sahnedeki kart (aktif.ts)", () => {
     expect(findPart(kart.anahtarlar.a)?.passive?.part).toBe("SW_DIP_8");
     expect(liveNets.values).not.toBe(makine);
     expect(useKart.getState().chip).toBeNull();
-    expect(useKart.getState().bottom).toBe("ic");
 
     // hesap makinesi sahnedeyken bilgisayarın değerleri saklanır, çizilmez
     const sonra = new Uint8Array([0, 1, 0, 0]);
@@ -47,7 +46,6 @@ describe("sahnedeki kart (aktif.ts)", () => {
 
     expect(aktifKartiSec("cpu16")).toBe(true);
     expect(liveNets.values).toBe(sonra);
-    expect(useKart.getState().bottom).toBe("program");
     expect(olaylar).toEqual(["cpu16→hesap", "hesap→cpu16"]);
     // yapılar saklanır: yeniden seçilince aynı nesneler (kart yeniden kurulmaz)
     const yerlesim = kartYerlesimi("hesap");

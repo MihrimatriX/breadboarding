@@ -115,9 +115,65 @@ export const sahnedeVar = (kart: string): boolean => {
   return kaynak !== "programlayici" && kaynak !== "hesap" && kart !== "mem";
 };
 
+// ---------------------------------------------------------------- aşama haritası
+
+/** Aşama haritasının bir dilimi: bir bloğun (PCB) ya da aşamanın (breadboard) telleri */
+export interface AsamaDilimi<K, T> {
+  anahtar: K;
+  toplam: number;
+  bitti: number;
+  /** dilimin ilk takılmamış teli; hepsi takıldıysa ilk teli */
+  hedef: T;
+}
+
+/** Telleri sıralarını bozmadan dilimlere böler (dilimler ilk görüldükleri sırayla) ve sayar */
+export function asamaDilimleri<K, T, I>(teller: readonly T[], anahtari: (t: T) => K, kimlik: (t: T) => I, yapilan: ReadonlySet<I>): AsamaDilimi<K, T>[] {
+  const m = new Map<K, AsamaDilimi<K, T> & { acik: boolean }>();
+  for (const t of teller) {
+    const k = anahtari(t);
+    let d = m.get(k);
+    if (!d) m.set(k, (d = { anahtar: k, toplam: 0, bitti: 0, hedef: t, acik: false }));
+    d.toplam++;
+    if (yapilan.has(kimlik(t))) d.bitti++;
+    else if (!d.acik) {
+      d.hedef = t;
+      d.acik = true;
+    }
+  }
+  return [...m.values()].map(({ acik: _, ...d }) => d);
+}
+
 // ---------------------------------------------------------------- ilerleme (tarayıcıda)
 
+/** Kaydedilmiş seçim (kurulumdaki kart ya da pano): listede yoksa ya da depolama kapalıysa varsayılan */
+export function secimOku(anahtar: string, gecerli: readonly string[], varsayilan: string): string {
+  try {
+    const v = localStorage.getItem(anahtar);
+    return v !== null && gecerli.includes(v) ? v : varsayilan;
+  } catch {
+    return varsayilan;
+  }
+}
+
+export function secimYaz(anahtar: string, deger: string): void {
+  try {
+    localStorage.setItem(anahtar, deger);
+  } catch {
+    /* depolama kapalı: seçim yalnız bu oturumda */
+  }
+}
+
+const secimAnahtari = (tur: KartTuru) => `silikon3d.kurulum.kart.${tur}`;
+/** Kart türünün kurulumda açılacak kartı: en son seçilen, yoksa listenin ilki */
+const ilkKart = (tur: KartTuru): string => {
+  const liste = gorunenKartlar(tur).map((k) => k.kart);
+  return secimOku(secimAnahtari(tur), liste, liste[0]);
+};
+
 const anahtar = (kart: string) => `cpu16.kurulum.${kart}`;
+
+/** Kartın takıldı diye işaretlenmiş tel sayısı (kart seçim listesinde) */
+export const takilanSayisi = (kart: string): number => okuYapilan(kart).size;
 
 function okuYapilan(kart: string): Set<string> {
   try {
@@ -176,7 +232,7 @@ export function siradakiAcik(teller: readonly Tel[], yapilan: ReadonlySet<string
 
 export const useKurulum = create<KurulumState>((set, get) => ({
   acik: false,
-  kart: gorunenKartlar()[0].kart,
+  kart: ilkKart(aktifKart()),
   plan: null,
   yukleniyor: false,
   hata: null,
@@ -190,6 +246,7 @@ export const useKurulum = create<KurulumState>((set, get) => ({
   },
 
   async kartSec(kart) {
+    secimYaz(secimAnahtari(aktifKart()), kart);
     set({ kart, yukleniyor: true, hata: null, plan: null, secili: null, yapilan: okuYapilan(kart) });
     try {
       // ağır iş (bilgisayar tanımı ve plan) bir karelik gecikmeyle: "yükleniyor" önce görünsün
@@ -251,6 +308,6 @@ kartDegisince((tur) => {
   const liste = gorunenKartlar(tur);
   const { kart } = useKurulum.getState();
   if (liste.some((k) => k.kart === kart)) return;
-  const yeni = liste[0].kart;
+  const yeni = ilkKart(tur);
   useKurulum.setState({ kart: yeni, plan: null, yukleniyor: false, hata: null, secili: null, yapilan: okuYapilan(yeni) });
 });
