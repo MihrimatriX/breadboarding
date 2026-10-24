@@ -14,6 +14,7 @@ import {
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { chipInside, type ChipInside } from "../../cpu16/board/inside";
 import type { BoardLayout, ChipPlace } from "../../cpu16/board/layout";
@@ -23,7 +24,7 @@ import { LEVEL_COLOR } from "./levels";
 import { KameraApi } from "./KameraApi";
 import { Passives3D } from "./Passives3D";
 import { updateScreenCanvas, screenCanvas } from "./screenCanvas";
-import { boardLayoutData, boardModel, findPart, liveNets, netEnds, useKart } from "./store";
+import { boardLayoutData, boardModel, findPart, KART_SAHNE_DISI, liveNets, netEnds, useKart } from "./store";
 import { KurulumSahne } from "./KurulumSahne";
 import { AtlamaTelleri, BbKurulumSahne, BreadboardTabani, breadboardGenelBakis, breadboardSahnede } from "./Breadboard3D";
 import { DAMAR, DAMAR_ADIM } from "./serit";
@@ -33,7 +34,11 @@ import { TextQuads, type TextItem } from "./TextQuads";
 import { cipGovdeRengi, useBolum, useBolumVurgusu, useEtiketlerAcik } from "./bolum";
 import { Bolumler3D } from "./Bolumler3D";
 import { BolumKatmani } from "./BolumKatmani";
-import { azHareket, ucusAdimi, useSahneRengi } from "../ui/ayarlar";
+import { azHareket, ucusAdimi, useAyar, useSahneRengi } from "../ui/ayarlar";
+import { OnDerleme, TuvalCizimi, useTuvalDpr } from "../render/TuvalCizimi";
+import { cizimIste } from "../render/cizimDongusu";
+import { useKurulum } from "./kurulum";
+import { useBbKurulum } from "./bbKurulum";
 import { useDil } from "../ui/ceviri";
 import { blokAdi, kartBasligi } from "./adlar";
 import { allWires, busRouter, netTree, netWires, partWires, wireGeometry, type Endpoint, type WireEdge } from "./wires";
@@ -56,6 +61,8 @@ const tmpC = new Color();
 const DIE_LOW = new Color("#5d7390");
 const tmpO = new Object3D();
 const noRaycast = () => null;
+/** Sahnenin okuduğu depolar: değişince yeni kare (isteğe bağlı çizim, render/cizimDongusu.ts) */
+const DEPOLAR = [{ depo: useKart, yoksay: KART_SAHNE_DISI }, { depo: useBolum }, { depo: useKurulum }, { depo: useBbKurulum }, { depo: useAyar }];
 
 function useLayoutWorld() {
   const lay = boardLayoutData();
@@ -544,6 +551,7 @@ function kazimaBaslat(lay: BoardLayout): Kazima {
         wk.terminate();
         d.bitti = --kalan === 0;
       }
+      cizimIste();
     };
     wk.postMessage(istek);
   }
@@ -611,6 +619,27 @@ function kaziGeometrisi(list: readonly Kazinti[], w: (x: number, y: number) => [
   return { geo, net: Int32Array.from(nets), tur: Uint8Array.from(tur) };
 }
 
+/** Kazıma bitince partilerin ağları tek ağ olur (sıraları korunur: köşe başına net ve tür de art arda) */
+function kaziBirlestir(list: readonly KaziAgi[]): KaziAgi {
+  const geo = mergeGeometries(list.map((p) => p.geo));
+  if (!geo) throw new Error("kazıntı ağları birleştirilemedi");
+  geo.computeBoundingSphere();
+  const net = new Int32Array(list.reduce((n, p) => n + p.net.length, 0));
+  const tur = new Uint8Array(net.length);
+  let o = 0;
+  for (const p of list) {
+    net.set(p.net, o);
+    tur.set(p.tur, o);
+    o += p.net.length;
+  }
+  return { geo, net, tur };
+}
+
+interface KaziMesi {
+  agi: KaziAgi;
+  mesh: Mesh;
+}
+
 /** Köşe renkleri: canlı (netin seviyesi) ya da kazınmış bakırın rengi (katmanına göre) */
 function kaziBoya(p: KaziAgi, canli: boolean): void {
   const attr = p.geo.getAttribute("color") as BufferAttribute;
@@ -652,28 +681,40 @@ function KaziliYollar() {
     if (chip && mode !== "yok") for (const [n, list] of netEnds()) if (n > 1 && list.some((e) => e.ref === chip)) s.add(n);
     return s;
   }, [chip, net, mode]);
-  const durum = useRef<{ parcalar: KaziAgi[]; yanan: { agi: KaziAgi; mesh: Mesh } | null; anahtar: string; kip: string; zaman: number; surum: number }>({
-    parcalar: [], yanan: null, anahtar: "", kip: "", zaman: 0, surum: -1,
+  const durum = useRef<{ parcalar: KaziMesi[]; eklenen: number; yanan: KaziMesi | null; anahtar: string; kip: string; zaman: number; surum: number }>({
+    parcalar: [], eklenen: 0, yanan: null, anahtar: "", kip: "", zaman: 0, surum: -1,
   });
   useEffect(() => () => {
-    for (const p of durum.current.parcalar) p.geo.dispose();
+    for (const p of durum.current.parcalar) p.agi.geo.dispose();
     durum.current.yanan?.agi.geo.dispose();
     mat.dispose();
   }, [mat]);
-  useFrame(() => {
+  useFrame((st) => {
     const d = durum.current;
     const canli = mode === "hepsi";
-    // yeni partiler: her parti kendi ağı (eklenir, baştan kurulmaz)
-    while (d.parcalar.length < kazima.partiler.length) {
-      const p = kaziGeometrisi(kazima.partiler[d.parcalar.length], w, YOL_W, false);
+    const mesi = (agi: KaziAgi): KaziMesi => {
+      const mesh = new Mesh(agi.geo, mat);
+      mesh.raycast = noRaycast;
+      grup.add(mesh);
+      return { agi, mesh };
+    };
+    // yeni partiler: kazındıkça her parti kendi ağı (eklenir, baştan kurulmaz)
+    while (d.eklenen < kazima.partiler.length) {
+      const p = kaziGeometrisi(kazima.partiler[d.eklenen++], w, YOL_W, false);
       kaziBoya(p, canli);
-      const m = new Mesh(p.geo, mat);
-      m.raycast = noRaycast;
-      grup.add(m);
-      d.parcalar.push(p);
+      d.parcalar.push(mesi(p));
+    }
+    // kazıma bitince partiler tek ağda: yüzlerce çizim çağrısı yerine bir
+    if (kazima.bitti && d.parcalar.length > 1) {
+      const agi = kaziBirlestir(d.parcalar.map((p) => p.agi));
+      for (const p of d.parcalar) {
+        grup.remove(p.mesh);
+        p.agi.geo.dispose();
+      }
+      d.parcalar = [mesi(agi)];
     }
     // yanan yollar: seçim ya da kazılan yollar değişince yeniden
-    const anahtar = `${[...yanan].join(",")}|${d.parcalar.length}`;
+    const anahtar = `${[...yanan].join(",")}|${d.eklenen}`;
     if (anahtar !== d.anahtar) {
       d.anahtar = anahtar;
       if (d.yanan) {
@@ -683,23 +724,29 @@ function KaziliYollar() {
       }
       if (yanan.size) {
         const agi = kaziGeometrisi(kazima.partiler.flat().filter((k) => yanan.has(k.net)), w, YANAN_W, true);
-        const mesh = new Mesh(agi.geo, mat);
-        mesh.raycast = noRaycast;
-        grup.add(mesh);
-        d.yanan = { agi, mesh };
+        d.yanan = mesi(agi);
         kaziBoya(agi, true);
       }
     }
     // renkler: kip değişince hepsi; canlı değerler değişince canlı olanlar (en çok CANLI_ARALIK'ta bir)
     if (d.kip !== mode) {
       d.kip = mode;
-      for (const p of d.parcalar) kaziBoya(p, canli);
+      for (const p of d.parcalar) kaziBoya(p.agi, canli);
+    }
+    if (d.surum === liveNets.version) return;
+    if (!canli && !d.yanan) {
+      d.surum = liveNets.version;
+      return;
     }
     const simdi = performance.now();
-    if (d.surum === liveNets.version || simdi - d.zaman < CANLI_ARALIK) return;
+    // erken geldi: kare isteğe bağlı, kendiliğinden gelmez; aralık dolana dek sonrakini iste
+    if (simdi - d.zaman < CANLI_ARALIK) {
+      st.invalidate();
+      return;
+    }
     d.zaman = simdi;
     d.surum = liveNets.version;
-    if (canli) for (const p of d.parcalar) kaziBoya(p, true);
+    if (canli) for (const p of d.parcalar) kaziBoya(p.agi, true);
     if (d.yanan) kaziBoya(d.yanan.agi, true);
   });
   return <primitive object={grup} />;
@@ -964,10 +1011,11 @@ function CameraFly() {
     const ty = part?.chip ? 1.2 : 0.2;
     anim.current = { target: new Vector3(tx, ty, tz), cam: new Vector3(tx, ty + d * 0.78, tz + d * 0.62), ...start };
   }, [chip, controls, camera, lay, w, kay]);
-  useFrame((_, dt) => {
+  useFrame((st, dt) => {
     const a = anim.current;
     if (!a || !controls) return;
     a.t = ucusAdimi(a.t, dt, 1.4);
+    st.invalidate();
     const k = 1 - Math.pow(1 - a.t, 3);
     controls.target.lerpVectors(a.t0, a.target, k);
     camera.position.lerpVectors(a.c0, a.cam, k);
@@ -1005,12 +1053,14 @@ export function BoardScene() {
   const o = useMemo(() => overview(lay.width, lay.height, tur), [lay, tur]);
   // zemin temaya uyar (kartın, breadboard'un ve çiplerin kendi renkleri değişmez)
   const zemin = useSahneRengi();
+  const { dpr, ayar, dprDegisti } = useTuvalDpr();
   return (
     <>
       <Canvas
         key={`${tur}-${gorunum}`}
         camera={{ position: o.cam.toArray(), fov: 40, near: 0.2, far: 800 }}
-        dpr={[1, 2]}
+        frameloop="demand"
+        dpr={dpr}
         onPointerMissed={() => {
           const s = useKart.getState();
           if (s.gate !== null) s.selectGate(null);
@@ -1023,18 +1073,21 @@ export function BoardScene() {
         <hemisphereLight args={["#ffffff", "#1a2028", 1.1]} />
         <directionalLight position={[20, 40, 15]} intensity={1.3} />
         <KartSahnede tur={tur}>
-          {bb ? <BreadboardTabani /> : <Cards />}
-          <Chips />
-          {bb ? <Passives3D /> : <Passives />}
-          {bb ? <AtlamaTelleri /> : <Wires />}
-          {bb ? <BbKurulumSahne /> : <KurulumSahne />}
-          <SelectedDie />
-          <Bolumler3D />
-          {tur === "cpu16" && <Monitor />}
+          <OnDerleme>
+            {bb ? <BreadboardTabani /> : <Cards />}
+            <Chips />
+            {bb ? <Passives3D /> : <Passives />}
+            {bb ? <AtlamaTelleri /> : <Wires />}
+            {bb ? <BbKurulumSahne /> : <KurulumSahne />}
+            <SelectedDie />
+            <Bolumler3D />
+            {tur === "cpu16" && <Monitor />}
+          </OnDerleme>
           <OrbitControls makeDefault enableDamping={!azHareket()} maxPolarAngle={Math.PI * 0.48} minDistance={1.5} maxDistance={260} target={o.target} />
           <CameraFly />
           <KameraApi />
         </KartSahnede>
+        <TuvalCizimi depolar={DEPOLAR} ayar={ayar} dprDegisti={dprDegisti} />
       </Canvas>
       <BolumKatmani />
     </>

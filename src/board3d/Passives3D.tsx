@@ -282,7 +282,7 @@ function Led({ p, w, epoxy, inner, leads, innerMat, leadMat, glow, floor }: {
     g.matrix.copy(m);
     g.matrixWorldNeedsUpdate = true;
   }, [m]);
-  useFrame((_, dt) => {
+  useFrame((st, dt) => {
     const v = liveNets.values;
     const target = v && ledYanik(circuit, (n) => level(v, n)) ? 1 : 0;
     const k = 1 - Math.exp(-Math.min(dt, 0.1) / 0.06);
@@ -291,6 +291,8 @@ function Led({ p, w, epoxy, inner, leads, innerMat, leadMat, glow, floor }: {
     if (b === prev && lens.userData.ready) return;
     lens.userData.ready = true;
     bright.current = b;
+    // LED yumuşakça yanıp söner: hedefe varana dek kareler sürer
+    if (b !== target) st.invalidate();
     lens.emissiveIntensity = b * 0.95;
     lens.opacity = 0.74 + b * 0.16;
     halo.opacity = b * 0.5;

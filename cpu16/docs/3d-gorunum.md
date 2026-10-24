@@ -190,6 +190,7 @@ Tarayıcı konsolunda `kart`:
 | `kart.etiketler("kapali" \| "bolumler" \| "ayrintili")` | bölüm etiketlerinin kipi (verilmezse şimdiki) |
 | `kart.bolumler("bolge" \| "blok" \| "grup" \| "kart")`, `kart.bolum("grup:cpu:komut-cozucu")` | bölümlerin kimlikleri ve etiketleri; bölümü seç (`null` kaldırır), seçiliyi döndür |
 | `kart.plakaEkranda(id)`, `kart.kenarEtiketleri()` | plakanın ekrandaki yeri, ekrandaki kenar etiketleri (testler için) |
+| `kart.cizim()` | son karenin çizim çağrısı, üçgen sayısı ve tuvalin çözünürlüğü (`dpr`) |
 
 Kısayollar: Boşluk çalıştır/duraklat, `.` bir saat döngüsü, `N` bir komut, `E` etiket kipi, Esc seçimi kaldırır.
 Düzenleyicide ve VGA ekranında yazarken kısayollar devre dışıdır.
@@ -204,6 +205,19 @@ olarak ölçüldü. Bu, 4 MHz'lik gerçek kartın ~1/1 000'i. Birkaç örnek:
 - `merhaba-vga.c`: ~180 000 döngü (ekranı silmek dahil), ~50 s.
 
 Saat seçicisinden 1 Hz ile 1 kHz arası sabit hızlar da seçilebilir.
+
+### Çizim
+
+Sahne isteğe bağlı çizilir (`frameloop="demand"`): yeni kare yalnız bir şey değişince çizilir. Kamera,
+seçim, kipler, canlı net değerleri ve ekran kare ister; duraklatılmış ve kamerası durgun sahne hiç
+çizilmez, düzenleyiciye yazmak da sahneyi çizdirmez (kartın deposunda sahnenin okumadığı alanlar
+`KART_SAHNE_DISI`, `store.ts`). Süren animasyonlar (kamera uçuşu, kurulumda atan halkalar, LED'in
+yanıp sönmesi, tellerin kademeli kurulumu) bitene dek kare ister. Kamera sürüklenirken kareler yavaşsa
+(ortanca ≈ 40 kare/s'nin altı) tuvalin çözünürlüğü yarım adım iner (2 → 1,5 → 1); hızlı kalırsa en çok iki
+kez geri çıkar. Shader'lar sahne ilk görünmeden önce arka planda derlenir (`compileAsync`; paralel derleme
+destekleyen tarayıcıda bölüm açılırken arayüz donmaz). Kazınan PCB yolları kazıma bitince tek ağda birleşir.
+Kurallar `src/render/cizimDongusu.ts`, tuvaldeki bağlantısı `src/render/TuvalCizimi.tsx`; testler
+`cpu16/tests/cizim-dongusu.test.ts`.
 
 ## Dosyalar
 
@@ -252,8 +266,8 @@ Saat seçicisinden 1 Hz ile 1 kHz arası sabit hızlar da seçilebilir.
   yazdığı her baytı gösterir; G/Ç kartının gerçek TX hattındaki çerçevelerin hepsi bu hızda
   çıkmayabilir.
 - Yazılım GL ile (sanal makine, GPU'suz) sahne birkaç kare/s çizilir; GPU'lu tarayıcıda akıcıdır.
-  Breadboard genel bakışı PCB'nin ≈ 1,5 katı sürer (≈ 174 çizim çağrısı, 527 bin üçgen; PCB ≈ 108,
-  235 bin).
+  Genel bakışta breadboard ≈ 387 çizim çağrısı ve 713 bin üçgen, PCB (yollar kazındıktan sonra) ≈ 335 ve
+  564 bin (`kart.cizim()`).
 - Transistör şeması mantıksal yerleşimdir, gerçek çip maskesi değildir.
 - Önceki 153 entegrelik CPU + test belleği görünümü yerini bütün bilgisayara bıraktı (CPU16
   tezgâhı bölümü durur).

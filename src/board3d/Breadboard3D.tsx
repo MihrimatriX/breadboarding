@@ -711,10 +711,11 @@ export function AtlamaTelleri() {
   const seciliTel = useMemo(() => (tel ? teller.findIndex((t, i) => t.no === tel.no && sahne.panolar[veri.pano[i]].kart === tel.kart) : -1), [tel, teller, sahne, veri]);
   const durum = useRef({ anahtar: "", surum: -1, agi });
   const renkler = useMemo(() => new Float32Array(teller.length * 3), [teller]);
-  useFrame(({ camera, controls }) => {
+  useFrame(({ camera, controls, invalidate }) => {
     const uzak = camera.position.y > UZAK;
     // boruları kameranın baktığı yerden başlayarak kur: yakındayken kare başına daha çok
     const kurulan = agi.kurBekleyenleri(hedefi(camera, controls), uzak ? 4 : 10);
+    if (agi.bekleyen) invalidate();
     agi.goster(uzak);
     const canli = mode === "hepsi" || (!kurulumAcik && secili.size > 0);
     // uzaktan (seçim yokken) teller soluk: çipler, LED'ler ve modüllerin tabanları öne çıkar
@@ -821,9 +822,11 @@ function SeciliTel({ tel, p }: { tel: BbTel; p: BbPanosu }) {
     obj.geo.dispose();
   }, [obj]);
   const halkalar = useRef<(Mesh | null)[]>([]);
-  useFrame(({ clock }) => {
+  useFrame(({ clock, invalidate }) => {
     const s = 1 + 0.4 * (0.5 + 0.5 * Math.sin(clock.getElapsedTime() * 5));
     for (const m of halkalar.current) m?.scale.set(s, s, s);
+    // halkalar atar: gösterildikleri sürece kareler sürer
+    invalidate();
   });
   return (
     <group renderOrder={20}>
@@ -858,10 +861,11 @@ function KurulumKamera({ tel, p }: { tel: BbTel; p: BbPanosu }) {
     const tz = (az + bz) / 2;
     anim.current = { target: new Vector3(tx, 0, tz), cam: new Vector3(tx, d * 0.85, tz + d * 0.5), t0: controls.target.clone(), c0: camera.position.clone(), t: 0 };
   }, [tel, p, izle, controls, camera, w]);
-  useFrame((_, dt) => {
+  useFrame((st, dt) => {
     const an = anim.current;
     if (!an || !controls) return;
     an.t = ucusAdimi(an.t, dt, 1.6);
+    st.invalidate();
     const k = 1 - Math.pow(1 - an.t, 3);
     controls.target.lerpVectors(an.t0, an.target, k);
     camera.position.lerpVectors(an.c0, an.cam, k);

@@ -49,7 +49,7 @@ bottom of the screen.
 | Feature | Description |
 | --- | --- |
 | 3D die | Metal, polysilicon and 4 diffusion types are separate layers. Each of the 8,233 polygons is triangulated and given thickness. |
-| Live signals | The state of all 1,725 nodes is uploaded to the GPU as a single texture every frame; wires that are high (1) light up red. |
+| Live signals | The state of all 1,725 nodes is uploaded to the GPU as a single texture on every new state; wires that are high (1) light up red. The scene is drawn only when something changes: paused, the GPU rests. |
 | Probing | Click any wire: its name, 0/1 state, and the transistors it drives and connects to. Click the connections to walk through the circuit. |
 | Find a signal | Type a name or number such as `clk0`, `ab5`, `alucin` or `#1234` and the camera flies there. |
 | Separate the layers | Use the slider to spread the layers vertically and see the diffusion underneath. |
@@ -316,7 +316,7 @@ If you want to build with real chips, go in this order:
 ## Tests and verification
 
 ```bash
-npm test                                                  # all tests (765 tests, ≈ 1 minute)
+npm test                                                  # all tests (776 tests, ≈ 1 minute)
 npm run check                                             # type check + tests
 npx vitest run cpu16/tests/emu.test.ts                    # a single file
 npx vitest run cpu16/tests/cc-bios.test.ts -t "yılan"     # tests in one file whose name matches
