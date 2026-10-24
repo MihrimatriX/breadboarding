@@ -4,6 +4,7 @@ import { Vector3 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { chipToWorld } from "../chip/chipIndex";
 import { useApp } from "../state/store";
+import { kareSuresi } from "../ui/ayarlar";
 
 /** Arama ile seçilen sinyale kamerayı yumuşakça uçurur */
 export function CameraRig() {
@@ -24,10 +25,12 @@ export function CameraRig() {
     anim.current = { target: new Vector3(x, 0, z), cam: new Vector3(x, dist * 0.9, z + dist * 0.7), t: 0 };
   }, [focus, controls]);
 
-  useFrame((_, dt) => {
+  useFrame((st, dt) => {
     const a = anim.current;
     if (!a || !controls) return;
-    a.t = Math.min(1, a.t + dt * 1.8);
+    // isteğe bağlı çizimde ilk karenin dt'si boşluğun süresidir (kareSuresi)
+    a.t = Math.min(1, a.t + kareSuresi(a.t, dt) * 1.8);
+    st.invalidate();
     const k = 1 - Math.pow(1 - a.t, 3);
     controls.target.lerp(a.target, k * 0.25);
     camera.position.lerp(a.cam, k * 0.25);

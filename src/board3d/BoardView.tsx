@@ -42,6 +42,7 @@ import { MemoryInside } from "./MemoryInside";
 import { PassiveInfo, PassiveTooltip } from "./PassiveInfo";
 import { detectLanguage } from "./program";
 import { screenCanvas, updateScreenCanvas } from "./screenCanvas";
+import { cizimDinle } from "../render/cizimDongusu";
 import {
   EXAMPLES, SPEEDS, boardLayoutData, boardModel, currentLang, findPart, liveNets, netEnds, speedLabel, startBoardWorker, useKart, type LangMode, type WireMode,
 } from "./store";
@@ -261,13 +262,19 @@ function VgaPanel() {
     if (!open || !holder.current) return;
     const c = screenCanvas();
     holder.current.appendChild(c);
+    // görüntü gelince (cizimIste) sonraki karede boyanır; boştayken döngü yok
     let raf = 0;
-    const loop = () => {
+    const boya = () => {
+      raf = 0;
       updateScreenCanvas();
-      raf = requestAnimationFrame(loop);
     };
-    loop();
+    const iste = () => {
+      if (!raf) raf = requestAnimationFrame(boya);
+    };
+    iste();
+    const birak = cizimDinle(iste);
     return () => {
+      birak();
       cancelAnimationFrame(raf);
       c.remove();
     };

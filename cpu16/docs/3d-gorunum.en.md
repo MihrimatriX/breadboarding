@@ -192,6 +192,7 @@ In the browser console, `kart`:
 | `kart.etiketler("kapali" \| "bolumler" \| "ayrintili")` | section label mode (the current one if no argument is given) |
 | `kart.bolumler("bolge" \| "blok" \| "grup" \| "kart")`, `kart.bolum("grup:cpu:komut-cozucu")` | section ids and labels; select a section (`null` clears it), return the selected one |
 | `kart.plakaEkranda(id)`, `kart.kenarEtiketleri()` | a plate's position on screen, the edge labels on screen (for tests) |
+| `kart.cizim()` | the last frame's draw calls, triangle count and the canvas resolution (`dpr`) |
 
 Keyboard shortcuts: Space run/pause, `.` one clock cycle, `N` one instruction, `E` label mode, Esc clears
 the selection. Shortcuts are off while you type in the editor or on the VGA screen.
@@ -206,6 +207,20 @@ clock cycles per second. That is ~1/1,000 of the 4 MHz real board. A few example
 - `merhaba-vga.c`: ~180,000 cycles (including clearing the screen), ~50 s.
 
 The clock selector also offers fixed speeds from 1 Hz to 1 kHz.
+
+### Drawing
+
+The scene is drawn on demand (`frameloop="demand"`): a new frame is drawn only when something changes. The
+camera, the selection, the modes, the live net values and the screen request frames; a paused scene with a
+still camera is not drawn at all, and typing in the editor does not redraw the scene either (the board
+store fields the scene does not read are `KART_SAHNE_DISI` in `store.ts`). Running animations (camera
+flights, the pulsing rings in build mode, an LED fading on or off, wires being built step by step) request
+frames until they finish. If frames are slow while the camera is dragged (median below ≈ 40 frames/s), the
+canvas resolution steps down by half (2 → 1.5 → 1); if they stay fast it steps back up at most twice.
+Shaders are compiled in the background before the scene first appears (`compileAsync`; in a browser with
+parallel shader compilation the interface does not freeze while a section opens). The engraved PCB traces
+are merged into a single mesh once engraving finishes. The rules are in `src/render/cizimDongusu.ts`, the
+canvas wiring in `src/render/TuvalCizimi.tsx`; tests in `cpu16/tests/cizim-dongusu.test.ts`.
 
 ## Files
 
@@ -251,8 +266,8 @@ The clock selector also offers fixed speeds from 1 Hz to 1 kHz.
 - On cc16's rom target `putchar` does not wait for TX_EMPTY. The UART box shows every byte the CPU writes
   to UART_DATA; at that rate not every frame may make it out on the I/O board's real TX line.
 - With software GL (virtual machine, no GPU) the scene draws a few frames per second; in a browser with a
-  GPU it is smooth. The breadboard overview takes ≈ 1.5 times as long as the PCB (≈ 174 draw calls, 527k
-  triangles; PCB ≈ 108 and 235k).
+  GPU it is smooth. In the overview the breadboard takes ≈ 387 draw calls and 713k triangles, the PCB
+  (after the traces are engraved) ≈ 335 and 564k (`kart.cizim()`).
 - The transistor schematic is a logical layout, not the real chip mask.
 - The earlier 153-chip CPU + test memory view gave way to the whole computer (the CPU16 workbench
   section remains).

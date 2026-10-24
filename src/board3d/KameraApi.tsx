@@ -1,7 +1,7 @@
 // Konsoldan ve otomatik ekran görüntülerinden kamera: kart.yakinlas("D201") bir elemana yaklaşır,
 // kart.kamera() kameranın yerini ve baktığı noktayı verir, kart.kamera([x,y,z], [x,y,z]) ayarlar;
 // kart.ekranda("U3", 1) bir bacağın ekrandaki yerini verir (otomatik tıklama testleri); kart.cizim()
-// son karenin çizim çağrısı ve üçgen sayısı.
+// son karenin çizim çağrısı, üçgen sayısı ve çözünürlüğü (dpr; kamera sürüklenirken kareler yavaşsa düşer).
 // Ayrıca tuval oranına göre görüş açısı: dar tuvalde (yan panel geniş, alt panel kapalı) genel bakış
 // yanlardan taşmasın diye görüş açısı orantılı genişler; kameranın yeri ve uçuşlar değişmez.
 // window.kart (bilgisayar) ya da window.hesap (hesap makinesi) BoardView'da kurulur; bu bileşen kendi
@@ -26,13 +26,15 @@ export function KameraApi() {
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null;
   const gl = useThree((s) => s.gl);
   const oran = useThree((s) => s.size.width / Math.max(1, s.size.height));
+  const invalidate = useThree((s) => s.invalidate);
   useEffect(() => {
     if (!(camera instanceof PerspectiveCamera)) return;
     const z = Math.min(1, oran / ORAN_ESIGI[aktifKart() === "hesap" ? "hesap" : "cpu16"]);
     if (Math.abs(camera.zoom - z) < 1e-3) return;
     camera.zoom = z;
     camera.updateProjectionMatrix();
-  }, [camera, oran]);
+    invalidate();
+  }, [camera, oran, invalidate]);
   useEffect(() => {
     if (!controls) return;
     const set = (cam: Vec, target: Vec) => {
@@ -61,7 +63,7 @@ export function KameraApi() {
         return true;
       },
       /** Son karenin çizim çağrısı ve üçgen sayısı (başarım ölçümü) */
-      cizim: () => ({ cagri: gl.info.render.calls, ucgen: gl.info.render.triangles }),
+      cizim: () => ({ cagri: gl.info.render.calls, ucgen: gl.info.render.triangles, dpr: gl.getPixelRatio() }),
       /** Bir bacağın (pin verilmezse elemanın ortasının) ekrandaki yeri, sayfa pikseli; yükseklik mm */
       ekranda: (ref: string, pin?: number, yukseklik = 0) => {
         const part = findPart(ref);

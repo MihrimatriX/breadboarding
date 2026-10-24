@@ -70,10 +70,12 @@ function SeciliTel({ tel }: { tel: Tel }) {
     obj?.mat.resolution.set(size.width, size.height);
   }, [obj, size]);
   const halkalar = useRef<(Mesh | null)[]>([]);
-  useFrame(({ clock }) => {
+  useFrame(({ clock, invalidate }) => {
     const t = clock.getElapsedTime();
     const s = 1 + 0.35 * (0.5 + 0.5 * Math.sin(t * 5));
     for (const m of halkalar.current) m?.scale.set(s, s, s);
+    // halkalar atar: gösterildikleri sürece kareler sürer
+    invalidate();
   });
   if (!obj) return null;
   // beyaz tel koyu kartta görünsün, siyah tel (yalnız GND, burada olmaz) için de açık halka
@@ -144,10 +146,11 @@ function KurulumKamera({ tel }: { tel: Tel | null }) {
     const tz = (az + bz) / 2;
     anim.current = { target: new Vector3(tx, 0.4, tz), cam: new Vector3(tx, 0.4 + d * 0.8, tz + d * 0.55), t0: controls.target.clone(), c0: camera.position.clone(), t: 0 };
   }, [tel, izle, controls, camera, w]);
-  useFrame((_, dt) => {
+  useFrame((st, dt) => {
     const an = anim.current;
     if (!an || !controls) return;
     an.t = ucusAdimi(an.t, dt, 1.6);
+    st.invalidate();
     const k = 1 - Math.pow(1 - an.t, 3);
     controls.target.lerpVectors(an.t0, an.target, k);
     camera.position.lerpVectors(an.c0, an.cam, k);

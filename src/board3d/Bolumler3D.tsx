@@ -462,10 +462,11 @@ function BolumUcusu({ s }: { s: SahneBolumleri }) {
     const tx = (ax + bx) / 2 + d * kay;
     anim.current = { target: new Vector3(tx, 0.3, tz), cam: new Vector3(tx, 0.3 + d * 0.8, tz + d * 0.6), t0: controls.target.clone(), c0: camera.position.clone(), t: 0 };
   }, [ucus, controls, camera, s, lay, w]);
-  useFrame((_, dt) => {
+  useFrame((st, dt) => {
     const a = anim.current;
     if (!a || !controls) return;
     a.t = ucusAdimi(a.t, dt, 1.4);
+    st.invalidate();
     const k = 1 - Math.pow(1 - a.t, 3);
     controls.target.lerpVectors(a.t0, a.target, k);
     camera.position.lerpVectors(a.c0, a.cam, k);
@@ -542,14 +543,41 @@ function KenarHesabi({ s }: { s: SahneBolumleri }) {
     const [x1, z1] = w(b.x + b.w, b.y + b.h);
     return [k, [new Vector3(x0, 0, z0), new Vector3(x1, 0, z0), new Vector3(x1, 0, z1), new Vector3(x0, 0, z1)]] as const;
   })), [s, w]);
-  const son = useRef({ anahtar: "", engel: null as { x0: number; x1: number; y1: number } | null, engelZamani: -1, olcek: 1, imza: [] as number[], secili: null as string | null });
+  const son = useRef({ anahtar: "", engel: null as { x0: number; x1: number; y1: number } | null, olcek: 1, imza: [] as number[], secili: null as string | null });
+  const invalidate = useThree((x) => x.invalidate);
   // sahne ya da dil değişince kamera kıpırdamasa da yeniden hesaplanır
   useEffect(() => {
     son.current.anahtar = "";
     son.current.imza = [];
+    invalidate();
     return () => useKenar.setState({ etiketler: [] });
-  }, [s, gruplar]);
-  useFrame(({ camera, size, clock }) => {
+  }, [s, gruplar, invalidate]);
+  // VGA paneli (ya da onu açan düğme) sağ sütunun üstünü kapatır, "Yazı boyutu: büyük" kutuları büyütür:
+  // yarım saniyede bir okunur (kare döngüsünün dışında; tuval boştayken de), değişince yeni kare
+  const acik = kip === "ayrintili" && !kurulum;
+  useEffect(() => {
+    if (!acik) return;
+    const oku = () => {
+      const d = son.current;
+      const olcek = parseFloat(getComputedStyle(document.documentElement).fontSize) / 16 || 1;
+      const sahne = gl.domElement.closest(".stage");
+      const e = sahne?.querySelector(".vga-panel, .vga-open");
+      let engel: typeof d.engel = null;
+      if (sahne && e) {
+        const a = sahne.getBoundingClientRect();
+        const b = e.getBoundingClientRect();
+        engel = { x0: b.left - a.left, x1: b.right - a.left, y1: b.bottom - a.top };
+      }
+      if (olcek === d.olcek && engel?.x0 === d.engel?.x0 && engel?.x1 === d.engel?.x1 && engel?.y1 === d.engel?.y1) return;
+      d.olcek = olcek;
+      d.engel = engel;
+      invalidate();
+    };
+    oku();
+    const id = window.setInterval(oku, 500);
+    return () => window.clearInterval(id);
+  }, [acik, gl, invalidate]);
+  useFrame(({ camera, size }) => {
     const durum = son.current;
     if (kip !== "ayrintili" || kurulum) {
       if (durum.anahtar !== "") {
@@ -567,20 +595,6 @@ function KenarHesabi({ s }: { s: SahneBolumleri }) {
       tmpV.copy(p).project(cam);
       return [((tmpV.x + 1) / 2) * W, ((1 - tmpV.y) / 2) * H];
     };
-    // VGA paneli (ya da onu açan düğme) sağ sütunun üstünü kapatır: yeri yarım saniyede bir okunur
-    const t = clock.getElapsedTime();
-    if (durum.engelZamani < 0 || t - durum.engelZamani > 0.5) {
-      durum.engelZamani = t;
-      // "Yazı boyutu: büyük" kökün yazısını büyütür; kutular da büyür
-      durum.olcek = parseFloat(getComputedStyle(document.documentElement).fontSize) / 16 || 1;
-      const sahne = gl.domElement.closest(".stage");
-      const e = sahne?.querySelector(".vga-panel, .vga-open");
-      if (sahne && e) {
-        const a = sahne.getBoundingClientRect();
-        const b = e.getBoundingClientRect();
-        durum.engel = { x0: b.left - a.left, x1: b.right - a.left, y1: b.bottom - a.top };
-      } else durum.engel = null;
-    }
     const secili = useBolum.getState().secili;
     // kamera, tuval ve seçim değişmediyse yeniden hesaplanmaz
     const e0 = durum.engel;
