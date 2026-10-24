@@ -66,6 +66,11 @@ ya da kısayolu değişince oradaki adımı da güncelle.
 - Hesap ve geometri bileşenin dışında, saf ve testli fonksiyonlarda (`wires.ts`, `screen.ts`,
   `bolumSahne.ts`); testleri `cpu16/tests/` altında (`view`, `bolum-3d`, `breadboard-3d`, `hesap-3d`).
 - Ağır simülasyon worker'da; ana iş parçacığı yalnız kopyaları alır.
+- 3D tuvaller isteğe bağlı çizilir (`frameloop="demand"`, kurallar `render/cizimDongusu.ts`, bağlantı
+  `render/TuvalCizimi.tsx`): kendiliğinden kare gelmez. Canlı değeri (`live`, `liveNets`, `liveScreen`)
+  yazan yer `cizimIste()` der; `useFrame`'deki süren animasyon bitene dek `state.invalidate()` ister (ilk
+  karenin dt'si boşluğun süresidir: `kareSuresi`); sahne kartın deposundan yeni bir alan okursa onu
+  `KART_SAHNE_DISI`'ndan (`store.ts`) çıkar, `cizim-dongusu.test.ts` denetler. Ölçmek: `kart.cizim()`.
 - Arayüz: AFU "ferah, okunaklı, konforlu" ister: 15 px gövde yazısı, geniş aralıklar, sakin mavi vurgu;
   kırmızı yalnız hata ve lojik 1 için. Yazı ölçeği, aralıklar ve renk kuralları `styles.css`'in başındaki
   yorumda; yeni bileşen bu belirteçleri kullanır. Renk değişince `npm run kontrast`; mimari

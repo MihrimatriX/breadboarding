@@ -18,18 +18,22 @@ type Ozellikler = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "value"> & {
 export const KodAlani = forwardRef<HTMLTextAreaElement, Ozellikler>(function KodAlani({ value, dil, hataliSatirlar = [], onScroll, ...ta }, ref) {
   const kod = useRef<HTMLElement>(null);
   const satirlar = useMemo(() => renklendir(value, dil), [value, dil]);
-  const hatali = new Set(hataliSatirlar);
+  // renkli satırlar kaynak ya da hatalar değişmedikçe aynı öğe: üstteki bileşen sık yeniden çizilir (tezgâh
+  // çalışırken saniyede ~15 kez), React her seferinde binlerce <span>'ı yeniden karşılaştırmasın
+  const hataAnahtari = hataliSatirlar.join(",");
+  const renkli = useMemo(() => {
+    const hatali = new Set(hataAnahtari ? hataAnahtari.split(",").map(Number) : []);
+    return satirlar.map((s, i) => (
+      <span key={i} className={hatali.has(i + 1) ? "kd-satir kd-hata" : "kd-satir"}>
+        {s.map((p, j) => (p.tur ? <span key={j} className={`kd-${p.tur}`}>{p.metin}</span> : p.metin))}
+        {"\n"}
+      </span>
+    ));
+  }, [satirlar, hataAnahtari]);
   return (
     <div className="kod-alani">
       <pre aria-hidden="true">
-        <code ref={kod}>
-          {satirlar.map((s, i) => (
-            <span key={i} className={hatali.has(i + 1) ? "kd-satir kd-hata" : "kd-satir"}>
-              {s.map((p, j) => (p.tur ? <span key={j} className={`kd-${p.tur}`}>{p.metin}</span> : p.metin))}
-              {"\n"}
-            </span>
-          ))}
-        </code>
+        <code ref={kod}>{renkli}</code>
       </pre>
       <textarea
         {...ta}

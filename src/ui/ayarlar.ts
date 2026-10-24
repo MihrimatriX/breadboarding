@@ -176,9 +176,18 @@ export function azHareket(): boolean {
   return azHareketSorgusu?.matches ?? false;
 }
 
+/**
+ * Animasyonun ilk karesinin en uzun süresi (s). 3D tuvaller isteğe bağlı çizilir: boşluktan sonraki ilk
+ * karenin dt'si boşluğun kendisidir; uçuş o karede sona sıçramasın. Sonraki kareler art arda gelir, dt'leri gerçek.
+ */
+export const KARE_EN_UZUN = 1 / 30;
+
+/** Animasyonun bir karelik süresi: ilk karede (t = 0) boşluk sayılmaz */
+export const kareSuresi = (t: number, dt: number): number => (t === 0 ? Math.min(dt, KARE_EN_UZUN) : dt);
+
 /** Kamera uçuşunun bir karelik ilerlemesi (0..1): hareket azaltılmışsa doğrudan sona */
 export function ucusAdimi(t: number, dt: number, hiz: number): number {
-  return azHareket() ? 1 : Math.min(1, t + dt * hiz);
+  return azHareket() ? 1 : Math.min(1, t + kareSuresi(t, dt) * hiz);
 }
 
 /** 3D sahnelerin zemini: temanın sahne rengi (styles.css'teki --surface-scene ile aynı) */

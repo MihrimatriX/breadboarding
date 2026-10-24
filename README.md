@@ -48,7 +48,7 @@ kutusundaki "Silikon3D ana sayfası" oraya döner. Telefonda bölümler ayrıca 
 | Özellik | Açıklama |
 | --- | --- |
 | 3D die | Metal, polisilikon ve 4 difüzyon türü ayrı katmanlar. 8.233 poligon tek tek üçgenlenir ve kalınlaştırılır. |
-| Canlı sinyaller | 1.725 düğümün durumu her karede GPU'ya tek doku olarak yüklenir; yüksek (1) olan teller kırmızı yanar. |
+| Canlı sinyaller | 1.725 düğümün durumu her yeni durumda GPU'ya tek doku olarak yüklenir; yüksek (1) olan teller kırmızı yanar. Sahne yalnız bir şey değişince çizilir: duraklatınca GPU dinlenir. |
 | Ölçüm | Herhangi bir tele tıkla: adı, 0/1 durumu, sürdüğü ve bağlı olduğu transistörler. Bağlantılara tıklayarak devrede gezin. |
 | Sinyal bul | `clk0`, `ab5`, `alucin`, `#1234` gibi isim ya da numara yaz, kamera oraya uçar. |
 | Katmanları ayır | Kaydırıcıyla katmanları dikeyde aç, altındaki difüzyonu gör. |
@@ -315,7 +315,7 @@ Gerçek çiplerle kurmak isteyenler için sıra:
 ## Testler ve doğrulama
 
 ```bash
-npm test                                                  # bütün testler (765 test, ≈ 1 dakika)
+npm test                                                  # bütün testler (776 test, ≈ 1 dakika)
 npm run check                                             # tip denetimi + testler
 npx vitest run cpu16/tests/emu.test.ts                    # tek dosya
 npx vitest run cpu16/tests/cc-bios.test.ts -t "yılan"     # bir dosyada adı eşleşen testler

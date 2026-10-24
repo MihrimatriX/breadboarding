@@ -1,4 +1,5 @@
 import { live } from "../state/live";
+import { cizimIste } from "../render/cizimDongusu";
 import { useApp } from "../state/store";
 import type { FromWorker, ToWorker } from "./protocol";
 
@@ -24,6 +25,7 @@ class SimClient {
         live.nodeState = msg.nodeState;
         live.transistorOn = msg.transistorOn;
         live.version++;
+        cizimIste();
         app.applyFrame(msg);
         break;
       case "error":

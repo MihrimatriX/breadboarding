@@ -8,7 +8,11 @@ import { Transistors } from "./Transistors";
 import { CameraRig } from "./CameraRig";
 import { useApp } from "../state/store";
 import { chipToWorld } from "../chip/chipIndex";
-import { useSahneRengi } from "../ui/ayarlar";
+import { useAyar, useSahneRengi } from "../ui/ayarlar";
+import { OnDerleme, TuvalCizimi, useTuvalDpr } from "./TuvalCizimi";
+
+/** Sahnenin okuduğu depolar: değişince yeni kare (isteğe bağlı çizim, cizimDongusu.ts) */
+const DEPOLAR = [{ depo: useApp }, { depo: useAyar }];
 
 function Substrate() {
   const chip = useApp((s) => s.chip)!;
@@ -34,6 +38,7 @@ function Kadraj() {
   const camera = useThree((s) => s.camera);
   const oran = useThree((s) => s.size.width / Math.max(1, s.size.height));
   const chip = useApp((s) => s.chip);
+  const invalidate = useThree((s) => s.invalidate);
   useEffect(() => {
     if (!(camera instanceof PerspectiveCamera) || !chip) return;
     const ornek = new PerspectiveCamera(camera.fov, oran, camera.near, camera.far);
@@ -52,7 +57,8 @@ function Kadraj() {
     if (Math.abs(camera.zoom - z) < 1e-3) return;
     camera.zoom = z;
     camera.updateProjectionMatrix();
-  }, [camera, oran, chip]);
+    invalidate();
+  }, [camera, oran, chip, invalidate]);
   return null;
 }
 
@@ -61,21 +67,26 @@ export function DieScene() {
   const bloom = useApp((s) => s.bloom);
   // zemin temaya uyar; die'ın kendi renkleri değişmez
   const zemin = useSahneRengi();
+  const { dpr, ayar, dprDegisti } = useTuvalDpr();
   return (
     <Canvas
       camera={{ position: KAMERA_BASI, fov: 40, near: 0.01, far: 200 }}
-      dpr={[1, 2]}
+      frameloop="demand"
+      dpr={dpr}
       raycaster={{ firstHitOnly: true } as never}
       onPointerMissed={() => useApp.getState().select(null)}
     >
       <color attach="background" args={[zemin]} />
       <hemisphereLight args={["#ffffff", "#202020", 0.9]} />
-      <Substrate />
-      <DieModel />
-      {showTransistors && <Transistors />}
+      <OnDerleme>
+        <Substrate />
+        <DieModel />
+        {showTransistors && <Transistors />}
+      </OnDerleme>
       <OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI * 0.49} minDistance={0.2} maxDistance={40} />
       <CameraRig />
       <Kadraj />
+      <TuvalCizimi depolar={DEPOLAR} ayar={ayar} dprDegisti={dprDegisti} />
       <GizmoHelper alignment="bottom-right" margin={[64, 64]}>
         <GizmoViewport labelColor="white" axisHeadScale={0.9} />
       </GizmoHelper>
