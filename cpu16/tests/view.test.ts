@@ -626,9 +626,11 @@ describe("3D görünüm: bellek çipinin içi", () => {
 
 describe("3D görünüm: kamera uçuşu", () => {
   it("uçuş süreyle ilerler ve sonda durur; işletim sisteminde hareket azaltılmışsa hemen sona geçer", async () => {
-    const { ucusAdimi } = await import("../../src/ui/ayarlar.ts");
-    expect(ucusAdimi(0, 0.1, 1.4)).toBeCloseTo(0.14);
+    const { ucusAdimi, KARE_EN_UZUN } = await import("../../src/ui/ayarlar.ts");
+    expect(ucusAdimi(0.2, 0.1, 1.4)).toBeCloseTo(0.34);
     expect(ucusAdimi(0.95, 0.1, 1.4)).toBe(1);
+    // tuval isteğe bağlı çizilir: uçuşun ilk karesinin dt'si önceki boşluktur, sona sıçramaz
+    expect(ucusAdimi(0, 8, 1.4)).toBeCloseTo(KARE_EN_UZUN * 1.4);
     vi.resetModules();
     vi.stubGlobal("window", { matchMedia: (q: string) => ({ matches: q.includes("reduced-motion"), addEventListener() {}, removeEventListener() {} }) });
     try {

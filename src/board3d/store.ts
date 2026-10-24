@@ -10,6 +10,7 @@ import type { GateState } from "../../cpu16/board/computer";
 import { LIB } from "../../cpu16/cc/lib-vite";
 import { TerminalText } from "../cpu16/serial";
 import { useAyar } from "../ui/ayarlar";
+import { cizimIste } from "../render/cizimDongusu";
 import { ceviri, type Dil, type IkiDil } from "../ui/ceviri";
 import { aktifGorunum, aktifKart, cpuBbHazir, cpuBbYukle, gorunumDegisince, gorunumHazir, gorunumSec, kartDegisince, kartModeli, kartParcasi, kartUclari, kartYerlesimi, type Gorunum, type KartTuru, type Parca } from "./aktif";
 import { compileProgram, detectLanguage, type Lang, type ProgramError } from "./program";
@@ -73,7 +74,10 @@ export function findPart(ref: string | null): Parca | null {
   return kartParcasi(ref);
 }
 
-/** Her karede değişen net değerleri React durumuna konmaz; çizim döngüsü buradan okur */
+/**
+ * Her karede değişen net değerleri React durumuna konmaz; çizim döngüsü buradan okur. Tuval isteğe bağlı
+ * çizilir: değerleri (ve ekranı) yazan yer cizimIste() der.
+ */
 export const liveNets = { values: null as Uint8Array | null, prev: null as Uint8Array | null, version: 0 };
 
 /** Her kart türünün son net değerleri: sahnedeki kart değişince canlı değerler onunkine döner */
@@ -86,6 +90,7 @@ export function netDegerleri(tur: KartTuru, values: Uint8Array): void {
   liveNets.prev = liveNets.values;
   liveNets.values = values;
   liveNets.version++;
+  cizimIste();
 }
 /** Ekran (metin kipinden ya da ışın kipinden) ve izlenen bellek penceresi */
 export const liveScreen = { frame: null as ScreenFrame | null, beam: null as { rgba: Uint8ClampedArray; width: number; height: number; x: number; y: number } | null, version: 0 };
@@ -173,6 +178,15 @@ interface KartState {
   sendUart(text: string): void;
   setBeam(on: boolean): void;
 }
+
+/**
+ * Kartın deposunda 3D sahnenin okumadığı alanlar: program düzenleyicisi, yan panellerin sayaçları ve ekran
+ * metni. Tuval isteğe bağlı çizilir; bunlar değişince yeni kare istenmez (canlı değerler cizimIste ile
+ * gelir). Sahne bunlardan birini okumaya başlarsa buradan çıkar (cizim-dongusu.test.ts denetler).
+ */
+export const KART_SAHNE_DISI: ReadonlySet<string> = new Set<keyof KartState>([
+  "state", "cycles", "rate", "uart", "hz", "error", "screenText", "screenInfo", "beamFrames", "example", "source", "langMode", "errors", "info", "loaded",
+]);
 
 let worker: Worker | null = null;
 const send = (m: ToWorker, transfer: Transferable[] = []) => worker?.postMessage(m, transfer);
@@ -333,6 +347,7 @@ export const useKart = create<KartState>((set, get) => ({
     if (!on) {
       liveScreen.beam = null;
       liveScreen.version++;
+      cizimIste();
     }
   },
 }));
@@ -364,10 +379,12 @@ function onWorker(m: FromWorker) {
   } else if (m.type === "screen") {
     liveScreen.frame = m.frame;
     liveScreen.version++;
+    cizimIste();
     useKart.setState({ screenText: m.frame.text, screenInfo: ekranBilgisi(m.frame, seciliDil()) });
   } else if (m.type === "beam") {
     liveScreen.beam = { rgba: m.rgba, width: m.width, height: m.height, x: m.x, y: m.y };
     liveScreen.version++;
+    cizimIste();
     useKart.setState({ beamFrames: m.frames });
   } else {
     netDegerleri("cpu16", m.values);

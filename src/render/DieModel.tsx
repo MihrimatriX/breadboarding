@@ -75,9 +75,11 @@ export function DieModel() {
   useEffect(() => () => meshes.forEach((m) => { m.geometry.disposeBoundsTree(); m.geometry.dispose(); m.material.dispose(); }), [meshes]);
 
   let seenVersion = -1;
-  useFrame((_, dt) => {
+  useFrame((st, dt) => {
     shared.uTime.value += dt;
     const { selectedNode, hoveredNode, bloom } = useApp.getState();
+    // seçili düğüm nabız gibi atar (uTime): seçim sürdükçe kareler de sürer
+    if (selectedNode !== null) st.invalidate();
     shared.uSelected.value = selectedNode ?? -1;
     shared.uHovered.value = hoveredNode ?? -1;
     shared.uGlow.value = bloom ? 0.9 : 0.15;
