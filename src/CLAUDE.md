@@ -10,7 +10,7 @@ konsol API'si: [cpu16/docs/3d-gorunum.md](../cpu16/docs/3d-gorunum.md).
 |---|---|---|---|
 | Açılış sayfası | kök, `#giris` | `giris/Giris.tsx` | `giris/`: `icerik.ts` (adres kararı `girisMi`, iki dilli metinler); bölüm kodu inmez |
 | 6502 die | `#6502` | `App.tsx` | `chip/`, `sim/` (anahtar seviyesi motor, worker), `render/` |
-| CPU16 tezgâhı | `#cpu16` | `cpu16/Cpu16Bench.tsx` | `cpu16/`: `MachineBench.tsx` (IDE + BIOS + VGA), `FlatBench.tsx` (düz bellek) |
+| CPU16 tezgâhı | `#cpu16` | `cpu16/Cpu16Bench.tsx` | `cpu16/`: `MachineBench.tsx` (IDE + BIOS + VGA), `FlatBench.tsx` (düz bellek); editör `KodAlani.tsx` (saydam textarea + renkli `<pre>`, parçalar `renklendir.ts`, testi `arayuz.test.ts`) |
 | CPU16 kartı 3D | `#kart` | `board3d/BoardView.tsx` | `board3d/` |
 | 8 bit hesap 3D | `#hesap` | `board3d/BoardView.tsx` (hesap modu) | `board3d/hesap.ts`, `HesapPanel.tsx` |
 | Mimari | `#mimari` | `mimari/MimariView.tsx` | `mimari/` |
@@ -18,11 +18,14 @@ konsol API'si: [cpu16/docs/3d-gorunum.md](../cpu16/docs/3d-gorunum.md).
 
 Her bölüm kendi kod parçasında, ilk açılınca yüklenir (`bolumler.ts`, `Root.tsx`'te `React.lazy`).
 Bölüm geçişi `ui/ModeSwitch.tsx`; ortak iskelet `ui/Shell.tsx`; renk ve boyut belirteçleri
-`styles.css`; tema, yazı boyutu, odak modu ve dil `ui/ayarlar.ts` (kısayollar T, Y, F, L). Üst çubuğun
-dar ekran eşikleri sabit değil: sığmayınca `ui/sikisma.ts` altı kademede sıkıştırır (`data-sikisma`:
-bölüm adları simgeye, ikincil ölçümler gizli, …, en sonda seçili bölümün adı da); üst çubuğa öğe eklersen
-900–1680 px'te iki dilde ve iki yazı boyutunda bak. 900 px'in altında (telefon) üst çubuk tek satır,
-bölüm geçişi ekranın altında sabit sekme çubuğu (simge + `kisa` ad, testi `cpu16/tests/arayuz.test.ts`),
+`styles.css`; tema, yazı boyutu, odak modu (paneller ve durum çubuğu gizli) ve dil `ui/ayarlar.ts`
+(kısayollar T, Y, F, L). Üst çubuk yalnız sol üstteki başlatıcı düğmesi (`AppHeader`): bölümler
+(`BolumListesi`), görünüm ayarları, kısayollar, Başlangıç ve ana sayfa onun kutusunda. Araç çubuğu olan
+bölümlerde düğme araç çubuğunun satırının solunda durur (`--baslatici-w` kadar yer açılır; 1680 px'in
+altında yalnız logo), ekranın kalanı bölümün işine kalır; araç çubuğuna öğe eklersen 1100–1680 px'te
+iki dilde ve iki yazı boyutunda tek satır kaldığına bak. Canlı ölçümler ve bölümün kısa açıklaması en
+alttaki durum çubuğunda (`.statusbar` `order` ile sütunun sonuna iner). 900 px'in altında (telefon)
+başlatıcı kendi satırında, bölüm geçişi ayrıca ekranın altında sabit sekme çubuğu (`ModeSwitch`: simge + `kisa` ad, testi `cpu16/tests/arayuz.test.ts`),
 araç çubuğu yana kayar ve açılır menüler alttan açılan sayfa olur; 1240 px'in altında araç çubuğundaki
 sınıfsız (sakin) düğmeler yalnız simge. Başlangıç paneli uygulamanın kılavuzu: bölüm başına
 tanıtım ve "İlk adımlar" `ui/kilavuz.ts`'te (testi `tests/ceviri-kabuk.test.ts`); bir bölümün düğmesi
@@ -37,6 +40,14 @@ ya da kısayolu değişince oradaki adımı da güncelle.
 - Bölge çerçeveleri ve etiketleri: `bolumSahne.ts` (saf geometri, testli), `Bolumler3D.tsx`,
   `BolumPanel.tsx`; metinler `cpu16/board/bolum-bilgi.ts`'ten. Etiketler `E` ile açılıp kapanır.
 - Kurulum modu: `kurulum.ts` + `KurulumPanel.tsx` (PCB), `bbKurulum.ts` + `BbKurulumPanel.tsx` (breadboard).
+  Aşama haritası (`asamaDilimleri`) ve breadboard delik haritası (`bbPencere`) saf, testi `arayuz.test.ts`.
+- Düzen VS Code gibi (`Iskelet`): en solda aktivite çubuğu (`EtkinlikCubugu`; tepesinde başlatıcı, dipte
+  alt panel ve odak düğmeleri), yanında sol panel, sağda tam yükseklik sahne; araç çubuğu sahnenin üstünde
+  yüzen kapsüller, VGA paneli sağ altta, çipin içi sahnenin altında. Sol paneller `SIDE_TABS` ve
+  `panelBilgisi`'nde (yeni panel: iki yere birer satır): Program (varsayılan; düzenleyici `KodAlani`,
+  çip seçmek paneli değiştirmez), İnceleme (seçili çipte grubunun anlatımı ve `PinDiyagrami.tsx`),
+  Anlatım (`AnlatimPanel.tsx`, adımlar `anlatim.ts`'te; bölüm seçmek turun adımıdır), CPU ve UART,
+  Kurulum. Açık panelin simgesine yeniden basmak paneli kapatır (sahne tam).
 
 ## Dil (Türkçe + İngilizce)
 

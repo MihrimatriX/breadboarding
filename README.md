@@ -28,10 +28,10 @@ referans modele bağlı.
 
 ### Silikon3D: altı bölüm
 
-Uygulamanın üst çubuğunda altı bölüm var. Adres çubuğundaki `#...` açık olan bölümü gösterir; bu
+Uygulamada altı bölüm var; sol üstteki büyük düğme hepsini, görünüm ayarlarını ve kısayolları açar. Adres çubuğundaki `#...` açık olan bölümü gösterir; bu
 adresleri yer imi olarak kaydedebilirsin. Sitenin kökü (ya da `#giris`) projeyi anlatan açılış
-sayfasını açar: dört seviyelik yolculuk, bölümlerin önizlemeleri ve projenin kuralları; üst çubuktaki
-logo oraya döner. Telefonda üst çubuk tek satırdır, bölümler ekranın altındaki sekme çubuğundadır.
+sayfasını açar: dört seviyelik yolculuk, bölümlerin önizlemeleri ve projenin kuralları; aynı düğmenin
+kutusundaki "Silikon3D ana sayfası" oraya döner. Telefonda bölümler ayrıca ekranın altındaki sekme çubuğundadır.
 
 | Bölüm | Adres | Ne görürsün |
 |---|---|---|
@@ -315,7 +315,7 @@ Gerçek çiplerle kurmak isteyenler için sıra:
 ## Testler ve doğrulama
 
 ```bash
-npm test                                                  # bütün testler (755 test, ≈ 1 dakika)
+npm test                                                  # bütün testler (765 test, ≈ 1 dakika)
 npm run check                                             # tip denetimi + testler
 npx vitest run cpu16/tests/emu.test.ts                    # tek dosya
 npx vitest run cpu16/tests/cc-bios.test.ts -t "yılan"     # bir dosyada adı eşleşen testler

@@ -50,6 +50,33 @@ const YOLLAR = {
   genislet: <path d="M3.5 7.5v-4h4M16.5 7.5v-4h-4M3.5 12.5v4h4M16.5 12.5v4h-4" />,
   daralt: <path d="M7.5 3.5v4h-4M12.5 3.5v4h4M7.5 16.5v-4h-4M12.5 16.5v-4h4" />,
   daha: <path d="M5 10h.01M10 10h.01M15 10h.01" strokeWidth="2.6" />,
+  // kart bölümünün aktivite çubuğu
+  buyutec: (
+    <>
+      <circle cx="8.5" cy="8.5" r="5" />
+      <path d="M12.2 12.2 16.5 16.5" />
+    </>
+  ),
+  kitap: (
+    <>
+      <path d="M10 5.5c-1.6-1.2-3.8-1.7-6.5-1.5v11c2.7-.2 4.9.3 6.5 1.5 1.6-1.2 3.8-1.7 6.5-1.5V4c-2.7-.2-4.9.3-6.5 1.5z" />
+      <path d="M10 5.5v11" />
+    </>
+  ),
+  cip: (
+    <>
+      <rect x="5.5" y="5.5" width="9" height="9" rx="1.5" />
+      <path d="M8 2.5v3M12 2.5v3M8 14.5v3M12 14.5v3M2.5 8h3M2.5 12h3M14.5 8h3M14.5 12h3" />
+    </>
+  ),
+  kurulum: <path d="M12.5 3.5a3.5 3.5 0 0 0-3.3 4.6L3.8 13.5a1.5 1.5 0 0 0 2.1 2.1l5.4-5.4a3.5 3.5 0 0 0 4.6-3.3l-2 2-2-.6-.6-2z" />,
+  hesap: (
+    <>
+      <rect x="4" y="2.5" width="12" height="15" rx="1.5" />
+      <rect x="6.5" y="5" width="7" height="3" rx="0.5" />
+      <path d="M7 11h.01M10 11h.01M13 11h.01M7 14h.01M10 14h.01M13 14h.01" strokeWidth="2.2" />
+    </>
+  ),
   dil: (
     <>
       <circle cx="10" cy="10" r="7" />

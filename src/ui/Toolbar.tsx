@@ -49,7 +49,7 @@ export function Toolbar({ side, bottom, onSide, onBottom }: { side: boolean; bot
   );
 }
 
-/** Üst çubuktaki canlı ölçümler */
+/** Durum çubuğundaki canlı ölçümler */
 export function Meters() {
   const running = useApp((s) => s.running);
   const measured = useApp((s) => s.measuredHz);

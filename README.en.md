@@ -28,10 +28,10 @@ tie every layer to the reference model.
 
 ### Silikon3D: six sections
 
-The app's top bar has six sections. The `#...` part of the address bar shows which section is open, so
+The app has six sections; the big button at the top left opens them, the view settings and the shortcuts. The `#...` part of the address bar shows which section is open, so
 you can bookmark these addresses. The site's root (or `#giris`) opens a landing page that introduces the
-project: the four-level journey, previews of the sections and the project's rules; the logo in the top
-bar takes you back there. On phones the top bar is a single row and the sections sit in a tab bar at the
+project: the four-level journey, previews of the sections and the project's rules; "Silikon3D home page" in
+that button's menu takes you back there. On phones the sections also sit in a tab bar at the
 bottom of the screen.
 
 | Section | Address | What you see |
@@ -316,7 +316,7 @@ If you want to build with real chips, go in this order:
 ## Tests and verification
 
 ```bash
-npm test                                                  # all tests (755 tests, ≈ 1 minute)
+npm test                                                  # all tests (765 tests, ≈ 1 minute)
 npm run check                                             # type check + tests
 npx vitest run cpu16/tests/emu.test.ts                    # a single file
 npx vitest run cpu16/tests/cc-bios.test.ts -t "yılan"     # tests in one file whose name matches

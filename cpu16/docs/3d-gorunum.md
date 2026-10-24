@@ -8,6 +8,13 @@ inilir ve her seviyede sinyaller canlıdır. Kartlar elle yazılmış bir listed
 `board.chips` ve `board.passives` içinde ne varsa onu yerleştirir. Yeni bir kart takılınca (ör.
 74HC574'lerle kendin yap RAM kartı) kendiliğinden görünür.
 
+Ekran VS Code gibi bölünür: en solda aktivite çubuğu (en üstte bölümler ve ayarlar düğmesi, altında
+**Program**, **İnceleme**, **Anlatım**, **CPU ve UART**, **Kurulum** simgeleri; dipte alt panel ve odak
+modu), yanında seçilen panel, sağda bütün yüksekliğiyle 3D sahne. Bölüm açılınca solda program
+düzenleyicisi açıktır. Açık panelin simgesine yeniden basınca panel kapanır, sahne bütün alanı alır.
+Sahnenin denetimleri (aşağıda "araç çubuğu": görünüm, çalıştırma, saat, teller, etiketler) sahnenin
+üstünde yüzer; seçili çipin içi sahnenin altındaki panelde açılır.
+
 ## Ne görürsün
 
 | Seviye | Nerede | Ne gösterir |
@@ -16,12 +23,12 @@ inilir ve her seviyede sinyaller canlıdır. Kartlar elle yazılmış bir listed
 | Kart | 3D sahne | Entegreler işlev bloklarına göre (ALU, Register dosyası, VRAM, Piksel yolu…) yerleşir. Çok çipli bloklar kareye yakın ızgara olur. Dekuplaj kondansatörleri çiplerinin yanında durur, kenar konnektörü kartın alt kenarında. Öteki pasifler bloklarının altında sıralanır. |
 | Pasifler | 3D sahne | Direnç, kondansatör, elektrolitik, LED, direnç dizisi, konnektör, osilatör, buton, anahtar, pot, modül ve CPU kartının 10 segmentli çubuk göstergeleri. Biçimlerini KiCad ayak izi belirler. LED'ler sürüldükleri net 1 olunca yanar; aktif düşük LED'ler (VCC → direnç → LED → sinyal, ör. `~ROE0`) net 0 olunca. Çubuk göstergenin her segmenti dizinin öbür ucundaki sinyal 1 iken yanar: bir bayt soldan sağa bit 0 … 7. Pasiflerin pinleri de tellere katılır. |
 | Teller | Araç çubuğu: **Teller** | Pinden pine atlama telleri. Renkleri canlı: mavi 0, kırmızı 1, mor Z, sarı X. Kipler aşağıda. |
-| Tel | Breadboard'da bir tele tıkla | Tel baştan sona kalın ve parlak çizilir, uçlarında nabız halkası; öbür teller soluklaşır. Yan panelde telin numarası, rengi, boyu, neti ve **nereden → nereye** (board, delik, o şeritteki bacaklar). Kurulum modunda tıklanan tel odağa gelir. Esc ya da boşluğa tıklamak bırakır. |
-| Damar | Şerit kablonun ya da arka panelin bir damarına tıkla | O damarın sinyali seçilir: damar baştan sona, her şeyin üstünde parlayan bir izle çizilir (breadboard'da kablonun içinde soketten sokete; PCB'de kartın dilinden yuvaya, yuvadan kendi hattına ve hat boyunca), öbür damarlar soluklaşır, bütün kartlarda o netin telleri canlı renkte. Breadboard'da sinyalin uçları olan panoların soketleri çerçevelenir, etiketlerinde o karttaki uç sayısı yazar. Yan panelde arka panelin kaçıncı damarı olduğu, sinyalin hangi kartta kaç uca gittiği ve bütün uçlar. GND ve VCC damarları seçilmez. |
-| Çip | Çipe tıkla | Kamera çip ile tellerinin öbür uçlarını birlikte görecek şekilde uçar. Çipin gövdesinin üstünde, kapağı açılmış gibi **kalıbı** (die) görünür: kapılar çıkışlarının canlı renginde. Yan panelde **Bağlantılar**: pin no + ad → net → öbür uçlar (çip.pin). Alt panelde **Çipin içi**: kapı seviyesi şema ya da bellek dizisi. |
+| Tel | Breadboard'da bir tele tıkla | Tel baştan sona kalın ve parlak çizilir, uçlarında nabız halkası; öbür teller soluklaşır. İnceleme panelinde telin numarası, rengi, boyu, neti ve **nereden → nereye** (board, delik, o şeritteki bacaklar). Kurulum modunda tıklanan tel odağa gelir. Esc ya da boşluğa tıklamak bırakır. |
+| Damar | Şerit kablonun ya da arka panelin bir damarına tıkla | O damarın sinyali seçilir: damar baştan sona, her şeyin üstünde parlayan bir izle çizilir (breadboard'da kablonun içinde soketten sokete; PCB'de kartın dilinden yuvaya, yuvadan kendi hattına ve hat boyunca), öbür damarlar soluklaşır, bütün kartlarda o netin telleri canlı renkte. Breadboard'da sinyalin uçları olan panoların soketleri çerçevelenir, etiketlerinde o karttaki uç sayısı yazar. İnceleme panelinde arka panelin kaçıncı damarı olduğu, sinyalin hangi kartta kaç uca gittiği ve bütün uçlar. GND ve VCC damarları seçilmez. |
+| Çip | Çipe tıkla | Kamera çip ile tellerinin öbür uçlarını birlikte görecek şekilde uçar. Çipin gövdesinin üstünde, kapağı açılmış gibi **kalıbı** (die) görünür: kapılar çıkışlarının canlı renginde. İnceleme panelinde **Bağlantılar**: pin no + ad → net → öbür uçlar (çip.pin). Alt panelde **Çipin içi**: kapı seviyesi şema ya da bellek dizisi. |
 | Kapı | Kalıpta ya da şemada bir kapıya tıkla | O kapının CMOS transistör şeması. İletimdeki transistörler yeşil. |
-| Net | Bir pine, bir uca ya da bir net adına tıkla | Netin bütün uçları kalın bir telle, öteki her şeyin üstünde birleşir. Yan panelde netin uçları listelenir. |
-| Bölüm | Araç çubuğu: **Etiketler**; bir etikete tıkla | Kartın bölgeleri, blokları ve çip grupları işaretli ve adlı. Tıklanan bölümün görevi, nasıl çalıştığı ve çipleri yan panelde. Ayrıntı aşağıda. |
+| Net | Bir pine, bir uca ya da bir net adına tıkla | Netin bütün uçları kalın bir telle, öteki her şeyin üstünde birleşir. İnceleme panelinde netin uçları listelenir. |
+| Bölüm | Araç çubuğu: **Etiketler**; bir etikete tıkla | Kartın bölgeleri, blokları ve çip grupları işaretli ve adlı. Tıklanan bölümün görevi, nasıl çalıştığı ve çipleri İnceleme panelinde. Ayrıntı aşağıda. |
 
 ### Görünüm: PCB ve breadboard
 
@@ -40,7 +47,12 @@ düzenleyicisi ikisinde de aynıdır; değişen yalnız yerleşimdir.
   parçadır: yalnız bu görünüm ilk açılınca yüklenir.
 - **Kurulum** (breadboard görünümünde): pano ve aşama seçilir, teller numara sırasıyla gezilir;
   sıradaki tel 3D'de vurgulanır ve tarifi yazılır (`CPU · BB07 c14 → BB08 h3, 42 mm, sarı`).
-  İşaretlenenler pano başına hatırlanır. Ayrıntı: [breadboard.md](breadboard.md).
+  İşaretlenenler pano başına, seçilen pano (PCB'de kart) da hatırlanır; seçim listesinde her
+  panonun ilerlemesi yazar. Üstteki **aşama haritası** kurulumu tek şeritte gösterir (aşama ya da
+  blok başına bir dilim, eni tel sayısıyla orantılı, dolgusu takılanlar; tıklanınca o aşamanın ilk
+  açık teline gidilir). Tel kartında her ucun **delik haritası** var: ucun deliği telin renginde,
+  aynı şeritteki (ya da raydaki) delikler vurgulu; PCB'de çipin bacak çizimi ve bacak numarası.
+  Ayrıntı: [breadboard.md](breadboard.md).
 
 ### Bölüm etiketleri
 
@@ -64,6 +76,12 @@ grubu; metinleri `cpu16/board/bolum-metin.ts`, hesap makinesininki `hesap8/bolum
   **İnceleme** sekmesinde başlık, yeri (kart › bölge › blok), görev, aşama ve deney, **Nasıl
   çalışır**, kurulum aşamaları, dışarıyla bağlantıları (sinyaller), alt bölümleri ve parçaları
   (tıklanınca çip seçilir). Esc seçimi kaldırır (önce kapı, net, çip, sonra bölüm).
+- **Anlatım** sekmesi: kartı blok blok gezen tur (bilgisayarda 7 kart ve 61 blok, hesap
+  makinesinde 14 blok). Önceki / Sonraki (ya da ← →) bir sonraki bölümü seçer, kamera oraya gider ve
+  bölüm paneli açılır; sahnede başka bir bölüme tıklanırsa tur onun bloğundan sürer.
+- Bir çip seçilince **İnceleme**'de önce grubunun anlatımı (**Devredeki görevi**), sonra datasheet
+  düzeninde **bacak düzeni** (her bacak canlı seviyesinin renginde, tıklanınca neti seçilir), en
+  sonda bağlantılar; VCC ve GND bacakları öbür uçlarını listelemez.
 
 Bütün plakalar tek bir ağda, çerçeveler kalın çizgi olarak çizilir: genel bakışta bir çizim çağrısı
 fazlası. Breadboard kurulum belgelerinin pano haritası aynı bölgeleri aynı renklerle çizer
@@ -73,8 +91,8 @@ fazlası. Breadboard kurulum belgelerinin pano haritası aynı bölgeleri aynı 
 
 - **yok**: tel çizilmez.
 - **seçili çip** (varsayılan): seçilen çipin (ya da pasifin) netlerinin bakır yolları kalın ve canlı
-  seviyenin renginde yanar; kartlar arası kısım konnektörden konnektöre, arka panel boyunca çizgidir. Yan
-  paneldeki **Bağlantılar** aynı uçları sayar. Bir uca tıklayınca o eleman seçilir, net adına tıklayınca
+  seviyenin renginde yanar; kartlar arası kısım konnektörden konnektöre, arka panel boyunca çizgidir. İnceleme
+  panelindeki **Bağlantılar** aynı uçları sayar. Bir uca tıklayınca o eleman seçilir, net adına tıklayınca
   net seçilir.
 - **hepsi**: bütün bilgisayarın kablolaması. Kart içinde her net en kısa yayılan ağaçla birleşir
   (gerçek bir atlama teli zinciri gibi). Kartlar birbirine yalnızca kenar konnektörlerinden
@@ -97,7 +115,7 @@ worker'ında (`pcbYol.worker.ts`) aynı anda kazınır, yollar kazındıkça gö
 
 ### VGA ekranı
 
-Sahnenin sağ üstünde **VGA** paneli, sahnede de aynı görüntüyü gösteren 3D monitör var.
+Sahnenin sağ altında **VGA** paneli, sahnede de aynı görüntüyü gösteren 3D monitör var.
 
 - **Metin kipi** (varsayılan): 80 × 30 karakter, 16 renk, imleç. Görüntü kapı seviyesindeki video
   kartının kendi bellek çiplerinden okunur: VRAM'in karakter ve renk şeritleri (iki 62256) ve
@@ -113,7 +131,7 @@ Sahnenin sağ üstünde **VGA** paneli, sahnede de aynı görüntüyü gösteren
 - **Klavye**: ekrana tıklayıp yaz. Tuşlar PS/2 tarama kodu olarak G/Ç kartının PS/2
   konnektörüne gider (saat ve veri hatları, 11 bitlik çerçeve). `gc-deneme.s` kodları
   `[1C]` diye yazar.
-- **UART**: yan paneldeki kutu UART'a giden baytları gösterir. Altındaki alana yazılanlar CH340
+- **UART**: CPU ve UART panelindeki kutu UART'a giden baytları gösterir. Altındaki alana yazılanlar CH340
   köprüsünün TX hattından kartın RX'ine 8N1 olarak gider. Köprü, kartın ~CTS hattı 1 iken
   bekler.
 
@@ -136,7 +154,7 @@ kapılıdır.
 
 ### Program düzenleyicisi
 
-Alt paneldeki **Program** sekmesi:
+Soldaki **Program** paneli (aktivite çubuğunun en üstteki simgesi):
 
 - **Örnekler**: kit programları (video-deneme, gc-deneme, bellek-deneme, onbellek-deneme),
   `hello.s` ve `merhaba-vga.c`. Bu C örneği printf ile UART'a yazar, VGA'ya da doğrudan yazar.
@@ -204,7 +222,7 @@ Saat seçicisinden 1 Hz ile 1 kHz arası sabit hızlar da seçilebilir.
   - bölüm etiketleri: `bolum.ts` (durum: kip, seçili bölüm), `bolumSahne.ts` (çerçeve, plaka ve
     kenar etiketi geometrisi; saf), `Bolumler3D.tsx` (sahnedeki çerçeveler, plakalar, vurgu,
     kamera), `BolumKatmani.tsx` (kenar etiketleri ve çizgileri, ipucu), `BolumPanel.tsx` (araç
-    çubuğu seçimi, yan panel); testler `cpu16/tests/bolum-bilgi.test.ts`, `bolum-3d.test.ts`,
+    çubuğu seçimi, İnceleme paneli); testler `cpu16/tests/bolum-bilgi.test.ts`, `bolum-3d.test.ts`,
     `bolum-belge.test.ts`;
   - saf yardımcılar: `wires.ts`, `screen.ts`, `screen-source.ts`, `beam.ts`, `serial-in.ts`,
     `program.ts`, `memview.ts`.

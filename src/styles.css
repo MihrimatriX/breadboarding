@@ -2,9 +2,12 @@
  * Silikon3D arayüzü.
  * Beş bölüm (6502 die, CPU16 tezgâhı, CPU16 kartı 3D, 8 bit hesap 3D, mimari) aynı iskeleti ve aynı
  * tasarım belirteçlerini kullanır:
- *   üst çubuk (marka, bölüm geçişi, canlı ölçümler, tema, görünüm ayarları, kısayollar, Başlangıç)
+ *   üst çubuk (IDE başlığı gibi ince: marka, editör sekmesi görünümlü bölümler, tema, görünüm ayarları,
+ *     kısayollar, Başlangıç)
  *   araç çubuğu (az sayıda büyük denetim; seyrek olanlar "⋯" menüsünde)
  *   çalışma alanı: sahne + (yeniden boyutlanabilir) alt panel | sekmeli, genişliği ayarlanabilir yan panel
+ *   durum çubuğu (en altta, ince, mono: canlı ölçümler ve bölümün kısa açıklaması)
+ * Alt panel IDE paneli gibi: sekme satırı ince, düzenleyicinin denetimleri o satırda; kod kenardan kenara.
  *
  * Tasarım kararları:
  *   Yazı: gövde 15 px, satır aralığı 1,55; en küçük yazı 13 px. Etiketler cümle düzeninde (büyük harf ve
@@ -63,8 +66,10 @@
   --ctl-h-sm: 2.25rem;
 
   /* iskelet */
-  --appbar-h: 4rem;
-  --toolbar-h: 4rem;
+  --baslatici-w: 10.5rem;
+  --etkinlik-w: 3.5rem;
+  --statusbar-h: 1.75rem;
+  --toolbar-h: 3.5rem;
   --gutter: var(--sp-6);
   --side-w: clamp(25rem, 30vw, 32.5rem);
   --icerik-en: 62ch;
@@ -533,86 +538,145 @@ kbd {
 [data-tip-hiza="son"]::after { left: auto; right: 0; transform: translateY(-3px); }
 [data-tip]:hover::after, [data-tip]:focus-visible::after { opacity: 1; transform: translate(-50%, 0); transition-delay: 0.45s; }
 [data-tip-hiza="son"]:hover::after, [data-tip-hiza="son"]:focus-visible::after { transform: none; }
+/* dikey aktivite çubuğunda (kart bölümleri) ipucu düğmenin sağında */
+@media (min-width: 901px) {
+  .etkinlik [data-tip]::after { top: 50%; left: calc(100% + 10px); right: auto; transform: translate(-3px, -50%); }
+  .etkinlik [data-tip]:hover::after, .etkinlik [data-tip]:focus-visible::after { transform: translate(0, -50%); }
+}
 .menu-btn[aria-expanded="true"][data-tip]::after { display: none; }
 
 /* ============================================================ iskelet */
-.shell { display: flex; flex-direction: column; height: 100%; min-width: 0; }
+.shell { position: relative; display: flex; flex-direction: column; height: 100%; min-width: 0; }
 
+/* üst çubuk: sol üstte tek büyük düğme (başlatıcı, ui/Shell.tsx AppHeader). Bölümler, görünüm,
+   kısayollar ve yardım onun kutusunda. Araç çubuğu olan bölümlerde düğme araç çubuğunun satırının
+   solunda durur (ayrı satır yok); araç çubuğu ona yer açar. */
 .appbar {
   position: relative;
   z-index: 30;
   flex: none;
   display: flex;
   align-items: center;
-  gap: var(--sp-6);
-  min-height: var(--appbar-h);
-  padding: 0 var(--sp-4) 0 var(--sp-5);
-  background: linear-gradient(180deg, var(--glow), transparent) var(--bar-bg);
-  border-bottom: 1px solid var(--border);
+  min-height: var(--toolbar-h);
+  padding: 0 var(--sp-2);
+  background: var(--surface-1);
   min-width: 0;
 }
-.brand { display: flex; align-items: center; gap: var(--sp-3); flex: 0 1 auto; min-width: 0; color: inherit; text-decoration: none; border-radius: var(--r-md); }
-.brand .logo { color: var(--text); flex: none; filter: drop-shadow(0 2px 6px var(--accent-soft)); transition: transform var(--t-med) var(--ease); }
+@media (min-width: 901px) {
+  .shell:has(> .toolbar) > .appbar { position: absolute; top: 0; left: 0; height: var(--toolbar-h); background: transparent; }
+  .shell:has(> .appbar) > .toolbar { padding-left: calc(var(--baslatici-w) + var(--sp-2) + var(--sp-4)); }
+  /* bölüm geçişi başlatıcıda; .modes yalnız telefondaki alt çubuk */
+  .appbar > .modes { display: none; }
+}
+.menu-btn.baslatici {
+  width: var(--baslatici-w);
+  height: calc(var(--toolbar-h) - 2 * var(--sp-2));
+  padding: 0 var(--sp-3) 0 var(--sp-2);
+  gap: var(--sp-3);
+  justify-content: flex-start;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg);
+}
+.menu-btn.baslatici:hover { background: var(--surface-3); }
+.baslatici .logo { flex: none; color: var(--text); }
+.baslatici .chev { margin-left: auto; flex: none; }
+.baslatici-ad { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; text-align: left; }
+.baslatici-ad small { font: 600 var(--fs-cap)/1.15 var(--mono); color: var(--text-faint); letter-spacing: -0.02em; }
+.baslatici-ad small em { font-style: normal; color: var(--accent); }
+.baslatici-ad b { max-width: 100%; font: 600 var(--fs-md)/1.25 var(--sans); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* başlatıcının kutusu: solda bölümler, sağda görünüm, kısayollar ve yardım */
+.appbar .menu-pop { flex-direction: row; align-items: flex-start; gap: var(--sp-6); width: 50rem; max-width: calc(100vw - 32px); max-height: calc(100vh - var(--toolbar-h) - var(--sp-6)); overflow: auto; }
+.baslatici-kol { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; flex: 1 1 20rem; }
+.bolum-listesi { display: flex; flex-direction: column; gap: 2px; }
+.bolum-listesi a { display: flex; align-items: flex-start; gap: var(--sp-3); padding: var(--sp-3); border-radius: var(--r-md); color: inherit; text-decoration: none; }
+.bolum-listesi a .simge { flex: none; width: 20px; height: 20px; margin-top: 1px; color: var(--text-faint); }
+.bolum-listesi a > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.bolum-listesi b { font-weight: 600; color: var(--text); }
+.bolum-listesi small { font-size: var(--fs-sm); line-height: 1.45; color: var(--text-muted); }
+.bolum-listesi a:hover { background: var(--surface-3); }
+.bolum-listesi a[aria-current="page"] { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+.bolum-listesi a[aria-current="page"] .simge { color: var(--accent); }
+.baslatici-giris { padding: 0 var(--sp-3); font-size: var(--fs-sm); }
+.baslatici-kisayol summary { cursor: pointer; font: 600 var(--fs-md)/1.3 var(--sans); color: var(--text); }
+.baslatici-kisayol[open] summary { margin-bottom: var(--sp-3); }
+.baslatici-kisayol .keys { width: auto; }
+.baslatici-kol > button { justify-content: flex-start; gap: var(--sp-2); }
+/* 1680 px'in altında başlatıcı yalnız logo (bölümün adı ipucunda ve ekran okuyucuda): araç çubuğu tek satır kalsın */
+@media (max-width: 1680px) and (min-width: 901px) {
+  :root { --baslatici-w: 4rem; }
+  .menu-btn.baslatici { gap: var(--sp-2); padding: 0 var(--sp-2); }
+  .baslatici-ad { display: none; }
+}
+.brand { display: flex; align-items: center; gap: var(--sp-2); flex: 0 1 auto; min-width: 0; padding: 0 var(--sp-4); color: inherit; text-decoration: none; border-right: 1px solid var(--border); }
+.brand .logo { color: var(--text); flex: none; transition: transform var(--t-med) var(--ease); }
 a.brand:hover .logo { transform: rotate(-6deg) scale(1.05); }
-a.brand:focus-visible { outline-offset: 4px; }
+a.brand:focus-visible { outline-offset: -3px; }
 .logo .logo-zemin { fill: var(--surface-2); stroke: var(--border-strong); }
 .logo .logo-cekirdek { fill: var(--accent-bg); }
-.brand-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.brand h1 { font: 700 1.0625rem/1.15 var(--sans); letter-spacing: -0.01em; white-space: nowrap; }
-.brand h1 em { font-style: normal; color: var(--accent); margin-left: 1px; }
-.brand-sub { font: 400 var(--fs-cap)/1.3 var(--sans); color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 30ch; }
-.appbar-end { margin-left: auto; display: flex; align-items: center; gap: var(--sp-5); min-width: 0; }
-.appbar-tools { display: flex; align-items: center; gap: var(--sp-1); flex: none; padding-left: var(--sp-4); border-left: 1px solid var(--border); }
+.brand h1 { font: 600 var(--fs-base)/1 var(--mono); letter-spacing: -0.02em; white-space: nowrap; }
+.brand h1 em { font-style: normal; color: var(--accent); }
 
-/* canlı ölçümler: etiket üstte (küçük, soluk), değer altta; çerçevesiz */
-.meter {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-5);
-  white-space: nowrap;
-  min-width: 0;
-}
-.meter .m { display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 0; }
-.meter .m-label { font: 400 var(--fs-cap)/1.15 var(--sans); color: var(--text-faint); }
-.meter b { color: var(--text); font: 600 var(--fs-base)/1.2 var(--sans); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; }
-.meter .m.mono b { font-family: var(--mono); font-weight: 500; }
-.meter .bench-status { align-self: center; }
-
-/* bölüm geçişi: simge + ad; seçili bölüm vurgu renginde hafif zeminle */
-.modes { display: flex; gap: var(--sp-1); flex: none; }
+/* bölüm geçişi: editör sekmeleri (simge + ad, mono) */
+.modes { display: flex; flex: none; min-width: 0; }
 .modes a {
   position: relative;
   display: inline-flex;
   align-items: center;
   gap: var(--sp-2);
-  height: var(--ctl-h);
-  padding: 0 var(--sp-4) 0 var(--sp-3);
-  border-radius: var(--r-md);
-  font: 500 var(--fs-base)/1 var(--body);
+  margin-bottom: -1px;
+  padding: 0 var(--sp-4) 1px;
+  border-right: 1px solid var(--border);
+  font: 500 var(--fs-sm)/1 var(--mono);
   color: var(--text-muted);
   text-decoration: none;
   white-space: nowrap;
   transition: background-color var(--t-fast), color var(--t-fast);
 }
 .modes a .simge { color: var(--text-faint); transition: color var(--t-fast); }
-.modes a:hover { color: var(--text); background: var(--surface-2); }
+.modes a:hover { color: var(--text); background: var(--surface-1); }
 /* kısa ad yalnız telefondaki alt çubukta */
 .modes-kisa { display: none; }
 .modes a:hover .simge { color: var(--text-muted); }
-.modes a[aria-current="page"] { background: var(--accent-soft); color: var(--text); font-weight: 600; box-shadow: inset 0 0 0 1px var(--accent-line); }
+.modes a[aria-current="page"] { background: var(--surface-1); color: var(--text); font-weight: 600; }
 .modes a[aria-current="page"] .simge { color: var(--accent); }
-/* seçili bölümün altında, üst çubuğun kenarına oturan ince vurgu çizgisi */
 .modes a[aria-current="page"]::before {
   content: "";
   position: absolute;
-  left: 30%;
-  right: 30%;
-  bottom: calc(-1 * (var(--appbar-h) - var(--ctl-h)) / 2);
+  left: 0;
+  right: 0;
+  top: 0;
   height: 2px;
-  border-radius: 2px 2px 0 0;
   background: var(--accent);
 }
-.modes a:focus-visible { outline-offset: 1px; }
+.modes a:focus-visible { outline-offset: -3px; }
+
+/* durum çubuğu: en altta, ince; canlı ölçümler solda (etiket + değer yan yana, mono), bölümün kısa
+   açıklaması sağda. .shell sütununun sonuna order ile iner. */
+.statusbar {
+  order: 99;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+  height: var(--statusbar-h);
+  padding: 0 var(--sp-4);
+  font: 400 var(--fs-cap)/1 var(--mono);
+  color: var(--text-faint);
+  background: var(--surface-0);
+  border-top: 1px solid var(--border);
+  white-space: nowrap;
+  min-width: 0;
+}
+.statusbar:not(:has(> *)) { display: none; }
+/* odak modu (F): durum çubuğu da gizli (başlatıcı yer tutmaz, kalır) */
+:root[data-odak="1"] .statusbar { display: none; }
+.meter { display: flex; align-items: center; gap: var(--sp-5); min-width: 0; overflow: hidden; }
+.meter .m { display: inline-flex; align-items: baseline; gap: var(--sp-2); min-width: 0; }
+.meter .m-label { color: var(--text-faint); }
+.meter b { color: var(--text); font: 500 var(--fs-cap)/1 var(--mono); overflow: hidden; text-overflow: ellipsis; }
+.meter .bench-status { height: 1.25rem; padding: 0 var(--sp-2); font: 500 var(--fs-cap)/1 var(--mono); }
+.sb-context { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 
 /* araç çubuğu: öbekler boşlukla, yalnız ince bir ayraçla ayrılır. --tb-ara: ayracın iki yanındaki boşluk
    (dar ekranda daralır); panel düğmeleri (tb-end) her genişlikte sağda. */
@@ -626,7 +690,7 @@ a.brand:focus-visible { outline-offset: 4px; }
   flex-wrap: wrap;
   gap: var(--sp-3) 0;
   min-height: var(--toolbar-h);
-  padding: var(--sp-3) var(--sp-4) var(--sp-3) var(--gutter);
+  padding: var(--sp-2) var(--sp-4) var(--sp-2) var(--gutter);
   background: var(--surface-1);
   border-bottom: 0;
   box-shadow: var(--bar-shadow);
@@ -712,7 +776,6 @@ a.brand:focus-visible { outline-offset: 4px; }
 .keys dt { padding-right: var(--sp-4); }
 .keys dd { color: var(--text-muted); font-size: var(--fs-base); }
 .keys div.ayrac > * { padding-top: var(--sp-3); border-top: 1px solid var(--border); }
-.menu-label { font: 500 var(--fs-base) var(--body); }
 
 /* çalışma alanı */
 .workspace { flex: 1 1 auto; display: flex; min-height: 0; min-width: 0; }
@@ -751,7 +814,7 @@ a.brand:focus-visible { outline-offset: 4px; }
   gap: var(--sp-7);
   scrollbar-gutter: stable;
 }
-.side-body > section, .side-body > .inspector > section { display: flex; flex-direction: column; gap: var(--sp-4); }
+.side-body > section, .side-body > .inspector > section, .anlatim > section { display: flex; flex-direction: column; gap: var(--sp-4); }
 .side-foot { flex: none; padding: var(--sp-3) var(--sp-6); border-top: 1px solid var(--border); font-size: var(--fs-cap); line-height: 1.5; color: var(--text-faint); }
 .inspector { display: flex; flex-direction: column; gap: var(--sp-7); min-width: 0; }
 
@@ -1118,10 +1181,38 @@ button.ozet-satir:hover .ozet-cubuk i { background: var(--accent); }
   pointer-events: none;
 }
 
-.bench-main > .bench-src { flex: none; height: var(--editor-h, 320px); }
-.bench-src textarea { flex: 1 1 auto; min-height: 120px; resize: none; white-space: pre; }
-.bench-main > .bench-src.fill { flex: 1 1 auto; height: auto; }
-.bench-errors { margin: 0; padding: var(--sp-3) var(--sp-4) var(--sp-3) 2.25rem; max-height: 8rem; overflow: auto; color: var(--danger); font: 400 var(--fs-sm)/1.6 var(--mono); background: var(--danger-soft); border-radius: var(--r-md); flex: none; }
+/* düzenleyici: tezgâhın altında kenardan kenara IDE paneli (başlık satırı, kod, durum şeridi) */
+.bench-main > .bench-src { flex: none; height: var(--editor-h, 320px); gap: 0; margin: 0 calc(-1 * var(--gutter)) calc(-1 * var(--sp-5)); background: var(--surface-1); border-top: 1px solid var(--border); }
+.bench-main > .bench-src.fill { flex: 1 1 auto; height: auto; margin-top: calc(-1 * var(--sp-6)); border-top: 0; }
+.bench-src .panel-head { min-height: 2.75rem; padding: var(--sp-1) var(--sp-3) var(--sp-1) var(--sp-4); gap: var(--sp-2); row-gap: var(--sp-1); border-bottom: 1px solid var(--border); }
+.bench-src .panel-head h2 { font: 600 var(--fs-sm)/1 var(--mono); }
+.bench-src .panel-head select { flex: 0 1 18rem; min-width: 8rem; }
+.bench-src .panel-head .hint-text { flex: 1 1 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* renkli editör (cpu16/KodAlani.tsx): saydam yazılı textarea, arkasında aynı ölçülerle renkli <pre> */
+.kod-alani { flex: 1 1 auto; min-height: 120px; display: grid; position: relative; overflow: hidden; background: var(--surface-1); }
+.kod-alani > pre, .kod-alani > textarea {
+  grid-area: 1 / 1; margin: 0; min-height: 0; padding: var(--sp-3) var(--sp-5); border: 0; border-radius: 0;
+  font: 400 var(--fs-base)/1.65 var(--mono); tab-size: 8; white-space: pre; letter-spacing: normal; background: transparent;
+}
+.kod-alani > pre { overflow: hidden; pointer-events: none; color: var(--text); }
+.kod-alani > pre > code { display: inline-block; min-width: 100%; font: inherit; will-change: transform; }
+.kod-alani > textarea { resize: none; color: transparent; caret-color: var(--text); overflow: auto; }
+.kod-alani > textarea::selection { background: var(--accent-line); }
+.kod-alani > textarea:focus-visible { outline: none; }
+.kod-alani > textarea:focus { box-shadow: inset 2px 0 0 var(--focus); }
+.kd-satir { display: block; margin: 0 calc(-1 * var(--sp-5)); padding: 0 var(--sp-5); }
+.kd-hata { background: var(--danger-soft); box-shadow: inset 3px 0 0 var(--danger); }
+/* TODO(human): sözdizimi renkleri. Yalnız kontrast denetiminden geçmiş belirteçler; kırmızı yalnız hata */
+.kd-yorum { color: var(--text-faint); font-style: italic; }
+.kd-dizgi { color: var(--ok); }
+.kd-sayi { color: var(--warn); }
+.kd-anahtar, .kd-komut { color: var(--accent); font-weight: 600; }
+.kd-tip, .kd-yazmac { color: var(--z); }
+.kd-islev, .kd-etiket { color: var(--net); }
+.kd-yonerge { color: var(--z); font-weight: 600; }
+.bench-src .panel-foot { padding: var(--sp-1) var(--sp-4); min-height: var(--statusbar-h); border-top: 1px solid var(--border); }
+.bench-src .panel-foot .info { margin: 0; font: 400 var(--fs-cap)/1.45 var(--mono); max-width: none; }
+.bench-errors { margin: 0; padding: var(--sp-3) var(--sp-4) var(--sp-3) 2.25rem; max-height: 8rem; overflow: auto; color: var(--danger); font: 400 var(--fs-sm)/1.6 var(--mono); background: var(--danger-soft); flex: none; }
 
 /* CPU16 yazmaçları: PC büyük; r0–r7 çerçevesiz ızgarada, değerin altında 16 bitlik ışık şeridi */
 .bench-regs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-4) var(--sp-4); padding: var(--sp-4) var(--sp-5); background: var(--surface-inset); border-radius: var(--r-lg); }
@@ -1163,6 +1254,67 @@ input.addr { width: 8ch; height: var(--ctl-h-sm); text-align: center; flex: none
 
 /* ============================================================ CPU16 kartı 3D */
 .kart { --side-w: clamp(26rem, 30vw, 33rem); }
+.kart:not(.hesap) { --side-w: clamp(28rem, 36vw, 46rem); }
+
+/* kart bölümleri VS Code gibi (board3d/BoardView.tsx, Iskelet): en solda aktivite çubuğu, yanında sol
+   panel, sağda bütün yüksekliğiyle sahne; başlatıcı düğmesi aktivite çubuğunun tepesinde, ayrı satır yok */
+.etkinlik {
+  flex: none;
+  width: var(--etkinlik-w);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-2) 0;
+  background: var(--surface-0);
+  border-right: 1px solid var(--border);
+}
+.etkinlik .icon-btn { width: 2.75rem; height: 2.75rem; color: var(--text-faint); border-radius: var(--r-md); }
+.etkinlik .icon-btn:hover { color: var(--text); }
+.etkinlik .icon-btn[aria-pressed="true"] { color: var(--text); background: var(--surface-2); }
+.etkinlik .icon-btn[aria-pressed="true"]::before {
+  content: "";
+  position: absolute;
+  left: calc(-1 * (var(--etkinlik-w) - 2.75rem) / 2);
+  top: 20%;
+  bottom: 20%;
+  width: 2px;
+  border-radius: 0 2px 2px 0;
+  background: var(--accent);
+}
+.etkinlik-alt { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); }
+.etkinlik-alt .icon-btn { color: var(--text-faint); }
+.side.sol { border-left: 0; border-right: 1px solid var(--border); animation: none; }
+.side-head { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); min-height: 2.75rem; padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-5); border-bottom: 1px solid var(--border); }
+.side-head h2 { flex: 1 0 auto; font: 600 var(--fs-cap)/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.side-head .editor-bar { flex-wrap: wrap; --ctl-h: 2rem; }
+.side-head .editor-bar :is(button, select) { font-size: var(--fs-sm); }
+.side.sol > .editor { flex: 1 1 auto; height: auto; }
+/* sahnenin denetimleri sahnenin üstünde yüzer: her öbek ayrı, yarı saydam bir kapsül */
+.app.kart .stage > .toolbar {
+  --tb-ara: 0;
+  position: absolute;
+  top: var(--sp-3);
+  left: var(--sp-3);
+  right: var(--sp-3);
+  z-index: 4;
+  min-height: 0;
+  gap: var(--sp-2);
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  pointer-events: none;
+}
+.app.kart .stage > .toolbar > .tb-group { pointer-events: auto; gap: var(--sp-1); padding: var(--sp-1); background: var(--overlay); border-radius: var(--r-lg); box-shadow: var(--shadow-float); backdrop-filter: blur(6px); }
+.app.kart .stage > .toolbar .tb-group + .tb-group::before, .app.kart .stage > .toolbar .tb-label { display: none; }
+/* VGA paneli sağ altta: üst kenar yüzen denetimlerin (dar sahnede iki satır olabilir) */
+.app.kart .vga-panel { top: auto; bottom: var(--sp-4); }
+@media (min-width: 901px) {
+  .app.kart > .appbar { position: absolute; top: 0; left: 0; width: var(--etkinlik-w); height: var(--etkinlik-w); min-height: 0; padding: 0; justify-content: center; background: transparent; }
+  .app.kart .menu-btn.baslatici { width: 2.75rem; height: 2.75rem; padding: 0; justify-content: center; }
+  .app.kart .baslatici .chev, .app.kart .baslatici-ad { display: none; }
+  .app.kart .etkinlik { padding-top: calc(var(--etkinlik-w) + var(--sp-1)); }
+}
 
 .vga-panel {
   position: absolute;
@@ -1257,10 +1409,18 @@ p .lv, b.lv { display: inline; padding: 1px 5px; }
 .bottom-body .analyzer { gap: var(--sp-3); min-height: 0; }
 .bottom-body .analyzer > .row.between { flex-wrap: wrap; gap: var(--sp-2) var(--sp-4); }
 .bottom-body .analyzer > .row.between > .muted { font-size: var(--fs-sm); color: var(--text-faint); }
-.editor { display: flex; flex-direction: column; gap: var(--sp-3); height: 100%; min-height: 0; }
-.editor-bar { flex-wrap: wrap; row-gap: var(--sp-2); }
-.editor-bar select { flex: 0 1 22rem; min-width: 10rem; }
-.editor-status { flex: none; font-size: var(--fs-sm); line-height: 1.4; color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* IDE paneli: sekme / başlık satırı ince ve denetimleri küçük (--ctl-h yerelde küçülür: düğme, seçim
+   kutusu ve .seg boyları ondan türer); düzenleyici kenardan kenara, altında tek satırlık durum şeridi.
+   Tezgâhın düzenleyicisi (.bench-src) de aynı biçimde. */
+.bottom .tabbar { min-height: 2.75rem; }
+.bottom .tabbar-actions, .bench-src .panel-head { --ctl-h: 2rem; --ctl-h-sm: 1.625rem; }
+.bottom .tabbar-actions { padding: 2px; }
+.bottom .tabbar-actions :is(button, select), .bench-src .panel-head :is(button, select) { font-size: var(--fs-sm); }
+.bottom-body:has(> .editor) { padding: 0; }
+.editor { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.editor-bar { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.editor-bar select { flex: 0 1 18rem; min-width: 8rem; }
+.editor-status { flex: none; padding: 0 var(--sp-4); font: 400 var(--fs-cap)/var(--statusbar-h) var(--mono); color: var(--text-faint); background: var(--surface-1); border-top: 1px solid var(--border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .editor-status.err { color: var(--danger); }
 .editor-body {
   flex: 1;
@@ -1269,15 +1429,15 @@ p .lv, b.lv { display: inline; padding: 1px 5px; }
   grid-template-columns: auto minmax(0, 1fr) minmax(0, 22rem);
   overflow: hidden;
   background: var(--surface-inset);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
 }
 .editor-body:not(:has(.errors)) { grid-template-columns: auto minmax(0, 1fr); }
 .editor-body .gutter { margin: 0; padding: var(--sp-3) var(--sp-2) var(--sp-3) var(--sp-4); font: 400 var(--fs-base)/1.65 var(--mono); color: var(--text-faint); opacity: 0.7; text-align: right; overflow: hidden; user-select: none; }
 .editor-body .gutter .bad { color: var(--danger); font-weight: 700; opacity: 1; }
-.editor-body textarea { height: 100%; margin: 0; padding: var(--sp-3) var(--sp-4); border: 0; border-radius: 0; resize: none; font: 400 var(--fs-base)/1.65 var(--mono); white-space: pre; overflow: auto; tab-size: 2; background: transparent; box-shadow: none; }
-.editor-body textarea:focus-visible { outline: none; }
-.editor-body:focus-within { border-color: var(--focus); }
+/* renkli editör (.kod-alani) iki katmanıyla; Tab iki boşluk yazar */
+.editor-body .kod-alani { min-height: 0; }
+.editor-body .kod-alani > * { tab-size: 2; }
+.editor-body .kod-alani > textarea:focus { box-shadow: none; }
+.editor-body:focus-within { box-shadow: inset 2px 0 0 var(--focus); }
 .editor-body .errors { margin: 0; padding: var(--sp-3) var(--sp-4); list-style: none; overflow: auto; font: 400 var(--fs-sm)/1.6 var(--mono); color: var(--danger); background: var(--danger-soft); border-left: 1px solid var(--border); }
 .editor-body .errors .link { color: var(--danger); }
 
@@ -1374,8 +1534,8 @@ p .lv, b.lv { display: inline; padding: 1px 5px; }
   left: var(--sp-6);
   bottom: var(--sp-6);
   width: min(46rem, calc(100vw - 2 * var(--sp-6)));
-  /* üst çubukla araç çubuğunun altında kalsın */
-  max-height: calc(100vh - var(--appbar-h) - var(--toolbar-h) - 2 * var(--sp-6));
+  /* araç çubuğunun altında kalsın */
+  max-height: calc(100vh - var(--toolbar-h) - 2 * var(--sp-6));
   overflow: auto;
   display: flex;
   flex-direction: column;
@@ -1482,65 +1642,35 @@ p .lv, b.lv { display: inline; padding: 1px 5px; }
 .side-body[role="tabpanel"] { animation: belir var(--t-fast) var(--ease); }
 
 /* ============================================================ dar ekranlar */
-@media (max-width: 1679px) {
-  .brand-sub { display: none; }
-}
-@media (max-width: 1500px) {
+@media (max-width: 1100px) {
   .meter .m.ikincil { display: none; }
 }
-/* dizüstü (1280–1440 px): bölüm adları kısalmaz, araç çubuğu sıkılaşır */
+/* dizüstü (1280–1440 px): araç çubuğu sıkılaşır */
 @media (max-width: 1440px) {
-  .appbar { gap: var(--sp-5); }
-  .menu-label { display: none; }
-  .modes a { padding: 0 var(--sp-3) 0 var(--sp-2); }
   .toolbar { --gutter: var(--sp-5); --tb-ara: var(--sp-4); }
 }
 @media (max-width: 1340px) {
   .tb-label.kisalir { display: none; }
-  .appbar-end { gap: var(--sp-4); }
 }
-/* daha dar: seçili olmayan bölümler yalnız simge (adı ipucunda, ekran okuyucuda duruyor). Daha geniş
-   ekranda da üst çubuk sığmazsa aynısı ve sonraki kademeler ui/sikisma.ts'ten gelir (aşağıda). */
 @media (max-width: 1240px) {
-  .modes a:not([aria-current="page"]) { padding: 0 var(--sp-3); gap: 0; }
-  .modes a:not([aria-current="page"]) .modes-ad { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .tb-label { display: none; }
 }
-/* üst çubuk sığmayınca (ui/sikisma.ts, data-sikisma="1 2 …"): 1 bölüm adları simge, 2 ikincil ölçümler
-   gizli, 3 ölçüm etiketleri görünmez, 4 marka adı görünmez, 5 durum rozeti yalnız nokta, 6 seçili bölümün
-   adı da simge. Telefonda üst çubuk satır kırar: kademe yok. */
-@media (min-width: 901px) {
-  .appbar[data-sikisma~="1"] .modes a:not([aria-current="page"]) { padding: 0 var(--sp-3); gap: 0; }
-  .appbar[data-sikisma~="1"] .modes a:not([aria-current="page"]) .modes-ad,
-  .appbar[data-sikisma~="6"] .modes a .modes-ad,
-  .appbar[data-sikisma~="3"] .meter .m-label,
-  .appbar[data-sikisma~="4"] .brand-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .appbar[data-sikisma~="2"] .meter .m.ikincil { display: none; }
-  .appbar[data-sikisma~="3"] .meter .m { gap: 0; }
-  .appbar[data-sikisma~="5"] .meter .bench-status { gap: 0; padding: 0 var(--sp-2); font-size: 0; }
-  .appbar[data-sikisma~="6"] .modes a { padding: 0 var(--sp-3); gap: 0; }
-}
-/* ölçüm etiketleri görünmez olur ama ekran okuyucuda kalır (ve değerin ipucunda) */
-@media (max-width: 1100px) and (min-width: 901px) {
-  .meter .m-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .meter .m { gap: 0; }
-}
-/* telefon ve dar tablet (≤ 900 px): sayfa aşağı kayar; üst çubuk tek ince satır (logo, canlı ölçümler,
-   Görünüm ve yardım; tema, dil ve kısayollar Görünüm menüsünde), bölüm geçişi ekranın altında sabit
-   bir sekme çubuğu (simge + kısa ad). Araç çubuğu tek satır, yana kayar; açılır menüler alttan açılan
+/* telefon ve dar tablet (≤ 900 px): sayfa aşağı kayar; üst çubuk tek ince satır (başlatıcı düğmesi),
+   bölüm geçişi ayrıca ekranın altında sabit bir sekme
+   çubuğu (simge + kısa ad), durum çubuğu onun hemen üstünde. Araç çubuğu tek satır, yana kayar; açılır menüler alttan açılan
    bir sayfa olur (kayan çubuğun içinde kesilmesin). */
 @media (max-width: 900px) {
   :root { --alt-cubuk: calc(3.5rem + env(safe-area-inset-bottom, 0px)); }
   body { overflow: auto; padding-bottom: var(--alt-cubuk); }
   html, body, #root { height: auto; }
   .shell { height: auto; min-height: 100%; animation: none; }
-  .appbar { flex-wrap: nowrap; gap: var(--sp-3); min-height: 3.5rem; padding: 0 var(--sp-2) 0 var(--sp-4); position: sticky; top: 0; }
-  .appbar-end { gap: var(--sp-2); min-width: 0; }
-  .appbar-tools { border-left: 0; padding-left: 0; }
-  .appbar-tools .dil-btn, .appbar-tools .tema-btn, .appbar-tools .kisayol-btn { display: none; }
-  .meter { gap: var(--sp-4); min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  .appbar { min-height: 3.5rem; position: sticky; top: 0; border-bottom: 1px solid var(--border); }
+  .appbar .menu-pop { flex-direction: column; }
+  /* durum çubuğu: ekranın altında, bölüm çubuğunun hemen üstünde; ölçümler yana kayar */
+  .statusbar { position: sticky; bottom: var(--alt-cubuk); z-index: 40; }
+  .sb-context { display: none; }
+  .meter { gap: var(--sp-4); overflow-x: auto; scrollbar-width: none; }
   .meter .m { flex: none; }
-  .meter .m.ikincil { display: none; }
   /* alttaki bölüm çubuğu: altı eşit sekme */
   .modes {
     position: fixed;
@@ -1563,14 +1693,17 @@ p .lv, b.lv { display: inline; padding: 1px 5px; }
     gap: 3px;
     height: auto;
     min-width: 0;
+    margin: 0;
     padding: 0 2px;
+    border: 0;
+    border-radius: var(--r-md);
     font-size: var(--fs-cap);
   }
   .modes a .simge { width: 20px; height: 20px; }
   .modes a .modes-ad, .modes a:not([aria-current="page"]) .modes-ad { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .modes a .modes-kisa { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 var(--fs-cap)/1.1 var(--sans); }
-  .modes a[aria-current="page"] { box-shadow: none; }
-  .modes a[aria-current="page"]::before { top: calc(-1 * var(--sp-1)); bottom: auto; left: 32%; right: 32%; border-radius: 0 0 2px 2px; }
+  .modes a[aria-current="page"] { background: var(--accent-soft); }
+  .modes a[aria-current="page"]::before { top: calc(-1 * var(--sp-1)); left: 32%; right: 32%; border-radius: 0 0 2px 2px; }
   /* araç çubuğu: tek satır, yana kayar; sağ kenar soluklaşır (devamı olduğunu gösterir) */
   .toolbar, .app.kart .toolbar {
     flex-wrap: nowrap;
@@ -1600,15 +1733,23 @@ p .lv, b.lv { display: inline; padding: 1px 5px; }
     animation: yuksel var(--t-med) var(--ease);
   }
   .workspace { flex-direction: column; }
+  /* kart bölümleri: aktivite çubuğu yatay, sahnenin üstünde; sol panel sahnenin altında */
+  .etkinlik { order: -1; width: auto; flex-direction: row; justify-content: center; padding: var(--sp-1); border-right: 0; border-bottom: 1px solid var(--border); }
+  .etkinlik .icon-btn[aria-pressed="true"]::before { display: none; }
+  .etkinlik-alt { margin: 0 0 0 auto; flex-direction: row; }
+  .app.kart .center { order: 1; }
+  .side.sol { order: 2; border-right: 0; }
+  .side.sol > .editor { height: 60vh; }
   .stage { flex: none; height: 62vh; height: 62svh; }
   /* panel sahnenin altında: yandan kayarak açılmaz (açılırken sayfa yana taşıyordu) */
   .side { width: 100% !important; border-left: 0; border-top: 1px solid var(--border); animation: none; }
   .side-body { overflow: visible; }
   .splitter { display: none; }
   .bench-main { padding: var(--sp-4); }
+  .bench-main > .bench-src, .bench-main > .bench-src.fill { margin: 0 calc(-1 * var(--sp-4)) calc(-1 * var(--sp-4)); }
   .monitor { flex: none; height: 75vw; }
   .bench-main > .bench-src { height: auto; }
-  .bench-src textarea { min-height: 260px; }
+  .bench-src .kod-alani { min-height: 260px; }
   .tabbar { flex-wrap: wrap; }
   .tabbar-actions { flex: 1 1 100%; margin-left: 0; padding-bottom: var(--sp-2); }
   .tabbar-actions .chips { flex-wrap: wrap; overflow: visible; }
@@ -1621,7 +1762,6 @@ p .lv, b.lv { display: inline; padding: 1px 5px; }
   /* bölümlü öbek sığmazsa satır kırar (sayfa yana kaymasın); araç çubuğundaki öbekler kayar, kırılmaz */
   .seg { flex: 0 1 auto; flex-wrap: wrap; min-width: 0; }
   .toolbar .seg { flex: none; flex-wrap: nowrap; }
-  .brand-text { display: none; }
 }
 /* ============================================================ bölüm etiketleri (3D kart görünümü) */
 /* Sahnedeki bölge / blok çerçeveleri ve plakaları 3D'de (Bolumler3D); burada kenar etiketleri, çip
@@ -1708,6 +1848,63 @@ button.etiket.bolum-etiketi:hover:not(:disabled) { background: var(--surface-3);
 .bolum-sinyaller { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-2); }
 .bolum-sinyaller code { padding: 1px 0.375rem; border-radius: var(--r-sm); background: var(--surface-inset); color: var(--net); font-size: var(--fs-sm); }
 .bolum-parcalar span { font-family: var(--sans); color: var(--text-muted); }
+.bolum-blok h3 .hint-text { font-weight: 400; margin-left: var(--sp-2); }
+
+/* İnceleme: parçanın devredeki görevi (grubunun anlatımı) ve bacak düzeni */
+.parca-anlatim { padding: var(--sp-4); border-radius: var(--r-lg); background: var(--surface-2); }
+.parca-anlatim p { margin: 0; line-height: 1.55; }
+.parca-anlatim > .link { align-self: flex-start; }
+.pin-diyagrami { width: 100%; max-width: 21rem; height: auto; align-self: center; overflow: visible; }
+.pd-govde { fill: var(--surface-inset); stroke: var(--border-strong); stroke-width: 1; }
+.pd-centik { fill: var(--surface-1); stroke: var(--border-strong); stroke-width: 1; }
+.pd-parca { fill: var(--text-faint); font: 600 9px var(--mono); }
+.pd-no { fill: var(--text-faint); font: 500 8px var(--mono); }
+.pd-ad { fill: var(--text); font: 500 8.5px var(--mono); }
+.pd-bacak { stroke: none; }
+.pd-bacak.l0 { fill: var(--lv0); }
+.pd-bacak.l1 { fill: var(--lv1); }
+.pd-bacak.l2 { fill: var(--lv2); opacity: 0.6; }
+.pd-bacak.l3 { fill: var(--lv3); }
+.pd-pin.secilir { cursor: pointer; }
+.pd-pin.secilir:hover .pd-ad, .pd-pin.sec .pd-ad { fill: var(--link); font-weight: 700; }
+.pd-pin.sec .pd-bacak { stroke: var(--accent); stroke-width: 2; }
+.link-row.besleme { padding-block: var(--sp-2); }
+.link-row.besleme .pname, .link-row.besleme .netname { color: var(--text-muted); }
+
+/* yan panelin sekmeleri dar panelde (tablet ≤ 24rem, telefon) de sığsın: sekmeler sıkılaşır */
+.side { container-type: inline-size; }
+@container (max-width: 25rem) {
+  .side .tabbar { padding-inline: var(--sp-2); }
+  .side .tabs [role="tab"] { padding-inline: 0.375rem; }
+}
+
+/* yan panel: Anlatım sekmesi (tur gezgini üstte yapışık, altında bölüm paneli) */
+.anlatim { display: flex; flex-direction: column; gap: var(--sp-5); min-width: 0; }
+.an-gezgin {
+  position: sticky;
+  top: calc(-1 * var(--sp-6));
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin: calc(-1 * var(--sp-6)) calc(-1 * var(--sp-6)) 0;
+  padding: var(--sp-4) var(--sp-6);
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--border);
+}
+.an-ust { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; }
+.an-ust select { flex: 1 1 auto; min-width: 0; }
+.an-sayac { flex: none; font: 500 var(--fs-sm)/1 var(--mono); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.an-bar { position: relative; height: 4px; border-radius: 2px; background: var(--surface-3); overflow: hidden; }
+.an-bar > span { position: absolute; inset: 0 auto 0 0; background: var(--accent); border-radius: inherit; transition: width var(--t-fast); }
+.an-dugmeler { display: grid; grid-template-columns: 1fr 1.6fr; gap: var(--sp-2); }
+/* telefonda sayfa kayar (yan panel kaymaz): gezgin yapışmaz, üst çubuğun altına girmesin */
+@media (max-width: 900px) {
+  .an-gezgin { position: static; }
+}
+.an-giris { display: flex; flex-direction: column; gap: var(--sp-3); }
+.an-giris h2 { font: 600 var(--fs-lg)/1.3 var(--body); }
+.an-giris p { color: var(--text-muted); line-height: 1.6; max-width: var(--icerik-en); }
 
 /* dar ekran: araç çubuğu. 1100 px'in altında öbekler satır kırabilir: ayraç satır başında kalmasın diye
    ayraç yok, öbekler yalnız boşlukla ayrılır. 900 px'in altında öbeğin içi de kırılır (sayfa yana kaymaz).
@@ -1731,6 +1928,10 @@ button.etiket.bolum-etiketi:hover:not(:disabled) { background: var(--surface-3);
 @media (max-width: 1240px) {
   .toolbar .tb-group > button:not([class]) { width: var(--ctl-h); padding: 0; gap: 0; font-size: 0; }
   .toolbar, .app.kart .toolbar { column-gap: var(--sp-4); }
+}
+/* kartların araç çubuğu en kalabalığı, solunda başlatıcı da var: sakin düğmeler daha erken simge */
+@media (max-width: 1440px) {
+  .app.kart .toolbar .tb-group > button:not([class]) { width: var(--ctl-h); padding: 0; gap: 0; font-size: 0; }
 }
 /* "Yazı boyutu: büyük"te bilgisayarın araç çubuğu en geniş ekranda da sığmıyordu: sakin düğmeler hep
    yalnız simge; 1700 px'in altında Etiketler "⋯" menüsünde, öbek etiketleri gizli */

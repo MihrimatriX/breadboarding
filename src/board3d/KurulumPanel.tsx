@@ -8,33 +8,40 @@ import { useEffect, useMemo, useState } from "react";
 import { renkKodu, type CipYeri, type KurulumPlani, type Tel, type Uc } from "../../cpu16/kurulum/plan";
 import { useDil, useT } from "../ui/ceviri";
 import { gorunumHazir } from "./aktif";
-import { BbKurulumPanel, SifirlaDugmesi } from "./BbKurulumPanel";
-import { bacakYeri, bacakYeriYazisi, blokAdi, gorunenKartlar, kartAdi, pcbTelRengi, sahnedeVar, sayiYaz, seciliTel, useKurulum } from "./kurulum";
+import { AsamaHaritasi, BbKurulumPanel, SifirlaDugmesi } from "./BbKurulumPanel";
+import { asamaDilimleri, bacakYeri, bacakYeriYazisi, blokAdi, gorunenKartlar, kartAdi, pcbTelRengi, sahnedeVar, sayiYaz, seciliTel, takilanSayisi, useKurulum } from "./kurulum";
 import { useKart } from "./store";
 import "./kurulum.css";
 
-/** Küçük DIP çizimi: çentik solda, 1. pin sol altta; seçili bacak telin renginde */
+/**
+ * DIP çizimi, kartın üstünden bakıldığı gibi: çentik solda, 1. bacak sol altta (altında "1"). Telin
+ * takılacağı bacak telin renginde ve numarası yanında; çizim sütunun genişliğine yayılır.
+ */
 function MiniDip({ cip, pin, renk }: { cip: CipYeri; pin: number; renk: string }) {
   const t = useT();
   const yarim = cip.pinSayisi / 2;
   const adim = 9;
   const w = yarim * adim + 8;
-  const h = 34;
+  const h = 46;
   const bacak = (n: number) => {
     const { sira, sol } = bacakYeri(n, cip.pinSayisi);
-    return { x: 4 + (sol - 0.5) * adim, y: sira === "alt" ? h - 3 : 3 };
+    return { x: 4 + (sol - 0.5) * adim, y: sira === "alt" ? h - 9 : 9 };
   };
   const p = bacak(pin);
+  const bir = bacak(1);
+  const alt = p.y > h / 2;
   return (
-    <svg className="kur-dip" viewBox={`0 0 ${w} ${h}`} width={w * 1.6} height={h * 1.6} role="img" aria-label={t(`${cip.ref}, ${pin}. bacak`, `${cip.ref}, pin ${pin}`)}>
-      <rect x={2} y={7} width={w - 4} height={h - 14} rx={2} className="kur-dip-govde" />
+    <svg className="kur-dip" viewBox={`0 0 ${w} ${h}`} role="img" aria-label={t(`${cip.ref}, ${pin}. bacak`, `${cip.ref}, pin ${pin}`)}>
+      <rect x={2} y={13} width={w - 4} height={h - 26} rx={2} className="kur-dip-govde" />
       <path d={`M2 ${h / 2 - 4} a4 4 0 0 1 0 8`} className="kur-dip-centik" />
-      <circle cx={6.5} cy={h - 11} r={1.4} className="kur-dip-nokta" />
+      <circle cx={6.5} cy={h - 17} r={1.4} className="kur-dip-nokta" />
       {Array.from({ length: cip.pinSayisi }, (_, i) => {
         const b = bacak(i + 1);
         return <rect key={i} x={b.x - 2} y={b.y - 2} width={4} height={4} rx={0.6} className="kur-dip-bacak" />;
       })}
+      {pin !== 1 && <text x={bir.x} y={h - 1} textAnchor="middle" className="kur-dip-no">1</text>}
       <circle cx={p.x} cy={p.y} r={4.2} fill={renk} stroke="#fff" strokeWidth={1} />
+      <text x={p.x} y={alt ? h - 1 : 6} textAnchor="middle" className="kur-dip-no hedef">{pin}</text>
       <text x={w / 2} y={h / 2 + 3} textAnchor="middle" className="kur-dip-yazi">{cip.deger}</text>
     </svg>
   );
@@ -200,6 +207,8 @@ function PinKurulumPanel() {
   const bitti = plan ? plan.teller.filter((x) => yapilan.has(x.id)).length : 0;
   const yuzde = toplam ? Math.floor((100 * bitti) / toplam) : 0;
   const deneyler = plan?.deneyler.join(", ") || "-";
+  const dilimler = useMemo(() => (plan ? asamaDilimleri(plan.teller, (x) => x.blok, (x) => x.id, yapilan) : []), [plan, yapilan]);
+  const blokSirasi = useMemo(() => new Map(plan?.bloklar.map((b) => [b.ad, b.sira]) ?? []), [plan]);
 
   return (
     <div className="kur">
@@ -207,11 +216,17 @@ function PinKurulumPanel() {
         <label className="kur-kart">
           <span>{t("Kart", "Board")}</span>
           <select value={s.kart} onChange={(e) => void s.kartSec(e.target.value)}>
-            {gorunenKartlar().map((k) => (
-              <option key={k.kart} value={k.kart}>
-                {kartAdi(k.kart, dil)} · {k.yol}
-              </option>
-            ))}
+            {gorunenKartlar().map((k) => {
+              // ilerleme: seçili kart durumdan, öbürleri tarayıcıdaki kayıttan
+              const takilan = k.kart === s.kart ? yapilan.size : takilanSayisi(k.kart);
+              const bitmis = k.kart === s.kart && plan && takilan === plan.teller.length;
+              return (
+                <option key={k.kart} value={k.kart}>
+                  {kartAdi(k.kart, dil)} · {k.yol}
+                  {bitmis ? " · ✓" : takilan ? ` · ${sayiYaz(takilan, dil)} ${t("takıldı", "placed")}` : ""}
+                </option>
+              );
+            })}
           </select>
         </label>
         <label className="kur-izle" title={t("Kamera odaktaki telin iki ucunu çerçevelesin", "Keep both ends of the current wire in view")}>
@@ -241,6 +256,8 @@ function PinKurulumPanel() {
             </div>
           </div>
 
+          <AsamaHaritasi dilimler={dilimler} aktif={tel?.blok} ad={(b) => `${blokSirasi.get(b) ?? ""}. ${blokAdi(b, dil)}`} sec={(x) => s.sec(x.id)} />
+
           {!sahnedeVar(s.kart) && <p className="kur-not">{t("Bu kart 3D sahnedeki bilgisayarda yok; teller yalnız listede.", "This board is not in the 3D scene; its wires are only in the list.")}</p>}
 
           {tel ? (
@@ -265,13 +282,13 @@ function PinKurulumPanel() {
               {t("Sıradaki açık", "Next open")}
             </button>
           </div>
+          <BlokListesi plan={plan} />
+
           <p className="kur-ipucu">
-            {t("Enter: taktım · ← →: gez. Numaralar yazdırılan kurulum belgesiyle aynı", "Enter: placed · ← →: move. The numbers match the printed build guide")} (
+            {t("Enter: taktım · ← →: gez. İşaretler bu tarayıcıda saklanır. Numaralar yazdırılan kurulum belgesiyle aynı", "Enter: placed · ← →: move. Marks are saved in this browser. The numbers match the printed build guide")} (
             <code>npm run cpu16 -- kurulum{plan.kart === "hesap" ? " hesap" : ""}</code>).{" "}
             {t("PCB'de aynı liste bip testi listesidir.", "On a PCB, use the same list for the continuity (beep) test.")}
           </p>
-
-          <BlokListesi plan={plan} />
 
           <div className="kur-alt">
             <SifirlaDugmesi bos={bitti === 0} sifirla={s.sifirla} baslik={t("Bu kartın bütün işaretlerini sil", "Clear all marks for this board")} />

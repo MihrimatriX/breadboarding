@@ -624,20 +624,6 @@ describe("3D görünüm: bellek çipinin içi", () => {
   });
 });
 
-describe("arayüz: üst çubuğun sıkışması", () => {
-  it("sığan ilk kademe seçilir; hiçbiri sığmazsa en sonuncusu; işaretler birikir", async () => {
-    const { sigenKademe, kademeIsareti, SIKISMA_EN_COK } = await import("../../src/ui/sikisma.ts");
-    // her kademe 60 px açar, 130 px eksik: üçüncü denemede (k = 3) sığar
-    const denenen: number[] = [];
-    expect(sigenKademe((k) => (denenen.push(k), 130 - 60 * k))).toBe(3);
-    expect(denenen).toEqual([0, 1, 2, 3]);
-    expect(sigenKademe(() => 0)).toBe(0);
-    expect(sigenKademe(() => 999)).toBe(SIKISMA_EN_COK);
-    expect(kademeIsareti(0)).toBe("");
-    expect(kademeIsareti(3)).toBe("1 2 3");
-  });
-});
-
 describe("3D görünüm: kamera uçuşu", () => {
   it("uçuş süreyle ilerler ve sonda durur; işletim sisteminde hareket azaltılmışsa hemen sona geçer", async () => {
     const { ucusAdimi } = await import("../../src/ui/ayarlar.ts");

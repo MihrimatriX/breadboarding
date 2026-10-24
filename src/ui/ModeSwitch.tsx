@@ -145,7 +145,26 @@ export const BOLUMLER: Bolum[] = [
 
 export const bolum = (mode: Mode): Bolum => BOLUMLER.find((b) => b.mode === mode)!;
 
-/** Uygulamanın bölümleri arasında geçiş: 6502 die görünümü, CPU16 tezgâhı, CPU16 kartı (3D), 8 bit hesap makinesi (3D), mimari diyagramları ve belgeler. */
+/** Sol üstteki başlatıcı menüsünde bölümler: simge, ad ve tek satırlık açıklama */
+export function BolumListesi({ mode }: { mode: Mode }) {
+  const dil = useDil();
+  const t = useT();
+  return (
+    <nav className="bolum-listesi" aria-label={t("Bölümler", "Sections")}>
+      {BOLUMLER.map((b) => (
+        <a key={b.mode} href={b.hash} aria-current={mode === b.mode ? "page" : undefined} onPointerEnter={() => onYukle(b.mode)} onFocus={() => onYukle(b.mode)}>
+          {b.simge}
+          <span>
+            <b>{sec(b.ad, dil)}</b>
+            <small>{sec(b.ipucu, dil)}</small>
+          </span>
+        </a>
+      ))}
+    </nav>
+  );
+}
+
+/** Telefonda ekranın altındaki bölüm çubuğu (geniş ekranda bölümler başlatıcıda): 6502 die görünümü, CPU16 tezgâhı, CPU16 kartı (3D), 8 bit hesap makinesi (3D), mimari diyagramları ve belgeler. */
 export function ModeSwitch({ mode }: { mode: Mode }) {
   const dil = useDil();
   const t = useT();

@@ -9,6 +9,13 @@ boards do not come from a hand-written list: the view places whatever is in `boa
 `board.passives`. When a new board is plugged in (for example a DIY RAM board built from 74HC574s), it
 shows up by itself.
 
+The screen is split like VS Code: on the far left an activity bar (at the top the sections and settings
+button, below it the **Program**, **Inspect**, **Tour**, **CPU and UART** and **Build** icons; at the
+bottom the bottom panel and focus mode), next to it the chosen panel, and on the right the 3D scene at full
+height. When the section opens, the program editor is open on the left. Press the open panel's icon again
+to close it and give the scene the whole area. The scene's controls (the "toolbar" below: view, run, clock,
+wires, labels) float above the scene; the inside of the selected chip opens in the panel below the scene.
+
 ## What you see
 
 | Level | Where | What it shows |
@@ -17,12 +24,12 @@ shows up by itself.
 | Board | 3D scene | Chips are placed by function block (ALU, Register file, VRAM, Pixel path…). Blocks with many chips become near-square grids. Decoupling capacitors sit next to their chips, and the edge connector is on the bottom edge of the board. The other passives are lined up under their blocks. |
 | Passives | 3D scene | Resistors, capacitors, electrolytics, LEDs, resistor networks, connectors, oscillators, buttons, switches, pots, modules and the CPU board's 10-segment bar graphs. Their shapes come from the KiCad footprint. An LED lights when the net driving it is 1; active-low LEDs (VCC → resistor → LED → signal, e.g. `~ROE0`) light when the net is 0. Each segment of a bar graph lights while the signal at the other end of the network is 1: a byte reads bit 0 … 7 from left to right. Passive pins take part in the wiring too. |
 | Wires | Toolbar: **Wires** | Pin-to-pin jumper wires. Their colors are live: blue 0, red 1, purple Z, yellow X. Modes below. |
-| Wire | Click a wire in the breadboard view | The wire is drawn thick and bright from end to end, with a pulsing ring at each end; the other wires fade. The side panel shows the wire's number, color, length, net and **from → to** (breadboard, hole, the legs on that strip). In build mode the clicked wire becomes the focus. Esc or a click on empty space releases it. |
-| Conductor | Click a conductor of the ribbon cable or the backplane | That conductor's signal is selected: the conductor is drawn from end to end as a glowing trace above everything else (on the breadboard inside the cable from socket to socket; on the PCB from the board's tongue into the slot, from the slot to its bus line and along it), the other conductors fade, and on every board the wires of that net take the live color. On the breadboard, the sockets of the panels where the signal has ends are framed, and their labels show the number of ends on that board. The side panel shows which backplane conductor it is, how many ends the signal has on each board, and every end. GND and VCC conductors are not selectable. |
+| Wire | Click a wire in the breadboard view | The wire is drawn thick and bright from end to end, with a pulsing ring at each end; the other wires fade. The Inspect panel shows the wire's number, color, length, net and **from → to** (breadboard, hole, the legs on that strip). In build mode the clicked wire becomes the focus. Esc or a click on empty space releases it. |
+| Conductor | Click a conductor of the ribbon cable or the backplane | That conductor's signal is selected: the conductor is drawn from end to end as a glowing trace above everything else (on the breadboard inside the cable from socket to socket; on the PCB from the board's tongue into the slot, from the slot to its bus line and along it), the other conductors fade, and on every board the wires of that net take the live color. On the breadboard, the sockets of the panels where the signal has ends are framed, and their labels show the number of ends on that board. The Inspect panel shows which backplane conductor it is, how many ends the signal has on each board, and every end. GND and VCC conductors are not selectable. |
 | Chip | Click a chip | The camera flies to a spot where it sees the chip and the far ends of its wires together. The chip's **die** shows on top of its body, as if the lid were open: the gates in the live color of their outputs. Side panel **Connections**: pin no. + name → net → far ends (chip.pin). Bottom panel **Inside the chip**: gate-level schematic or memory array. |
 | Gate | Click a gate on the die or in the schematic | The CMOS transistor schematic of that gate. Conducting transistors are green. |
-| Net | Click a pin, an endpoint or a net name | All endpoints of the net are joined by a thick wire drawn above everything else. The side panel lists the endpoints of the net. |
-| Section | Toolbar: **Labels**; click a label | The board's regions, blocks and chip groups are marked and named. The clicked section's function, how it works and its chips appear in the side panel. See below. |
+| Net | Click a pin, an endpoint or a net name | All endpoints of the net are joined by a thick wire drawn above everything else. The Inspect panel lists the endpoints of the net. |
+| Section | Toolbar: **Labels**; click a label | The board's regions, blocks and chip groups are marked and named. The clicked section's function, how it works and its chips appear in the Inspect panel. See below. |
 
 ### View: PCB and breadboard
 
@@ -42,7 +49,12 @@ and the program editor are the same in both; only the physical layout changes.
   chunk: it loads only the first time this view is opened.
 - **Build** (in the breadboard view): pick a panel and a stage, then step through the wires in numbered
   order; the next wire is highlighted in 3D and its description is shown
-  (`CPU · BB07 c14 → BB08 h3, 42 mm, sarı`). Checked-off wires are remembered per panel. Details:
+  (`CPU · BB07 c14 → BB08 h3, 42 mm, sarı`). Checked-off wires are remembered per panel, and so is the
+  selected panel (the board, on the PCB); the selection list shows each panel's progress. The **stage map**
+  at the top shows the whole build as one strip (a slice per stage or block, as wide as its wire count,
+  filled with the placed wires; click a slice to go to its first open wire). The wire card has a **hole
+  map** for each end: the end's hole in the wire's color and the holes on the same strip (or rail)
+  highlighted; on the PCB, a drawing of the chip with the pin number. Details:
   [breadboard.en.md](breadboard.en.md).
 
 ### Section labels
@@ -68,6 +80,12 @@ themselves are in `cpu16/board/bolum-metin.ts`, the calculator's in `hesap8/bolu
   stage and experiment, **How it works**, the build stages, the connections to the outside (signals), the
   subsections and the parts (click one to select the chip). Esc clears the selection (first the gate, net
   or chip, then the section).
+- The **Tour** tab walks through the board block by block (7 boards and 61 blocks on the computer, 14
+  blocks on the calculator). Previous / Next (or ← →) selects the next section, the camera flies there and
+  the section panel opens; click another section in the scene and the tour carries on from its block.
+- When a chip is selected, **Inspect** first shows its group's description (**Its job in the circuit**),
+  then the **pinout** in datasheet layout (each pin in the color of its live level; click one to select its
+  net), then the connections; the VCC and GND pins do not list their other ends.
 
 All plates are drawn in one mesh and the frames as thick lines: one extra draw call in the overview. The
 panel map in the breadboard build guides draws the same regions in the same colors
@@ -78,7 +96,7 @@ panel map in the breadboard build guides draws the same regions in the same colo
 - **none**: no wires are drawn.
 - **selected chip** (default): the copper traces of the selected chip's (or passive's) nets light up thick
   and in the color of the live level; the part between boards is a line from connector to connector along
-  the backplane. **Connections** in the side panel lists the same endpoints. Clicking an endpoint selects
+  the backplane. **Connections** in the Inspect panel lists the same endpoints. Clicking an endpoint selects
   that component; clicking a net name selects the net.
 - **all**: the wiring of the whole computer. Inside a board each net is joined with a minimum spanning
   tree (like a real chain of jumper wires). Boards connect to each other only through their edge
@@ -102,7 +120,7 @@ functions in `src/board3d/wires.ts` and `src/board3d/pcbYol.ts` (with tests).
 
 ### VGA screen
 
-At the top right of the scene is the **VGA** panel, and in the scene a 3D monitor shows the same picture.
+At the bottom right of the scene is the **VGA** panel, and in the scene a 3D monitor shows the same picture.
 
 - **Text mode** (default): 80 × 30 characters, 16 colors, cursor. The picture is read from the gate-level
   video board's own memory chips: the character and color lanes of VRAM (two 62256s) and the character
@@ -117,7 +135,7 @@ At the top right of the scene is the **VGA** panel, and in the scene a 3D monito
 - **big / small**: enlarges the panel. **hide**: closes the panel (the monitor in the scene stays).
 - **Keyboard**: click the screen and type. The keys go as PS/2 scan codes to the I/O board's PS/2
   connector (clock and data lines, 11-bit frame). `gc-deneme.s` prints the codes as `[1C]`.
-- **UART**: the box in the side panel shows the bytes going to the UART. Whatever you type in the field
+- **UART**: the box in the CPU and UART panel shows the bytes going to the UART. Whatever you type in the field
   below it goes from the TX line of the CH340 bridge to the board's RX as 8N1. The bridge waits while the
   board's ~CTS line is 1.
 
@@ -138,7 +156,7 @@ ones, the rest are control. If the chip name or title says Flash/EEPROM/ROM, the
 
 ### Program editor
 
-The **Program** tab in the bottom panel:
+The **Program** panel on the left (the top icon of the activity bar):
 
 - **Examples**: kit programs (video-deneme, gc-deneme, bellek-deneme, onbellek-deneme), `hello.s` and
   `merhaba-vga.c`. That C example writes to the UART with printf and also writes to VGA directly.

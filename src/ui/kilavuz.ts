@@ -7,8 +7,8 @@ import type { IkiDil } from "./ceviri";
 import type { Mode } from "./ModeSwitch";
 
 export const GIRIS: IkiDil = {
-  tr: "Silikon3D bir bilgisayarı transistörden karta kadar tarayıcıda, canlı sinyallerle çalıştırır. Altı bölüm var; üst çubuktan istediğin an geçebilirsin, her bölüm kaldığı yerden devam eder.",
-  en: "Silikon3D runs a computer in your browser, from single transistors up to whole boards, with live signals. Switch between its six sections from the top bar at any time; each one picks up where you left off.",
+  tr: "Silikon3D bir bilgisayarı transistörden karta kadar tarayıcıda, canlı sinyallerle çalıştırır. Altı bölüm var; sol üstteki düğmeden istediğin an geçebilirsin, her bölüm kaldığı yerden devam eder.",
+  en: "Silikon3D runs a computer in your browser, from single transistors up to whole boards, with live signals. Switch between its six sections from the button at the top left at any time; each one picks up where you left off.",
 };
 
 export const ILK_ADIMLAR: Record<Mode, IkiDil[]> = {
@@ -58,18 +58,18 @@ export const ILK_ADIMLAR: Record<Mode, IkiDil[]> = {
       en: "Click a chip to see its wires, its connections and the gates inside. `Esc` clears the selection one step at a time.",
     },
     {
-      tr: "`E` etiketleri açar: önce bölümler, sonra ayrıntılı. Bir etikete tıklarsan o bölümün görevi ve çipleri yan panelde açılır.",
-      en: "`E` turns on the labels: first the regions, then the details. Click a label to see that region's job and chips in the side panel.",
+      tr: "`E` etiketleri açar: önce bölümler, sonra ayrıntılı. Bir etikete tıklarsan o bölümün görevi ve çipleri İnceleme panelinde açılır.",
+      en: "`E` turns on the labels: first the regions, then the details. Click a label to see that region's job and chips in the Inspect panel.",
     },
     {
-      tr: "`Boşluk` bilgisayarı çalıştırır ya da duraklatır. Alt paneldeki Program sekmesinde Yükle ve çalıştır, programı EEPROM'a yazıp baştan başlatır.",
-      en: "`Space` runs or pauses the computer. Load and run, in the Program tab of the bottom panel, writes the program to the EEPROM and restarts it.",
+      tr: "Kodu soldaki Program panelinde yaz; Yükle ve çalıştır onu EEPROM'a yazıp baştan başlatır. `Boşluk` bilgisayarı çalıştırır ya da duraklatır. En soldaki simgeler panelleri değiştirir; açık panelin simgesine yeniden basınca kart bütün ekranı alır.",
+      en: "Write code in the Program panel on the left; Load and run writes it to the EEPROM and restarts. `Space` runs or pauses the computer. The icons on the far left switch panels; press the open panel's icon again to give the board the whole screen.",
     },
   ],
   hesap: [
     {
-      tr: "Sağdaki Hesap sekmesinde A ve B sayılarını yaz ya da bitlerine tıkla.",
-      en: "In the Calculator tab on the right, type the numbers A and B or click their bits.",
+      tr: "Soldaki Hesap panelinde A ve B sayılarını yaz ya da bitlerine tıkla.",
+      en: "In the Calculator panel on the left, type the numbers A and B or click their bits.",
     },
     {
       tr: "Bir işlem seç: sonuç (bölmede kalanla birlikte) göstergelerde belirir.",
@@ -80,8 +80,8 @@ export const ILK_ADIMLAR: Record<Mode, IkiDil[]> = {
       en: "In 3D, click the white knob of a DIP switch to flip that bit. Hold down the yellow lamp test button to light every segment.",
     },
     {
-      tr: "Araç çubuğundaki Genel bakış, Anahtarlar ve Göstergeler kamerayı o bloğa götürür. Bir çipe tıklarsan içindeki kapıları görürsün.",
-      en: "Overview, Switches and Displays in the toolbar move the camera to that block. Click a chip to see the gates inside.",
+      tr: "Sahnenin üstündeki Genel bakış, Anahtarlar ve Göstergeler kamerayı o bloğa götürür. Bir çipe tıklarsan içindeki kapıları görürsün.",
+      en: "Overview, Switches and Displays above the scene move the camera to that block. Click a chip to see the gates inside.",
     },
   ],
   mimari: [
@@ -125,12 +125,12 @@ export const ILK_ADIMLAR: Record<Mode, IkiDil[]> = {
 /** Panelin altındaki ortak ipuçları (sırasıyla kısayollar, dil) */
 export const ORTAK_IPUCLARI: IkiDil[] = [
   {
-    tr: "`T` tema · `Y` yazı boyutu · `F` odak modu · `?` bu panel. Bütün kısayollar sağ üstteki listede.",
-    en: "`T` theme · `Y` text size · `F` focus mode · `?` this panel. Every shortcut is in the list at the top right.",
+    tr: "`T` tema · `Y` yazı boyutu · `F` odak modu · `?` bu panel. Bütün kısayollar sol üstteki düğmenin kutusunda.",
+    en: "`T` theme · `Y` text size · `F` focus mode · `?` this panel. Every shortcut is in the menu of the button at the top left.",
   },
   {
-    tr: "`L` dil: Türkçe / English. Üst çubuktaki EN düğmesi de dili değiştirir.",
-    en: "`L` language: English / Türkçe. The TR button in the top bar switches it too.",
+    tr: "`L` dil: Türkçe / English. Sol üstteki düğmenin kutusundan da seçilir.",
+    en: "`L` language: English / Türkçe. You can also pick it in the menu of the button at the top left.",
   },
 ];
 
